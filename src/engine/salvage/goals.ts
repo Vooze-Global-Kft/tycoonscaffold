@@ -56,6 +56,9 @@ export function countOf(c: SalvageContent, g: SalvageGame, key: string): number 
   const counts = countsOf(g);
   if (counts[key] !== undefined) return counts[key];
   const [kind, a] = key.split(':');
+  // P14: once the sim keeps counts, a skip is FETCHED when it is tipped (truck.ts tipNow bumps the count);
+  // the ticket fallback below would count it at the weighbridge, before the tip.
+  if (kind === 'fetched' && g.salvage.counts) return 0;
   const weighIns = s.tickets.filter((t) => t.kind === 'weighIn');
   switch (kind) {
     case 'cut': {
@@ -127,6 +130,9 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
       return s.crew.filter((m) => m.role === parts[1]).length >= num(2);
     case 'fetched':
       return countOf(c, g, `fetched:${parts[1]}`) >= num(2);
+    case 'bridged':
+      // P14: a skip of that partner over the weighbridge (weighed on the truck, or tipped since).
+      return countOf(c, g, `fetched:${parts[1]}`) + (s.truck.skip?.weighed && s.truck.skip.partner === parts[1] ? 1 : 0) >= num(2);
     case 'rung':
       return s.ladder.rung >= num(1);
     case 'deal':
@@ -323,7 +329,8 @@ export function goalListOf(cfg: SalvageConfig, g: SalvageGame): GoalLine[] {
   const { done, skipped } = g.salvage.goals;
   let current = false;
   return ordered(cfg, g).map((d) => {
-    const state: GoalLine['state'] = done.includes(d.id) ? 'done' : skipped.includes(d.id) ? 'skipped' : current ? 'later' : ((current = true), 'current');
+    // W24: a goal whose condition already holds (owned, charged) is ticked, whether or not the pointer reached it.
+    const state: GoalLine['state'] = done.includes(d.id) || goalMet(cfg, g, d) ? 'done' : skipped.includes(d.id) ? 'skipped' : current ? 'later' : ((current = true), 'current');
     return { id: d.id, text: goalText(cfg, g, d), state, optional: !!d.optional };
   });
 }

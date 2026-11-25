@@ -39,6 +39,8 @@ export const TEXT = {
   menu: 'Menu',
   close: 'Close',
   ok: 'OK',
+  cashDebit: '−{x} · {partner}', // P12: under the cash counter at a hook; x: money (positive), partner: { name }
+  passedToast: 'You passed {rival} · {rank} of {n}', // P16: rival { name: rival.<n>.chip }, rank { rank }, n { n }
 
   // --- package 3: place names (5.2, at most 18 characters) ---
   'place.rack': 'Tool rack',
@@ -63,6 +65,9 @@ export const TEXT = {
 
   // --- packages 3 and 4: chips (4.2, 4.4) ---
   'chip.bay': '{grade|short} {kg} · today {x}',
+  'chip.bayHeld': '{grade|short} {kg} · today {x} · held', // rules-book L10/W4: a held bay's first line, x = what Sell pays now
+  'chip.bayKg': '{grade|short} {kg}', // rules-book: a bay with nothing free to sell (all reserved)
+  'chip.bayKgHeld': '{grade|short} {kg} · held',
   'chip.held': 'held',
   'chip.lowDay': 'low day',
   'chip.highDay': 'high day',
@@ -75,6 +80,7 @@ export const TEXT = {
   'chip.certifiedEmpty': 'certified empty',
   'chip.bridgeLimit': 'Weight limit 7.5 t',
   'chip.needsTorchGate': 'Needs a cutting torch',
+  'chip.count': '{what} · {n}',
 
   // --- package 4: card titles (4.3) ---
   'title.rack': 'Tool rack',
@@ -113,6 +119,8 @@ export const TEXT = {
   'card.idle': 'Idle',
   'card.levelOnBoard': 'Level on the process board',
   'card.inOut': '{in} → {out}',
+  'card.inOut2': '{in} → {a}, {b}', // rules-book W7: every output, largest first
+  'card.inOut3': '{in} → {a}, {b}, {c}',
   'card.rateKgS': '{kg} a second', // deprecated with MachineCard.rate: use card.rate
   'card.rate': '{rate} an hour', // rate: { rate_g_h } (MachineCard.rate_g_h, E13d)
   'card.charge': '{a} / {b}',
@@ -123,8 +131,8 @@ export const TEXT = {
   'card.cutsRate': 'Cuts {t} an hour', // t: { rate_g_h }
   'card.drivesRate': 'Fetches a load in {t}',
   'card.opensAt': 'Opens at {t} supplied',
-  'card.nightWatch': 'Away cap {a} h → {b} h', // a, b: { n } hours (cards.ts, sample.ts pass n)
-  'card.dealTerms': '{kg} of {grade} a day for {n} days at {p} a kilo, locked at signing',
+  'card.nightWatch': 'Runs while away: {a} h → {b} h', // a, b: { n } hours (cards.ts passes n); W20: no 'cap'
+  'card.dealTerms': '{grade}: {kg} a day for {n} days at {p}/kg, locked at signing',
   'card.dealDaysLeft': '{n} days left',
   'card.dealReserve': 'Reserved {a} / {b}',
   'card.dealTrust': 'Trust {n} / 100',
@@ -139,13 +147,24 @@ export const TEXT = {
   'card.notBottleneck': 'Not the bottleneck now', // E19: the state line; what the level adds is card.levelAdds
   'card.keptForLoad': 'Kept for the next load: {x}',
   'card.empty': '',
+  // W5: no absolute rates on a row in this stage
+  'card.carriesTrip': 'Carries {kg} a trip', // kg: { mass_g }
+  'card.cutsBest': 'Cuts with the yard’s best tool',
+  'card.levelFaster': '+{pct} faster', // pct: { pct } (0.25 → "25 %")
+  'card.skipMore': 'One more skip filling at {partner}', // partner: { name }
+  'card.runsItself': 'Runs by itself',
+  'card.levelOpensAt': 'Level up opens at {t} supplied', // P18; t: { tonnes_g }
+  // W18: buttons name the action, rows name the state
+  'card.use': 'Use',
+  'card.start': 'Start',
+  'card.stop': 'Stop',
 
   // --- package 4: items, roles and effect lines (≤ 38) ---
   'item.sack': 'Sack truck',
   'item.trolley': 'Flat trolley',
   'item.frame': 'Carry frame',
   'item.spanners': 'Spanners and bolt cutters',
-  'item.sledge': 'Sledge and grinder',
+  'item.sledge': 'Sledgehammer and grinder',
   'item.torch': 'Cutting torch',
   'item.truck': 'Hook-lift truck',
   'item.handStripper': 'Hand stripper',
@@ -161,13 +180,13 @@ export const TEXT = {
   'effect.sack': 'Moves a washer in one trip',
   'effect.trolley': 'Moves a radiator in one trip',
   'effect.sledge': 'Breaks cast iron; cuts sheet faster',
-  'effect.torch': 'Cuts beams, tanks and the car',
+  'effect.torch': 'Cuts beams and tanks; frees the converter',
   'effect.truck': 'Fetches partners’ loads',
   'effect.stripper': 'Strips heavy cable to copper',
   'effect.bench': 'Takes motors apart: copper, steel, alu',
   'effect.crucible': 'Melts brass solids into ingots',
   'effect.alu': 'Melts cast aluminium into ingots',
-  'effect.night': 'A longer away cap',
+  'effect.night': 'Earns for longer while you are away',
   'effect.hand': 'Carries to the scale and the hoppers',
   'effect.cutter': 'Cuts what waits at the drop-off',
   'effect.driver': 'Fetches full loads with the truck',
@@ -202,23 +221,32 @@ export const TEXT = {
   'table.headline': 'The largest full metal recycling and resource supplier',
   'table.simulated': 'simulated',
   'table.rivalsSimulated': 'Rival firms (simulated)',
-  'table.rung': '{t} supplied · {r} metals',
+  'table.rung': '{t} supplied · {r} materials',
   'table.rungGate': 'Opens at {t} supplied',
-  'table.range': '{n} metals',
+  'table.range': '{n} materials',
   'table.you': '{homeYard}',
   'table.rungSign': '{homeYard} · {t} supplied',
   'table.rungOpens': '{what}',
 
   // --- package 4: the away card (4.4) ---
-  'away.head': 'Away {t} (cap {c} h)', // t: { secs }, c: { n } hours (AwayCard.tsx passes n)
+  'away.head': 'Away {t} · the yard ran {c}', // R6/W20: t: { secs } the absence, c: { secs } what the yard ran
   'away.line': '{grade|short} {kg} · {x}',
   'away.supplied': '{t} supplied · {x} (already in your account)',
   'away.loads': '{n} loads fetched',
-  'away.deliveries': '{n} deal deliveries',
+  'away.deliveries': '{n} deliveries to {foundry}', // one line per delivery: ticket.dealDelivery
   'away.passed': 'You passed {rival}.',
   'away.hintCutter': 'A cutter keeps the yard working while you are away (Office)',
   'away.hintHand': 'A yard hand carries to the scale while you are away (Office)',
   'away.nothing': 'Nothing was weighed out.',
+  // P3: what was applied, in this order
+  'away.sales': 'Sales {x}',
+  'away.bought': '{n} loads bought · −{x}', // x: money (positive)
+  'away.boughtFrom': '{partner}: {n} loads bought · −{x}',
+  'away.net': 'Net +{x} (already in your account)',
+  'away.netLoss': 'Net −{x} (taken from your account)', // x positive, when spent > sales
+  'away.next': 'Next: {goal}', // goal: { text: goal.* }
+  'away.longerRung': 'At the next rung the yard runs up to {c} while you are away', // c: { secs }
+  'away.longerNight': 'The night watch keeps the yard running up to {c}', // c: { secs }
 
   // --- packages 3 and 4: tickets and slips (2.2) ---
   'ticket.weighInHead': '{homeYard} · No. {n}',
@@ -232,7 +260,8 @@ export const TEXT = {
   'ticket.partnerLegal': 'Seller ID checked · paid by transfer',
   'ticket.collectionHead': '{homeYard} · ticket {n}',
   'ticket.gradeAmount': '{grade|short} {kg} {x}', // the clipboard's ticket history (overlays-b)
-  'ticket.paid': 'Paid {x}',
+  'ticket.paid': 'Paid {x}', // money IN only (collections, deal deliveries)
+  'ticket.boughtFor': 'Bought for {x}', // P12/S3: the skip weigh-in, money OUT
   'ticket.lotSoldTo': 'Lot sold to {merchant}',
   'ticket.weighedOut': 'weighed out · paid by transfer',
   'ticket.dealDelivery': '{foundry} · {kg} cast iron · {x}',
@@ -272,14 +301,15 @@ export const TEXT = {
   'goal.buySack': 'Buy the sack truck',
   'goal.takeAWasher': 'Take a washer apart',
   'goal.hireHand': 'Hire a yard hand',
-  'goal.workDropoff': 'Work the drop-off',
-  'goal.buySledge': 'Buy the sledge and grinder',
+  'goal.workDropoff': 'Clear the public drop-off',
+  'goal.buySledge': 'Buy the hammer and grinder',
   'goal.breakRadiators': 'Break up the radiators',
   'goal.buyTruck': 'Buy the hook-lift truck',
   'goal.fetchTrial': 'Fetch the farm’s trial load',
+  'goal.tipTrial': 'Tip it on the floor', // P14
   'goal.buyBench': 'Buy the motor bench',
   'goal.breakMotor': 'Break a motor on the bench',
-  'goal.supplyRung2': 'Supply {t} ({r} metals)',
+  'goal.supplyRung2': 'Supply {t} ({r} materials)',
   'goal.hireCutter': 'Hire a cutter',
   'goal.signDeal': 'Sign the foundry deal',
   'goal.buyTrolley': 'Buy the flat trolley',
@@ -289,10 +319,10 @@ export const TEXT = {
   'goal.pourFirst': 'Pour your first ingot',
   'goal.hireDriver': 'Hire a driver',
   'goal.buyTorch': 'Buy the cutting torch',
-  'goal.cutCar': 'Cut up the car',
+  'goal.cutCar': 'Strip the car for the shredder',
   'goal.fetchDemolition': 'Fetch the demolition load',
-  'goal.buyNight': 'Buy the Night watch',
-  'goal.supplyRung3': 'Supply {t} ({r} metals)',
+  'goal.buyNight': 'Buy the night watch',
+  'goal.supplyRung3': 'Supply {t} ({r} materials)',
   'goal.hireHand2': 'Hire a second yard hand',
   'goal.hireCutter2': 'Hire a second cutter',
   'goal.finishDeal': 'Finish the foundry deal',
@@ -305,7 +335,7 @@ export const TEXT = {
   'lesson.mot': 'A whole motor: copper inside steel.',
   'lesson.cab': 'Cable is paid on the copper it yields.',
   'lesson.bb': 'Bare bright pays {n} times light iron today.',
-  'lesson.no2': 'No.2: unalloyed copper, not clean.',
+  'lesson.no2': 'No.2 copper: coated, tinned or soldered.',
   'lesson.brs': 'Brass is copper and zinc.',
   'lesson.alw': 'Clean alloy wheels: tyres and weights off.',
   'lesson.alcast': 'Motor end caps are cast aluminium.',
@@ -315,7 +345,7 @@ export const TEXT = {
   'lesson.cbody': 'Car bodies go to a shredder.',
   'lesson.bri': 'An ingot pays more than the scrap it came from.',
   'lesson.dross': 'Dross: the skimmed crust, still holding metal.',
-  'lesson.ali': 'Cast aluminium remelted as alloy ingot.',
+  'lesson.ali': 'The crucible casts cast aluminium into ingot.',
   'lesson.conv': 'From depolluted car ref. {ref}. Paid on assay.',
 
   // --- every package: refusals (5.4) ---
@@ -323,7 +353,7 @@ export const TEXT = {
   'refusal.owned': 'Owned',
   'refusal.rung': 'Opens at {t} supplied',
   'refusal.ceiling': 'Capacity {c} t/h · grows at {t}',
-  'refusal.tool2': 'Needs a sledgehammer',
+  'refusal.tool2': 'Needs the hammer and grinder',
   'refusal.tool3': 'Needs a cutting torch',
   'refusal.tooHeavy': 'Too heavy to lift: {kg}',
   'refusal.topLevel': 'Top level',
@@ -353,7 +383,7 @@ export const TEXT = {
   'card.firstPour': 'Ready to pour · it waits for you',
   'card.heating': 'Heating',
   'card.cooling': 'Cooling',
-  'card.handOnly': 'Turns only while you stand at it',
+  'card.handOnly': 'Turns while you stand at it',
   'card.hopper': 'Hopper · {grade|short} × {n} · {kg}', // overlays-a: the next input and what waits
   'card.tray': 'Tray · {grade|short} {kg}',
   'card.crewRow': '{name} · level {n}', // name: { name: crew.<n> }
@@ -368,7 +398,7 @@ export const TEXT = {
   'card.partnerLine': '{line}', // line: { text } from text.json partners.<id>.line once it is in the content
   'item.skip': 'Another skip',
   'effect.frame': 'A hand load on your back',
-  'effect.spanners': 'Takes apart washers, bikes and cable',
+  'effect.spanners': 'Takes apart washers and bikes',
   'effect.handStripper': 'Strips cable while you stand at it',
   'effect.brass': 'Melts brass solids into brass ingots',
   'board.stock': 'In the bay {kg}',
@@ -377,12 +407,17 @@ export const TEXT = {
   'plate.needsCrucible': 'Needs the crucible',
   'plate.atRung': 'At {t} supplied',
   'table.next': 'Next: {rival} · {t} to go', // rival: { name: rival.<n>.chip }
-  'table.locked': 'Opens at {t} supplied · {r} metals',
+  'table.locked': 'Opens at {t} supplied · {r} materials',
+  'table.nextRung': 'Next: opens at {t} supplied · {r} materials', // W13a
   'opens.rung2': 'The cutting torch, a radiation portal and a supply deal',
   'opens.rung3': 'Yard capacity {c} t/h',
   'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
   'clip.restartYes': 'Start again',
   'clip.restartNo': 'Keep my yard',
+  // overlays-b, fix pass (first wordings; the words fixer owns them)
+  'board.empty': 'Grades appear here once weighed in',
+  'table.mine': 'You: {t} supplied · {r} materials',
+  'table.lockedBare': '{t} supplied',
   'help.lessons': 'What the tickets taught',
   'help.glossary': 'Words of the trade',
   'help.about': 'About this game',

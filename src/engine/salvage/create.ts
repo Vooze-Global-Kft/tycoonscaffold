@@ -8,6 +8,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import type { GameState } from '../types';
 import { marketDay } from './board';
 import { pointOf } from './positions';
+import { seriesKey } from './series';
 import type { CrucibleState, MachineState, PartnerState, SalvageConfig, SalvageGame, SalvageState, ThingState } from './types';
 
 const machine = (owned: boolean): MachineState => ({ owned, level: owned ? 1 : 0, hopper: [], work: null, tray_g: {}, trayClaim_g: {}, status: owned ? 'idle' : 'notOwned', since: 0 });
@@ -71,7 +72,8 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     draws: 0,
     beenAway: false,
     income: { minute: 0, buckets: [0, 0, 0, 0, 0] },
-    counts: {},
+    // The two ticket books (W16, series.ts): the last number printed in each, from 0.
+    counts: { [seriesKey('weigh')]: 0, [seriesKey('sale')]: 0 },
   };
 }
 

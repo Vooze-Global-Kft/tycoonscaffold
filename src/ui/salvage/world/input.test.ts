@@ -12,6 +12,7 @@ import { SalvageSchema } from '../../../config/schema.salvage';
 vi.mock('react', () => ({ useMemo: (f: () => unknown) => f(), useRef: (v: unknown) => ({ current: v }) }));
 vi.mock('react-native', () => ({ Platform: { OS: 'web' }, PixelRatio: { get: () => 3 } }));
 vi.mock('react-native-reanimated', () => ({ makeMutable: (v: unknown) => ({ value: v }) }));
+vi.mock('@shopify/react-native-skia', () => ({ Skia: {}, ClipOp: { Intersect: 1 }, PaintStyle: {}, StrokeCap: {}, StrokeJoin: {}, BlendMode: {}, TileMode: {}, FillType: {}, PathOp: {} }));
 
 // The rules' frozen test content (never the tuned game.json: tests pin no tuned number, BRIEF lesson 4).
 const { SALVAGE_TEST: content } = await import('../../../engine/fixtures/salvage');

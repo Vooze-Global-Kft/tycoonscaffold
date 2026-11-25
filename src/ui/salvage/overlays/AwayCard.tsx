@@ -1,22 +1,29 @@
 /**
- * The away card (yard-stage1.md 4.4, 2.16; centred): "Away {h} h {m} m (cap {c} h)"; up to five grade
- * lines and "+ {n} more"; "{t} supplied · §{x} (already in your account)": the money was paid when the
- * away pass computed it (BRIEF lesson 5), OK only closes the card (`ackAway` pays nothing); loads
- * fetched, deal deliveries, "You passed {rival}."; with little to show, what would have earned more
- * ("A cutter keeps the yard working while you are away (Office)"). No ad button in stage 1.
+ * The away card (yard-stage1.md 4.4, 2.16; centred), in the fix pass's ruled order (P3, P19, R6, R10,
+ * E33, E34): "Away {t} · the yard ran {c}" and what makes it run longer; the money as it was applied
+ * ("Sales §x", "{n} loads bought · −§y", "Net +§z (already in your account)": paid when the away pass
+ * computed it, BRIEF lesson 5; OK only closes the card, `ackAway` pays nothing); each deal delivery;
+ * "You passed {rival}."; the next step; then the grade lines the merchant collected (never held stock;
+ * five at most, three at large type) and "+ n more". No ad button in stage 1.
  * Data: `CardData.away` (the state's waiting card); numbers through the facade's formatters.
  */
 import { StyleSheet, View } from 'react-native';
 import { CentredCard } from './CentredCard';
-import { awayLines } from './marketLines';
+import * as R from '../../../engine/salvage';
+import { awayLines, withAwayView, type AwayData, type AwayViewLike } from './marketLines';
 import { useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { salvageActions } from '../../../modes/salvage/actions';
-import { INK, Line, LocalButton } from './parts';
+import { INK, Line, LocalButton, useFrame } from './parts';
 
-export function AwayCard({ data, onClose }: CardViewProps) {
+/** rules-book's away selector once the facade has it (announced 19:55); the state's card until then. */
+const awayView = (R as unknown as { awayView?: (cfg: R.SalvageConfig, g: R.SalvageGame) => AwayViewLike | null }).awayView;
+
+export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
   useSeenOnClose('away');
-  const a = data.away;
+  const { layout } = useFrame();
+  const a0 = data.away as AwayData | undefined;
+  const a = a0 ? withAwayView(a0, awayView ? awayView(cfg, g) : null) : undefined;
   const ok = data.foot.length ? data.foot : [{ label: { key: 'ok' as const }, action: { act: 'ackAway' as const }, refusal: null }];
   if (!a) {
     return (
@@ -25,7 +32,7 @@ export function AwayCard({ data, onClose }: CardViewProps) {
       </CentredCard>
     );
   }
-  const { head, lines, summary } = awayLines(a);
+  const { head, longer, money, net, news, next, lines } = awayLines(a, layout.fs >= 1.2);
   const footNode = (
       <View style={styles.foot}>
         {ok.map((b, i) => (
@@ -44,16 +51,32 @@ export function AwayCard({ data, onClose }: CardViewProps) {
   return (
     <CentredCard title={data.title} onClose={onClose} footNode={footNode}>
       <View style={styles.head}>
-        <Line t={head} size="name" bold />
+        <Line t={head} size="name" bold lines={2} />
+        {longer ? <Line t={longer} size="line" colour={INK.soft} lines={2} /> : null}
       </View>
-      {lines.map((t, i) => (
-        <Line key={i} t={t} size="name" />
+      {net ? (
+        <View style={styles.money}>
+          {money.map((t, i) => (
+            <Line key={i} t={t} size="line" lines={2} />
+          ))}
+          <Line t={net} size="name" bold lines={2} />
+        </View>
+      ) : null}
+      {news.map((t, i) => (
+        <Line key={i} t={t} size="name" bold={t.key === 'away.passed'} lines={2} />
       ))}
-      <View style={styles.sum}>
-        {summary.map((t, i) => (
-          <Line key={i} t={t} size={i === 0 ? 'name' : 'line'} bold={i === 0} colour={t === a.hint ? INK.soft : INK.ink} lines={2} />
-        ))}
-      </View>
+      {next ? (
+        <View style={styles.next}>
+          <Line t={next} size="line" bold lines={2} />
+        </View>
+      ) : null}
+      {lines.length ? (
+        <View style={styles.lines}>
+          {lines.map((t, i) => (
+            <Line key={i} t={t} size="line" colour={INK.soft} />
+          ))}
+        </View>
+      ) : null}
     </CentredCard>
   );
 }
@@ -61,5 +84,7 @@ export function AwayCard({ data, onClose }: CardViewProps) {
 const styles = StyleSheet.create({
   head: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule, marginBottom: 4 },
   foot: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 8 },
-  sum: { paddingTop: 6, marginTop: 4, gap: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: INK.rule },
+  money: { gap: 2, paddingBottom: 6, marginBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
+  next: { paddingTop: 6 },
+  lines: { paddingTop: 6, marginTop: 6, gap: 1, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: INK.rule },
 });

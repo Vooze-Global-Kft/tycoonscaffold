@@ -20,6 +20,8 @@ export const PAL = {
   good: YARD.good,
   brass: YARD.brass,
   copper: YARD.copper,
+  /** Money going OUT (the skip's "Bought for", the debit under the cash counter): the trade's rust. */
+  cost: YARD.rust,
   /** The muted grey of "today's value" (a weigh-in is not yet money). */
   muted: '#7A7F86',
   /** A chip's hard drop (ink at a quarter). */

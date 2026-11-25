@@ -25,7 +25,7 @@ import { TEXT, say } from '../strings';
 import { BUY_MAX, BUY_W, MIN_PT, TYPE, frameLayout, pt } from './layout';
 import { BOARD_ROW_MIN, SIM_PT, LOGO, PICTO, BARS, boardOffsets, boardRow, barHeight, rungCells, tableCols } from './marketLayout';
 import { boardWithSell, offeredTerms } from './marketSample';
-import { AWAY_LINES, awayLines, helpLessons, plateSeed, rowExtra, rungLines, skipHead, ticketSummary } from './marketLines';
+import { AWAY_LINES, AWAY_LINES_LARGE, awayLines, helpLessons, plateSeed, rowExtra, rungLines, skipHead, ticketSummary } from './marketLines';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
 const cfg = withTestContent(GameConfigSchema.parse(raw));
@@ -164,15 +164,31 @@ describe('the industry table (2.11)', () => {
 });
 
 describe('the away card, the clipboard, the skip, the rung sign, the deal, Help', () => {
-  it('the away card: at most five grade lines and "+ n more"; money already in the account; every hole filled', () => {
+  it('the away card (P3, P19, R6, R10): Sales, loads bought, Net in that order; never gross as "in your account"; next step before the grade lines; three at large type; every hole filled', () => {
     const a = game('back').salvage.away!;
     expect(a).toBeTruthy();
     const many = { ...a, lines: Array.from({ length: 8 }, (_, i) => ({ grade: a.lines[0]?.grade ?? 'li', g: 1000 * (i + 1), money: i })) };
-    const { lines, summary } = awayLines(many);
-    expect(lines.length).toBe(AWAY_LINES + 1);
-    expect(lines[AWAY_LINES].key).toBe('ticket.more');
-    for (const t of [...lines, ...summary, ...awayLines(a).summary]) expect(unfilled(words(t)), words(t)).toBe(false);
-    expect(awayLines(a).summary.some((t) => t.key === 'away.supplied' || t.key === 'away.nothing')).toBe(true);
+    expect(awayLines(many).lines.length).toBe(AWAY_LINES + 1);
+    expect(awayLines(many).lines[AWAY_LINES].key).toBe('ticket.more');
+    expect(awayLines(many, true).lines.length).toBe(AWAY_LINES_LARGE + 1);
+    // A pass that bought loads: the gross is "Sales", the cost is its own line, Net is what cash moved by.
+    const bought = { ...a, money: 1000, spent: 300, net: 700, bought: [{ partner: 'partnerFarm', n: 3, spent: 300 }], absentS: 4 * 3600, seconds: 2 * 3600, deliveryList: [{ day: 1, g: 150000, paid: 90 }], runLonger: { rung: 3, capS: 4 * 3600 }, passed: ['rival.25' as never], next: { key: 'away.nothing' } as R.Txt };
+    const L = awayLines(bought);
+    expect(L.money.map((t) => t.key)).toEqual(['away.sales', 'away.bought']);
+    expect(words(L.money[1])).toContain('3');
+    expect(L.net!.key).toBe('away.net');
+    expect(words(L.net!)).toContain(R.fmtMoney(700));
+    expect(words(L.head)).toContain(R.fmtDuration(2 * 3600));
+    expect(L.longer!.key).toBe('away.longerRung');
+    expect(L.news.map((t) => t.key)).toEqual(['ticket.dealDelivery', 'away.passed']);
+    const loss = awayLines({ ...bought, net: -50 });
+    expect(loss.net!.key).toBe('away.netLoss');
+    expect(words(loss.net!)).toContain(R.fmtMoney(50));
+    expect(awayLines({ ...bought, bought: [...bought.bought, { partner: 'partnerDemolition', n: 1, spent: 80 }] }).money.map((t) => t.key)).toEqual(['away.sales', 'away.boughtFrom', 'away.boughtFrom']);
+    for (const x of [a, many, bought, { ...bought, runLonger: { item: 'night' as const, capS: 7200 } }]) {
+      const o = awayLines(x);
+      for (const t of [o.head, ...(o.longer ? [o.longer] : []), ...o.money, ...(o.net ? [o.net] : []), ...o.news, ...(o.next ? [o.next] : []), ...o.lines]) expect(unfilled(words(t)), words(t)).toBe(false);
+    }
   });
   it('every ticket of every frozen state prints its head, total and lines with no hole left', () => {
     let n = 0;

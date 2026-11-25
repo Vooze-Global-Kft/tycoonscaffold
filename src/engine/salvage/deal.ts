@@ -81,7 +81,10 @@ export function dealDeliver(x: Ctx, t: number): void {
     earn(x, paid, t);
     const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'dealDelivery' as const, buyer: x.c.deal.partner, grade, g, paid });
     x.ev.push({ type: 'dealDelivered', ticket });
-    if (x.away) x.away.deliveries += 1;
+    if (x.away) {
+      x.away.deliveries += 1;
+      x.away.deliveryList.push({ day: d.last.day, g, paid });
+    }
   }
   // Refill the reserve from the bay's free grams for the next day.
   const free = Math.max(0, b.g - b.aside.reduce((a, q) => a + q.g, 0) - b.forCrucible_g - b.forDeal_g);

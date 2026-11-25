@@ -6,7 +6,13 @@
  */
 import * as R from '../../../engine/salvage';
 import type { SalvageContent, Ticket, TicketLine } from '../../../engine/salvage';
+import { fmtMoneyExact } from '../../../engine/salvage/money';
 import { say } from './words';
+
+/** A ticket's money keeps its hundredths below §1,000 (W11: "tickets keep them"); a `ref` argument, so no new arg kind is needed. */
+function exact(x: number): { ref: string } {
+  return { ref: fmtMoneyExact(x) };
+}
 import { textW, ticketHeight, TICKET_PT } from './metrics';
 
 type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
@@ -30,6 +36,8 @@ export interface TicketView {
   total: string;
   lesson: string | null;
   legal: string[];
+  /** The amount is money the yard PAID OUT (a skip bought): drawn in the cost colour, no coin arc. */
+  cost?: boolean;
 }
 
 /** At most this many grade rows (4.4, S20). */
@@ -71,7 +79,7 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
       no: t.no,
       head: say({ key: 'ticket.weighInHead', args: { n: { n: t.no } } }, c),
       rows: r,
-      total: say({ key: 'ticket.todaysValue', args: { x: { money: t.todaysValue } } }, c),
+      total: say({ key: 'ticket.todaysValue', args: { x: exact(t.todaysValue) } }, c),
       lesson: (() => {
         const l = lesson === undefined ? t.lessonText : lesson;
         return l ? say(l, c) : null;
@@ -80,13 +88,13 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
     };
   }
   if (t.kind === 'collection') {
-    const r = rows(t.lines, c, (l) => R.fmtMoney(l.amount));
+    const r = rows(t.lines, c, (l) => fmtMoneyExact(l.amount));
     return {
       kind: 'collection',
       no: t.no,
       head: say({ key: 'ticket.collectionHead', args: { n: { n: t.no } } }, c),
       rows: r,
-      total: say({ key: 'ticket.paid', args: { x: { money: t.paid } } }, c),
+      total: say({ key: 'ticket.paid', args: { x: exact(t.paid) } }, c),
       lesson: null,
       legal: [say({ key: 'ticket.lotSoldTo', args: { merchant: { name: t.buyer } } }, c), say({ key: 'ticket.weighedOut' }, c)],
     };
@@ -107,7 +115,9 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
       no: t.no,
       head: t.trial ? say({ key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } }, c) : say({ key: 'title.skip', args: { partner: { name: t.partner } } }, c),
       rows: things,
-      total: say({ key: 'ticket.paid', args: { x: { money: t.paid } } }, c),
+      // Money OUT (S3, P12): "Bought for {x}" in the cost colour; "Paid {x}" only where the yard is paid.
+      total: say({ key: 'ticket.boughtFor', args: { x: exact(t.paid) } }, c),
+      cost: true,
       lesson: null,
       legal: [say({ key: 'ticket.grossTareNet', args: { a: bridge(t.gross_g), b: bridge(t.tare_g), c: bridge(t.net_g) } }, c), say({ key: 'ticket.partnerLegal' }, c)],
     };
@@ -129,7 +139,7 @@ const ROLE_KEYS = { 'role.hand': 1, 'role.cutter': 1, 'role.driver': 1 } as cons
 /** The one-line chip of a collection with no weigh-in of the boss's in it ("Lot sold · §29.00"). */
 export function lotSoldChip(t: Ticket, c: Content): string | null {
   if (t.kind !== 'collection') return null;
-  return say({ key: 'chip.lotSold', args: { x: { money: t.paid } } }, c);
+  return say({ key: 'chip.lotSold', args: { x: exact(t.paid) } }, c);
 }
 
 /** A ticket's lesson line is at most this long (S20). */
@@ -168,4 +178,21 @@ export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH
     twoLine,
     height: hOf(n),
   };
+}
+
+/** The drop-off slip chip (finding W14): "Washing machine · signed in · gate drop-off", when a thing arrives at the drop-off. */
+export function slipChip(t: Ticket, c: Content): string | null {
+  if (t.kind !== 'dropOffSlip') return null;
+  return slipText(t.thing, c);
+}
+
+/** The slip's words for a thing (also the first washer's, signed in before the player came). */
+export function slipText(thing: string, c: Content): string {
+  return say({ key: 'ticket.dropOffSlip', args: { thing: { thing } } }, c);
+}
+
+/** The supply deal's delivery chip (finding W14): "{foundry} · {kg} cast iron · §x". */
+export function dealChip(t: Ticket, c: Content): string | null {
+  if (t.kind !== 'dealDelivery') return null;
+  return say({ key: 'ticket.dealDelivery', args: { foundry: { name: t.buyer }, kg: { mass_g: t.g, step: 'lot' }, x: exact(t.paid) } }, c);
 }

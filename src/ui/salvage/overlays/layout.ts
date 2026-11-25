@@ -158,3 +158,30 @@ export function fitPt(text: string, base: number, width: number): number {
   if (w <= width || w === 0) return base;
   return Math.max(MIN_PT, Math.floor(((base * width) / w) * 2) / 2);
 }
+
+/** The room the art kit's glyph takes at a plate's top left (ui.draw.ts boardPlate: centred at x + 15, 14 pt wide) and a gap. */
+export const GLYPH_ROOM = 24;
+
+/**
+ * A plate's name lines (W25): without a glyph, two lines of 12 characters centred on the plate; with one,
+ * the lines keep to the box right of the glyph (GLYPH_ROOM .. w - 8), broken by measured width into at
+ * most two lines, each shrunk (never under 11 pt) only if a single word is wider than the box.
+ */
+export function plateNameLines(name: string, size: number, w: number, glyph: boolean): { lines: string[]; size: number; padLeft: number; padRight: number } {
+  if (!glyph) return { lines: breakLines(name, 12, 2), size, padLeft: 8, padRight: 8 };
+  const room = w - GLYPH_ROOM - 8;
+  const out: string[] = [];
+  for (const word of name.split(/\s+/).filter(Boolean)) {
+    const last = out[out.length - 1];
+    if (last !== undefined && textW(`${last} ${word}`, size) <= room) out[out.length - 1] = `${last} ${word}`;
+    else out.push(word);
+  }
+  const lines = out.length <= 2 ? out : [out[0], out.slice(1).join(' ')];
+  const fit = Math.min(...lines.map((l) => fitPt(l, size, room)));
+  return { lines, size: fit, padLeft: GLYPH_ROOM, padRight: 8 };
+}
+
+/** True while a scroll holds more below what shows (L14): the fade shows then, and not at the end. */
+export function moreBelow(contentH: number, viewH: number, y: number): boolean {
+  return contentH - viewH - y > 6;
+}

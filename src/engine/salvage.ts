@@ -26,6 +26,8 @@ export { advice, reserve } from './salvage/advice';
 export { awayCard, cardOfCfg as cardOf, processBoard, skipLabel, skipLabels, topBar } from './salvage/cards';
 export { frameCfg as frame, loadFamily, pieceAt, specIndex, toolFor } from './salvage/frame';
 export { tickets } from './salvage/tickets';
+// rules-book, fix pass (W11, P3, P17, S10, W15): new selectors, add only.
+export { fmtMoneyExact } from './salvage/money';
 export { reconcileSalvage } from './salvage/save';
 
 // ---- rules-sim (changes)

@@ -68,3 +68,35 @@ describe('goals', () => {
     if (r.done.length) expect(r.goals.lastPromptAt).toBeGreaterThanOrEqual(90 + cfg.salvage.advice.promptGapS);
   });
 });
+
+describe('the first fetch and the tip (P14), and the list ticks what already holds (W24)', () => {
+  const skip = (weighed: boolean) => ({ partner: 'partnerFarm', slot: 0, contents: {}, mass_g: 540_000, price: 0, trial: true, weighed });
+  const onTruck = (g: SalvageGame, weighed: boolean, counts: Record<string, number>): SalvageGame => {
+    const t = { no: 1, at: 0, day: 0, kind: 'skipWeighIn' as const, partner: 'partnerFarm', trial: true, gross_g: 0, tare_g: 0, net_g: 540_000, paid: 0, things: [] };
+    return { ...g, salvage: { ...g.salvage, counts, tickets: weighed ? [...g.salvage.tickets, t] : g.salvage.tickets, truck: { ...g.salvage.truck, skip: skip(weighed) } } };
+  };
+  it('a skip over the weighbridge is bridged but not fetched until it is tipped', () => {
+    const g = fresh();
+    const weighed = onTruck(g, true, {});
+    expect(conditionMet(cfg, weighed, 'bridged:partnerFarm:1')).toBe(true);
+    // The weighbridge ticket alone no longer counts as fetched once the sim keeps counts.
+    expect(conditionMet(cfg, weighed, 'fetched:partnerFarm:1')).toBe(false);
+    expect(conditionMet(cfg, onTruck(g, false, {}), 'bridged:partnerFarm:1')).toBe(false);
+    const tipped = { ...withCounts(g, { 'fetched:partnerFarm': 1 }), salvage: { ...withCounts(g, { 'fetched:partnerFarm': 1 }).salvage, truck: { ...g.salvage.truck, skip: null } } } as SalvageGame;
+    expect(conditionMet(cfg, tipped, 'fetched:partnerFarm:1')).toBe(true);
+    expect(conditionMet(cfg, tipped, 'bridged:partnerFarm:1')).toBe(true);
+  });
+  for (const name of FIXTURE_NAMES) {
+    it(`${name}: every goal of the list whose condition holds is ticked; one current at most`, () => {
+      const g = fixtureGame(name, base(), FIXTURE_NOW) as SalvageGame;
+      const list = goalListOf(cfg, g);
+      expect(list.filter((l) => l.state === 'current').length).toBeLessThanOrEqual(1);
+      for (const l of list) {
+        const d = cfg.salvage.goals.find((x) => x.id === l.id);
+        if (!d || d.repeat || l.state === 'skipped') continue;
+        const met = (d.buy && conditionMet(cfg, g, `owned:${d.buy}`)) || conditionMet(cfg, g, d.done);
+        if (met) expect(l.state, l.id).toBe('done');
+      }
+    });
+  }
+});

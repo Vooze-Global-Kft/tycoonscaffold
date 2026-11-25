@@ -33,6 +33,7 @@ import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
 import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf } from '../art/manifest/things';
 import { loadFamily, type LoadFamily } from '../art/people.draw';
 import { laneDrawEnd, laneGeo, type LaneGeo } from './yard';
+import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
 
 export { laneDrawEnd, laneGeo, type LaneGeo };
@@ -148,8 +149,10 @@ export const PLACE_ART: Readonly<Record<string, { id?: string; flat?: boolean; c
 };
 
 /** The yard's static sprites (see the header): built once per config and baked art. */
-export function staticItems(c: SalvageContent, res: Resolver, extraProps: readonly SalvageContent['props'][number][] = []): number[] {
+export function staticItems(c: SalvageContent, res: Resolver, extraProps: readonly SalvageContent['props'][number][] = [], dress: readonly Dress[] = []): number[] {
   const out: number[] = [];
+  // The look fixer's dressing (./dressing.ts): decals first (under everything, list order), then standing things.
+  for (const d of dress) sprite(out, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key });
   const W = c.yard.width;
   const D = c.yard.depth;
   const lane = laneGeo(c);
@@ -181,7 +184,8 @@ export function staticItems(c: SalvageContent, res: Resolver, extraProps: readon
     const [x, y] = pt;
     const art = entryOf(pl.sprite) ? { id: pl.sprite, flat: !pl.solid } : PLACE_ART[pl.sprite];
     if (!art) continue;
-    if (art.id) sprite(out, res, art.id, x, y, { flat: art.flat });
+    // A standing place (a building with a door, a block) sorts by its CONTENT footprint's front edge (L12): a person at its door is drawn in front.
+    if (art.id) sprite(out, res, art.id, x, y, { flat: art.flat, key: pl.solid && !art.flat ? y + pl.d / 2 : undefined });
     for (const ex of art.extra ?? []) sprite(out, res, ex.id, x + ex.dx, y + ex.dy, { flat: ex.flat });
     if (art.corners) {
       const hw = pl.w / 2 - 0.3;
@@ -199,7 +203,7 @@ export function staticItems(c: SalvageContent, res: Resolver, extraProps: readon
     }
   }
   // The old stock's beds, under each zone's things (behind anything standing on them).
-  let bed = 1;
+  let bed = entryOf('ground.bed') ? 99 : 1;
   for (const z of Object.values(c.zones)) {
     if (z.r < 2 || bed > 3) continue;
     sprite(out, res, `heap.zone${bed}`, z.centre[0], z.centre[1], { key: z.centre[1] - 1.3 });
@@ -392,6 +396,8 @@ function bayItems(out: number[], res: Resolver, b: R.FrameBay): void {
 export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
   const items: number[] = [];
   const solids: number[] = [];
+  // The old stock's beds (the look's ./dressing.ts bedsDress), shrinking as each zone's stock is worked.
+  if (entryOf('ground.bed')) for (const d of bedsDress(c, bedShares(c, f.things))) sprite(items, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key });
   // Things, whole and in their stages (the art's stageOf over pieces off and in all).
   for (const th of f.things) {
     const o = c.objects[th.obj];
@@ -552,6 +558,8 @@ export interface ActorTable {
   /** Metres ahead of the person: sack, trolley. */
   ahead: number[];
   truck: number[];
+  /** The truck with no skip on its hook, per heading8 (look-lane's `vehicle.truck.bare`; -1 until baked: L16). */
+  truckBare: number[];
   /** Points (at 40 a metre) from the truck's anchor to its skip's top, per heading8: dx, dy. */
   skipTop: number[];
   skipLoad: number[];
@@ -602,10 +610,12 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
   for (const kind of ['sack', 'trolley']) for (let f = 0; f < CARRIER_FRAMES.length; f++) for (let h = 0; h < 4; h++) carrier.push(res(`carrier.${kind}`, f, h));
   const V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
   const truck: number[] = [];
+  const truckBare: number[] = [];
   const skipTop: number[] = [];
   const shTruck: number[] = [];
   for (let h = 0; h < 8; h++) {
     truck.push(res('vehicle.truck', 0, h));
+    truckBare.push(entryOf('vehicle.truck.bare') ? res('vehicle.truck.bare', 0, h) : -1);
     skipTop.push(...skipTopOnTruck(V, headingRad(h)));
     shTruck.push(res('shadow.truck', 0, h));
   }
@@ -620,6 +630,7 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
     carrier,
     ahead: [CARRIER_AHEAD.sack, CARRIER_AHEAD.trolley],
     truck,
+    truckBare,
     skipTop,
     skipLoad: [0, 1, 2, 3].map((f) => res('vehicle.skip.load', f, 0)),
     flatbed: four('vehicle.flatbed'),

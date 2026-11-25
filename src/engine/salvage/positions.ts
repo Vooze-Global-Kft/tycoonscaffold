@@ -4,6 +4,10 @@
  * Metres on the ground plane, x east, y south.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
+import { rngMix4 } from '../rng';
+
+/** The same draw as board.ts hash01 (imported from the rng, not board.ts: board imports this module). */
+const hash01 = (seed: number, family: number, n: number): number => (rngMix4(seed | 0, family | 0, n | 0, 0x5a17) >>> 0) / 4294967296;
 import type { GroundPiece, MachineId, PartnerId, PileKey, SalvageState, Spot, ThingAt, ThingState } from './types';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -20,14 +24,104 @@ function zoneCount(c: SalvageContent, zone: string): number {
   return z ? Object.values(z.things).reduce((a, n) => a + n, 0) : 0;
 }
 
+/** A bed's things, by the zone's k: their centres (bedLayout). Cached per content object (positions are pure functions of content). */
+const BEDS = new WeakMap<SalvageContent, Map<string, { x: number; y: number }[]>>();
+
+/** A small stable hash of a zone id (the bed's seed family). */
+function idHash(id: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
+/** Clear room between two neighbours in a bed, metres (their footprints never overlap: finding L5). */
+export const BED_GAP_M = 0.06;
+
 /**
- * Where a whole thing stands: in a zone on a sunflower pattern of the heap's circle (k-th of the zone's
- * starting things), at the drop-off in a row of places, on the tipping floor on a grid.
+ * Finding L5 (MAP.md M3): a zone's things lie INSIDE its bed (content `zones.<id>.bed`, a rectangle) as a
+ * heap worked from its open side inward: rows laid from the open (south) edge towards the wall, the big
+ * things first (by footprint area: the car, tanks and beams before washers), each row's spare width
+ * shared out between its things by the world's seed (jittered, seeded: the same seed gives the same
+ * heap), each thing jittered in its row's depth; no two footprints overlap. The k-th entry is the zone's
+ * k-th starting thing (create.ts stockThings order). A thing that finds no room in the bed (the content's
+ * bed too small for its stock) lies on the last row at the bed's west end and the positions test fails.
+ */
+export function bedLayout(c: SalvageContent, zone: string): { x: number; y: number }[] {
+  let per = BEDS.get(c);
+  if (!per) BEDS.set(c, (per = new Map()));
+  const hit = per.get(zone);
+  if (hit) return hit;
+  const z = c.zones[zone];
+  const out: { x: number; y: number }[] = [];
+  if (!z?.bed) return out;
+  const bed = z.bed;
+  const fam = idHash(zone);
+  const items: { k: number; w: number; d: number }[] = [];
+  let k = 0;
+  for (const [obj, n] of Object.entries(z.things)) {
+    const sz = c.objects[obj]?.size ?? { w: 1, d: 0.8 };
+    for (let i = 0; i < n; i++, k++) items.push({ k, w: sz.w, d: sz.d });
+  }
+  const order = [...items].sort((a, b) => b.w * b.d - a.w * a.d || b.d - a.d || a.k - b.k);
+  // Shelf packing from the open edge (y0 + d) north to the wall (y0).
+  type Row = { items: { k: number; w: number; d: number }[]; used: number; depth: number };
+  const rows: Row[] = [];
+  let row: Row = { items: [], used: 0, depth: 0 };
+  let yUsed = 0;
+  const close = () => {
+    if (row.items.length) {
+      rows.push(row);
+      yUsed += row.depth + BED_GAP_M;
+    }
+    row = { items: [], used: 0, depth: 0 };
+  };
+  const overflow: { k: number; w: number; d: number }[] = [];
+  for (const it of order) {
+    const need = (row.items.length ? BED_GAP_M : 0) + it.w;
+    if (row.used + need > bed.w + 1e-9) close();
+    const depth = Math.max(row.depth, it.d);
+    if (it.w > bed.w + 1e-9 || yUsed + depth > bed.d + 1e-9) {
+      overflow.push(it);
+      continue;
+    }
+    row.used += (row.items.length ? BED_GAP_M : 0) + it.w;
+    row.depth = depth;
+    row.items.push(it);
+  }
+  close();
+  let yEdge = bed.y0 + bed.d; // the row's south edge
+  let draw = 0;
+  for (const r of rows) {
+    const slack = Math.max(0, bed.w - r.used);
+    // Share the slack out: seeded weights, one more than the row's things (both ends too).
+    const wts = Array.from({ length: r.items.length + 1 }, () => 0.2 + hash01(c.worldSeed, fam, draw++));
+    const tot = wts.reduce((a, v) => a + v, 0);
+    let xw = bed.x0 + (slack * wts[0]) / tot;
+    r.items.forEach((it, i) => {
+      const jy = Math.max(0, r.depth - it.d) * hash01(c.worldSeed, fam ^ 0x9e37, draw++);
+      out[it.k] = { x: xw + it.w / 2, y: yEdge - it.d / 2 - jy };
+      xw += it.w + BED_GAP_M + (slack * wts[i + 1]) / tot;
+    });
+    yEdge -= r.depth + BED_GAP_M;
+  }
+  for (const it of overflow) out[it.k] = { x: bed.x0 + it.w / 2, y: bed.y0 + it.d / 2 };
+  per.set(zone, out);
+  return out;
+}
+
+/**
+ * Where a whole thing stands: in a zone inside its bed (bedLayout; a zone without a bed: on a sunflower
+ * pattern of the heap's old circle, k-th of the zone's starting things), at the drop-off in a row of
+ * places, on the tipping floor on a grid.
  */
 export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number } {
   if (at.at === 'zone') {
     const z = c.zones[at.zone];
     if (!z) return { x: 0, y: 0 };
+    if (z.bed) {
+      const p = bedLayout(c, at.zone)[at.k];
+      if (p) return p;
+    }
     const n = Math.max(1, zoneCount(c, at.zone));
     const rad = n === 1 ? 0 : z.r * Math.sqrt((at.k + 0.5) / n);
     const a = at.k * GOLDEN;
@@ -56,6 +150,7 @@ function pileBase(c: SalvageContent, pile: PileKey, thingAt?: (uid: string) => T
   }
   if (kind === 'zone') {
     const z = c.zones[rest];
+    if (z?.bed) return { x: z.bed.x0 + z.bed.w / 2, y: z.bed.y0 + z.bed.d + 0.8 };
     return z ? { x: z.centre[0], y: z.centre[1] + z.r + 0.8 } : { x: 0, y: 0 };
   }
   if (kind === 'circle') {
@@ -227,11 +322,52 @@ export function skipZone(c: SalvageContent, partner: PartnerId, slot: number): {
 export function lanePath(c: SalvageContent, from: { x: number; y: number }, partner: PartnerId, slot = 0): { x: number; y: number }[] {
   const gate = pointOf(c, 'gate');
   const z = skipZone(c, partner, slot);
-  return [from, { x: gate.x - 2, y: gate.y }, { x: gate.x + 2, y: gate.y }, { x: z.x, y: gate.y }, { x: z.x, y: z.y }];
+  const out = [{ x: gate.x + 2, y: gate.y }, { x: z.x, y: gate.y }, { x: z.x, y: z.y }];
+  const line = driveToGate(c, from);
+  if (line) return [from, ...line, ...out];
+  return [from, { x: gate.x - 2, y: gate.y }, ...out];
+}
+
+/**
+ * MAP.md M4: from a point to the gate ALONG the drive line (content `map.driveLine`): the point's foot on
+ * the line, then the line's vertices to its end at the gate. Null when the content has no drive line.
+ */
+export function driveToGate(c: SalvageContent, from: { x: number; y: number }): { x: number; y: number }[] | null {
+  const dl = c.map.driveLine;
+  if (!dl || dl.points.length < 2) return null;
+  const gate = pointOf(c, 'gate');
+  let pts = dl.points.map(([x, y]) => ({ x, y }));
+  const d0 = Math.hypot(pts[0].x - gate.x, pts[0].y - gate.y);
+  const d1 = Math.hypot(pts[pts.length - 1].x - gate.x, pts[pts.length - 1].y - gate.y);
+  if (d1 < d0) pts = pts.reverse(); // pts[0] is the gate's end
+  let best = { i: 0, q: pts[0], d: Infinity };
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const L2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    const u = L2 > 0 ? Math.max(0, Math.min(1, ((from.x - a.x) * (b.x - a.x) + (from.y - a.y) * (b.y - a.y)) / L2)) : 0;
+    const q = { x: a.x + u * (b.x - a.x), y: a.y + u * (b.y - a.y) };
+    const d = Math.hypot(from.x - q.x, from.y - q.y);
+    if (d < best.d) best = { i, q, d };
+  }
+  const path = [best.q];
+  for (let i = best.i; i >= 0; i--) path.push(pts[i]);
+  return path;
 }
 
 /** Resolve a crew leg's end to metres (one function for the rules, the frame and the bots). */
 export function spotPos(c: SalvageContent, spot: Spot, things: readonly ThingState[], truck: { x: number; y: number }): { x: number; y: number } {
+  return southOfWall(c, spotRaw(c, spot, things, truck));
+}
+
+/** MAP.md M1: nobody walks north of the back wall (content `map.north`): a walker's spot is kept NORTH_CLEAR_M south of it. */
+export const NORTH_CLEAR_M = 0.5;
+export function southOfWall(c: SalvageContent, p: { x: number; y: number }): { x: number; y: number } {
+  const n = c.map.north;
+  return n !== undefined && p.y < n + NORTH_CLEAR_M ? { x: p.x, y: n + NORTH_CLEAR_M } : p;
+}
+
+function spotRaw(c: SalvageContent, spot: Spot, things: readonly ThingState[], truck: { x: number; y: number }): { x: number; y: number } {
   if ('place' in spot) return pointOf(c, spot.place);
   if ('pile' in spot) {
     const at = (uid: string) => things.find((t) => t.uid === uid)?.at ?? null;

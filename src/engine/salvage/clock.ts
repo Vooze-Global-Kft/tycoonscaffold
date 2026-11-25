@@ -35,6 +35,12 @@ export interface AwayAcc {
   loads: number;
   deliveries: number;
   passed: string[];
+  /** P3: every § spent while away (loads bought and anything else). */
+  spent: number;
+  /** P3: loads bought while away, by partner (truck.ts hookNow). */
+  bought: Record<string, { n: number; spent: number }>;
+  /** E34: the deal's deliveries while away (deal.ts dealDeliver). */
+  deliveryList: { day: number; g: number; paid: number }[];
 }
 
 export interface Ctx {
@@ -132,8 +138,10 @@ export function earn(x: Ctx, amount: number, t: number): void {
 
 /** Money out (a purchase, a load's price): never below zero (the checks refuse first). */
 export function spend(x: Ctx, amount: number): void {
-  x.cash = roundMoney(x.cash - roundMoney(amount));
+  const a = roundMoney(amount);
+  x.cash = roundMoney(x.cash - a);
   x.dirty = true;
+  if (x.away) x.away.spent = roundMoney(x.away.spent + a);
 }
 
 /** One more of a counter the goals read. */

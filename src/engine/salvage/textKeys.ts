@@ -12,11 +12,11 @@ import { REFUSAL_KEYS } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
-  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'trialLoad', 'skipLoad', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok'],
+  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'trialLoad', 'skipLoad', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
   place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
-  chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate'],
+  chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.bayHeld', 'chip.bayKg', 'chip.bayKgHeld', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate', 'chip.count'],
   /** Package 4: card titles (4.3). */
   title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place'],
   /** Package 4: card rows and buttons (4.3, 5.2). */
@@ -51,6 +51,8 @@ export const TEXT_KEYS = {
     'card.tray',
     'card.levelOnBoard',
     'card.inOut',
+    'card.inOut2',
+    'card.inOut3',
     'card.rateKgS',
     'card.rate',
     'card.charge',
@@ -87,6 +89,15 @@ export const TEXT_KEYS = {
     'card.notBottleneck',
     'card.keptForLoad',
     'card.empty',
+    'card.carriesTrip',
+    'card.cutsBest',
+    'card.levelFaster',
+    'card.skipMore',
+    'card.runsItself',
+    'card.levelOpensAt',
+    'card.use',
+    'card.start',
+    'card.stop',
   ],
   /** Package 4: what each machine, tool, carrier, role and item is, and its effect line (≤ 38). */
   item: [
@@ -127,15 +138,15 @@ export const TEXT_KEYS = {
     'effect.driver',
   ],
   /** Package 4: the price board and bays (4.4). */
-  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice'],
+  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice', 'board.empty'],
   /** Package 4: the process board's plates (4.5). */
   plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung'],
   /** Package 4: the industry table and the rung sign (2.11). */
-  table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.locked', 'opens.rung2', 'opens.rung3'],
+  table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare'],
   /** Package 4: the away card (4.4). */
-  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing'],
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.next', 'away.longerRung', 'away.longerNight'],
   /** Packages 3 and 4: tickets and slips (2.2). */
-  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
+  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
   /** Package 4: lines of 5.2. */
   line: ['line.portal', 'line.crewAway', 'line.backfield', 'line.fictional', 'line.shortened', 'line.carName'],
   /** Package 4: the clipboard, Settings and Help (4.3). */
@@ -154,6 +165,7 @@ export const TEXT_KEYS = {
     'goal.breakRadiators',
     'goal.buyTruck',
     'goal.fetchTrial',
+    'goal.tipTrial',
     'goal.buyBench',
     'goal.breakMotor',
     'goal.supplyRung2',

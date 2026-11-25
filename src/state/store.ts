@@ -453,6 +453,8 @@ export const useGame = create<Store>((set, get) => {
 
     async pause() {
       if (!get().hydrated || paused) return;
+      // The time away starts now: stamp it before pausing, since a save while paused keeps it.
+      set({ game: { ...get().game, lastSavedAt: Date.now() } });
       paused = true;
       await get().save();
     },
@@ -547,7 +549,9 @@ export const useGame = create<Store>((set, get) => {
     async save() {
       // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
       if (!get().hydrated) return;
-      const game = { ...get().game, lastSavedAt: Date.now() };
+      // While paused (in the background) a save (App.tsx's autosave, its timer alive on Android or
+      // overdue at will-enter-foreground on iOS) still writes, but never moves the start of the time away.
+      const game = { ...get().game, lastSavedAt: paused ? get().game.lastSavedAt : Date.now() };
       set({ game });
       try {
         await AsyncStorage.setItem(saveKey(), JSON.stringify(game));

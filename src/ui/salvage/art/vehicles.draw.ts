@@ -554,7 +554,23 @@ export function drawSkip(c: SkCanvas, v: View3q, heading: number, o: { u0?: numb
     onFace: (f, n, isTop) => {
       if (isTop) {
         // the open top: the dark inside
-        if (topOpen) faceFill(c, v, top, shade(YARD.skip, -0.55));
+        if (topOpen) {
+          faceFill(c, v, top, shade(YARD.skip, -0.55));
+          // the inside of the far walls (lit, ribbed) and a floor line: an empty skip reads as open and empty
+          const zLow = (inner[0][2] + inner[4][2]) / 2;
+          for (let i = 0; i < 4 && Math.abs(pitch) < 0.2; i++) {
+            const a = top[i];
+            const b = top[(i + 1) % 4];
+            const m: V3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0];
+            const cx = (top[0][0] + top[2][0]) / 2;
+            const cy = (top[0][1] + top[2][1]) / 2;
+            const nOut: V3 = [m[0] - cx, m[1] - cy, 0];
+            if (facing(v, nOut) >= 0) continue; // a near wall: its inside is hidden by its outside
+            const wall: V3[] = [a, b, [b[0], b[1], zLow], [a[0], a[1], zLow]];
+            faceFill(c, v, wall, shade(YARD.skip, -0.28));
+            for (const s of [0.25, 0.5, 0.75]) faceFill(c, v, subQuad(wall, s - 0.02, s + 0.02, 0, 1), shade(YARD.skip, -0.42));
+          }
+        }
         return;
       }
       const along = Math.abs(n[0] * F.fx + n[1] * F.fy);
@@ -617,7 +633,11 @@ function truckWheel(c: SkCanvas, v: View3q, p: V3, f: V3, r: number, side: V3): 
 }
 
 /** A cab: a box with windows on its visible faces, a hi-vis band, a beacon, a driver's head in the side window. */
-function cab(c: SkCanvas, v: View3q, F: ReturnType<typeof frameOf>, heading: number, u: number, len: number, wid: number, colour: string, o: { driver?: boolean; band?: string } = {}): void {
+function cab(c: SkCanvas, v: View3q, F: ReturnType<typeof frameOf>, heading: number, u: number, len: number, wid: number, colour: string, o: { driver?: boolean; band?: string; rake?: boolean } = {}): void {
+  if (o.rake) {
+    rakedCab(c, v, F, u, len, wid, colour, o);
+    return;
+  }
   const isFront = (n: V3) => n[0] * F.fx + n[1] * F.fy > 0.7;
   const isBack = (n: V3) => n[0] * F.fx + n[1] * F.fy < -0.7;
   const p = F.at(u, 0, 0);
@@ -656,6 +676,93 @@ function cab(c: SkCanvas, v: View3q, F: ReturnType<typeof frameOf>, heading: num
     },
   });
   const [bx, by] = P2(v, F.at(u, 0, 2.2));
+  c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), fill(YARD.hivis));
+  c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), stroke(INK, 1));
+}
+
+/**
+ * The hook-lift truck's cab (finding L16): a lower body whose top falls towards a short raked bonnet,
+ * and over it a glasshouse with a raked windscreen and a side window that follows the rake, so that
+ * from the side it reads as a cab and not as a box. Black grille and bumper, a hi-vis band, a beacon.
+ */
+function rakedCab(c: SkCanvas, v: View3q, F: ReturnType<typeof frameOf>, u: number, len: number, wid: number, colour: string, o: { driver?: boolean; band?: string }): void {
+  const u0 = u - len / 2;
+  const u1 = u + len / 2;
+  const zb = 0.7;
+  const zBack = 1.5;
+  const zFront = 1.28;
+  const zAt = (uu: number) => zBack + ((zFront - zBack) * (uu - u0)) / len;
+  const w = wid / 2;
+  const P = (uu: number, s: number, z: number) => F.at(uu, s, z);
+  const along = (n: V3) => n[0] * F.fx + n[1] * F.fy;
+  // the lower body: its top falls forward to the bonnet's nose
+  const lower: V3[] = [P(u1, w, zb), P(u0, w, zb), P(u0, -w, zb), P(u1, -w, zb), P(u1, w, zFront), P(u0, w, zBack), P(u0, -w, zBack), P(u1, -w, zFront)];
+  solid(c, v, lower, colour, {
+    onFace: (f, n, top) => {
+      if (top) {
+        // the bonnet's front edge: a dark vent line
+        faceFill(c, v, subQuad(f, 0.0, 0.08, 0.1, 0.9), shade(colour, -0.3), 0);
+        return;
+      }
+      const a = along(n);
+      if (a > 0.7) {
+        faceFill(c, v, subQuad(f, 0.18, 0.82, 0.3, 0.8), YARD.machineDark, 0.8); // grille
+        for (const s of [0.24, 0.36, 0.48, 0.6, 0.72]) faceFill(c, v, subQuad(f, 0.2, 0.8, s, s + 0.04), shade(YARD.machineDark, 0.25));
+        faceFill(c, v, subQuad(f, 0.03, 0.15, 0.5, 0.75), YARD.hivisLight, 0.8); // lamps
+        faceFill(c, v, subQuad(f, 0.85, 0.97, 0.5, 0.75), YARD.hivisLight, 0.8);
+        faceFill(c, v, subQuad(f, 0, 1, 0, 0.18), YARD.tyre, 0.8); // bumper
+      } else if (a > -0.7) {
+        faceFill(c, v, subQuad(f, 0, 1, 0.1, 0.26), o.band ?? YARD.hivis, 0.9);
+        faceFill(c, v, subQuad(f, 0.0, 1.0, 0, 0.08), YARD.tyre, 0); // the sill and step
+      }
+    },
+  });
+  // the glasshouse: back wall upright, roof, the windscreen raked back from the bonnet
+  const uS = u1 - 0.22; // the windscreen's foot
+  const uR = u1 - 0.62; // the roof's front edge
+  const zr = 2.2;
+  const w2 = w - 0.04;
+  const upper: V3[] = [P(uS, w2, zAt(uS)), P(u0 + 0.02, w2, zAt(u0)), P(u0 + 0.02, -w2, zAt(u0)), P(uS, -w2, zAt(uS)), P(uR, w2, zr), P(u0 + 0.02, w2, zr), P(u0 + 0.02, -w2, zr), P(uR, -w2, zr)];
+  solid(c, v, upper, colour, {
+    onFace: (f, n, top) => {
+      if (top) {
+        faceFill(c, v, subQuad(f, 0.0, 0.1, 0.05, 0.95), shade(colour, -0.2), 0); // the visor
+        return;
+      }
+      const a = along(n);
+      if (a < -0.6) return;
+      if (a > 0.3) {
+        const win = subQuad(f, 0.06, 0.94, 0.08, 0.92);
+        faceFill(c, v, win, YARD.glassDark, 1);
+        if (o.driver !== false) {
+          const hc = P2(v, subQuad(win, 0.32, 0.32, 0.35, 0.35)[0]);
+          c.drawPath(oval(hc[0], hc[1] + 1, 3.2, 3.2), fill(shade(YARD.glassDark, -0.45)));
+        }
+        faceFill(c, v, subQuad(win, 0.62, 0.74, 0.15, 0.95), YARD.glass, 0, 0.8);
+        return;
+      }
+      // the side: a window following the rake (the face's s runs from the windscreen's foot to the back)
+      const win = subQuad(f, 0.08, 0.62, 0.14, 0.86);
+      faceFill(c, v, win, YARD.glassDark, 1);
+      if (o.driver !== false) {
+        const hc = P2(v, subQuad(win, 0.5, 0.5, 0.4, 0.4)[0]);
+        c.drawPath(oval(hc[0], hc[1] + 1, 3.4, 3.2), fill(shade(YARD.glassDark, -0.45)));
+        c.drawPath(builder().moveTo(hc[0] - 4, hc[1] - 1.4).quadTo(hc[0], hc[1] - 6.5, hc[0] + 4, hc[1] - 1.4).close().build(), fill(shade(YARD.glassDark, -0.45)));
+      }
+      faceFill(c, v, subQuad(win, 0.1, 0.22, 0.1, 0.9), YARD.glass, 0, 0.9);
+      // the door's rear line
+      faceFill(c, v, subQuad(f, 0.7, 0.72, 0.05, 0.95), shade(colour, -0.25), 0);
+    },
+  });
+  // a mirror arm on each side ahead of the windscreen's foot, and the beacon on the roof
+  for (const s of [-1, 1]) {
+    const a = P(uS + 0.05, s * (w + 0.02), 1.75);
+    const b = P(uS + 0.05, s * (w + 0.18), 1.75);
+    member(c, v, a, b, 1, YARD.machineDark);
+    const [mx, my] = P2(v, b);
+    c.drawPath(rrect(mx - 2, my - 5, 4, 8, 1), fill(YARD.machineDark));
+  }
+  const [bx, by] = P2(v, F.at(u0 + 0.3, 0, zr));
   c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), fill(YARD.hivis));
   c.drawPath(rrect(bx - 3, by - 7, 6, 7, 2), stroke(INK, 1));
 }
@@ -721,7 +828,7 @@ export function drawHookTruck(c: SkCanvas, v: View3q, heading: number, o: { skip
   // the bed's rear rollers
   member(c, v, F.at(TRUCK.pivotU, -0.6, TRUCK.bedZ), F.at(TRUCK.pivotU, 0.6, TRUCK.bedZ), 3.2, YARD.steelDark);
   const cabFirst = F.fy < -0.3; // driving away from the eye: the cab is farther than the skip
-  const drawCab = () => cab(c, v, F, heading, TRUCK.cabU, TRUCK.cabLen, TRUCK.wid, YARD.cab, { driver: o.driver });
+  const drawCab = () => cab(c, v, F, heading, TRUCK.cabU, TRUCK.cabLen, TRUCK.wid, YARD.cab, { driver: o.driver, rake: true });
   if (cabFirst) drawCab();
   const arm = o.arm ?? 'down';
   if (o.skip !== 'none') {

@@ -12,7 +12,8 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { useYardArt, yardFor } from '../world/useYard';
-import { loadingClock } from './clock';
+import { releaseLoadingImages } from './bake';
+import { curtainParting, loadingClock } from './clock';
 import { useLoadingInsets } from './insets';
 import { LoadingStage } from './LoadingStage';
 
@@ -26,12 +27,17 @@ export function LoadingCurtain() {
   useEffect(() => {
     if (!gone && loadingClock.done.value) setDone(true);
   }, []);
+  // no curtain (a re-mount after it parted, or not this mode): whatever waits for its gate goes on
+  useEffect(() => {
+    if (done || !R.isSalvage(cfg)) curtainParting();
+  }, [done, cfg]);
   if (done || !R.isSalvage(cfg)) return null;
   return (
     <Curtain
       cfg={cfg}
       onDone={() => {
         gone = true;
+        releaseLoadingImages();
         setDone(true);
       }}
     />
@@ -45,7 +51,7 @@ function Curtain({ cfg, onDone }: { cfg: R.SalvageConfig; onDone: () => void }) 
   const insets = useMemo(() => ({ top: i.top, left: i.left, right: i.right, bottom: i.bottom }), [i.top, i.left, i.right, i.bottom]);
   return (
     <View style={StyleSheet.absoluteFill}>
-      <LoadingStage title={cfg.app.displayName} width={width} height={height} insets={insets} ready={art !== null} onDone={onDone} />
+      <LoadingStage title={cfg.app.displayName} splash={cfg.theme.colors.background} width={width} height={height} insets={insets} ready={art !== null} onDone={onDone} />
     </View>
   );
 }

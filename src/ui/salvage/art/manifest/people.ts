@@ -47,6 +47,23 @@ import {
   type CarrierKind,
   type SkipLoad,
 } from '../vehicles.draw';
+import {
+  FIELD_KINDS,
+  FIELD_M,
+  PARTNER_MARKS,
+  TREELINE_M,
+  drawField,
+  drawFarmhouse,
+  drawFieldGate,
+  drawGritBin,
+  drawLaneEnd,
+  drawLeanTo,
+  drawMilepost,
+  drawPartnerSign,
+  drawPole,
+  drawTreeline,
+  partnerSignSlot,
+} from '../lane.draw';
 import type { Bounds, ManifestEntry } from './index';
 
 /** An entry with a tight box for each baked heading (index = position in the baked list). */
@@ -131,6 +148,11 @@ const BOX: Record<string, Bounds[]> = {
   'vehicle.trailer': [B(-17, -22, 34, 32), B(-16, -20, 36, 33), B(-17, -22, 34, 30)],
 };
 /* MEASURED-END */
+
+// boxes measured on the BAKED drawing (at its own k): the bare truck and the lane (look-lane, fix pass)
+/* LANE-MEASURED-START */
+const LANE_BOX: Record<string, Bounds[]> = {};
+/* LANE-MEASURED-END */
 
 const boxOf = (key: string, n: number, fallback: Bounds): Bounds[] => BOX[key] ?? Array.from({ length: n }, () => fallback);
 
@@ -254,10 +276,11 @@ function carrierEntry(kind: CarrierKind): PeopleEntry {
 // Vehicles
 // ---------------------------------------------------------------------------
 
-function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8; footprint: { w: number; d: number }; tint?: string; k?: number; draw: ManifestEntry['draw'] }): PeopleEntry {
+function vehicle(id: string, o: { frames: readonly string[]; headings: 1 | 4 | 8; footprint: { w: number; d: number }; tint?: string; k?: number; baked?: readonly Bounds[]; draw: ManifestEntry['draw'] }): PeopleEntry {
   const K = o.k ?? VEHICLE_K;
   const n = o.headings === 1 ? 1 : o.headings === 4 ? 3 : 5;
-  const bh = boxOf(id, n, B(-140, -140, 280, 220)).map((b) => (K === VEHICLE_K ? b : scaleBox(b, K / VEHICLE_K)));
+  // `baked`: boxes measured on the baked drawing itself (already at K), else BOX at VEHICLE_K scaled to K
+  const bh = o.baked ? [...o.baked] : boxOf(id, n, B(-140, -140, 280, 220)).map((b) => (K === VEHICLE_K ? b : scaleBox(b, K / VEHICLE_K)));
   const e: PeopleEntry = {
     id,
     group: 'vehicle',
@@ -298,6 +321,15 @@ const VEHICLES: PeopleEntry[] = [
     headings: 8,
     footprint: { w: 4.6, d: 2.0 },
     draw: (c, v, _f, h) => drawHookTruck(c, v, headingRad(h), { skip: 'on' }),
+  }),
+  // the truck with no skip on its bed (after tipping, before hooking): the world picks it when truck.skip is null
+  vehicle('vehicle.truck.bare', {
+    frames: ['bare'],
+    k: TRUCK_K,
+    headings: 8,
+    footprint: { w: 4.6, d: 2.0 },
+    baked: LANE_BOX['vehicle.truck.bare'] ?? Array.from({ length: 5 }, () => B(-60, -60, 120, 90)),
+    draw: (c, v, _f, h) => drawHookTruck(c, v, headingRad(h), { skip: 'none' }),
   }),
   vehicle('vehicle.truck.hook', {
     frames: HOOK_FRAMES,
@@ -367,6 +399,54 @@ const VEHICLES: PeopleEntry[] = [
   }),
 ];
 
+// ---------------------------------------------------------------------------
+// The lane and the partners' sites (fix pass, look-lane: findings L7 and P10). Sheet B, baked small
+// (they are the background of a drive) and drawn at 1 / k. Boxes are measured on the baked drawing
+// (scripts/art/yard-sheets.ts measure with MEASURE=lane.) into LANE_BOX.
+// ---------------------------------------------------------------------------
+
+
+function laneEntry(id: string, o: { frames: readonly string[]; footprint: [number, number]; k: number; fallback: Bounds; slots?: Record<string, Bounds>; draw: ManifestEntry['draw'] }): PeopleEntry {
+  const b = LANE_BOX[id]?.[0] ?? o.fallback;
+  const e: PeopleEntry = {
+    id,
+    group: 'lane',
+    sheet: 'B',
+    footprint: { w: o.footprint[0], d: o.footprint[1] },
+    bounds: b,
+    boundsByHeading: [b],
+    frames: o.frames,
+    headings: 1,
+    drawScale: 1 / o.k,
+    draw: scaled(o.k, o.draw),
+  };
+  if (o.slots) e.slots = Object.fromEntries(Object.entries(o.slots).map(([n, r]) => [n, B(r.x * o.k, r.y * o.k, r.w * o.k, r.h * o.k)]));
+  return e;
+}
+
+const LANE_V = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
+const [psx, psy, psw, psh] = partnerSignSlot(LANE_V);
+
+const LANE_ART: PeopleEntry[] = [
+  laneEntry('lane.field', { frames: FIELD_KINDS, footprint: [FIELD_M.w, FIELD_M.d], k: 0.3, fallback: B(-40, -20, 80, 40), draw: (c, v, f) => drawField(c, v, FIELD_KINDS[f], 3 + f) }),
+  laneEntry('lane.treeline', { frames: ['a', 'b'], footprint: [TREELINE_M, 0.5], k: 0.3, fallback: B(-52, -70, 104, 74), draw: (c, v, f) => drawTreeline(c, v, f) }),
+  laneEntry('lane.milepost', { frames: ['idle'], footprint: [0.3, 0.3], k: 0.6, fallback: B(-12, -26, 30, 32), draw: (c, v) => drawMilepost(c, v) }),
+  laneEntry('lane.pole', { frames: ['idle'], footprint: [0.3, 0.3], k: 0.5, fallback: B(-30, -110, 70, 120), draw: (c, v) => drawPole(c, v) }),
+  laneEntry('lane.gate.field', { frames: ['idle'], footprint: [3.4, 0.3], k: 0.5, fallback: B(-40, -30, 80, 36), draw: (c, v) => drawFieldGate(c, v) }),
+  laneEntry('lane.gritbin', { frames: ['idle'], footprint: [0.9, 0.6], k: 0.6, fallback: B(-20, -24, 46, 34), draw: (c, v) => drawGritBin(c, v) }),
+  laneEntry('lane.sign.partner', {
+    frames: PARTNER_MARKS,
+    footprint: [2.2, 0.3],
+    k: 0.6,
+    fallback: B(-36, -50, 84, 60),
+    slots: { name: B(psx, psy, psw, psh) },
+    draw: (c, v, f) => drawPartnerSign(c, v, PARTNER_MARKS[f]),
+  }),
+  laneEntry('lane.farmhouse', { frames: ['idle'], footprint: [6, 4], k: 0.4, fallback: B(-60, -80, 140, 110), draw: (c, v) => drawFarmhouse(c, v) }),
+  laneEntry('lane.leanto', { frames: ['idle'], footprint: [3.6, 2.6], k: 0.4, fallback: B(-40, -50, 90, 70), draw: (c, v) => drawLeanTo(c, v) }),
+  laneEntry('lane.end', { frames: ['idle'], footprint: [6, 0.5], k: 0.5, fallback: B(-70, -30, 150, 40), draw: (c, v) => drawLaneEnd(c, v) }),
+];
+
 export const PEOPLE: PeopleEntry[] = [
   ...personEntries('boss', BOSS, POSES_BOSS),
   ...personEntries('crew', CREW_BODY, POSES_CREW),
@@ -376,6 +456,7 @@ export const PEOPLE: PeopleEntry[] = [
   carrierEntry('sack'),
   carrierEntry('trolley'),
   ...VEHICLES,
+  ...LANE_ART,
 ];
 
 // ---------------------------------------------------------------------------

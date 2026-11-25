@@ -17,7 +17,7 @@
  *   P + 1.0                the earliest moment the picture parts like two gate leaves (0.4 s), if the
  *                          yard's atlases are baked; else the calm loop holds until they are
  *   after P + 1.4          the calm loop: the parked magnet sways on its rope, the display's stable lamp
- *                          ticks (its reading stays the ticket's), the furnace breathes, the ingots glint every 2 s
+ *                          ticks (its reading stays the ticket's), the furnace breathes, the the ingots glint once
  *
  * Three words give 3.6 s, the "about 3.5 s" of S22.
  */
@@ -48,6 +48,9 @@ export const PLATE_S = 0.6;
 export const GATE_S = 0.4;
 /** At most this many plates; further words share the last plate (./layout.ts `titleWords`). */
 export const MAX_PLATES = 4;
+/** The one glint along the cooled bars: when in the calm loop, and how long it runs (seconds). */
+export const GLINT_AT = 0.2;
+export const GLINT_S = 0.7;
 
 /** Inside a plate's 0.6 s: move over until 0.2, lower until LAND, shake for 0.1 s, release from RELEASE. */
 const MOVE = 0.2;
@@ -244,8 +247,8 @@ export function loadingPose(t: number, tl: LoadingTimeline = LOADING_T, gateAt: 
       sway = 2.6 * Math.sin((loopT / 2.6) * Math.PI * 2);
       // the display's stable lamp ticks (the reading itself never changes: it is the ticket's)
       tick = loopT % 0.9 < 0.45;
-      const g = (loopT + 1.2) % 2;
-      if (g < 0.6) glint = g / 0.6;
+      // one glint along the cooled bars as the loop begins, never again (S11: dull brass, not treasure)
+      if (loopT >= GLINT_AT && loopT < GLINT_AT + GLINT_S) glint = (loopT - GLINT_AT) / GLINT_S;
     }
   }
   return { t, aim, park, cable, magnetOn, swing, plates, kg: reading, tilt, pour, cool, ticket, gate, loop: tt >= tl.end ? loopT : 0, sway, breathe, glint, tick };

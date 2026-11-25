@@ -2651,9 +2651,14 @@
    "readability": "see Oakbridge",
    "id": "rival.7",
    "passTonnes": 300,
-   "current": true,
+   "current": false,
    "chip": "Oakbridge",
-   "chipReadability": "the home town's word; the chip reads as the town's firm"
+   "chipReadability": "the home town's word; the chip reads as the town's firm",
+   "fixPass": {
+    "verdict": "rejected (fix pass, finding W23)",
+    "replacedBy": "Redport Metal Recovery",
+    "rejectedBecause": "its chip is the home town's word: 'You passed Oakbridge.' reads as passing a town (Oakbridge, Oakbridge Vale and Oakbridge Foundry Co-op are in the first yard)"
+   }
   },
   {
    "name": "Millbeck Ferrous",
@@ -2815,7 +2820,7 @@
    "verdict": "new (replacement, third pass)",
    "replaces": "Haddersby & Daughters Scrap",
    "id": "rival.1",
-   "current": true,
+   "current": false,
    "passTonnes": 0.15,
    "chip": "Bramley",
    "candidates": [
@@ -2838,7 +2843,12 @@
     "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play search (US) for 'Bramley': Bramley Health App / Fuller and Forbes Healthcare; Bramley Bites / Workflow Digital Ltd; Kingfish Bramley / My Food Basket",
     "d_four_games": "corpus.py (games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files): clear: no exact match, no word within one letter or one Soundex step"
    },
-   "readability": "BRAM-lee, two syllables, an everyday word (the cooking apple); villages and small firms of the name, no metals firm in the first Companies House results, no app or game"
+   "readability": "BRAM-lee, two syllables, an everyday word (the cooking apple); villages and small firms of the name, no metals firm in the first Companies House results, no app or game",
+   "fixPass": {
+    "verdict": "rejected (fix pass, finding W23)",
+    "replacedBy": "Marchford & Daughters Scrap",
+    "rejectedBecause": "'Bramley' is a real, well-known district of Leeds and several English villages (Wikidata, this entry's own check b): a real town fails by the desk's own rule"
+   }
   },
   {
    "name": "Highfold Metals",
@@ -3337,6 +3347,42 @@
    "id": "foundry",
    "current": false,
    "rejectedBecause": "never registered (the register's spec name was Fennick Foundry Co-op); a quillon is a sword's cross-guard, not plain; the id 'foundry' names it"
+  },
+  {
+   "name": "Marchford & Daughters Scrap",
+   "kind": "rival firm (simulated), 0.15 t",
+   "usedIn": "yard-stage1.md 2.11 and 4.4 (by id); yard-design.md 6.2",
+   "verdict": "new (replacement, fix pass; the lead's ruling on W23)",
+   "replaces": "Bramley & Daughters Scrap",
+   "id": "rival.1",
+   "current": true,
+   "passTonnes": 0.15,
+   "chip": "Marchford",
+   "check": {
+    "a_company_brand_product": "see the record of 'Marchford' under city.capital (Bellmarch): weighed there by the names desk and clear (no company, brand or product found)",
+    "b_exchange_index_port_town_region": "see city.capital (Bellmarch) readability: 'Marchford' clear on Wikidata (no enwiki page, no item labelled so)",
+    "c_apps_and_games_on_the_stores": "see city.capital (Bellmarch): no store app",
+    "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (grep -wi re-run 2026-11-25 by the fix pass: no hit)"
+   },
+   "readability": "MARCH-ford: two everyday words; the smallest rival keeps the family-firm form (& Daughters). Unused elsewhere in the register; nearest current name Bellmarch (the capital) shares one word only."
+  },
+  {
+   "name": "Redport Metal Recovery",
+   "kind": "rival firm (simulated), 300 t",
+   "usedIn": "yard-design.md 6.2",
+   "verdict": "new (replacement, fix pass; the lead's ruling on W23)",
+   "replaces": "Oakbridge Metal Recovery",
+   "id": "rival.7",
+   "current": true,
+   "passTonnes": 300,
+   "chip": "Redport",
+   "check": {
+    "a_company_brand_product": "see the candidate 'Redport' under city.east (Sandport): web search found no city, company or game of this name; Companies House small firms only",
+    "b_exchange_index_port_town_region": "see city.east (Sandport) candidates: no city of this name",
+    "c_apps_and_games_on_the_stores": "see city.east (Sandport) candidates: no game of this name",
+    "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (grep -wi re-run 2026-11-25 by the fix pass: no hit)"
+   },
+   "readability": "RED-port: two everyday words. Note: one letter from the word 'report', and of the same form as the east's city Sandport; the lead chose it knowing both."
   }
  ],
  "generated": {
@@ -3404,13 +3450,13 @@
   "partnerFarm": "Hob's Farm Clearance",
   "regional.cable": "Rowkirk Cable Works",
   "regional.steel": "Garrowfield Steel",
-  "rival.1": "Bramley & Daughters Scrap",
+  "rival.1": "Marchford & Daughters Scrap",
   "rival.2": "Pennick Scrap",
   "rival.3": "Brookmill Metals",
   "rival.4": "Tenterby Lane Metals",
   "rival.5": "Kolbeck Recycling",
   "rival.6": "Tunney & Sons",
-  "rival.7": "Oakbridge Metal Recovery",
+  "rival.7": "Redport Metal Recovery",
   "rival.8": "Millbeck Ferrous",
   "rival.9": "Larkmoor Non-Ferrous",
   "rival.10": "Stonebeck Reclaim",

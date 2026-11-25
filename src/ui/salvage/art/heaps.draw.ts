@@ -231,6 +231,52 @@ export function drawZoneBed(c: SkCanvas, v: View3q, zone: string, frame = 0, see
   }
 }
 
+/** Frames of the bed tile (sheet G `ground.bed`): two looks per zone tier (a worked-out patch is a tile drawn faint). */
+export const BED_FRAMES = ['z1a', 'z1b', 'z2a', 'z2b', 'z3a', 'z3b'] as const;
+/** The grid a bed is laid on, metres (each tile's dirt reaches past its cell so neighbours overlap). */
+export const BED_CELL: readonly [number, number] = [1.2, 0.9];
+
+/**
+ * One tile of an old-stock bed (finding L5, MAP.md M3): a ragged patch of trodden earth with rust stains
+ * and a few loose pieces of its zone's kind, about 1.7 x 1.3 m round its centre so the tiles of a bed
+ * overlap into one lumpy heap floor. Flat (sheet G), baked at the ground sheet's density so it stays
+ * crisp at density 2; the world lays as many as the zone has stock left (world/dressing.ts bedDress).
+ */
+export function drawBedTile(c: SkCanvas, v: View3q, frame = 0): void {
+  const low = frame >= 6;
+  const tier = low ? 0 : Math.floor(frame / 2);
+  const seed = 17 + frame * 5;
+  const rx = 0.86 * v.ppm;
+  const ry = 0.64 * v.ppm * v.tilt;
+  const pts: number[] = [];
+  const n = 16;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const r = (low ? 0.7 : 0.82) + hash01(seed, i, 41) * 0.18;
+    pts.push(Math.cos(a) * rx * r, Math.sin(a) * ry * r);
+  }
+  const bed = poly(pts);
+  const earth = mix(YARD.concreteDark, '#8A7457', low ? 0.3 : 0.5);
+  const tone = tier === 2 ? mix(earth, YARD.rust, 0.22) : tier === 1 ? shade(earth, -0.07) : earth;
+  c.drawPath(bed, fill(tone, low ? 0.55 : 0.92));
+  // dust and rust in the earth
+  for (let i = 0; i < 7; i++) {
+    const x = (hash01(seed, i, 42) - 0.5) * rx * 1.4;
+    const y = (hash01(seed, i, 43) - 0.5) * ry * 1.2;
+    c.drawPath(oval(x, y, rx * (0.1 + hash01(seed, i, 44) * 0.12), ry * (0.08 + hash01(seed, i, 45) * 0.1)), fill(i % 3 ? shade(tone, -0.12) : YARD.rust, i % 3 ? 0.5 : 0.3));
+  }
+  for (let i = 0; i < 26; i++) c.drawCircle((hash01(seed, i, 46) - 0.5) * rx * 1.6, (hash01(seed, i, 47) - 0.5) * ry * 1.4, 0.7 + (i % 3) * 0.3, fill(i % 2 ? shade(tone, -0.25) : mix(tone, '#FFFFFF', 0.25), 0.7));
+  if (low) return;
+  // loose pieces of the zone's kind (the whole things stand on the bed, placed by the rules)
+  const list = BED_PIECES[`zone${tier + 1}`] ?? BED_PIECES.zone1;
+  const k = 4 + Math.floor(hash01(seed, 48) * 2);
+  for (let i = 0; i < k; i++) {
+    const a = hash01(seed, i, 49) * Math.PI * 2;
+    const r = Math.sqrt(hash01(seed, i, 50)) * 0.62;
+    pieceGlyph(c, list[(i + frame) % list.length], Math.cos(a) * rx * r, Math.sin(a) * ry * r, (0.26 + hash01(seed, i, 51) * 0.12) * v.ppm, (hash01(seed, i, 52) - 0.5) * 80, seed * 13 + i);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // A partner's skip seen from above, its contents showing (the skip card)
 // ---------------------------------------------------------------------------

@@ -18,8 +18,9 @@ import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, withTestContent } from '../../
 import * as R from '../../../engine/salvage';
 import { measure, wrap } from '../../../../scripts/content/office/fit';
 import { TEXT, say } from '../strings';
-import { BUY_MAX, BUY_W, MIN_PT, PAD, TYPE, boardLayout, breakLines, fitPt, frameLayout, pt, rowHeight } from './layout';
+import { BUY_MAX, BUY_W, GLYPH_ROOM, MIN_PT, PAD, TYPE, boardLayout, breakLines, fitPt, frameLayout, moreBelow, plateNameLines, pt, rowHeight } from './layout';
 import { textW } from '../hud/metrics';
+import { crucibleOrder, crucibleVerbs, machineSections, memberRow } from './machineView';
 import { boardWithButtons, machineCard, machineRows, partnerRows, rackRows, rotaRows, withSample } from './sample';
 
 const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'games', 'scrap-yard', 'game.json'), 'utf8'));
@@ -84,6 +85,19 @@ describe('the process board (4.5)', () => {
         for (const line of lines) expect(measure(line, pt(greyed ? 11 : 12, 1.3)), line).toBeLessThanOrEqual((greyed ? 108 : 120) - 12);
         if (greyed) expect(p.line).toBeNull();
       }
+  });
+  it('W25: a plate with a glyph keeps its name right of the glyph, at most two lines, at 667 and 844, 1.0 and 1.3', () => {
+    const board = R.processBoard(cfg, game('m30'));
+    for (const w of [boardLayout(667).plateW, boardLayout(844).plateW])
+      for (const fs of [1, 1.3])
+        for (const p of board.rows.flatMap((r) => r.plates)) {
+          if (p.state === 'greyed') continue; // every lit plate checked as if it had a glyph (the art kit's plateGlyph needs Skia)
+          const n = plateNameLines(say(p.name, c), pt(12, fs), w, true);
+          expect(n.lines.length, p.id).toBeLessThanOrEqual(2);
+          expect(n.size).toBeGreaterThanOrEqual(MIN_PT);
+          for (const line of n.lines) expect(textW(line, n.size), `${w} ${fs} ${line}`).toBeLessThanOrEqual(w - GLYPH_ROOM - 8);
+          expect(n.padLeft).toBe(GLYPH_ROOM);
+        }
   });
   it('every plate\'s state line fits its plate on one line at 667 and font scale 1.3, at 11 pt or more', () => {
     const b = boardLayout(667);
@@ -181,4 +195,50 @@ describe('the yard cards (4.3, 4.6)', () => {
       void g;
     });
   }
+});
+
+describe('the machine cards as printed (L14, W7, W5, W18) and the rota (P18)', () => {
+  const card = (n: (typeof FIXTURE_NAMES)[number], ref: Parameters<typeof R.cardOf>[2]) => R.cardOf(cfg, game(n), ref, FIXTURE_NOW);
+  it('every machine section is titled by the machine\'s name, its state on the line, and no rate is printed', () => {
+    for (const n of FIXTURE_NAMES)
+      for (const place of ['stripper', 'bench', 'crucible'] as const) {
+        const d = card(n, { kind: 'place', place });
+        const list = d.machines?.length ? d.machines : d.machine ? [d.machine] : [];
+        for (const s of machineSections(list, d.rows)) {
+          const mc = list.find((m) => m.machine === s.machine)!;
+          if (!mc.owned) continue;
+          expect(s.head, `${n} ${s.machine}`).not.toBeNull();
+          expect(s.head!.name.key, `${n} ${s.machine}`).toMatch(/^item\./);
+          expect(s.head!.line, `${n} ${s.machine}`).not.toBeNull();
+          for (const r of [s.head!, ...s.rows]) for (const t of [r.name, r.line, r.extra]) expect(t?.key ?? '', `${n} ${r.id}`).not.toMatch(/rateKgS|^card\.rate$|carriesRate|cutsRate/);
+        }
+      }
+  });
+  it('the crucible\'s buttons are verbs: Use for a recipe, Start or Stop for Take from bays; the level row is last', () => {
+    for (const n of FIXTURE_NAMES) {
+      const d = card(n, { kind: 'machine', machine: 'crucible' });
+      if (!d.machine?.owned) continue;
+      const [s] = machineSections([d.machine], d.rows);
+      const rows = crucibleOrder(s.rows).map(crucibleVerbs);
+      for (const r of rows) {
+        const a = r.button?.action;
+        if (a?.act === 'setRecipe') expect(r.button!.label.key).toBe('card.use');
+        if (a?.act === 'setFromBays') expect(r.button!.label.key).toBe(a.on ? 'card.start' : 'card.stop');
+      }
+      const last = rows[rows.length - 1];
+      expect(last.id.endsWith('.level'), n).toBe(true);
+      expect(last.button?.label.key).toBe('open');
+    }
+  });
+  it('a hired member\'s row is never a padlock, and a level waiting for a rung reads "Level up opens at"', () => {
+    const r = memberRow({ id: 'c1', name: { key: 'card.crewRow', args: {} }, line: { key: 'refusal.rung', args: { t: { tonnes_g: 2_200_000 } } }, button: null, icon: null, extra: null });
+    expect(r.padlock).toBe(false);
+    expect(r.row.line?.key).toBe('card.levelOpensAt');
+    expect(memberRow({ id: 'hand.next', name: { key: 'role.hand' }, line: { key: 'refusal.rung', args: {} }, button: null, icon: null, extra: null }).padlock).toBe(true);
+  });
+  it('a scroll shows more below until its end', () => {
+    expect(moreBelow(500, 300, 0)).toBe(true);
+    expect(moreBelow(500, 300, 200)).toBe(false);
+    expect(moreBelow(300, 300, 0)).toBe(false);
+  });
 });

@@ -8,7 +8,8 @@ import { GameConfigSchema } from '../../config/schema';
 import gameJson from '../../../games/scrap-yard/game.json';
 import * as E from '../economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, SALVAGE_TEST, fixtureGame, withTestContent } from '../fixtures/salvage';
-import { frameOf } from './frame';
+import { sellAmount, sellOn } from './board';
+import { frameCfg, frameOf } from './frame';
 import { goalOf } from './goals';
 import { bayPos, bayStocked, isStillage } from './positions';
 import type { SalvageGame } from './types';
@@ -100,5 +101,55 @@ describe('the frame bays (the lead stillage ruling of 17:10; the integrator 17:5
       // Every stillage grade with stock is drawn.
       for (const [gr, bay] of Object.entries(g.salvage.bays)) if (isStillage(C, gr) && bay.g > 0) expect(f.bays.some((b) => b.grade === gr), `${n} ${gr}`).toBe(true);
     }
+  });
+});
+
+describe('the bay chips (L10, S4, W4) and the memo (H13)', () => {
+  const day = (g: SalvageGame) => g.salvage.clock.day;
+  for (const name of FIXTURE_NAMES) {
+    it(`${name}: at most two lines a bay; line 1 prints what Sell would pay now; never §0 for a stocked bay`, () => {
+      const g0 = fixtureGame(name, base(), FIXTURE_NOW) as SalvageGame;
+      // Every bay held and not held: the chip's value is the board's Sell (sellOn on the frame's day).
+      for (const held of [false, true]) {
+        const bays = Object.fromEntries(Object.entries(g0.salvage.bays).map(([k, b]) => [k, { ...b, held }]));
+        const g = { ...g0, salvage: { ...g0.salvage, bays } } as SalvageGame;
+        const f = frameOf(C, g);
+        for (const b of f.bays) {
+          const ls = f.labels.filter((l) => l.kind === 'bay' && l.id.split('.')[1] === b.grade);
+          if (b.g <= 0) {
+            expect(ls.length).toBe(0);
+            continue;
+          }
+          expect(ls.length, b.grade).toBeGreaterThanOrEqual(1);
+          expect(ls.length, b.grade).toBeLessThanOrEqual(2);
+          expect(ls[0].id).toBe(`bay.${b.grade}`);
+          const want = sellAmount(sellOn(C, g, b.grade, day(g)));
+          expect(b.value).toBe(want);
+          const x = ls[0].text.args?.x as { money: number } | undefined;
+          if (want > 0) {
+            expect(x?.money).toBe(want);
+            expect(ls[0].text.key).toBe(held ? 'chip.bayHeld' : 'chip.bay');
+          } else expect(ls[0].text.key).toBe(held ? 'chip.bayKgHeld' : 'chip.bayKg');
+          // No day word and no separate "held" line on the chip.
+          for (const l of ls) expect(['chip.held', 'chip.lowDay', 'chip.highDay']).not.toContain(l.text.key);
+        }
+      }
+    });
+  }
+  it('a held bay with stock and no reserve shows its value, not §0 (the review: "today §0.00 held")', () => {
+    const g0 = fixtureGame('m30', base(), FIXTURE_NOW) as SalvageGame;
+    const grade = Object.keys(g0.salvage.bays)[0];
+    const g = { ...g0, salvage: { ...g0.salvage, bays: { ...g0.salvage.bays, [grade]: { g: 4_500_000, n: 0, held: true, aside: [], forCrucible_g: 0, forDeal_g: 0 } } } } as SalvageGame;
+    const l = frameOf(C, g).labels.find((x) => x.id === `bay.${grade}`)!;
+    expect(l.text.key).toBe('chip.bayHeld');
+    expect((l.text.args?.x as { money: number }).money).toBeGreaterThan(0);
+  });
+  it('the facade frame is memoised on the state (and on cash)', () => {
+    const g = fixtureGame('m30', base(), FIXTURE_NOW) as SalvageGame;
+    const a = frameCfg(cfg, g);
+    expect(frameCfg(cfg, { ...g })).toBe(a);
+    expect(frameCfg(cfg, { ...g, cash: g.cash + 1 })).not.toBe(a);
+    expect(frameCfg(cfg, { ...g, salvage: { ...g.salvage } })).not.toBe(a);
+    expect(frameCfg(cfg, { ...g, salvage: { ...g.salvage } })).toEqual(frameOf(cfg.salvage, g));
   });
 });

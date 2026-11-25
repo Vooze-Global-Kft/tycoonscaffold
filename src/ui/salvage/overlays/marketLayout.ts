@@ -87,6 +87,8 @@ export function barHeight(price: number, pbar: number, h = BARS.h): number {
 
 /** The "simulated" tag's size on a table row (never scaled: the smallest text, 4.6). */
 export const SIM_PT = 11;
+/** The right padding of the tonnes column (the card's inner margin, W12). */
+export const TONNES_PAD = 8;
 /** The plate logo of a table row (2.11: 24 pt). */
 export const LOGO = 24;
 
@@ -108,9 +110,12 @@ export function tableCols(L: FrameLayout): TableCols {
   const fs = L.fs;
   const p = pt(TYPE.name, fs);
   const gap = 5;
-  const rank = Math.ceil(textW('26th', p)) + 2;
-  // The largest rival passes ten million tonnes by day 40 ("10,603,412 t").
-  const tonnes = Math.ceil(textW('12,345,678 t', p));
+  // L8 / W12: the widest ordinal ("22nd", "26th") in BOLD on one line at font scale 1.3: the estimate
+  // is a regular face's, so a fifth more for the bold digits and the ordinal's letters.
+  const rank = Math.ceil(textW('26th', p) * 1.2) + 4;
+  // The largest rival passes ten million tonnes by day 40 ("10,603,412 t"); bold, with the card's inner
+  // margin at the right so the last digit is never clipped at the row's edge (W12).
+  const tonnes = Math.ceil(textW('12,345,678 t', p) * 1.08) + TONNES_PAD;
   // "simulated" is a quiet tag at the smallest size (11 pt at every font scale), so a 14-character chip name fits at 667 and 1.3.
   const sim = Math.ceil(textW('simulated', SIM_PT));
   const rowH = Math.max(30, lineH(TYPE.name, fs) + 10, LOGO + 6);

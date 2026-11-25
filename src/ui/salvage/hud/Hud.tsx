@@ -14,7 +14,7 @@ import { OneButton } from './OneButton';
 import { BarText } from './Paper';
 import { Tickets, type Camera } from './Tickets';
 import { Toasts } from './Toasts';
-import { TopBar } from './TopBar';
+import { CashDebit, TopBar } from './TopBar';
 
 /** The bars, tickets and toasts (under the overlays). */
 export function HudLayer({ cfg, L, camera, yard }: { cfg: SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
@@ -23,6 +23,7 @@ export function HudLayer({ cfg, L, camera, yard }: { cfg: SalvageConfig; L: HudL
       <Tickets cfg={cfg} L={L} camera={camera} yard={yard} />
       <TopBar cfg={cfg} L={L} />
       <GoalCard cfg={cfg} L={L} />
+      <CashDebit cfg={cfg} L={L} />
       <Toasts cfg={cfg} L={L} />
     </View>
   );

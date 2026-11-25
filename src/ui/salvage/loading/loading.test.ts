@@ -28,7 +28,7 @@ vi.mock('@shopify/react-native-skia', async () => {
 });
 
 import { loadingLayout, titleWords, type Insets } from './layout';
-import { GATE_S, LOADING_SOUNDS, LOADING_T, PLATE_S, loadingCues, loadingPose, loadingTimeline, plateKg } from './timeline';
+import { GATE_S, GLINT_AT, GLINT_S, LOADING_SOUNDS, LOADING_T, PLATE_S, loadingCues, loadingPose, loadingTimeline, plateKg } from './timeline';
 
 const SIZES: [number, number, Insets][] = [
   [844, 390, { top: 0, left: 47, right: 47, bottom: 21 }],
@@ -91,7 +91,7 @@ describe('timeline', () => {
     expect(loadingPose(10.4, LOADING_T, 10).gate).toBe(1);
     expect(loadingPose(10.2, LOADING_T, 10).gate).toBeGreaterThan(0);
   });
-  it('the calm loop is never a frozen frame: the magnet sways, the furnace breathes, the ingots glint, the display lamp ticks (its reading stays as printed)', () => {
+  it('the calm loop is never a frozen frame: the magnet sways, the furnace breathes, the ingots glint once (never again), the display lamp ticks (its reading stays as printed)', () => {
     const sw = new Set<number>();
     const br = new Set<number>();
     const kg = new Set<number>();
@@ -103,7 +103,10 @@ describe('timeline', () => {
       br.add(Math.round(p.breathe * 20));
       kg.add(p.kg);
       ticks.add(p.tick);
-      if (p.glint >= 0) glints++;
+      if (p.glint >= 0) {
+        glints++;
+        expect(t - LOADING_T.end).toBeLessThan(GLINT_AT + GLINT_S + 0.02);
+      }
       // between frames nothing jumps: the parked magnet moves a fraction of a degree
       const q = loadingPose(t + 1 / 60, LOADING_T, 1e9);
       expect(Math.abs(q.sway - p.sway)).toBeLessThan(0.2);
@@ -114,6 +117,7 @@ describe('timeline', () => {
     expect(kg.size).toBe(1);
     expect(ticks.size).toBe(2);
     expect(glints).toBeGreaterThan(30);
+    expect(glints).toBeLessThan(50);
   });
   it('the timeline runs into the loop without a jump (trolley parked, ingots cooled, ticket out)', () => {
     const a = loadingPose(LOADING_T.end - 1 / 120, LOADING_T, 1e9);
@@ -184,8 +188,18 @@ describe('layout', () => {
         const a = (L.tiltDeg * Math.PI) / 180;
         const lipY = L.sY + Math.sin(a) * L.lip[0] + Math.cos(a) * L.lip[1];
         expect(L.lY - lipY).toBeGreaterThan(8 * L.k);
-        // mould, crucible, furnace hand inside the safe area
-        expect(L.mY + 26 * L.k).toBeLessThanOrEqual(bottom);
+        // the moulds on their table, the crucible, the furnace hand inside the safe area
+        expect(L.footY).toBeLessThanOrEqual(bottom + 0.01);
+        expect(L.tableY).toBeGreaterThan(L.mY);
+        // five separate moulds with clear gaps (never one trough that reads as a progress bar)
+        expect(L.mouldX).toHaveLength(5);
+        for (let i = 1; i < 5; i++) expect(L.mouldX[i] - (L.mouldX[i - 1] + L.mouldW)).toBeGreaterThan(6 * L.k);
+        // the moulds stand under the crucible's lip at full tilt: the stream falls into the first one's launder
+        const lipX = L.sX + Math.cos(a) * L.lip[0] - Math.sin(a) * L.lip[1];
+        expect(lipX).toBeGreaterThanOrEqual(L.lX0);
+        expect(lipX).toBeLessThan(L.mL);
+        // the ticket's print is 11 points or more
+        expect(L.tkPrint).toBeGreaterThanOrEqual(11);
         expect(L.manY).toBeLessThanOrEqual(bottom);
         expect(L.manX - 34 * L.k).toBeGreaterThanOrEqual(left - 1);
         expect(L.mR + 30 * L.k).toBeLessThanOrEqual(right);

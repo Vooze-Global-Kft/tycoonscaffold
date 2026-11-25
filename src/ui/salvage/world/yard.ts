@@ -21,6 +21,7 @@
  */
 import type { SalvageContent, SalvageProp } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
+import { dressing, type Dress } from './dressing';
 
 const asCfg = (s: SalvageContent) => ({ salvage: s }) as R.SalvageConfig;
 const pointOf = (s: SalvageContent, id: string) => R.point(asCfg(s), id);
@@ -80,6 +81,50 @@ export interface YardLayout {
   drawW: number;
   /** Content points the actors' pictures use: [x, y] of the gate, the truck park, the weighbridge, the tipping floor, the scale. */
   pts: { gate: number[]; park: number[]; weighbridge: number[]; floor: number[]; scale: number[] };
+  /** The back wall's line (content map.north, MAP.md M1), metres, or null: nobody walks, drives or looks north of it. */
+  north: number | null;
+  /** The wall's south face (north + its half depth): the walkers' and the camera's north limit. */
+  northFace: number | null;
+  /** The vehicles' drive line (content map.driveLine, MAP.md M4) as a centre polyline [x0, y0, x1, y1, ...] from the gate west, or []. */
+  driveLine: number[];
+  /** The look fixer's dressing (./dressing.ts): extra standing sprites and ground decals (sheet G ids lie on the ground). */
+  dressing: Dress[];
+}
+
+/** Half the depth of the back wall's lock blocks, metres (a block is 0.8 m deep: the art's size, not the map's). */
+export const WALL_HALF_D = 0.4;
+
+/** content map.north (MAP.md M1), read whether or not the schema has the field yet. */
+export function mapNorth(s: SalvageContent): number | null {
+  const n = (s.map as { north?: unknown }).north;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+}
+
+/**
+ * content map.driveLine (MAP.md M4) as a centre polyline. Accepts a list of points ([x, y] or {x, y}),
+ * an object with `pts` / `points` / `line`, or a list of boxes ({x0, y0, w, d}: their centres in order).
+ */
+export function mapDriveLine(s: SalvageContent): number[] {
+  const raw = (s.map as { driveLine?: unknown }).driveLine as unknown;
+  const list: unknown = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? ((raw as Record<string, unknown>).pts ?? (raw as Record<string, unknown>).points ?? (raw as Record<string, unknown>).line ?? (raw as Record<string, unknown>).path) : null;
+  if (!Array.isArray(list)) return [];
+  const out: number[] = [];
+  for (const q of list) {
+    if (Array.isArray(q) && q.length >= 2 && typeof q[0] === 'number') out.push(q[0], q[1] as number);
+    else if (q && typeof q === 'object') {
+      const o = q as Record<string, number>;
+      if (typeof o.x === 'number' && typeof o.y === 'number') out.push(o.x, o.y);
+      else if (typeof o.x0 === 'number' && typeof o.y0 === 'number' && typeof o.w === 'number' && typeof o.d === 'number') out.push(o.x0 + o.w / 2, o.y0 + o.d / 2);
+    }
+  }
+  return out;
+}
+
+/** The drive line's half width, metres (content map.driveLine.width or .w; MAP.md M4's 3.6 m at least). */
+export function driveHalf(s: SalvageContent): number {
+  const raw = (s.map as { driveLine?: unknown }).driveLine as Record<string, unknown> | undefined;
+  const w = raw && !Array.isArray(raw) ? (raw.width ?? raw.w) : undefined;
+  return (typeof w === 'number' && w > 0 ? w : 3.6) / 2;
 }
 
 /** Numbers per packed interactable. */
@@ -149,6 +194,21 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
       helpers.push({ pts, length, phase: (k * 4.7) % 17, wreck: places[(k * 7 + 3) % places.length] });
     }
   }
+  // The back wall (MAP.md M1): everything north of its south face is one solid box, across the whole width
+  // and past both fences, so no body ever stands, walks or drives north of it.
+  const north = mapNorth(s);
+  const northFace = north !== null ? north + WALL_HALF_D : null;
+  if (northFace !== null && northFace > 0) solids.push(SOLID_BOX, width / 2, northFace / 2 - 0.5, width / 2 + 40, northFace / 2 + 0.5);
+  const drawW0 = Math.max(width, (() => {
+    const l = laneGeo(s);
+    return l ? laneDrawEnd(l) : width;
+  })());
+  let dress: Dress[] = [];
+  try {
+    dress = dressing(s);
+  } catch (e) {
+    console.warn('salvage: the yard dressing could not be built', e);
+  }
   const t = truck >= 0 ? props[truck] : null;
   return {
     width,
@@ -168,10 +228,7 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
     workerStart: pointOf(s, 'start'),
     truckStart: t ? { x: t.x, y: t.y } : { x: pointOf(s, 'start').x + 3, y: pointOf(s, 'start').y },
     lane: laneBox(s),
-    drawW: Math.max(width, (() => {
-      const l = laneGeo(s);
-      return l ? laneDrawEnd(l) : width;
-    })()),
+    drawW: drawW0,
     pts: {
       gate: pt(s, 'gate', [width - 1, depth / 2]),
       park: pt(s, 'park', [width - 4, depth - 4]),
@@ -179,6 +236,10 @@ export function yardLayout(s: SalvageContent, opts: { extraCrates?: number; help
       floor: pt(s, 'floor', [width / 2, depth - 6]),
       scale: pt(s, 'scale', [width / 2, depth / 2]),
     },
+    north,
+    northFace,
+    driveLine: mapDriveLine(s),
+    dressing: dress,
   };
 }
 

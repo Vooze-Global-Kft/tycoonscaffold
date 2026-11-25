@@ -190,13 +190,13 @@ function scene(c: SkCanvas, Y: LoadingLayers, L: LoadingLayout, pose: LoadingPos
       part(c, Y.notches[i], (since - 2.4) / 0.6);
     }
     if (pose.glint >= 0 && since >= 3) {
-      // a glint running west to east along the row
+      // the one glint running west to east along the row (dull metal: a soft one)
       const gx = L.mL - 20 * k + (L.mR - L.mL + 40 * k) * pose.glint;
       c.save();
       c.clipPath(Y.ingot[i], INTERSECT, true);
       const b = Skia.PathBuilder.Make();
       b.moveTo(gx - 3 * k, L.cavY + L.cavH + 2).lineTo(gx + 1 * k, L.cavY + L.cavH + 2).lineTo(gx + 6 * k, L.cavY - 2).lineTo(gx + 2 * k, L.cavY - 2).close();
-      c.drawPath(b.build(), paint(C.glowWhite, 0.8));
+      c.drawPath(b.build(), paint(C.glowWhite, 0.42));
       c.restore();
     }
   }

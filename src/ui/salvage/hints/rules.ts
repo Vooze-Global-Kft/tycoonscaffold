@@ -37,6 +37,7 @@ export const GOAL_HINTS_FALLBACK: Record<string, { via: string | null; stall: St
   hireHand: { via: null, stall: 'open' },
   workDropoff: { via: null, stall: 'chevron' },
   fetchTrial: { via: 'truck', stall: null },
+  tipTrial: { via: null, stall: 'chevron' },
   fetchDemolition: { via: 'truck', stall: null },
 };
 
@@ -319,4 +320,13 @@ export function dragDir(from: { x: number; y: number } | null, to: { x: number; 
 /** Where the ghost thumb lands: inside the stick zone (its knob's reach), towards its lower left. */
 export function ghostHome(zone: { minX: number; maxX: number; minY: number; maxY: number }): { x: number; y: number } {
   return { x: Math.round(zone.minX + (zone.maxX - zone.minX) * 0.3), y: Math.round(zone.minY + (zone.maxY - zone.minY) * 0.55) };
+}
+
+/** L13: the ghost thumb stays away this long after the player's own thumb lifts off the stick, ms. */
+export const GHOST_AFTER_LIFT_MS = 2000;
+
+/** L13 as one pure rule: the ghost thumb may show only when no finger is on the stick and none lifted in the last GHOST_AFTER_LIFT_MS (never two sticks at once). */
+export function ghostAllowed(fingerDown: boolean, nowMs: number, liftedAtMs: number | null): boolean {
+  if (fingerDown) return false;
+  return liftedAtMs === null || nowMs - liftedAtMs >= GHOST_AFTER_LIFT_MS;
 }

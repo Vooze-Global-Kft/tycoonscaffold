@@ -22,7 +22,7 @@ export function SalvageLoading() {
   const insets = useMemo(() => ({ top: i.top, left: i.left, right: i.right, bottom: i.bottom }), [i.top, i.left, i.right, i.bottom]);
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
-      <LoadingStage title={title} width={width} height={height} insets={insets} ready={false} />
+      <LoadingStage title={title} splash={bg} width={width} height={height} insets={insets} ready={false} />
     </View>
   );
 }

@@ -14,12 +14,13 @@
  * on the UI thread, and stops whenever its part is hidden.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import Animated, { Easing, cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { targets, type TargetRect } from '../../hints/targets';
 import { yardEvents } from '../hud/pump';
+import { useFontScale } from '../hud/fontScale';
 import { hudLayout } from '../hud/metrics';
 import { BarText, Paper } from '../hud/Paper';
 import { loadingClock } from '../loading/clock';
@@ -27,10 +28,10 @@ import type { Insets } from '../overlays/OverlayHost';
 import { PAL } from '../palette';
 import { say } from '../strings';
 import { overlaysOpen, useSalvageUi } from '../uiState';
-import { STICK_R, type StickZone } from '../world/stick';
+import { STICK_R, stickHeld, type StickZone } from '../world/stick';
 import { hintDemo } from './autoplay';
 import { chevronGate } from './gate';
-import { HintTracker, PROGRESS_EVENTS, dragDir, ghostHome, goalDefOf, goalHint, hintTarget, promptWait, type HintView } from './rules';
+import { HintTracker, PROGRESS_EVENTS, ghostAllowed, dragDir, ghostHome, goalDefOf, goalHint, hintTarget, promptWait, type HintView } from './rules';
 import { teachOf } from './teach';
 
 /** How far the ghost thumb drags, points (a little past the knob's full travel). */
@@ -39,6 +40,10 @@ export const GHOST_DRAG_PT = STICK_R * 0.9;
 const THUMB = 46;
 /** Samples a second. */
 const SAMPLE_MS = 250;
+/** Whether a real finger steers the stick now (world/stick.ts `stickHeld`, the JS side's copy; never the shared value). */
+function fingerOnStick(): boolean {
+  return stickHeld();
+}
 
 export interface HintLayerProps {
   cfg: R.SalvageConfig;
@@ -60,7 +65,8 @@ function sameView(a: HintView, b: HintView) {
 
 export function HintLayer({ cfg, width, height, insets, zone, used, active }: HintLayerProps) {
   const teach = teachOf(cfg);
-  const { fontScale } = useWindowDimensions();
+  // H15: the same font scale as the bars (the preview's ?fontScale= included).
+  const fontScale = useFontScale();
   const L = useMemo(() => hudLayout(width, height, insets, Math.min(1.3, fontScale)), [width, height, insets.top, insets.left, insets.right, insets.bottom, fontScale]); // eslint-disable-line react-hooks/exhaustive-deps
   const tracker = useRef<HintTracker | null>(null);
   if (!tracker.current) tracker.current = new HintTracker(teach);
@@ -72,6 +78,14 @@ export function HintLayer({ cfg, width, height, insets, zone, used, active }: Hi
   usedRef.current = used;
   const activeRef = useRef(active);
   activeRef.current = active;
+  const fingerWas = useRef(false);
+  const liftedAt = useRef<number | null>(null);
+  // H14: the sampling interval runs only while the app is in the foreground.
+  const [foreground, setForeground] = useState(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => setForeground(st === 'active'));
+    return () => sub.remove();
+  }, []);
 
   // The stick zone is a hint target too (the autoplay and the integrator's checks find it).
   useEffect(() => {
@@ -90,6 +104,7 @@ export function HintLayer({ cfg, width, height, insets, zone, used, active }: Hi
   );
 
   useEffect(() => {
+    if (!foreground) return; // H14: no timer while the app is not active
     const step = () => {
       const g = useGame.getState().game as R.SalvageGame;
       if (!g?.salvage) return;
@@ -122,6 +137,12 @@ export function HintLayer({ cfg, width, height, insets, zone, used, active }: Hi
       });
       if (demo) v = { ...v, ...demo };
       if (!activeRef.current) v = { ...v, ghost: 'off', openRing: false, goalRing: false };
+      // L13: never two sticks: no ghost thumb while a finger steers, nor for two seconds after it lifts.
+      const finger = fingerOnStick();
+      const wall = Date.now();
+      if (fingerWas.current && !finger) liftedAt.current = wall;
+      fingerWas.current = finger;
+      if (v.ghost !== 'off' && !ghostAllowed(finger, wall, liftedAt.current)) v = { ...v, ghost: 'off' };
       chevronGate.value = v.chevron ? 1 : 0;
       setView((old) => (sameView(old, v) ? old : v));
       const d = dragDir(p ? { x: p.x, y: p.y } : null, spot);
@@ -140,7 +161,7 @@ export function HintLayer({ cfg, width, height, insets, zone, used, active }: Hi
       clearInterval(id);
       chevronGate.value = 1;
     };
-  }, [cfg]);
+  }, [cfg, foreground]);
 
   const home = ghostHome(zone);
   const openRect = useTargetRect('salvage:oneButton') ?? { x: L.button.x, y: L.button.y, width: L.button.size, height: L.button.size };

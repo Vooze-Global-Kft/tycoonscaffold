@@ -83,10 +83,20 @@ export function dayWordCfg(cfg: SalvageConfig, grade: GradeId, day: number): 'lo
  */
 export function sellShown(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, now: number): SellShown {
   const day = marketDay(cfg.salvage, marketTime(g, now));
+  return sellOn(cfg.salvage, g, grade, day);
+}
+
+/** What Sell would carry on market day `day` (sellShown's rule, the world's bay chip uses it too: L10, W4). */
+export function sellOn(c: SalvageContent, g: SalvageGame, grade: GradeId, day: number): SellShown {
   const b = g.salvage.bays[grade];
   const aside = b ? b.aside.reduce((a, x) => a + x.g, 0) : 0;
   const free = b ? b.g - b.forCrucible_g - b.forDeal_g - aside : 0;
-  return { day, price: priceOf(cfg.salvage, grade, day), grams: floorGrams(free) };
+  return { day, price: priceOf(c, grade, day), grams: floorGrams(free) };
+}
+
+/** § a Sell pays (the board's "Sell §x"): the shown grams at the shown price, one line's rounding. */
+export function sellAmount(shown: SellShown): number {
+  return lineAmount(shown.grams, shown.price);
 }
 
 /** The bays' grades in the board's order: content's fixed bay order, then any other grade weighed in. */
@@ -109,7 +119,7 @@ export function priceBoard(cfg: SalvageConfig, g: SalvageGame, now: number): Pri
     const b = g.salvage.bays[grade];
     const aside_g = b.aside.reduce((a, x) => a + x.g, 0);
     const shown = sellShown(cfg, g, grade, now);
-    const sell: CardButton | null = b.held && shown.grams > 0 ? { label: { key: 'board.sellTotal', args: { x: { money: lineAmount(shown.grams, shown.price) } } }, action: { act: 'sell', grade, shown }, refusal: null } : null;
+    const sell: CardButton | null = b.held && shown.grams > 0 ? { label: { key: 'board.sellTotal', args: { x: { money: sellAmount(shown) } } }, action: { act: 'sell', grade, shown }, refusal: null } : null;
     return {
       grade,
       icon: c.grades[grade]?.picto ?? c.grades[grade]?.sprite ?? `piece.${grade}`,

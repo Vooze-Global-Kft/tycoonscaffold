@@ -45,7 +45,12 @@ export function linesOf(x: Ctx, pieces: readonly Piece[], day: number): { lines:
   return { lines, trueByGrade: g };
 }
 
-/** The lesson on a weigh-in (4.4 item 5; src/ui/salvage/hints/lessons.ts `lessonPaced` is the same rule): in the quiet minutes only on a value jump. */
+/**
+ * The lesson on a weigh-in (4.4 item 5; src/ui/salvage/hints/lessons.ts `lessonPaced` is the same rule):
+ * a VALUE grade's lesson (content `valueLessons`: copper, brass, the converter) always shows on the
+ * boss's first weigh-in of it, whatever was weighed before and however early (finding P2: one early
+ * brass line silenced the copper lesson); the others in the quiet minutes only on a value jump.
+ */
 function lessonFor(x: Ctx, lines: readonly TicketLine[], t: number): { grade: string; text: Txt } | null {
   const teach = x.c.teach ?? {};
   const quiet = teach.lessonQuietS ?? 300;
@@ -56,7 +61,8 @@ function lessonFor(x: Ctx, lines: readonly TicketLine[], t: number): { grade: st
   for (const grade of grades) {
     const key = x.c.lessons[grade];
     if (!key || x.s.lessonsSeen.includes(grade)) continue;
-    const isJump = top > 0 && (x.c.grades[grade]?.pbar ?? 0) >= jump * top;
+    const isValue = (x.c.valueLessons ?? []).includes(grade);
+    const isJump = isValue || (top > 0 && (x.c.grades[grade]?.pbar ?? 0) >= jump * top);
     if (t < quiet && !isJump) continue;
     const args: TxtArgs = {};
     if (grade === 'bb') {

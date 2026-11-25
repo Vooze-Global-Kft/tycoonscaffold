@@ -13,9 +13,10 @@ import { StyleSheet, View } from 'react-native';
 import * as R from '../../../engine/salvage';
 import type { IndustryTable as Table, TableRow, Txt } from '../../../engine/salvage';
 import { YARD } from '../art/palette';
+import * as UI from '../art/ui.draw';
 import { rivalPlate } from '../art/ui.draw';
-import { LOGO, SIM_PT, rungCells, tableCols, type TableCols } from './marketLayout';
-import { plateSeed } from './marketLines';
+import { LOGO, SIM_PT, TONNES_PAD, rungCells, tableCols, type TableCols } from './marketLayout';
+import { plateSeed, rungBox, rungInStage, type RungProgressLike } from './marketLines';
 import { DataLine, Drawing, gradeName, nameOf, useContent, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
 import { Panel } from './Panel';
@@ -29,10 +30,7 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
   const t: Table = data.table ?? R.industryTable(cfg, g);
   const cols = tableCols(layout);
   const you = t.rows.find((r) => r.id === 'you') ?? null;
-  const cur = t.rungs.find((r) => r.current) ?? null;
-  const next = t.rungs.find((r) => !r.open) ?? null;
-  const rungLine: Txt | null = cur ? { key: 'table.rung', args: { t: { tonnes_g: cur.t * 1e6 }, r: { n: cur.range } } } : null;
-  const nextLine: Txt | null = next ? { key: 'table.locked', args: { t: { tonnes_g: next.t * 1e6 }, r: { n: next.range } } } : null;
+  const { own, next } = rungBox(t, you, rungProgress ? rungProgress(cfg, g) : null);
   return (
     <Panel
       title={data.title}
@@ -48,12 +46,13 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
         <Line t={{ key: 'table.headline' }} size="name" bold lines={2} />
       </View>
       <Rungs t={t} />
-      {rungLine ? <Line t={rungLine} size="line" bold /> : null}
-      {nextLine ? (
+      {/* P17: the rung box is the player's OWN tonnes and materials; the next rung's condition on its own line ("Next: opens at ..."; past this stage's last rung a bare padlock and its tonnage, S10). */}
+      {own ? <Line t={own} size="line" bold lines={2} /> : null}
+      {next ? (
         <View style={styles.padRow}>
           <Padlock size={Math.round(pt(TYPE.line, layout.fs) * 0.95)} />
           <View style={{ flexShrink: 1 }}>
-            <Line t={nextLine} size="line" colour={INK.soft} lines={2} />
+            <Line t={next} size="line" colour={INK.soft} lines={2} />
           </View>
         </View>
       ) : null}
@@ -67,6 +66,9 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
       {t.next ? <Line t={{ key: 'table.next', args: { rival: { name: t.next.chip }, t: { tonnes_g: t.next.need_g } } }} size="line" bold lines={2} /> : null}
       {you ? (
         <View style={styles.pinned}>
+          <View style={[styles.logos, { left: cols.rank + cols.gap }]} pointerEvents="none">
+            <Drawing w={LOGO} h={cols.rowH} deps={[cols.rowH]} draw={(cv) => yardMark(cv, LOGO / 2, cols.rowH / 2, LOGO - 2)} />
+          </View>
           <TableLine row={you} cols={cols} c={c} pinned />
         </View>
       ) : null}
@@ -80,6 +82,7 @@ export function IndustryTable({ cfg, g, data, onClose }: CardViewProps) {
               t.rows.forEach((r, i) => {
                 const seed = plateSeed(r);
                 if (seed !== null) rivalPlate(cv, LOGO / 2, i * cols.rowH + cols.rowH / 2, LOGO - 2, seed);
+                else if (r.id === 'you') yardMark(cv, LOGO / 2, i * cols.rowH + cols.rowH / 2, LOGO - 2);
               })
             }
           />
@@ -98,13 +101,28 @@ function materialName(cfg: R.SalvageConfig, material: string): string {
   return id ? gradeName(cfg.salvage, id, true) : material;
 }
 
+/**
+ * The yard's own mark on its table row (L8): the art kit's `yardMark` when it has one (asked of the art
+ * director), else the yard's plate from the same kit as the rivals', on seed 25, one past the 25 rivals'
+ * (shield, machine blue, chevrons: no rival has that triple).
+ */
+function yardMark(cv: Parameters<typeof rivalPlate>[0], cx: number, cy: number, s: number): void {
+  const own = (UI as unknown as { yardMark?: (c: typeof cv, x: number, y: number, s: number) => void }).yardMark;
+  if (own) own(cv, cx, cy, s);
+  else rivalPlate(cv, cx, cy, s, YARD_SEED);
+}
+const YARD_SEED = 25;
+
+/** rules-book's rung selector once the facade has it (19:55); the table's own rows until then. */
+const rungProgress = (R as unknown as { rungProgress?: (cfg: R.SalvageConfig, g: R.SalvageGame) => RungProgressLike | null }).rungProgress;
+
 function Rungs({ t }: { t: Table }) {
   const { layout } = useFrame();
   const { cell, gap } = rungCells(layout, t.rungs.length);
   return (
     <View style={[styles.rungs, { gap }]} accessibilityRole="summary">
       {t.rungs.map((r) => (
-        <View key={r.n} style={[styles.rung, { width: cell, height: cell }, r.current ? styles.rungNow : r.open ? styles.rungPast : styles.rungLocked]}>
+        <View key={r.n} style={[styles.rung, { width: cell, height: cell }, r.current ? styles.rungNow : r.open ? styles.rungPast : styles.rungLocked, !r.open && !rungInStage(r) ? styles.rungBeyond : null]}>
           {r.open ? <DataLine text={String(r.n)} size="name" bold /> : <Padlock size={Math.round(cell * 0.42)} />}
         </View>
       ))}
@@ -117,9 +135,10 @@ function TableLine({ row, cols, c }: { row: TableRow; cols: TableCols; c: R.Salv
   return (
     <View style={[styles.row, { height: cols.rowH, gap: cols.gap }, you ? styles.you : null]}>
       <View style={{ width: cols.rank }}>
-        <DataLine text={R.fmtRank(row.rank)} size="name" bold={you} />
+        <DataLine text={R.fmtRank(row.rank)} size="name" bold={you} lines={1} />
       </View>
-      <View style={{ width: cols.logo, alignItems: 'center' }}>{you ? <View style={styles.youMark} /> : null}</View>
+      {/* The logo column: every plate (the rivals' and the yard's own mark) is drawn by the list's one canvas behind it. */}
+      <View style={{ width: cols.logo }} />
       {/* The player's row prints no "simulated": its name takes that column too (the yard's name is longer than a chip); tonnes stay right-aligned at the edge. */}
       <View style={{ width: row.simulated ? cols.name : cols.name + cols.gap + cols.sim }}>
         <DataLine text={nameOf(c, row.chip)} size="name" bold={you} lines={1} />
@@ -129,7 +148,7 @@ function TableLine({ row, cols, c }: { row: TableRow; cols: TableCols; c: R.Salv
           <Line t={{ key: 'table.simulated' }} size="line" colour={INK.soft} style={{ fontSize: SIM_PT, lineHeight: Math.ceil(SIM_PT * 1.25) }} />
         </View>
       ) : null}
-      <View style={{ width: cols.tonnes, alignItems: 'flex-end' }}>
+      <View style={{ width: cols.tonnes, alignItems: 'flex-end', paddingRight: TONNES_PAD }}>
         <DataLine text={R.fmtTonnes(row.tonnes_g)} size="name" bold={you} lines={1} />
       </View>
     </View>
@@ -143,6 +162,7 @@ const styles = StyleSheet.create({
   rungNow: { backgroundColor: INK.hivis, borderColor: INK.ink },
   rungPast: { backgroundColor: INK.shade, borderColor: INK.ink },
   rungLocked: { backgroundColor: INK.paper, borderColor: INK.rule },
+  rungBeyond: { opacity: 0.55 },
   padRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 8 },
   chip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: INK.rule, backgroundColor: INK.paper },
@@ -151,5 +171,4 @@ const styles = StyleSheet.create({
   logos: { position: 'absolute', top: 0 },
   row: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
   you: { backgroundColor: YARD.hivis },
-  youMark: { width: LOGO - 6, height: LOGO - 6, borderRadius: 4, borderWidth: 1.3, borderColor: INK.ink, backgroundColor: INK.paper },
 });

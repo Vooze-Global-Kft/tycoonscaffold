@@ -19,6 +19,7 @@ import { useSalvageUi } from '../uiState';
 import { fitText, lineH, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
 import { goalValues } from './words';
+import { hudAnchors } from './anchors';
 
 /** The open card closes after this long (4.1). */
 export const GOAL_OPEN_MS = 6000;
@@ -40,7 +41,6 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
     return () => clearTimeout(t);
   }, [lesson]);
   const first = v.goal ?? v.advice;
-  if (!first) return null;
   const s = L.s;
   const h1 = L.rows.goal - 4;
   const w = L.goalW;
@@ -53,6 +53,12 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const lh = lineH(Math.max(fit.pt, subPt));
   const tall = more.length > 0;
   const openH = Math.max(h1, Math.min(84, 8 + lh * (1 + more.length)));
+  // Tickets keep clear of the card at its real height (P8, W17).
+  const cardH = !first ? 0 : tall ? openH : h1;
+  useEffect(() => {
+    hudAnchors.setGoal(cardH ? { x: L.left, y: L.goalY + 2, w, h: cardH } : { x: 0, y: 0, w: 0, h: 0 });
+  }, [cardH, L.left, L.goalY, w]);
+  if (!first) return null;
   return (
     <Pressable
       accessibilityRole="button"

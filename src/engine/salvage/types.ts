@@ -145,6 +145,12 @@ export interface ThingState {
   progress: number;
   /** Who is cutting it or carrying it away (the boss, a crew id): also the CLAIM (nobody else takes it), or null. */
   by: string | null;
+  /**
+   * ADDED (finding W9): a stripped shell (content `objects.<obj>.shell`): every piece is off, the shell was
+   * weighed in whole where it stands and waits for the merchant's next collection of its grade; nobody
+   * works or carries it. Absent: an ordinary thing.
+   */
+  shell?: true;
 }
 
 /**
@@ -714,8 +720,14 @@ export interface TicketLine {
 }
 
 interface TicketBase {
-  /** Ticket number (the history's order). */
+  /** Ticket number (the history's order; unique, never printed since the fix pass: print `series`). */
   no: number;
+  /**
+   * ADDED (finding W16): the number PRINTED on the ticket, from its own book: weigh-ins (platform and
+   * skip) No. 1, 2, ...; sales (collections and deal deliveries) ticket 1, 2, ...; a drop-off slip has
+   * none. Absent on tickets printed before the fix pass (print `no` then). series.ts `stampSeries`.
+   */
+  series?: number;
   /** Yard second and market day it printed (the date: fmtDay(day)). */
   at: number;
   day: number;
@@ -991,6 +1003,18 @@ export interface AwayCard {
   passed: RivalId[];
   /** With little to show: what would have earned more (away.hintCutter, ...). */
   hint: Txt | null;
+  /** P3/E33 (rules-sim-a): the whole absence, seconds, before the cap (`seconds` is what the yard RAN). */
+  absentS?: number;
+  /** P3: § spent while away (loads bought and anything else); `money` is the sales (collections and deliveries). */
+  spent?: number;
+  /** P3: loads bought while away, by partner. */
+  bought?: { partner: PartnerId; n: number; spent: number }[];
+  /** P3: money − spent (what the cash moved by). */
+  net?: number;
+  /** E34: the supply deal's deliveries while away (market day, grams, §). */
+  deliveryList?: { day: number; g: number; paid: number }[];
+  /** E33: what makes the yard run longer next time: the next rung's cap, else the Night watch (not owned), else null. */
+  runLonger?: { rung: number; capS: number } | { item: 'night'; capS: number } | null;
 }
 
 /** The goal card (2.10): its first line, what follows, and a meter where the goal counts something. */

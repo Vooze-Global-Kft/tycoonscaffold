@@ -15,6 +15,14 @@ export function say(t: R.Txt, c: Parameters<typeof sayRaw>[1]): string {
   return sayRaw(t, c);
 }
 
+/**
+ * Money in the bars and chips (finding P4's ruling): the facade's fmtMoney, which prints whole § from §100
+ * since rules-book's W11 ("§142", "§13,309"); tickets keep their hundredths (./ticketView.ts exact()).
+ */
+export function barMoney(x: number): string {
+  return R.fmtMoney(x);
+}
+
 /** The few numbers of the bar (primitives, compared shallowly). */
 export interface BarValues {
   ok: boolean;

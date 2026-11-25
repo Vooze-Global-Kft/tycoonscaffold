@@ -7,6 +7,7 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { rangeChips, rungsOf } from './ladder';
+import { tonnesStep_g } from './money';
 import type { IndustryTable, RivalId, SalvageConfig, SalvageGame, TableRow } from './types';
 
 /** A rival's tonnes on market day d since the player's start, grams (E27). */
@@ -37,9 +38,9 @@ export function passedNow(cfg: SalvageConfig, g: SalvageGame): number {
   return passedCount(cfg.salvage, g.salvage.ladder.supplied_g, rivalDay(g), g.salvage.ladder.passed);
 }
 
-/** The grams of one printed step of a tonnes figure (fmtTonnes: two decimals below 1,000 t, whole tonnes from it). */
+/** The grams of one printed step of a tonnes figure (money.ts fmtTonnes: 0.01 t below 10 t, 0.1 t below 100 t, whole tonnes from it). */
 function unitOf(gr: number): number {
-  return gr >= 1e9 ? 1e6 : 1e4;
+  return tonnesStep_g(gr);
 }
 const floorTo = (gr: number, u: number) => Math.floor(gr / u) * u;
 const ceilTo = (gr: number, u: number) => Math.ceil(gr / u) * u;

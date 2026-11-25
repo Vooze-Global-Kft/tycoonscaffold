@@ -8,13 +8,57 @@
  */
 import { capOf } from './bays';
 import { boostFactor, count, printTicket, spend, standingFor, ticketBase, type Ctx } from './clock';
-import { laneM, legM, routeM, driverRoundF } from './content';
+import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './content';
 import { atPlace } from './machines';
-import { resolveGrams } from './money';
+import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import type { RefusalKey, TxtArgs } from './types';
+import type { SalvageContent } from '../../config/schema.salvage';
+
+/**
+ * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
+ * object (a pure function of the content): the hook's floor check runs at every instant the idle driver
+ * waits for room (finding R3), and walking the piece specs each time was a fifth of an away pass.
+ */
+const REMAIN = new WeakMap<SalvageContent, Map<string, number[]>>();
+function remainingRows(c: SalvageContent): Map<string, number[]> {
+  let byObj = REMAIN.get(c);
+  if (!byObj) REMAIN.set(c, (byObj = new Map()));
+  return byObj;
+}
+function remainingRow(c: SalvageContent, byObj: Map<string, number[]>, obj: string): number[] {
+  let row = byObj.get(obj);
+  if (!row) {
+    const o = c.objects[obj];
+    const n = o ? pieceCount(c, obj) : 0;
+    row = new Array(n + 1).fill(0);
+    if (o) {
+      row[n] = o.waste_g;
+      for (let k = n - 1; k >= 0; k--) row[k] = row[k + 1] + (pieceSpec(c, obj, k)?.g ?? 0);
+    } else row = [];
+    byObj.set(obj, row);
+  }
+  return row;
+}
+
+/** Grams on the tipping floor: things.ts floorMass_g exactly, with the per-thing sum memoised (R3). */
+export function floorGrams(x: Ctx): number {
+  const byObj = remainingRows(x.c);
+  let g = 0;
+  const things = x.s.things;
+  for (let i = 0; i < things.length; i++) {
+    const th = things[i];
+    if (th.at.at !== 'floor') continue;
+    const row = remainingRow(x.c, byObj, th.obj);
+    if (row.length) g += row[th.cut < 0 ? 0 : th.cut >= row.length ? row.length - 1 : th.cut];
+  }
+  const pieces = x.s.pieces;
+  for (let i = 0; i < pieces.length; i++) if (pieces[i].pile === 'floor') g += pieces[i].g;
+  return g;
+}
+void floorMass_g;
 
 void capOf;
 
@@ -33,7 +77,7 @@ function zoneAt(x: Ctx, px: number, py: number): string | null {
 }
 
 /** Why the truck cannot hook a partner's skip now (2.7's label reasons), or null. `earmark` counts the driver's held cash. */
-export function hookRefusal(x: Ctx, partner: string, forDriver = false): RefusalKey | null {
+export function hookRefusal(x: Ctx, partner: string, forDriver = false, floor?: { g: number | null }): RefusalKey | null {
   const ps = x.s.partners[partner];
   if (!ps?.open) return 'noTruck';
   if (x.s.truck.skip) return 'nothing';
@@ -42,7 +86,11 @@ export function hookRefusal(x: Ctx, partner: string, forDriver = false): Refusal
   const held = forDriver ? 0 : (x.s.truck.earmark?.money ?? 0);
   if (sk.price > x.cash - held + 1e-9) return 'loadCash';
   const heldFloor = forDriver ? 0 : (x.s.truck.earmark?.floor_g ?? 0);
-  if (floorMass_g(x) + heldFloor + sk.mass_g > x.c.floorRoom_kg * 1000) return 'floor';
+  // The floor's grams once per caller (the idle driver asks for every partner at one instant, R3).
+  let fg: number;
+  if (floor) fg = floor.g ??= floorGrams(x);
+  else fg = floorGrams(x);
+  if (fg + heldFloor + sk.mass_g > x.c.floorRoom_kg * 1000) return 'floor';
   return null;
 }
 
@@ -53,6 +101,11 @@ function hookNow(x: Ctx, partner: string, by: 'boss' | 'driver', t: number): boo
   const tr = x.s.truck;
   tr.earmark = null;
   spend(x, sk.price);
+  if (x.away) {
+    const b = (x.away.bought[partner] ??= { n: 0, spent: 0 });
+    b.n += 1;
+    b.spent = roundMoney(b.spent + sk.price);
+  }
   tr.skip = { partner, slot: sk.slot, contents: { ...sk.contents }, mass_g: sk.mass_g, price: sk.price, trial: sk.trial, weighed: false };
   const ps = x.s.partners[partner];
   if (sk.trial) ps.trialUsed = true;
@@ -198,10 +251,11 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const d = s.crew.find((m) => m.role === 'driver' && m.job === 'idle' && m.phase === 'wait' && m.t1 <= t + 1e-6);
   if (!d || !tr.owned || tr.by !== null || tr.trip || tr.skip || s.arriving.some((a) => a.item === 'truck')) return false;
   let best: { partner: string; fullAt: number; price: number; mass: number } | null = null;
-  for (const id of Object.keys(s.partners)) {
+  const floor = { g: null as number | null };
+  for (const id in s.partners) {
     if (!x.c.partners[id]) continue;
     const sk = fullestSkip(x, id);
-    if (!sk || hookRefusal(x, id)) continue;
+    if (!sk || hookRefusal(x, id, false, floor)) continue;
     if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
   }
   if (!best) return false;

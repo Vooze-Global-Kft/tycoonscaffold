@@ -153,7 +153,7 @@ function tail(x: Ctx, t: number): void {
   roundTry(x, t);
   crewDepart(x, t);
   driverDepart(x, t);
-  checks(x, t, false);
+  if (x.live) checks(x, t, false);
 }
 
 /**

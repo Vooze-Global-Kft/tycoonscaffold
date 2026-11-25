@@ -5,3 +5,4 @@
  * - ./timeline.ts (worklets), ./layout.ts, ./layers.ts, ./compose.ts (worklet), ./draw.ts (Node).
  */
 export { LoadingCurtain } from './LoadingCurtain';
+export { useCurtainShut } from './clock';

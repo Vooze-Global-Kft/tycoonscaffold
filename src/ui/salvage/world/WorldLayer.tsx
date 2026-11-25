@@ -37,9 +37,17 @@ import { chevronGate } from '../hints/gate';
 import { FX, FX_EVENTS, FX_S, WORK, arcAt, ease, effectsFor, type FxContext, type FxSpawn } from './effects';
 import type { YardAnim } from './frameLoop';
 import { HERO, freeWorld, heroCam, heroCamera, type ScreenInsets } from './heroFrame';
-import { labelItems, labelSize, plateMetrics, stackLabels, NEAR_M, type LabelLine, type PlacedLabel } from './labels';
+import { labelItems, labelSize, layoutPlates, plateMetrics, NEAR_M, type LabelLine, type LabelTops, type PlacedLabel, type Rect } from './labels';
+import { MANIFEST, cellBounds } from '../art/manifest';
+import { hudLayout } from '../hud/metrics';
+import * as hudAnchorsMod from '../hud/anchors';
+import { useSalvageUi } from '../uiState';
+import { STICK_R, stick } from './stick';
 import { labelsDev } from './labelsDev';
 import type { YardLayout } from './yard';
+
+/** The hud's ticket boxes when it exports them (requests.md: `ticketBoxes`), else undefined (a box above each anchor). */
+const hudTickets = (hudAnchorsMod as Record<string, unknown>).ticketBoxes as { value: { x: number; y: number; w: number; h: number }[] } | undefined;
 
 /** Seconds a place's name stays after it first comes into view. */
 const FIRST_SIGHT_S = 6;
@@ -79,7 +87,7 @@ export function WorldLayer({ cfg, yard, anim, width, height, insets, active = tr
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <FxCanvas cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
-      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} />
+      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
     </View>
   );
 }
@@ -91,24 +99,70 @@ function useLabelSize(): number {
   return labelSize(labelsDev.fontScale ?? fontScale);
 }
 
-function Labels({ cfg, yard, anim, width, height, insets }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets }) {
+/** Sprite tops over the content's footprints, metres, from the art manifest (the plate's pointer sits above them). */
+function useTops(cfg: R.SalvageConfig): { tops: LabelTops; machineTop: (m: string) => number } {
+  return useMemo(() => {
+    const ById = new Map(MANIFEST.map((e) => [e.id, e]));
+    const lift = VIEW.ppm * VIEW.lift;
+    const top = (id: string | undefined): number | undefined => {
+      const e = id ? ById.get(id) : undefined;
+      if (!e) return undefined;
+      const b = cellBounds(e, 0);
+      return (-b.y * (e.drawScale ?? 1)) / lift;
+    };
+    const places = cfg.salvage.map.places as Record<string, { sprite?: string }>;
+    const objects = cfg.salvage.objects as Record<string, { sprite?: string }>;
+    const mt = (m: string) => Math.max(0, ...(MACHINE_SPRITES[m] ?? []).map((id) => top(id) ?? 0));
+    return { tops: { place: (id) => top(places[id]?.sprite), thing: (obj) => top(objects[obj]?.sprite) }, machineTop: mt };
+  }, [cfg]);
+}
+
+/** The sprites a machine stands as on its pad (the world draws these; a plate over the pad clears the tallest). */
+const MACHINE_SPRITES: Record<string, string[]> = {
+  crucible: ['plant.crucible.pour', 'plant.hood'],
+  hand_stripper: ['plant.stripper.hand'],
+  stripper: ['plant.stripper.power'],
+  bench: ['plant.bench.motor'],
+};
+
+/** A ticket's box while the hud gives none (a ticket rises above its anchor; 4.4: 280 x 150 at most). */
+function ticketBox(p: { x: number; y: number }, w: number): Rect {
+  return { x0: p.x - w / 2 - 6, x1: p.x + w / 2 + 6, y0: p.y - 160, y1: p.y + 12 };
+}
+
+function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets; active: boolean }) {
   const size = useLabelSize();
+  const { fontScale } = useWindowDimensions();
   const { top: inT, left: inL, right: inR, bottom: inB } = insets;
   const [placed, setPlaced] = useState<PlacedLabel[]>([]);
   const [inv, setInv] = useState(1);
   const cam = anim.camera;
   const seen = useRef(new Map<string, number>());
   const noted = useRef(new Set<string>());
+  const { tops, machineTop } = useTops(cfg);
   useEffect(() => {
+    // H14: nothing refreshes while the yard is not active (app in the background, a card open, portrait).
+    if (!active) return;
     let last = '';
     const v = { ppm: yard.ppm, tilt: yard.tilt, lift: yard.lift };
+    const places = cfg.salvage.map.places as Record<string, { w: number; d: number }>;
+    const points = cfg.salvage.map.points as Record<string, [number, number]>;
+    const footprints: Record<string, Rect> = {};
+    for (const id of Object.keys(places)) {
+      const pt = points[id];
+      if (pt) footprints[id] = { x0: pt[0] - places[id].w / 2, x1: pt[0] + places[id].w / 2, y0: pt[1] - places[id].d / 2, y1: pt[1] + places[id].d / 2 };
+    }
+    const L = hudLayout(width, height, { top: inT, left: inL, right: inR, bottom: inB }, labelsDev.fontScale ?? fontScale);
     const run = () => {
       const { game } = useGame.getState();
       const g = game as R.SalvageGame;
       if (!g.salvage) return;
       const f = R.frame(cfg, g);
       const day = R.marketDay(cfg, R.marketTime(g, Date.now()));
-      const items = labelItems(cfg, g, f, day);
+      // A pad's plate clears the machine standing on it.
+      const owned = new Map(f.machines.filter((m) => m.look !== 'padlock').map((m) => [m.place, m.machine]));
+      const t2: LabelTops = { place: (id) => Math.max(tops.place?.(id) ?? 0, owned.has(id) ? machineTop(owned.get(id)!) : 0), thing: tops.thing };
+      const items = labelItems(cfg, g, f, day, t2);
       const cv = cam.value;
       const z = cv.zoom > 0 ? cv.zoom : 1;
       const now = Date.now() / 1000;
@@ -131,25 +185,64 @@ function Labels({ cfg, yard, anim, width, height, insets }: { cfg: R.SalvageConf
         }
         return near || at === undefined || now - at < FIRST_SIGHT_S;
       });
-      // Plates keep their text size while the view zooms out (driving): stacked and drawn at 1 / zoom.
-      const inv = Math.round((1 / z) * 20) / 20;
-      // Plates stay clear of the top bar and the goal card: a plate whose thing is in view below them but
-      // whose plate would rise under them is lowered onto the free world's edge (4.1's rows), at the camera
-      // of this pass (labels.ts stackLabels `clampTop`, in the layer's pixels).
-      const free = freeWorld(width, height, { top: inT, left: inL, right: inR, bottom: inB });
-      const clampTop = (free.y0 + 2 - height / 2) / z + height / 2 + cv.y;
-      const next = stackLabels(shown, v, size * inv, clampTop);
-      const key = `${inv};` + next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.lift)}`).join(';');
+      // The scene in screen points at this pass's camera: the bars, the goal card at its real height, the
+      // one button, the held stick, the boss himself; tickets hide what they touch.
+      const ui = useSalvageUi.getState();
+      const goalH = ui.goalOpen || ui.goalLesson ? 84 : L.rows.goal - 4;
+      const blocks: Rect[] = [
+        { x0: L.left, x1: L.left + L.goalW, y0: L.goalY, y1: L.goalY + 2 + goalH + 2 },
+        { x0: L.button.x - 6, x1: L.button.x + L.button.size + 6, y0: L.button.y - 6, y1: L.button.y + L.button.size + 6 },
+      ];
+      const st = stick.value;
+      if (st.on) blocks.push({ x0: st.bx - STICK_R - 8, x1: st.bx + STICK_R + 8, y0: st.by - STICK_R - 8, y1: st.by + STICK_R + 8 });
+      if (boss) {
+        const bw = (boss.driving ? 1.6 : 0.45) * v.ppm * z;
+        const bh = (boss.driving ? 2.8 : 2.0) * v.ppm * v.lift * z;
+        const bx = (boss.x * v.ppm - cv.x - width / 2) * z + width / 2;
+        const by = (boss.y * v.ppm * v.tilt - cv.y - height / 2) * z + height / 2;
+        blocks.push({ x0: bx - bw, x1: bx + bw, y0: by - bh, y1: by + 6 });
+      }
+      const hides: Rect[] = [];
+      const boxes = (hudTickets as { value?: { x: number; y: number; w: number; h: number }[] } | undefined)?.value;
+      if (boxes && boxes.length) for (const b of boxes) hides.push({ x0: b.x - 4, x1: b.x + b.w + 4, y0: b.y - 4, y1: b.y + b.h + 4 });
+      else {
+        const wa = weighInAnchor.value;
+        const ca = collectionAnchor.value;
+        if (wa.x >= 0) hides.push(ticketBox(wa, L.ticketW));
+        if (ca.x >= 0) hides.push(ticketBox(ca, L.ticketW));
+      }
+      const people = [...(boss ? [{ x: boss.x, y: boss.y }] : []), ...f.crew.map((m) => crewAt(m, f.t))];
+      const workAt = new Set<string>();
+      if (f.boss.place && f.boss.act !== 'none' && f.boss.act !== 'drive') workAt.add(f.boss.place);
+      const busy = new Set(f.things.filter((t) => t.by).map((t) => t.uid));
+      const next = layoutPlates(shown, {
+        view: v,
+        cam: cv,
+        W: width,
+        H: height,
+        size,
+        bounds: { x0: L.left, x1: L.right, y0: L.goalY, y1: height - Math.max(0, inB) - 2 },
+        blocks,
+        hides,
+        people,
+        workAt,
+        busy,
+        footprints,
+        boss: boss ? { x: boss.x, y: boss.y } : null,
+      });
+      // Plates keep their text size while the view zooms out (driving): drawn at 1 / zoom in the moved layer.
+      const k = 1 / z;
+      const key = `${k.toFixed(3)};` + next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.x)},${Math.round(p.y)}`).join(';');
       if (key !== last) {
         last = key;
         setPlaced(next);
-        setInv(inv);
+        setInv(k);
       }
     };
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, anim.body, size, width, height, inT, inL, inR, inB]);
+  }, [cfg, yard, cam, anim.body, size, fontScale, width, height, inT, inL, inR, inB, active, tops, machineTop]);
   const W = width;
   const H = height;
   const style = useAnimatedStyle(() => {
@@ -167,6 +260,12 @@ function Labels({ cfg, yard, anim, width, height, insets }: { cfg: R.SalvageConf
   );
 }
 
+/** Where a crew member is at the frame's second (on his leg from `from` to `to`). */
+function crewAt(m: R.FrameTable['crew'][number], t: number): { x: number; y: number } {
+  const u = m.t1 > m.t0 ? Math.max(0, Math.min(1, (t - m.t0) / (m.t1 - m.t0))) : 1;
+  return { x: m.from.x + (m.to.x - m.from.x) * u, y: m.from.y + (m.to.y - m.from.y) * u };
+}
+
 const TONE: Record<LabelLine['tone'], { color: string; weight: '600' | '700' | '800' }> = {
   ink: { color: YARD.ink, weight: '600' },
   muted: { color: YARD.inkSoft, weight: '600' },
@@ -178,27 +277,27 @@ const TONE: Record<LabelLine['tone'], { color: string; weight: '600' | '700' | '
 const PLATE_SPAN = 320;
 
 function Plate({ p, size, lineH, padX, padY, pad }: { p: PlacedLabel; size: number; lineH: number; padX: number; padY: number; pad: number }) {
-  // Anchored at the pointer's top (p.py - lift - 7): the plate grows upwards from it, centred on the thing.
-  const base = p.py - p.lift - 7;
+  // The laid-out box (labels.ts layoutPlates): the plate is centred in it (its words are a little narrower
+  // than the estimate), the stem runs from the box's bottom down to the pointer when the plate stands above.
   const kind = p.item.kind;
   const bg = kind === 'bay' ? YARD.paperShade : YARD.paper;
+  const stemTop = p.y + p.h;
   return (
-    <View style={{ position: 'absolute', left: p.px - PLATE_SPAN / 2, top: base, width: PLATE_SPAN, height: 0 }}>
-      <View style={styles.plateHold}>
+    <>
+      {!p.below && p.py - stemTop > 1 ? <View style={[styles.stem, { left: p.px - 1, top: stemTop, height: p.py - stemTop }]} /> : null}
+      <View style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.h, alignItems: 'center', justifyContent: 'flex-end' }}>
         <View style={[styles.plate, { backgroundColor: bg, paddingHorizontal: padX, paddingVertical: padY, maxWidth: PLATE_SPAN }]}>
           {p.item.padlock ? <Padlock s={pad - 4} /> : null}
           <View>
             {p.item.lines.map((l, i) => (
-              <Text key={i} allowFontScaling={false} style={{ fontSize: size, lineHeight: lineH, color: TONE[l.tone].color, fontWeight: TONE[l.tone].weight }}>
+              <Text key={i} allowFontScaling={false} numberOfLines={1} style={{ fontSize: size, lineHeight: lineH, color: TONE[l.tone].color, fontWeight: TONE[l.tone].weight }}>
                 {l.text}
               </Text>
             ))}
           </View>
         </View>
       </View>
-      {/* The pointer down to the thing (lifted plates get a longer stem). */}
-      {p.lift > -7 ? <View style={[styles.stem, { height: 7 + p.lift, left: PLATE_SPAN / 2 - 1 }]} /> : null}
-    </View>
+    </>
   );
 }
 
@@ -647,7 +746,7 @@ function useSlide() {
   );
 }
 
-function Slide({ slot, text, yard, cam, width, height, size }: { slot: ReturnType<typeof useSlide>; text: string; yard: YardLayout; cam: SharedValue<Cam>; width: number; height: number; size: number }) {
+function Slide({ slot, text, yard, cam, width, height, size }: { slot: ReturnType<typeof useSlide>; text: string; yard: YardLayout; cam: YardAnim["camera"]; width: number; height: number; size: number }) {
   const W = width;
   const H = height;
   const ppm = yard.ppm;

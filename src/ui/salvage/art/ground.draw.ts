@@ -142,10 +142,8 @@ export function drawWeeds(c: SkCanvas, x: number, y: number, seed = 1, k = 1): v
  * in haze a dockside crane, stacked containers, a chimney, cable drums and a tree line, all flat
  * silhouettes in two far tones, standing on `horizon`. No real place, no logo.
  */
-export function drawSkyline(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 1): void {
-  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(0, top, 0, horizon, [YARD.sky, YARD.skyLow], [0, 1]));
-  // the low sun's warm glow at the west end of the sky
-  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(x0, 0, x0 + w, 0, ['rgba(255,227,176,0.55)', 'rgba(255,227,176,0)'], [0, 0.6]));
+export function drawSkyline(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 1, sky = true): void {
+  if (sky) drawSky(c, x0, w, top, horizon);
   const far = YARD.far;
   const farD = YARD.farDark;
   // a tree line, low and lumpy
@@ -173,6 +171,26 @@ export function drawSkyline(c: SkCanvas, x0: number, w: number, top: number, hor
   c.drawRect({ x: kx, y: horizon - 50, width: 7, height: 50 }, fill(far));
   c.drawRect({ x: kx - 1, y: horizon - 52, width: 9, height: 4 }, fill(farD));
   c.drawPath(poly([kx + 14, horizon, kx + 14, horizon - 18, kx + 60, horizon - 26, kx + 106, horizon - 18, kx + 106, horizon]), fill(far));
+}
+
+/** The late-day sky from blue-grey to warm cream, the low sun's glow at its west end. */
+export function drawSky(c: SkCanvas, x0: number, w: number, top: number, horizon: number): void {
+  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(0, top, 0, horizon, [YARD.sky, YARD.skyLow], [0, 1]));
+  c.drawRect({ x: x0, y: top, width: w, height: horizon - top + 2 }, linear(x0, 0, x0 + w, 0, ['rgba(255,227,176,0.55)', 'rgba(255,227,176,0)'], [0, 0.6]));
+}
+
+/** The width of one far-yard picture in the running world's band (the proof's own: a screen and a bit). */
+export const FAR_SEGMENT = 864;
+
+/**
+ * The running world's band over the back wall (world/YardView.tsx bakes it once): one sky over the whole
+ * width `w`, then drawFarYard's skyline, stacks and cranes repeated every FAR_SEGMENT points with another
+ * seed each, standing on `horizon`.
+ */
+export function drawFarBand(c: SkCanvas, w: number, top: number, horizon: number, seed = 4): void {
+  drawSky(c, 0, w, top, Math.max(horizon, top + 1));
+  c.drawRect({ x: 0, y: horizon, width: w, height: 40 }, fill(mix(YARD.far, YARD.concreteDark, 0.5)));
+  for (let k = 0, x = 0; x < w; k++, x += FAR_SEGMENT) drawFarYard(c, x - 12, FAR_SEGMENT + 24, top, horizon, seed + k * 3, false);
 }
 
 /** A colour seen through the late-day haze. */
@@ -345,8 +363,8 @@ export const SUN_MULTIPLY = { colors: ['#F7CF9C', '#FBE6C8', '#F6F1EA'], stops: 
  * of the neighbouring yard: container stacks in the yard's three colours (hazed), a scrap mountain and a
  * material handler's grab crane, a gantry. Screen space; the world draws it as a strip behind the wall.
  */
-export function drawFarYard(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 3): void {
-  drawSkyline(c, x0, w, top, horizon, seed);
+export function drawFarYard(c: SkCanvas, x0: number, w: number, top: number, horizon: number, seed = 3, sky = true): void {
+  drawSkyline(c, x0, w, top, horizon, seed, sky);
   const haze = (hex: string, k = 0.35) => mix(hex, YARD.far, k);
   // a scrap mountain on the neighbour's ground, lumpy, with a few beams sticking out
   const mx = x0 + w * 0.3;

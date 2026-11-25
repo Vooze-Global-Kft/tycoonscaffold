@@ -63,6 +63,7 @@ import {
 } from '../site.draw';
 import { drawBarrier, drawExcavator, drawFarmShed, drawHedge, drawHoarding, drawHoardingGate, drawHoardingLeafOpen, drawLimitSign, drawParapet, limitSlot } from '../lane.draw';
 import { POUR_LIGHT_SCALE, RING_R, drawCoin, drawDust, drawFlame, drawSparks, drawChalkCircle, drawChevron, drawEdgeArrow, drawPadlockChip, drawPickupShadow, drawPourLight, drawWorkRing } from '../marks.draw';
+import { BED_CELL, BED_FRAMES, drawBedTile } from '../heaps.draw';
 import { drawGroundTile, drawGroundDecal, GROUND_TILES, GROUND_DECALS, TILE_M } from '../ground.draw';
 import type { Bounds, ManifestEntry, Sheet } from './index';
 
@@ -405,6 +406,7 @@ export const PLANT: ManifestEntry[] = [
     entry(`ground.${t.id}`, 'ground', 'G', [TILE_M, TILE_M], B((-TILE_M / 2) * 40, (-TILE_M / 2) * 28, TILE_M * 40, TILE_M * 28), t.frames, (c, v, f) => drawGroundTile(c, v, t.id, f), { k: LANE }),
   ),
   ...GROUND_DECALS.map((d) => entry(`ground.${d.id}`, 'ground', 'G', d.footprint, B(d.bounds[0], d.bounds[1], d.bounds[2], d.bounds[3]), d.frames, (c, v, f) => drawGroundDecal(c, v, d.id, f))),
+  entry('ground.bed', 'ground', 'G', [BED_CELL[0], BED_CELL[1]], B(-38, -26, 76, 46), BED_FRAMES, (c, v, f) => drawBedTile(c, v, f)),
   entry('ground.chalk', 'ground', 'G', [1.8, 1.8], B(-39, -27, 78, 54), one, (c, v) => drawChalkCircle(c, v)),
 ];
 

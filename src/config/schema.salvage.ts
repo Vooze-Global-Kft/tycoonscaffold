@@ -195,6 +195,8 @@ export const ZoneSchema = z.object({
   r: z.number().positive(),
   /** content3: the heap's footprint (E23). */
   footprint: FootprintSchema.optional(),
+  /** ADDED (MAP.md M3, finding L5): the zone's bed, a rectangle (x0, y0 its north-west corner, w east, d south, metres); its things lie inside it (positions.ts thingPos). Absent: the old circle (centre, r). */
+  bed: z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive() }).optional(),
 });
 export type ZoneDef = z.infer<typeof ZoneSchema>;
 
@@ -244,6 +246,22 @@ const MapObject = z
     circles: z.array(z.tuple([z.number(), z.number(), z.number().positive()])).default([]),
     /** The lane's asphalt width, metres (the world's). */
     laneWidth: z.number().positive().optional(),
+    /** ADDED (MAP.md M1, fix pass): the back wall's line y, metres; nothing of the yard, no walker and no vehicle north of it (absent: no wall). */
+    north: z.number().optional(),
+    /**
+     * ADDED (MAP.md M4, fix pass): THE drive line, a corridor along a polyline (`points`, metres) `w` metres
+     * wide; the merchant's flatbed and the truck drive only on it, nothing stands in it.
+     */
+    driveLine: z
+      .object({
+        points: z.array(xy).min(2),
+        w: z.number().positive(),
+        /** ADDED (content, fix pass): the corridor as rectangles (x0, y0 north-west corner, w east, d south, metres): the line's band and the truck's park. */
+        rects: z.array(z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive() })).optional(),
+        /** ADDED (content, fix pass): the vehicles' way points on the line by name (gate, weighbridge, merchant, floor, turn, park), metres. */
+        stops: z.record(z.string(), xy).optional(),
+      })
+      .optional(),
   })
   .strict();
 
@@ -270,6 +288,8 @@ export type ToolDef = z.infer<typeof ToolSchema>;
 export const TruckSchema = z.object({
   /** Driving speed, metres a second (the boss; the driver at v × driverFactor). */
   v: z.number().positive().default(9),
+  /** P10 (rules-sim-a, 19:50): the boss's own driving speed, metres a second (the world drives him at it; the presence clamp allows it). Absent: v. */
+  bossV: z.number().positive().optional(),
   /** Seconds of hooking and tipping a trip. */
   handle_s: z.number().nonnegative().default(14),
   driverFactor: z.number().positive().max(1).default(0.8),
@@ -331,6 +351,9 @@ export const DropoffSchema = z.object({
   places: z.number().int().positive(),
   mix: z.array(z.tuple([id, z.number().positive()])).min(1),
   initial: z.array(id),
+  /** ADDED (finding P1): after `initial`, arrivals take this fixed list in order (again from its start when it runs out) until `openingUntil_s` yard seconds; then the mix. */
+  opening: z.array(id).default([]),
+  openingUntil_s: z.number().nonnegative().default(0),
 });
 export type DropoffDef = z.infer<typeof DropoffSchema>;
 
@@ -559,7 +582,11 @@ export const SalvageSchema = z.object({
   /** Capacity guards at rungs 1 to 3, t/h. */
   ceilings_t_h: z.array(z.number().positive()).length(3),
   /** Away cap, hours: [without, with the Night watch]. */
-  awayCap_h: z.tuple([z.number().positive(), z.number().positive()]),
+  awayCap_h: z.tuple([z.number().positive(), z.number().positive()]).default([4, 6]),
+  /** E33 (rules-sim-a, 19:50): the away cap by rung, hours ([rung 1, rung 2, rung 3, ...]; the last holds beyond). Absent: awayCap_h[0]. */
+  awayCapByRung_h: z.array(z.number().positive()).min(1).optional(),
+  /** E33: hours the Night watch adds to the away cap on any rung. Absent: awayCap_h[1] − awayCap_h[0]. */
+  nightWatch_h: z.number().nonnegative().optional(),
   rivals: RivalsSchema,
 
   // part one's keys (yard-stage1.md 2.1 to 2.11)
@@ -581,6 +608,8 @@ export const SalvageSchema = z.object({
   advice: AdviceSchema.default({ minutes: 3, promptGapS: 60, reserveS: 120 }),
   /** Grades whose first weigh-in prints a lesson (a lesson.* text key). */
   lessons: z.record(id, z.string()).default({}),
+  /** ADDED (finding P2): the value grades (copper, brass, the converter): their lesson ALWAYS shows on the boss's first weigh-in of the grade, whatever was weighed before and however early. */
+  valueLessons: z.array(id).default(['bb', 'brs', 'conv']),
   /** BUILD (strings' text.json): words that live in data (Help's lessons, partners' lines, the glossary). */
   text: z
     .object({
@@ -627,6 +656,8 @@ export function lintSalvage(s: SalvageContent): string[] {
   }
   for (const [o] of s.dropoff.mix) object(o, 'dropoff.mix');
   for (const o of s.dropoff.initial) object(o, 'dropoff.initial');
+  for (const o of s.dropoff.opening) object(o, 'dropoff.opening');
+  for (const g of s.valueLessons) grade(g, 'valueLessons');
   for (const [g] of s.machines.bench.out) grade(g, 'machines.bench.out');
   for (const [rid, r] of Object.entries(s.machines.crucible.recipes)) for (const g of [...(Array.isArray(r[0]) ? r[0] : [r[0]]), r[1], r[3]]) grade(g, `machines.crucible.recipes.${rid}`);
   for (const i of [...s.shop, ...s.dayOneList]) point(i.place, `shop.${i.key}.place`);

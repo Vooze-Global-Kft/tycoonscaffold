@@ -4,7 +4,7 @@
  * typed arguments; numbers are formatted by `say` through the facade's formatters; nothing is computed
  * but which line to print.
  */
-import type { AwayCard, BoardRow, SkipLabel, TableRow, TextKey, Ticket, Txt } from '../../../engine/salvage';
+import type { AwayCard, BoardRow, IndustryTable, SkipLabel, TableRow, TextKey, Ticket, Txt } from '../../../engine/salvage';
 import { TEXT } from '../strings';
 
 // ------------------------------------------------------------------------------- the price board
@@ -23,25 +23,130 @@ export function plateSeed(row: Pick<TableRow, 'id'>): number | null {
   return m ? Number(m[1]) - 1 : null;
 }
 
+/** rules-book's rung selector (R.rungProgress, announced 19:55) as it may come. */
+export interface RungProgressLike {
+  supplied_g?: number;
+  materials?: number;
+  own?: Txt | null;
+  next?: Txt | null;
+}
+
+/** A rung inside this stage: rules-book's `inStage`, else one that has an "opens" line (or the first). */
+export const rungInStage = (r: IndustryTable['rungs'][number]): boolean => (r as { inStage?: boolean }).inStage ?? (r.n === 1 || `opens.rung${r.n}` in TEXT);
+
+/**
+ * The rung box's two lines (P17, W13a, S10; ONE source for the table and the rung sign): the player's
+ * OWN tonnes and materials, then the next rung's condition after "Next:" (past this stage's last rung
+ * only its tonnage, beside a bare padlock: it opens nothing yet). rules-book's selector when given,
+ * else the table's own rows (the player's row and the counted range chips).
+ */
+export function rungBox(t: IndustryTable, you: Pick<TableRow, 'tonnes_g'> | null, rp?: RungProgressLike | null): { own: Txt | null; next: Txt | null } {
+  const counted = t.range.filter((m) => m.counted).length;
+  const own: Txt | null = rp?.own ?? (you || rp ? { key: 'table.mine', args: { t: { tonnes_g: rp?.supplied_g ?? you?.tonnes_g ?? 0 }, r: { n: rp?.materials ?? counted } } } : null);
+  const nr = t.rungs.find((r) => !r.open) ?? null;
+  let next: Txt | null = null;
+  if (rp && rp.next) next = rp.next.key === 'table.locked' ? { key: 'table.nextRung', args: rp.next.args } : rp.next;
+  else if (nr) next = rungInStage(nr) && !(rp && rp.next === null) ? { key: 'table.nextRung', args: { t: { tonnes_g: nr.t * 1e6 }, r: { n: nr.range } } } : { key: 'table.lockedBare', args: { t: { tonnes_g: nr.t * 1e6 } } };
+  return { own, next };
+}
+
 // ------------------------------------------------------------------------------- the away card
 
-/** At most this many grade lines; the rest is "+ n more" (4.4). */
+/** At most this many grade lines; the rest is "+ n more" (4.4). At large type (P19) three. */
 export const AWAY_LINES = 5;
+export const AWAY_LINES_LARGE = 3;
 
-/** Every line the away card prints, in order. */
-export function awayLines(a: AwayCard): { head: Txt; lines: Txt[]; summary: Txt[] } {
-  const head: Txt = { key: 'away.head', args: { t: { secs: a.seconds }, c: { n: a.capS / 3600 } } };
-  const lines = a.lines.slice(0, AWAY_LINES).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
-  if (a.lines.length > AWAY_LINES) lines.push({ key: 'ticket.more', args: { n: { n: a.lines.length - AWAY_LINES } } });
-  const summary: Txt[] = [];
-  if (a.supplied_g > 0 || a.money > 0) summary.push({ key: 'away.supplied', args: { t: { tonnes_g: a.supplied_g }, x: { money: a.money } } });
-  else summary.push({ key: 'away.nothing' });
-  if (a.loads > 0) summary.push({ key: 'away.loads', args: { n: { n: a.loads } } });
-  if (a.deliveries > 0) summary.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
-  for (const r of a.passed) summary.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
-  // The rules' hint can be the very line already printed ("Nothing was weighed out." twice): print it once.
-  if (a.hint && !summary.some((t) => t.key === a.hint!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(a.hint!.args ?? {}))) summary.push(a.hint);
-  return { head, lines, summary };
+/**
+ * The away card's data with the fix pass's fields (rules-sim-a 19:46, all optional on types.ts's
+ * AwayCard; read through this so the card builds while they land): `absentS` the whole absence,
+ * `seconds` what the yard RAN, `spent` / `bought` what was paid while away, `net` what cash moved by,
+ * `deliveryList` the deal's deliveries (E34), `runLonger` what makes the yard run longer (E33), and
+ * rules-book's `next` (the next step).
+ */
+export type AwayData = AwayCard & {
+  absentS?: number;
+  spent?: number;
+  bought?: { partner: string; n: number; spent: number }[];
+  net?: number;
+  deliveryList?: { day: number; g: number; paid: number }[];
+  runLonger?: { rung: number; capS: number } | { item: 'night'; capS: number } | null;
+  next?: Txt | null;
+  /** Grade lines the selector left out (its own cut), counted into "+ n more". */
+  moreLines?: number;
+};
+
+/** rules-book's away selector (R.awayView, announced 19:55) as it may come: every field optional here. */
+export interface AwayViewLike {
+  seconds?: number;
+  ran_s?: number;
+  sales?: number;
+  bought?: { partner?: string; n: number; money: number }[] | { partner?: string; n: number; money: number } | null;
+  net?: number;
+  lines?: { grade: string; g: number; money: number }[];
+  more?: number;
+  deliveries?: number | { day: number; g: number; paid: number }[];
+  passed?: string[];
+  next?: Txt | null;
+  runLonger?: AwayData['runLonger'];
+}
+
+/** The state's away card with rules-book's selector laid over it where it gives a field (its numbers win). */
+export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): AwayData {
+  if (!v) return a;
+  const bought = v.bought == null ? undefined : (Array.isArray(v.bought) ? v.bought : [v.bought]).map((b) => ({ partner: b.partner ?? '', n: b.n, spent: b.money }));
+  return {
+    ...a,
+    absentS: v.seconds ?? a.absentS,
+    seconds: v.ran_s ?? a.seconds,
+    money: v.sales ?? a.money,
+    spent: bought ? bought.reduce((x, b) => x + b.spent, 0) : a.spent,
+    bought: bought ?? a.bought,
+    net: v.net ?? a.net,
+    lines: (v.lines ?? a.lines) as AwayCard['lines'],
+    moreLines: v.lines ? v.more ?? 0 : a.moreLines,
+    deliveryList: Array.isArray(v.deliveries) ? v.deliveries : a.deliveryList,
+    deliveries: typeof v.deliveries === 'number' ? v.deliveries : Array.isArray(v.deliveries) ? v.deliveries.length : a.deliveries,
+    passed: (v.passed ?? a.passed) as AwayCard['passed'],
+    next: v.next !== undefined ? v.next : a.next,
+    runLonger: v.runLonger !== undefined ? v.runLonger : a.runLonger,
+  };
+}
+
+/**
+ * Every line the away card prints, in the ruled order (P3, P19, R6, R10): the head ("Away {t} · the
+ * yard ran {c}") and what makes it run longer; the money (Sales, loads bought per partner, then Net,
+ * which is what the cash moved by); each deal delivery; the rivals passed; the next step; then the
+ * grade lines (five at most, three at large type) and "+ n more".
+ */
+export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
+  const head: Txt = { key: 'away.head', args: { t: { secs: a.absentS ?? a.seconds }, c: { secs: a.seconds } } };
+  const rl = a.runLonger ?? null;
+  const longer: Txt | null = !rl ? null : 'item' in rl ? { key: 'away.longerNight', args: { c: { secs: rl.capS } } } : { key: 'away.longerRung', args: { c: { secs: rl.capS } } };
+  const money: Txt[] = [];
+  let net: Txt | null = null;
+  const spent = a.spent ?? 0;
+  if (a.money > 0 || spent > 0) {
+    money.push({ key: 'away.sales', args: { x: { money: a.money } } });
+    const bought = (a.bought ?? []).filter((b) => b.n > 0 || b.spent > 0);
+    if (bought.length > 1 && bought.every((b) => b.partner)) for (const b of bought) money.push({ key: 'away.boughtFrom', args: { partner: { name: b.partner }, n: { n: b.n }, x: { money: b.spent } } });
+    else if (bought.length || spent > 0) money.push({ key: 'away.bought', args: { n: { n: bought.length ? bought.reduce((x, b) => x + b.n, 0) : a.loads }, x: { money: bought.length ? bought.reduce((x, b) => x + b.spent, 0) : spent } } });
+    const v = a.net ?? a.money - spent;
+    // The sign picks the line; the amount is the rules' own (printed positive, as the key asks).
+    net = v >= 0 ? { key: 'away.net', args: { x: { money: v } } } : { key: 'away.netLoss', args: { x: { money: -v } } };
+  }
+  const news: Txt[] = [];
+  if (a.deliveryList?.length) for (const d of a.deliveryList) news.push({ key: 'ticket.dealDelivery', args: { kg: { mass_g: d.g, step: 'lot' }, x: { money: d.paid } } });
+  else if (a.deliveries > 0) news.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
+  for (const r of a.passed) news.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
+  if (!net && !news.length) news.unshift({ key: 'away.nothing' });
+  // The next step: rules-book's, else the rules' hint (printed once: it can be the "nothing" line itself).
+  let next: Txt | null = a.next ?? a.hint ?? null;
+  if (next && news.some((t) => t.key === next!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(next!.args ?? {}))) next = null;
+  const max = large ? AWAY_LINES_LARGE : AWAY_LINES;
+  const lines = a.lines.slice(0, max).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
+  const rest = Math.max(0, a.lines.length - max) + (a.moreLines ?? 0);
+  if (rest > 0) lines.push({ key: 'ticket.more', args: { n: { n: rest } } });
+  return { head, longer, money, net, news, next, lines };
 }
 
 // ------------------------------------------------------------------------------- the clipboard's tickets

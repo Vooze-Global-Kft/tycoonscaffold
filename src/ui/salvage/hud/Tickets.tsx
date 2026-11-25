@@ -8,9 +8,13 @@
  *   named in the stamp's blue) when a weigh-in of the boss's went into it, else the one-line chip
  *   "Lot sold · §29.00". While it shows, `collectionAnchor` (./anchors.ts) is the cab's screen point,
  *   where world-b's coin arc starts.
- * Both are anchored to their world point (metres, a height above the ground) through the camera, and
- * clamped inside the free world and the safe area, at most 150 pt tall at font scale 1.3; one of each
- * kind at a time (a new one replaces the old). A tap opens the ticket history (the clipboard).
+ * The fix pass (L4, P8, W17, W14, S3): the weigh-in ticket FEEDS OUT of the platform scale's printer slot
+ * (the art's manifest slot, ./slots.ts) on the side away from the boss and never covers his sprite box or
+ * the goal card at its real height; the skip's ticket ("Bought for §x" in the cost colour) beside the
+ * weighbridge's display clear of the truck; the collection ticket at the flatbed's cab; the drop-off slip
+ * over the drop-off; a deal delivery under the cash counter. A ticket whose anchor is off screen stands
+ * under the cash counter, never at the far edge. ONE at a time: the next waits. Every world ticket folds
+ * away while a card is open. At most 150 pt tall at font scale 1.3. A tap opens the clipboard.
  *
  * Above font scale 1.15 a ticket prints at most two grade rows and no lesson (the lead's ruling, 15:55):
  * the lesson then shows as the goal card's second line for six seconds (./lesson.ts).
@@ -24,19 +28,35 @@ import { openCard } from '../overlays/cardStack';
 import { say } from './words';
 import { useSalvageUi } from '../uiState';
 import type { YardLayout } from '../world/yard';
-import { hudAnchors } from './anchors';
-import { avoidRect, lessonOnTicket, lineH, placeTicket, textW, TICKET_PT, type HudLayout } from './metrics';
+import { useGame } from '../../../state/store';
+import { loadingClock } from '../loading/clock';
+import { goalRect, hudAnchors } from './anchors';
+import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, textW, TICKET_PT, underCash, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
-import { crewWeighInChip, lotSoldChip, planTicket, ticketView, type TicketPlan, type TicketView } from './ticketView';
+import { printerSlot, type WorldPoint } from './slots';
+import { crewWeighInChip, dealChip, lotSoldChip, planTicket, slipChip, slipText, ticketView, type TicketPlan, type TicketView } from './ticketView';
 
 /** How long each shows (ms) before it folds. */
-export const TICKET_MS = { weighIn: 4200, collection: 4200, chip: 2600 } as const;
-/** Heights above the ground of the two anchors (metres): the display's printer slot, the flatbed's cab roof. */
-const SLOT_Z = 2.2;
+export const TICKET_MS = { weighIn: 4200, collection: 4200, chip: 2600, slip: 3000 } as const;
+/** Heights above the ground (metres) where an anchor without a printer slot sits: a cab roof, a chip over a place. */
 const CAB_Z = 2.6;
+const CHIP_Z = 1.6;
+/** The boss's sprite box round his feet (metres): half its width, its height. */
+const BOSS_HALF_W = 0.5;
+const BOSS_H = 1.9;
+/** A queued ticket older than this when its turn comes is dropped (it is in the clipboard's history). */
+const STALE_MS = 9000;
 
-type Slot = { id: number; view: TicketView; chip: null } | { id: number; view: null; chip: string };
+type Content = { view: TicketView; chip: null } | { view: null; chip: string };
+
+/** Where a ticket stands: out of a printer slot clear of a box (`keep`), or pinned over a world point; `cash` under the cash counter. */
+type Anchor =
+  | { kind: 'slot'; slot: WorldPoint; keep: { x: number; y: number; halfW: number; z: number } | null }
+  | { kind: 'point'; at: WorldPoint }
+  | { kind: 'cash' };
+
+type Slot = Content & { id: number; anchor: Anchor; ms: number; at: number; coin: WorldPoint | null; weighIn: WorldPoint | null };
 
 /** The yard's camera as the frame loop writes it (world-a: camX, camY in points before the zoom, the zoom about the screen centre). */
 export type Camera = SharedValue<{ x: number; y: number; zoom: number }>;
@@ -51,41 +71,77 @@ export function project(x: number, y: number, z: number, cam: { x: number; y: nu
   return { x: (x * ppm - cam.x - W / 2) * k + W / 2, y: (y * ppm * tilt - z * ppm * lift - cam.y - H / 2) * k + H / 2 };
 }
 
+/**
+ * ONE ticket or chip at a time (P8, L4): the next waits in a queue and shows when the one before folds.
+ * Every world ticket folds away while a card is open (L4); what was waiting then is dropped (the
+ * clipboard keeps the history).
+ */
 export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout }) {
   const c = cfg.salvage;
-  const [scale, setScale] = useState<Slot | null>(null);
-  const [cab, setCab] = useState<Slot | null>(null);
-  const [bridge, setBridge] = useState<Slot | null>(null);
+  const [cur, setCur] = useState<Slot | null>(null);
+  const queue = useRef<Slot[]>([]);
   const bossIn = useRef(false);
   const ids = useRef(0);
-  const timers = useRef<{ scale?: ReturnType<typeof setTimeout>; cab?: ReturnType<typeof setTimeout>; bridge?: ReturnType<typeof setTimeout> }>({});
-  const scalePt = R.point(cfg, 'scale');
-  const cabPt = R.point(cfg, 'merchant');
-  const bridgePt = R.point(cfg, 'weighbridge');
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const curRef = useRef<Slot | null>(null);
 
   useEffect(() => {
-    const show = (which: 'scale' | 'cab' | 'bridge', slot: Slot, ms: number) => {
-      const set = which === 'scale' ? setScale : which === 'cab' ? setCab : setBridge;
-      clearTimeout(timers.current[which]);
-      set(slot);
-      timers.current[which] = setTimeout(() => {
-        set(null);
-        if (which === 'cab') hudAnchors.setCollection(null);
-        else if (which === 'scale') hudAnchors.setWeighIn(null);
-      }, ms);
+    const scalePt = R.point(cfg, 'scale');
+    const scaleSlot: WorldPoint = printerSlot(cfg, 'scale') ?? { x: scalePt.x, y: scalePt.y, z: 2.2 };
+    const bridgePt = R.point(cfg, 'weighbridge');
+    const bridgeSlot: WorldPoint = printerSlot(cfg, 'weighbridge') ?? { x: bridgePt.x, y: bridgePt.y, z: CAB_Z };
+    const dropPt = R.point(cfg, 'dropoff');
+    const deck = (c.map.places as Record<string, { w?: number } | undefined>).weighbridge;
+    const proj = (p: WorldPoint) => project(p.x, p.y, p.z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift);
+    const cardOpen = () => useSalvageUi.getState().stack.length > 0;
+
+    const fold = () => {
+      clearTimeout(timer.current);
+      curRef.current = null;
+      setCur(null);
+      hudAnchors.setCollection(null);
+      hudAnchors.setWeighIn(null);
     };
+    const next = () => {
+      fold();
+      if (cardOpen()) {
+        queue.current = [];
+        return;
+      }
+      const now = Date.now();
+      let n = queue.current.shift();
+      while (n && now - n.at > STALE_MS) n = queue.current.shift();
+      if (!n) return;
+      curRef.current = n;
+      setCur(n);
+      if (n.coin) hudAnchors.setCollection(proj(n.coin));
+      if (n.weighIn) hudAnchors.setWeighIn(proj(n.weighIn));
+      timer.current = setTimeout(next, n.ms);
+    };
+    const push = (content: Content, anchor: Anchor, ms: number, extra: { coin?: WorldPoint; weighIn?: WorldPoint } = {}) => {
+      if (cardOpen()) return;
+      queue.current.push({ ...content, id: ++ids.current, anchor, ms, at: Date.now(), coin: extra.coin ?? null, weighIn: extra.weighIn ?? null });
+      // A collection's coin arc starts at the cab NOW (world-b reads the anchor at the event), even while it waits.
+      if (extra.coin && curRef.current) hudAnchors.setCollection(proj(extra.coin));
+      if (!curRef.current) next();
+    };
+    const bossBox = () => {
+      const g = useGame.getState().game as R.SalvageGame;
+      const p = g?.salvage?.presence;
+      return p ? { x: p.x, y: p.y, halfW: BOSS_HALF_W, z: BOSS_H } : { x: scalePt.x, y: scalePt.y, halfW: BOSS_HALF_W, z: BOSS_H };
+    };
+
     const offIn = yardEvents.on('weighIn', (e) => {
       const t = e.ticket;
       if (e.by === 'boss') {
         bossIn.current = true;
-        hudAnchors.setWeighIn(project(scalePt.x, scalePt.y, SLOT_Z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift));
         const onTicket = lessonOnTicket(L.s);
         const view = ticketView(t, c, onTicket ? undefined : null);
         if (!onTicket && t.kind === 'weighIn' && t.lessonText) useSalvageUi.getState().showGoalLesson(say(t.lessonText, c));
-        if (view) show('scale', { id: ++ids.current, view, chip: null }, TICKET_MS.weighIn);
+        if (view) push({ view, chip: null }, { kind: 'slot', slot: scaleSlot, keep: bossBox() }, TICKET_MS.weighIn, { weighIn: scaleSlot });
       } else {
         const chip = crewWeighInChip(t, c);
-        if (chip) show('scale', { id: ++ids.current, view: null, chip }, TICKET_MS.chip);
+        if (chip) push({ view: null, chip }, { kind: 'slot', slot: scaleSlot, keep: null }, TICKET_MS.chip);
       }
     });
     const offOut = yardEvents.on('collected', (e) => {
@@ -93,72 +149,133 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
       // The rules say whether a weigh-in of the boss's went into the lot (types.ts withBoss).
       const boss = t.kind === 'collection' ? t.withBoss : bossIn.current;
       bossIn.current = false;
+      // The cab: the flatbed where the frame has it (as world-b's coin), else the merchant's stand.
+      const g = useGame.getState().game as R.SalvageGame;
+      const fb = g?.salvage ? R.frame(cfg, g).flatbed : null;
+      const base = fb ?? R.point(cfg, 'merchant');
+      const cab: WorldPoint = { x: base.x + 1.2, y: base.y, z: CAB_Z };
       const view = boss ? ticketView(t, c, null) : null;
-      if (view) show('cab', { id: ++ids.current, view, chip: null }, TICKET_MS.collection);
+      if (view) push({ view, chip: null }, { kind: 'point', at: cab }, TICKET_MS.collection, { coin: cab });
       else {
         const chip = lotSoldChip(t, c);
-        if (chip) show('cab', { id: ++ids.current, view: null, chip }, TICKET_MS.chip);
+        if (chip) push({ view: null, chip }, { kind: 'point', at: cab }, TICKET_MS.chip, { coin: cab });
       }
-      hudAnchors.setCollection(project(cabPt.x, cabPt.y, CAB_Z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift));
     });
-    // The skip's weigh-in ticket over the weighbridge (the truck stands on it).
+    // The skip's weigh-in ticket beside the weighbridge's display, clear of the truck's cab (money OUT: no coin).
     const offBridge = yardEvents.on('bridgeWeighIn', (e) => {
       const view = ticketView(e.ticket, c, null);
-      if (view) show('bridge', { id: ++ids.current, view, chip: null }, TICKET_MS.collection);
+      const keep = { x: bridgePt.x, y: bridgePt.y, halfW: (deck?.w ?? 6) / 2, z: CAB_Z };
+      if (view) push({ view, chip: null }, { kind: 'slot', slot: bridgeSlot, keep }, TICKET_MS.collection);
     });
-    const t = timers.current;
+    // The drop-off slip (W14): "Washing machine · signed in · gate drop-off" over the drop-off.
+    const offSlip = yardEvents.on('dropOffSlip', (e) => {
+      const chip = slipChip(e.ticket, c);
+      if (chip) push({ view: null, chip }, { kind: 'point', at: { x: dropPt.x, y: dropPt.y, z: CHIP_Z } }, TICKET_MS.slip);
+    });
+    // A supply deal's delivery (W14): the foundry is away from the yard, so the chip stands under the cash counter.
+    const offDeal = yardEvents.on('dealDelivered', (e) => {
+      const chip = dealChip(e.ticket, c);
+      if (chip) push({ view: null, chip }, { kind: 'cash' }, TICKET_MS.slip);
+    });
+    // The first washer's slip at second 0 (W14): the starting thing was signed in before the player came.
+    let firstSlip: ReturnType<typeof setTimeout> | undefined;
+    const waitFirst = () => {
+      if (!loadingClock.done.value) {
+        firstSlip = setTimeout(waitFirst, 300);
+        return;
+      }
+      const g = useGame.getState().game as R.SalvageGame;
+      const obj = g?.salvage ? firstDropOff(cfg, g) : null;
+      if (obj) push({ view: null, chip: slipText(obj, c) }, { kind: 'point', at: { x: dropPt.x, y: dropPt.y, z: CHIP_Z } }, TICKET_MS.slip);
+    };
+    firstSlip = setTimeout(waitFirst, 600);
+    // A card opening folds every world ticket away (L4).
+    const offUi = useSalvageUi.subscribe((s) => {
+      if (s.stack.length > 0 && (curRef.current || queue.current.length)) {
+        queue.current = [];
+        fold();
+      }
+    });
     return () => {
       offIn();
       offOut();
       offBridge();
-      clearTimeout(t.scale);
-      clearTimeout(t.cab);
-      clearTimeout(t.bridge);
+      offSlip();
+      offDeal();
+      offUi();
+      clearTimeout(firstSlip);
+      clearTimeout(timer.current);
+      queue.current = [];
+      curRef.current = null;
     };
-  }, [c, cabPt.x, cabPt.y, scalePt.x, scalePt.y, camera, yard, L.width, L.height, L.s]);
+  }, [c, cfg, camera, yard, L.width, L.height, L.s]);
 
-  return (
-    <>
-      {scale ? <Anchored key={scale.id} slot={scale} at={scalePt} z={SLOT_Z} L={L} camera={camera} yard={yard} c={c} other={null} /> : null}
-      {bridge ? <Anchored key={bridge.id} slot={bridge} at={bridgePt} z={CAB_Z} L={L} camera={camera} yard={yard} c={c} other={null} /> : null}
-      {cab ? <Anchored key={cab.id} slot={cab} at={cabPt} z={CAB_Z} L={L} camera={camera} yard={yard} c={c} other={scale ? { at: scalePt, z: SLOT_Z, ...sizeOf(scale, L, c) } : null} /> : null}
-    </>
-  );
+  return cur ? <Anchored key={cur.id} slot={cur} L={L} camera={camera} yard={yard} c={c} /> : null;
+}
+
+/**
+ * The starting thing at the drop-off on a fresh yard (nothing weighed yet), for its slip at second 0; else null.
+ * Reads the rules' frame (things at the drop-off) and the ticket counter.
+ */
+function firstDropOff(cfg: R.SalvageConfig, g: R.SalvageGame): string | null {
+  const s = g.salvage as unknown as { ticketNo?: number };
+  if ((s.ticketNo ?? 0) > 0) return null;
+  const f = R.frame(cfg, g) as unknown as { things?: { obj?: string; at?: unknown; sprite?: string; x: number; y: number }[] };
+  const drop = R.point(cfg, 'dropoff');
+  const t = (f.things ?? []).find((x) => Math.abs(x.x - drop.x) < 6 && Math.abs(x.y - drop.y) < 3);
+  return t?.obj ?? null;
 }
 
 /** A slot's size on screen and its ticket plan. */
-function sizeOf(slot: Slot, L: HudLayout, c: R.SalvageContent): { w: number; h: number; plan: TicketPlan | null } {
+function sizeOf(slot: Content, L: HudLayout, c: R.SalvageContent): { w: number; h: number; plan: TicketPlan | null } {
   const s = L.s;
-  const w = slot.view ? L.ticketW : Math.ceil(textW(slot.chip ?? '', 11 * s) + 24);
+  const w = slot.view ? L.ticketW : Math.min(L.right - L.left, Math.ceil(textW(slot.chip ?? '', 11 * s) + 24));
   const plan = slot.view ? planTicket(slot.view, w, s, c, L.ticketMaxH) : null;
   return { w, h: plan ? plan.height : lineH(11 * s) + 10, plan };
 }
 
-type Other = { at: { x: number; y: number }; z: number; w: number; h: number } | null;
-
-/** A ticket or chip pinned over its world point, rising in, clamped inside the free world (and off the other ticket). */
-function Anchored({ slot, at, z, L, camera, yard, c, other }: { slot: Slot; at: { x: number; y: number }; z: number; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent; other: Other }) {
+/** A ticket or chip at its anchor, following the camera each frame, feeding out of its slot (or rising in). */
+function Anchored({ slot, L, camera, yard, c }: { slot: Slot; L: HudLayout; camera: Camera; yard: YardLayout; c: R.SalvageContent }) {
   const s = L.s;
   const { w, h, plan } = sizeOf(slot, L, c);
-  const o = other ? { x: other.at.x, y: other.at.y, z: other.z, w: other.w, h: other.h } : null;
   const rise = useSharedValue(0);
   useEffect(() => {
-    rise.value = withTiming(1, { duration: 260 });
+    rise.value = withTiming(1, { duration: 300 });
   }, [rise]);
   const box = { left: L.left, right: L.right, freeY: L.freeY, bottomY: L.bottomY };
   const { ppm, tilt, lift } = yard;
   const W = L.width;
   const H = L.height;
+  const a = slot.anchor;
   const style = useAnimatedStyle(() => {
     const cam = camera.value;
-    const p = project(at.x, at.y, z, cam, W, H, ppm, tilt, lift);
-    let q = placeTicket(p.x, p.y, w, h, box);
-    if (o) {
-      const op = project(o.x, o.y, o.z, cam, W, H, ppm, tilt, lift);
-      const oq = placeTicket(op.x, op.y, o.w, o.h, box);
-      q = avoidRect(q.x, q.y, w, h, { x: oq.x, y: oq.y, w: o.w, h: o.h }, box);
+    const gr = goalRect.value;
+    const goal = gr.w > 0 ? gr : null;
+    let q: { x: number; y: number };
+    let from = { x: 0, y: 0 };
+    if (a.kind === 'cash') q = underCash(w, h, goal, box);
+    else if (a.kind === 'point') {
+      const p = project(a.at.x, a.at.y, a.at.z, cam, W, H, ppm, tilt, lift);
+      q = onScreen(p.x, p.y, box) ? placeTicket(p.x, p.y, w, h, box) : underCash(w, h, goal, box);
+      if (goal && overlaps({ x: q.x, y: q.y, w, h }, goal, 2)) q = { x: q.x, y: Math.min(box.bottomY - h - 4, goal.y + goal.h + 4) };
+    } else {
+      const p = project(a.slot.x, a.slot.y, a.slot.z, cam, W, H, ppm, tilt, lift);
+      if (!onScreen(p.x, p.y, box)) q = underCash(w, h, goal, box);
+      else {
+        let keep: { x: number; y: number; w: number; h: number } | null = null;
+        if (a.keep) {
+          const k = a.keep;
+          const p0 = project(k.x - k.halfW, k.y, 0, cam, W, H, ppm, tilt, lift);
+          const p1 = project(k.x + k.halfW, k.y, k.z, cam, W, H, ppm, tilt, lift);
+          keep = { x: p0.x, y: p1.y, w: p1.x - p0.x, h: p0.y - p1.y };
+        }
+        q = placeFromSlot(p.x, p.y, w, h, keep, goal, box);
+        // It feeds out of the slot: from the slot's edge towards its place.
+        from = { x: (q.x > p.x ? p.x - q.x : p.x - (q.x + w)) * 0.5, y: (p.y - q.y) * 0.3 };
+      }
     }
-    return { opacity: rise.value, transform: [{ translateX: q.x }, { translateY: q.y + (1 - rise.value) * 14 }] };
+    const k = 1 - rise.value;
+    return { opacity: Math.min(1, rise.value * 1.6), transform: [{ translateX: q.x + from.x * k }, { translateY: q.y + from.y * k + (a.kind === 'slot' ? 0 : k * 14) }] };
   });
   return (
     <Animated.View style={[styles.abs, { width: w }, style]}>
@@ -183,7 +300,8 @@ function ChipPaper({ text, s }: { text: string; s: number }) {
 export function TicketPaper({ v, plan, s }: { v: TicketView; plan: TicketPlan; s: number }) {
   const pt = TICKET_PT.row * s;
   const small = TICKET_PT.small * s;
-  const paid = v.kind === 'collection';
+  const paid = v.kind === 'collection' && !v.cost;
+  const cost = !!v.cost;
   return (
     <View style={styles.paper}>
       <View style={styles.sprocket} />
@@ -212,7 +330,7 @@ export function TicketPaper({ v, plan, s }: { v: TicketView; plan: TicketPlan; s
           <BarText pt={small} weight="600" color={PAL.inkSoft} style={styles.name}>
             {plan.more ?? ''}
           </BarText>
-          <BarText pt={paid ? TICKET_PT.paid * s : small} weight={paid ? '900' : '600'} color={paid ? PAL.ink : PAL.muted}>
+          <BarText pt={paid || cost ? TICKET_PT.paid * s : small} weight={paid || cost ? '900' : '600'} color={cost ? PAL.cost : paid ? PAL.ink : PAL.muted}>
             {v.total}
           </BarText>
         </View>

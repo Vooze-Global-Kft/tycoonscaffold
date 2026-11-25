@@ -1,8 +1,10 @@
 /**
- * Where everything of the loading picture stands at w x h points (yard-style.md 9): the horizon at
- * 56 % with the far yard on it, the gantry crane over the whole width, the weighbridge deck with one
+ * Where everything of the loading picture stands at w x h points (yard-style.md 9): the horizon low,
+ * just behind the deck, with the yard's back wall and the far yard's cranes on it (review L11), the gantry crane over the whole width, the weighbridge deck with one
  * red-oxide plate per word of the title, the display on its post right of the plates, and in front the
- * crucible under its hood with the furnace hand at the handwheel, the launder and the five cavities.
+ * crucible under its hood with the furnace hand at the handwheel, and under its lip a casting table on
+ * legs carrying five separate ingot moulds fed by a launder (never one long trough: that read as a
+ * progress bar, review L11).
  *
  * The sky, the ground and the crane run full bleed; everything that tells the story (plates, display,
  * ticket, crucible, mould, the furnace hand) stays inside the safe area, at 844 x 390 (47 left and right,
@@ -10,7 +12,7 @@
  * a long word gets a wider plate, and a title too long for one row gets smaller letters, never an overlap.
  * Pure numbers (the UI thread's worklets read it).
  */
-import { stencilWidth } from '../art/letters';
+import { dotWidth, stencilWidth } from '../art/letters';
 import { MAX_PLATES } from './timeline';
 
 export interface Insets {
@@ -29,6 +31,8 @@ export interface LoadingLayout {
   sl: number;
   sr: number;
   horizon: number;
+  /** The yard's back wall: its top (the far yard stands on it); it runs down to the horizon. */
+  wallTop: number;
   ground: number;
   beamY: number;
   deckL: number;
@@ -53,20 +57,28 @@ export interface LoadingLayout {
   cellX: number[];
   cellY: number;
   cellSize: number;
-  /** The ticket's box when it is fully out. */
+  /** The ticket's box when it is fully out, and its print's glyph height (11 points or more, L11). */
   tkX: number;
   tkW: number;
   tkH: number;
+  tkPrint: number;
   /** The trolley's x when it is off screen left and when it is parked at its stand. */
   offX: number;
   parkX: number;
   /** Magnet's centre y when up and when its plate stands on the deck. */
   magUpY: number;
   magDownY: number;
-  /** The mould: west and east of the cavity row, its top, the cavities. */
+  /** The moulds: west and east of their row, their top and height, each mould's west edge and width. */
   mL: number;
   mR: number;
   mY: number;
+  mH: number;
+  mouldX: number[];
+  mouldW: number;
+  /** The casting table under the moulds: its top, and the floor its feet stand on. */
+  tableY: number;
+  footY: number;
+  /** The cavities, one in each mould. */
   cavX: number[];
   cavW: number;
   cavY: number;
@@ -121,8 +133,10 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   const sb = h - Math.max(0, insets.bottom);
   const k = Math.min(sw / 750, h / 390, 1.6);
   const at = (f: number) => sl + sw * f;
-  const horizon = h * 0.56;
   const ground = h * 0.6;
+  // the horizon just behind the deck; the back wall's top above it (the far yard stands on the wall)
+  const horizon = ground - 3 * k;
+  const wallTop = horizon - 24 * k;
   const beamY = Math.max(h * 0.13, insets.top + 30 * k + 6);
 
   // the display on its post at the east end, inside the safe area
@@ -172,24 +186,35 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   // In front, from the deck down: the hood (below the deck's lip, never over a plate), the crucible
   // under it on its stand, its lip at full tilt, the stream falling 16 k into the launder at the mould's
   // back. The crucible tips 95 degrees about its trunnion, so its mouth faces down onto the launder.
-  const hoodTop = deckTop + 17 * k;
+  const hoodTop = deckTop + 15 * k;
   const hoodBot = hoodTop + 16 * k;
   const R = 18 * k;
-  const sY = hoodBot + 34 * k;
+  const sY = hoodBot + 32 * k;
   const tiltDeg = 95;
   const lip: [number, number] = [R + 7 * k, -26 * k];
   const a = (tiltDeg * Math.PI) / 180;
   const lipX0 = Math.cos(a) * lip[0] - Math.sin(a) * lip[1];
   const lipY0 = Math.sin(a) * lip[0] + Math.cos(a) * lip[1];
-  const mY = Math.min(sb - 28 * k, sY + lipY0 + 16 * k);
-  const mL = at(0.3);
-  const mR = at(0.74);
-  const CAV = 5;
-  const cavW = (mR - mL) / CAV;
-  const cavX = Array.from({ length: CAV }, (_, i) => mL + i * cavW + 5 * k);
-  // the crucible's stand west of the mould; the furnace hand at the handwheel west of it
-  const sX = mL - 64 * k;
+  // the moulds on a casting table: a mould is mH high, the table 5 k thick on legs 12 k to the floor
+  const mH = 15 * k;
+  const legs = 5 * k + 12 * k;
+  const mY = Math.min(sb - mH - legs, sY + lipY0 + 14 * k);
+  const tableY = mY + mH;
+  const footY = tableY + legs;
+  // the crucible's stand where it always stood; the moulds start just east of its lip at full tilt
+  const sX = at(0.3) - 64 * k;
   const lipX = sX + lipX0;
+  const CAV = 5;
+  const mouldW = 40 * k;
+  const mouldGap = 9 * k;
+  const mL = lipX + 10 * k;
+  const mR = mL + CAV * mouldW + (CAV - 1) * mouldGap;
+  const mouldX = Array.from({ length: CAV }, (_, i) => mL + i * (mouldW + mouldGap));
+  const cavX = mouldX.map((x0) => x0 + 5 * k);
+  // the ticket: three lines of dot-matrix print at 11 points or more ("LOADED", "9,999 KG", "ID OK")
+  const tkPrint = Math.max(11, 11 * k);
+  const tkW = dotWidth('9,999 KG', tkPrint) + 14 * k;
+  const tkH = 3 * tkPrint + 27;
   return {
     w,
     h,
@@ -197,6 +222,7 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     sl,
     sr,
     horizon,
+    wallTop,
     ground,
     beamY,
     deckL,
@@ -217,9 +243,10 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     cellX,
     cellY: dY + 11 * k,
     cellSize,
-    tkX: dX - 27 * k,
-    tkW: 54 * k,
-    tkH: 58 * k,
+    tkX: dX - tkW / 2,
+    tkW,
+    tkH,
+    tkPrint,
     offX: -80 * k,
     parkX: Math.max(at(0.1), sl + 40 * k),
     magUpY: beamY + 6 * k + 22 * k,
@@ -227,12 +254,17 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     mL,
     mR,
     mY,
+    mH,
+    mouldX,
+    mouldW,
+    tableY,
+    footY,
     cavX,
-    cavW: cavW - 10 * k,
-    cavY: mY + 8 * k,
-    cavH: 13 * k,
+    cavW: mouldW - 10 * k,
+    cavY: mY + 3 * k,
+    cavH: 9 * k,
     lX0: lipX - 6 * k,
-    lY: mY + 2 * k,
+    lY: mY - 3 * k,
     sX,
     sY,
     R,
@@ -243,7 +275,7 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     hwX: sX - 40 * k,
     hwY: sY + 16 * k,
     manX: sX - 62 * k,
-    manY: mY + 24 * k,
+    manY: footY - 2 * k,
     manScale: 1.35 * k,
     tiltDeg,
   };

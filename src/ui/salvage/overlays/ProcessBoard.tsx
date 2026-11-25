@@ -19,7 +19,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CardData, Plate, ProcessBoardRows } from '../../../engine/salvage';
 import { boardPlate, plateBar, plateGlyph } from '../art/ui.draw';
-import { boardLayout, breakLines, fitPt, pt, TYPE } from './layout';
+import { boardLayout, breakLines, fitPt, plateNameLines, pt, TYPE } from './layout';
 import { openCard } from './cardStack';
 import { BuyButton, INK, RefusalLine, useFrame, useRowNote, useSay, type Tab } from './parts';
 import { WideCard } from './WideCard';
@@ -29,8 +29,10 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
   const say1 = useSay();
   const greyed = p.state === 'greyed';
   const name = say1(p.name);
-  const lines = greyed ? breakLines(name, 11, 3) : breakLines(name, 12, 2);
-  const nameSize = pt(greyed ? TYPE.greyName : TYPE.plateName, layout.fs);
+  const glyph = !greyed && plateGlyph(p.id) !== null;
+  const named = greyed ? { lines: breakLines(name, 11, 3), size: pt(TYPE.greyName, layout.fs), padLeft: 8, padRight: 8 } : plateNameLines(name, pt(TYPE.plateName, layout.fs), w, glyph);
+  const lines = named.lines;
+  const nameSize = named.size;
   const lineSize = pt(TYPE.plateLine, layout.fs);
   const state = say1(p.line);
   const stateSize = fitPt(state, lineSize, w - 16);
@@ -40,7 +42,7 @@ function PlateView({ p, w, h, selected, onPress }: { p: Plate; w: number; h: num
     <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled: greyed }} accessibilityLabel={[name, say1(p.line)].filter(Boolean).join(', ')} onPress={onPress} disabled={greyed} style={[styles.plate, { width: w, height: h }]}>
       <View style={styles.plateBody}>
         {lines.map((l, i) => (
-          <Text key={i} allowFontScaling={false} numberOfLines={1} style={{ fontSize: nameSize, lineHeight: lh(nameSize), fontWeight: '800', color: ink, textAlign: 'center' }}>
+          <Text key={i} allowFontScaling={false} numberOfLines={1} style={{ alignSelf: 'stretch', paddingLeft: Math.max(0, named.padLeft - 8), paddingRight: Math.max(0, named.padRight - 8), fontSize: nameSize, lineHeight: lh(nameSize), fontWeight: '800', color: ink, textAlign: 'center' }}>
             {l}
           </Text>
         ))}

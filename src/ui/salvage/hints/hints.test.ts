@@ -14,7 +14,7 @@ import * as R from '../../../engine/salvage';
 import { TEXT_KEYS } from '../../../engine/salvage/types';
 import type { GameState } from '../../../engine/types';
 import { isValueJump, lessonFor, lessonPaced } from './lessons';
-import { GOAL_HINTS_FALLBACK, HintTracker, STALL_KINDS, chevronShows, dragDir, ghostHome, goalHint, promptWait, stallForm, type HintSample } from './rules';
+import { GHOST_AFTER_LIFT_MS, GOAL_HINTS_FALLBACK, HintTracker, ghostAllowed, STALL_KINDS, chevronShows, dragDir, ghostHome, goalHint, promptWait, stallForm, type HintSample } from './rules';
 import { TEACH_FALLBACK, teachOf } from './teach';
 
 const FILE = join(__dirname, '../../../../scripts/content/yard/goals.json');
@@ -37,6 +37,7 @@ const DONE = [
   /^hired:(hand|cutter|driver):\d+$/,
   /^crewWeighIns:(hand|cutter|driver):\d+$/,
   /^fetched:(partnerFarm|partnerDemolition):\d+$/,
+  /^tipped:(partnerFarm|partnerDemolition):\d+$/,
   /^rung:\d+$/,
   /^deal:signed$/,
   /^deal:done:\d+$/,
@@ -87,6 +88,8 @@ describe('goals.json (5.3, 1.3, 1.4): data the rules read, no words', () => {
     for (const later of ['buyStripper', 'buyBench', 'buyCrucible']) expect(at(later)).toBeGreaterThan(at('buyTorch'));
     expect(at('pourFirst')).toBeLessThan(at('widen'));
     expect(ids[ids.length - 1]).toBe('supplyRung3');
+    expect(at('tipTrial')).toBe(at('fetchTrial') + 1); // P14: the tip follows the first fetch
+    expect(at('hireCutter')).toBeGreaterThan(at('tipTrial'));
     const day = json.dayOne.map((d) => d.id);
     for (const id of ['hireHand2', 'buyAlu', 'buyNight', 'hireCutter2']) expect(day).toContain(id);
     expect(json.dayOne.find((d) => d.id === 'buyNight')?.after).toBe('away:1');
@@ -246,6 +249,22 @@ describe('lessons in the first minutes only on value jumps (4.4 item 5)', () => 
     expect(lessonPaced(cfg, t4, [t1, t2, t3])).toBe(null);
     expect(lessonPaced(cfg, w(5, T.lessonQuietS + 60, dear), [t1, t2, t3, t4])).toBe(null);
   });
+  it('P2: the value grades (bare bright, brass, the converter) always get their lesson on their first weigh-in, brass weighed first', () => {
+    const brs = w(1, 10, 'brs');
+    expect(lessonPaced(cfg, brs, [])?.key).toBe(lessons.brs);
+    const bb = w(2, 40, 'bb');
+    expect(lessonPaced(cfg, bb, [brs])?.key).toBe(lessons.bb);
+    expect(lessonPaced(cfg, w(3, 60, 'bb'), [brs, bb])).toBe(null);
+    const conv = w(4, 70, 'conv');
+    expect(lessonPaced(cfg, conv, [brs, bb])?.key).toBe(lessons.conv);
+  });
+  it('P2: a cheap grade passed over for a dearer one on the same ticket keeps its lesson for later; crew weigh-ins carry none', () => {
+    const both = { ...w(1, T.lessonQuietS + 1, cheap), lines: [{ grade: cheap, g: 1000, price: 1, amount: 1 }, { grade: 'bb', g: 1000, price: 1, amount: 1 }] } as unknown as R.Ticket;
+    expect(lessonPaced(cfg, both, [])?.key).toBe(lessons.bb);
+    expect(lessonPaced(cfg, w(2, T.lessonQuietS + 9, cheap), [both])?.key).toBe(lessons[cheap]);
+    const crew = { ...w(3, 20, 'brs'), by: 'hand.1' } as unknown as R.Ticket;
+    expect(lessonPaced(cfg, crew, [])).toBe(null);
+  });
   it('lessonFor prints the rules\' lesson, and holds one back in the quiet minutes if it is no jump', () => {
     const g0 = fixtureGame('fresh', base, FIXTURE_NOW) as R.SalvageGame;
     const t1 = w(1, 10, cheap, lessons[cheap]);
@@ -255,5 +274,14 @@ describe('lessons in the first minutes only on value jumps (4.4 item 5)', () => 
     const g2 = { ...g0, salvage: { ...g0.salvage, tickets: [t1, t2] } } as R.SalvageGame;
     expect(lessonFor(cfg, g2, t2)).toBe(lessons[dear]);
     expect(lessonFor(cfg, g2, w(3, 50, dear, null))).toBe(null);
+  });
+});
+
+describe('L13: never two sticks at once', () => {
+  it('no ghost thumb while a finger steers, nor for two seconds after it lifts', () => {
+    expect(ghostAllowed(true, 10_000, null)).toBe(false);
+    expect(ghostAllowed(false, 10_000, null)).toBe(true);
+    expect(ghostAllowed(false, 10_000, 10_000 - GHOST_AFTER_LIFT_MS + 1)).toBe(false);
+    expect(ghostAllowed(false, 10_000, 10_000 - GHOST_AFTER_LIFT_MS)).toBe(true);
   });
 });

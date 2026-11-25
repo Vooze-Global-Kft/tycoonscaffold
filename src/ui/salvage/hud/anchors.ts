@@ -19,6 +19,8 @@ export interface Point {
 export const cashAnchor = makeMutable<Point>({ x: 0, y: 0 });
 export const collectionAnchor = makeMutable<Point>({ x: -1, y: -1 });
 export const weighInAnchor = makeMutable<Point>({ x: -1, y: -1 });
+/** The goal card's rectangle at its REAL height (two lines while a lesson shows): tickets keep clear of it (P8, W17). w 0: no card. */
+export const goalRect = makeMutable<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
 
 export const hudAnchors = {
   cash: (): Point => cashAnchor.value,
@@ -29,6 +31,10 @@ export const hudAnchors = {
   },
   setCollection(p: Point | null): void {
     collectionAnchor.value = p ?? { x: -1, y: -1 };
+  },
+  setGoal(r: { x: number; y: number; w: number; h: number }): void {
+    const g = goalRect.value;
+    if (g.x !== r.x || g.y !== r.y || g.w !== r.w || g.h !== r.h) goalRect.value = r;
   },
   weighIn: (): Point | null => (weighInAnchor.value.x < 0 ? null : weighInAnchor.value),
   setWeighIn(p: Point | null): void {

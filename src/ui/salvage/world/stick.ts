@@ -93,23 +93,47 @@ export function newSteeringTouch(z: StickZone, ne: { changedTouches?: readonly T
   return null;
 }
 
+/** The JS side's copy of whether a finger steers (H7: never read the shared value on the JS thread). */
+let held = false;
+/** True while a finger steers the stick (JS side; no shared-value read: the one button asks this). */
+export function stickHeld(): boolean {
+  return held;
+}
+
+export type StickResponder = Pick<ViewProps, 'onStartShouldSetResponder' | 'onResponderGrant' | 'onResponderStart' | 'onResponderMove' | 'onResponderEnd' | 'onResponderRelease' | 'onResponderTerminate' | 'onResponderTerminationRequest'> & {
+  /** Lets go of the stick (a card opened while the thumb steered, H12): the finger is forgotten and the stick is off. */
+  release: () => void;
+};
+
 /**
  * The responder props of the full-screen input view. `zone()` is read at each touch (the layout may
- * change); `enabled()` false (an overlay, the portrait card) takes no touch at all.
+ * change); `enabled()` false (an overlay, the portrait card) takes no touch at all, and a finger that
+ * steered when it turned false is let go at its next move (H12). The stick's base is kept on the JS side
+ * (H7): the shared value is only ever WRITTEN here, never read (a JS read of a value the UI thread has
+ * touched is a blocking hop to the UI thread on a phone).
  */
-export function useStickResponder(zone: () => StickZone, enabled: () => boolean): Pick<ViewProps, 'onStartShouldSetResponder' | 'onResponderGrant' | 'onResponderStart' | 'onResponderMove' | 'onResponderEnd' | 'onResponderRelease' | 'onResponderTerminate' | 'onResponderTerminationRequest'> {
+export function useStickResponder(zone: () => StickZone, enabled: () => boolean): StickResponder {
   const finger = useRef<string | number | undefined | null>(null);
+  const base = useRef({ bx: 0, by: 0 });
   return useMemo(() => {
+    const write = (v: StickValue) => {
+      base.current.bx = v.bx;
+      base.current.by = v.by;
+      stick.value = v;
+    };
     const stop = () => {
+      const was = finger.current !== null || held;
       finger.current = null;
-      stick.value = STICK_OFF;
+      held = false;
+      if (was) stick.value = STICK_OFF;
     };
     const place = (id: string | number | undefined, x: number, y: number) => {
       const z = zone();
       finger.current = id;
+      held = true;
       const bx = Math.max(z.minX, Math.min(z.maxX, x));
       const by = Math.max(z.minY, Math.min(z.maxY, y));
-      stick.value = follow(z, bx, by, x, y);
+      write(follow(z, bx, by, x, y));
     };
     return {
       onStartShouldSetResponder: (e: GestureResponderEvent) => {
@@ -119,6 +143,7 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
         return inZone(zone(), e.nativeEvent.pageX, e.nativeEvent.pageY);
       },
       onResponderGrant: (e: GestureResponderEvent) => {
+        if (!enabled()) return;
         place(e.nativeEvent.identifier, e.nativeEvent.pageX, e.nativeEvent.pageY);
       },
       // The steering finger lifted while another rested on the glass, then a thumb came down again: React
@@ -131,10 +156,13 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
       },
       onResponderMove: (e: GestureResponderEvent) => {
         if (finger.current === null) return;
+        if (!enabled()) {
+          stop();
+          return;
+        }
         const p = fingerOf(e.nativeEvent, finger.current ?? undefined);
         if (!p) return;
-        const s = stick.value;
-        stick.value = follow(zone(), s.bx, s.by, p.x, p.y);
+        write(follow(zone(), base.current.bx, base.current.by, p.x, p.y));
       },
       // A finger lifted: the steering one ends the stick, also while another rests on the glass (the
       // responder itself is released only when the last finger lifts).
@@ -145,8 +173,13 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
       },
       onResponderRelease: stop,
       onResponderTerminate: stop,
-      // Steering is never handed to another view mid-way.
-      onResponderTerminationRequest: () => false,
+      // Steering is never handed to another view mid-way; once let go (a card opened), the card may take the touch.
+      onResponderTerminationRequest: () => finger.current === null,
+      release: () => {
+        finger.current = null;
+        held = false;
+        stick.value = STICK_OFF;
+      },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

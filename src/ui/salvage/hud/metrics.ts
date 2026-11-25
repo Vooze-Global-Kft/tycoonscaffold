@@ -82,7 +82,9 @@ export function hudLayout(width: number, height: number, insets: Insets, fontSca
   const top = Math.max(0, insets.top);
   const free = Math.max(0, height - top - bar - goal - bottom);
   const gap = compact ? 15 : 24;
-  const cash = compact ? 116 : 136;
+  // The cash slot is never narrower than six figures at this scale (findings P4, L9, H10, W1: the cash is
+  // never cut): the width comes from the ladder chip, which has shorter forms.
+  const cash = Math.max(compact ? 116 : 136, cashSlotNeed(s));
   // The carry chip is 104 pt (the lead's ruling, 15:55: 14 pt taken from the ladder chip).
   const carry = 104;
   const clip = 44;
@@ -213,6 +215,34 @@ export function cashCoinPoint(L: HudLayout): { x: number; y: number } {
   return { x: L.left + 6 + coin / 2, y: L.barY + L.rows.bar / 2 };
 }
 
+/** The widest cash the first yard prints in the bar ("§999,999": eight characters). */
+export const CASH_WIDEST = '§999,999';
+/** The cash chip's paddings (6 + 6), the gap after the coin (6) and a little air (2). */
+const CASH_CHROME = 20;
+
+/** How wide the cash slot must be for CASH_WIDEST at 15 pt × the bar scale s. */
+export function cashSlotNeed(s: number): number {
+  return Math.ceil(textW(CASH_WIDEST, 15 * s) + coinSize(s) + CASH_CHROME);
+}
+
+/** Room for the cash text in a slot of width w at bar scale s (the coin and the paddings taken off). */
+export function cashTextW(w: number, s: number): number {
+  return w - coinSize(s) - CASH_CHROME;
+}
+
+/**
+ * The cash's font: 15 pt × s when the TARGET value's text fits its room, else smaller down to MIN_PT; the
+ * size is taken from the value the counter rolls to, so it does not flicker while it rolls. Never cut:
+ * the slot is sized so CASH_WIDEST fits at 15 × s (cashSlotNeed), and anything wider steps down.
+ */
+export function cashFit(text: string, slotW: number, h: number, s: number): Fit {
+  const room = cashTextW(slotW, s);
+  const want = 15 * s;
+  const byW = room / Math.max(1, text.length * CHAR_EM);
+  const pt = Math.floor(Math.min(want, byW, h / 1.25) * 2) / 2;
+  return { pt: Math.max(MIN_PT, pt), lines: 1, cut: pt < MIN_PT };
+}
+
 /** The § coin's diameter. */
 export function coinSize(s: number): number {
   return Math.round(16 * Math.min(s, 1.15));
@@ -244,4 +274,72 @@ export function lessonOnTicket(s: number): boolean {
 /** The top bar's height for a window (36 at 844 x 390, 34 at 667 x 375): overlays-a's frames start under it. */
 export function topBarHeight(width: number, height: number, insets: Insets): number {
   return hudLayout(width, height, insets).rows.bar;
+}
+
+// ------------------------------------------------------------------------- tickets out of a slot
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Whether two rectangles overlap (with `gap` points of air). */
+export function overlaps(a: Rect, b: Rect, gap = 0): boolean {
+  'worklet';
+  return a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
+}
+
+/**
+ * Where a ticket of w × h goes when it feeds out of a printer slot at (sx, sy) (findings L4, P8, W17; the
+ * proof's ticketOutOfSlot): on the side of the slot AWAY from `keep` (the boss's sprite box, the truck's
+ * cab), its top a little above the slot, clamped inside the free world and the safe area, never over
+ * `keep` and never over `goal` (the goal card at its real height). Tries the away side, then the other
+ * side, then above or below `keep`; a ticket that cannot clear `keep` at all stays on the away side.
+ */
+export function placeFromSlot(sx: number, sy: number, w: number, h: number, keep: Rect | null, goal: Rect | null, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): { x: number; y: number } {
+  'worklet';
+  const gap = 10;
+  const minX = L.left;
+  const maxX = Math.max(minX, L.right - w);
+  const top = goal ? Math.max(L.freeY + 4, goal.y + goal.h + 4) : L.freeY + 4;
+  const maxY = Math.max(L.freeY + 4, L.bottomY - h - 4);
+  const clampX = (x: number) => Math.min(maxX, Math.max(minX, x));
+  // Below the goal card only where the ticket's columns meet the card's; elsewhere the free world's top.
+  const clampY = (x: number, y: number) => {
+    const under = goal && x < goal.x + goal.w + 4 && x + w + 4 > goal.x ? top : L.freeY + 4;
+    return Math.min(Math.max(maxY, under), Math.max(under, y));
+  };
+  const away = keep ? (keep.x + keep.w / 2 <= sx ? 1 : -1) : -1;
+  const y0 = sy - 14;
+  const tries: number[] = away > 0 ? [sx + gap, sx - gap - w] : [sx - gap - w, sx + gap];
+  for (const tx of tries) {
+    const x = clampX(tx);
+    const y = clampY(x, y0);
+    if (!keep || !overlaps({ x, y, w, h }, keep, 4)) return { x, y };
+  }
+  if (keep) {
+    const x = clampX(tries[0]);
+    const above = keep.y - h - 6;
+    const ya = clampY(x, above);
+    if (!overlaps({ x, y: ya, w, h }, keep, 4)) return { x, y: ya };
+    const yb = clampY(x, keep.y + keep.h + 6);
+    if (!overlaps({ x, y: yb, w, h }, keep, 4)) return { x, y: yb };
+  }
+  const x = clampX(tries[0]);
+  return { x, y: clampY(x, y0) };
+}
+
+/** Whether a screen point is inside the window's safe area (a ticket's anchor off screen falls back under the cash counter). */
+export function onScreen(x: number, y: number, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): boolean {
+  'worklet';
+  return x >= L.left && x <= L.right && y >= L.freeY && y <= L.bottomY;
+}
+
+/** The fallback place of a ticket: under the cash counter, below the goal card at its real height. */
+export function underCash(w: number, h: number, goal: Rect | null, L: Pick<HudLayout, 'left' | 'right' | 'freeY' | 'bottomY'>): { x: number; y: number } {
+  'worklet';
+  const y = goal ? goal.y + goal.h + 4 : L.freeY + 4;
+  return { x: L.left, y: Math.min(Math.max(L.freeY + 4, L.bottomY - h - 4), y) };
 }

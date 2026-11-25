@@ -1,39 +1,36 @@
 /**
  * A machine's card (yard-stage1.md 4.3, a panel). Before buying: what it does, what goes in and comes
- * out, its rate, Buy with its price. After: status ("Working", "Tray full", "Waiting for cable"), the
- * hopper and the tray by grade, the rate, "Level on the process board" (opening the board). The
- * crucible's card is ./Crucible.tsx. The numbers are the rules' (MachineCard); the words keys.
+ * out, Buy with its price. After: one section per machine, TITLED BY THE MACHINE'S NAME (L14, W7) with its
+ * state on the line under it ("Idle", "Working", "Turns while you stand at it") and in → every output
+ * under that; the hopper and the tray by grade; "Level on the process board" (opening the board). No
+ * absolute rate is printed (W5). The stripper pad shows the hand stripper ("Came with the yard") and the
+ * powered stripper; the crucible's card is ./Crucible.tsx. The rows are the rules' (cardOf); this view
+ * only groups and titles them.
  */
-import type { CardData, SalvageConfig, SalvageGame, Txt } from '../../../engine/salvage';
+import { View } from 'react-native';
+import type { CardData, SalvageConfig, SalvageGame } from '../../../engine/salvage';
 import { Crucible } from './Crucible';
 import { Panel } from './Panel';
-import { INK, Line, Row } from './parts';
-import { ITEM_NAME, machineRows } from './sample';
-import { View } from 'react-native';
+import { Row } from './parts';
+import { machineSections } from './machineView';
+import { machineRows } from './sample';
+import { isPadlockRow } from './ToolRack';
 
 export function Machine({ cfg, g, data, onClose }: { cfg: SalvageConfig; g: SalvageGame; data: CardData; onClose: () => void }) {
   const list = data.machines?.length ? data.machines : data.machine ? [data.machine] : [];
   if (list.length === 1 && list[0].machine === 'crucible') return <Crucible cfg={cfg} g={g} data={{ ...data, machine: list[0] }} onClose={onClose} />;
-  // The stripper pad shows both its machines, the hand stripper first ("Came with the yard").
+  const rows = data.rows.length ? data.rows : list.flatMap((m) => machineRows(cfg, g, m).map((r) => ({ ...r, id: `${m.machine}.${r.id}` })));
+  const sections = machineSections(list, rows);
   return (
     <Panel title={data.title} onClose={onClose} lead={data.lead} foot={data.foot}>
-      {data.rows.length
-        ? data.rows.map((r) => <Row key={r.id} row={r} />)
-        : list.map((m) => (
-            <View key={m.machine}>
-              {list.length > 1 && m.owned ? (
-                <View style={{ paddingTop: 8 }}>
-                  <Line t={{ key: ITEM_NAME[m.machine] }} size="name" bold />
-                  {m.machine === 'hand_stripper' ? <Line t={{ key: 'card.cameWithYard' } as Txt} size="line" colour={INK.soft} /> : null}
-                </View>
-              ) : null}
-              {machineRows(cfg, g, m)
-                .filter((r) => !(m.machine === 'hand_stripper' && r.id === 'level'))
-                .map((r) => (
-                  <Row key={`${m.machine}.${r.id}`} row={{ ...r, id: `${m.machine}.${r.id}` }} />
-                ))}
-            </View>
+      {sections.map((s, i) => (
+        <View key={s.machine} style={i > 0 ? { marginTop: 10 } : null}>
+          {s.head ? <Row row={s.head} tag={s.tag} /> : null}
+          {s.rows.map((r) => (
+            <Row key={r.id} row={r} padlock={isPadlockRow(r)} />
           ))}
+        </View>
+      ))}
     </Panel>
   );
 }

@@ -6,6 +6,7 @@
  * AsyncStorage like the other device settings.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import { makeMutable } from 'react-native-reanimated';
 import { loadingDev } from './dev';
 
@@ -48,4 +49,37 @@ export function canSkip(): boolean {
 /** The whole animation has been seen once: from the next launch a tap skips it. */
 export function markSeen(): void {
   void AsyncStorage.setItem(KEY, '1').catch(() => {});
+}
+
+let parting = false;
+const partingSubs = new Set<() => void>();
+
+/** The gate has begun to part (the stage calls it once; later calls do nothing). */
+export function curtainParting(): void {
+  if (parting) return;
+  parting = true;
+  const subs = [...partingSubs];
+  partingSubs.clear();
+  subs.forEach((f) => f());
+}
+
+/**
+ * True while the loading curtain is shut over the yard, false from the moment its gate begins to part
+ * (for the rest of the session). For the shell (review L11): mount the top bar, the place plates and the
+ * buttons only once this is false, so nothing of them can ever show through the curtain.
+ */
+export function useCurtainShut(): boolean {
+  const [shut, setShut] = useState(!parting);
+  useEffect(() => {
+    if (parting) {
+      setShut(false);
+      return;
+    }
+    const f = () => setShut(false);
+    partingSubs.add(f);
+    return () => {
+      partingSubs.delete(f);
+    };
+  }, []);
+  return shut;
 }

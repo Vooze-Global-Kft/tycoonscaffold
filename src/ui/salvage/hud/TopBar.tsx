@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useShallow } from 'zustand/react/shallow';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
@@ -13,9 +14,13 @@ import { PAL } from '../palette';
 import { say } from './words';
 import { openCard } from '../overlays/cardStack';
 import { hudAnchors } from './anchors';
-import { coinSize, cashCoinPoint, fitText, pickForm, type HudLayout } from './metrics';
+import { coinSize, cashCoinPoint, cashFit, fitText, lineH, pickForm, textW, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
-import { barValues, carryText, ladderForms } from './words';
+import { yardEvents } from './pump';
+import { barMoney, barValues, carryText, ladderForms } from './words';
+
+/** How long the debit line stays under the cash counter (finding P12), ms. */
+export const DEBIT_MS = 2600;
 
 export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const v = useGame(useShallow((s) => barValues(cfg, s.game as R.SalvageGame)));
@@ -27,6 +32,14 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   useEffect(() => {
     hudAnchors.setCash(cashCoinPoint(L));
   }, [L]);
+  // The ladder chip slides in when a rival is passed (finding P16); the toast is ./Toasts.tsx's.
+  const slide = useSharedValue(0);
+  const lastPassed = useRef(v.passed);
+  useEffect(() => {
+    if (v.passed && v.passed !== lastPassed.current) slide.value = withSequence(withTiming(1, { duration: 1 }), withTiming(0, { duration: 520 }));
+    lastPassed.current = v.passed;
+  }, [v.passed, slide]);
+  const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slide.value * 28 }], opacity: 1 - slide.value * 0.6 }));
   if (!v.ok) return null;
   const ladder = pickForm(ladderForms(v, c), slots.ladder - 40, h - 2, s);
   const ladderText = ladderForms(v, c)[ladder.index];
@@ -40,18 +53,21 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
     <>
       <Paper style={[styles.abs, { left: x1, top: y, width: slots.cash, height: h }]} face={styles.row}>
         <Coin size={coinSize(s)} />
-        <RollingCash value={v.cash} pt={Math.min(15 * s, h / 1.25)} />
+        {/* Sized from the value it rolls to (H10), so the size does not flicker; never cut (P4). */}
+        <RollingCash value={v.cash} pt={cashFit(barMoney(v.cash), slots.cash, h, s).pt} />
       </Paper>
-      <Pressable accessibilityRole="button" accessibilityLabel={ladderText} onPress={() => openCard({ kind: 'table' })} style={[styles.abs, { left: x2, top: y, width: slots.ladder, height: h }]}>
-        {({ pressed }) => (
-          <Paper style={StyleSheet.absoluteFill} face={[styles.row, styles.ladder, pressed && styles.pressed]}>
-            <Rung />
-            <BarText pt={ladder.fit.pt} weight="700" style={styles.flex}>
-              {ladderText}
-            </BarText>
-          </Paper>
-        )}
-      </Pressable>
+      <Animated.View style={[styles.abs, { left: x2, top: y, width: slots.ladder, height: h }, slideStyle]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={ladderText} onPress={() => openCard({ kind: 'table' })} style={StyleSheet.absoluteFill}>
+          {({ pressed }) => (
+            <Paper style={StyleSheet.absoluteFill} face={[styles.row, styles.ladder, pressed && styles.pressed]}>
+              <Rung />
+              <BarText pt={ladder.fit.pt} weight="700" style={styles.flex}>
+                {ladderText}
+              </BarText>
+            </Paper>
+          )}
+        </Pressable>
+      </Animated.View>
       <Paper style={[styles.abs, { left: x3, top: y, width: slots.carry, height: h }]} face={[styles.row, styles.center, v.driving && { backgroundColor: PAL.hivisLight }]}>
         {v.driving ? <SkipPicto /> : null}
         <BarText pt={carryFit.pt} lines={carryFit.lines} style={[styles.centerText, v.driving && styles.flex]}>
@@ -66,6 +82,40 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
         )}
       </Pressable>
     </>
+  );
+}
+
+/**
+ * Money going out is seen (finding P12): at a skip's hook a rust line under the cash counter,
+ * "−§1,877 · Cottle Demolition", for DEBIT_MS. Drawn over the goal card's start (it is brief).
+ */
+export function CashDebit({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
+  const [line, setLine] = useState<{ id: number; text: string } | null>(null);
+  const n = useRef(0);
+  const c = cfg.salvage;
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = yardEvents.on('hook', (e) => {
+      if (!(e.price > 0)) return;
+      const text = say({ key: 'cashDebit', args: { x: { ref: barMoney(e.price) }, partner: { name: e.partner } } }, c);
+      clearTimeout(timer);
+      setLine({ id: ++n.current, text });
+      timer = setTimeout(() => setLine(null), DEBIT_MS);
+    });
+    return () => {
+      off();
+      clearTimeout(timer);
+    };
+  }, [c]);
+  if (!line) return null;
+  const pt = 12 * L.s;
+  const w = Math.min(L.safeW, Math.ceil(textW(line.text, pt) + 20));
+  return (
+    <Animated.View key={line.id} pointerEvents="none" style={[styles.abs, styles.debit, { left: L.left, top: L.barY + L.rows.bar + 1, width: w, height: lineH(pt) + 8 }]}>
+      <BarText pt={pt} weight="800" color={PAL.cost}>
+        {line.text}
+      </BarText>
+    </Animated.View>
   );
 }
 
@@ -110,7 +160,7 @@ function Clipboard() {
   );
 }
 
-/** Cash rolling to its new value over 450 ms (the facade's fmtMoney for every frame's figure). */
+/** Cash rolling to its new value over 450 ms (barMoney for every frame's figure: whole from §100). */
 function RollingCash({ value, pt }: { value: number; pt: number }) {
   const [shown, setShown] = useState(value);
   const from = useRef(value);
@@ -134,7 +184,7 @@ function RollingCash({ value, pt }: { value: number; pt: number }) {
   }, [value]);
   return (
     <BarText pt={Math.floor(pt * 2) / 2} weight="900" style={styles.flex}>
-      {R.fmtMoney(shown)}
+      {barMoney(shown)}
     </BarText>
   );
 }
@@ -147,6 +197,7 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   flex: { flex: 1, marginLeft: 6 },
   pressed: { backgroundColor: PAL.paperShade },
+  debit: { backgroundColor: PAL.paper, borderWidth: 1.3, borderColor: PAL.cost, borderRadius: 5, paddingHorizontal: 8, justifyContent: 'center' },
   coin: { backgroundColor: PAL.brass, borderWidth: 1.3, borderColor: PAL.ink, alignItems: 'center', justifyContent: 'center' },
   coinIn: { borderWidth: 1, borderColor: 'rgba(43,46,51,0.55)' },
   skip: { width: 18, height: 11, backgroundColor: '#B8452C', borderWidth: 1.3, borderColor: PAL.ink, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, transform: [{ perspective: 40 }, { rotateX: '0deg' }] },

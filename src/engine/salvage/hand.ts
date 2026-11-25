@@ -290,6 +290,15 @@ export function bossActEnd(x: Ctx, t: number): void {
     } else {
       const swap = a.target.startsWith('swap:');
       const uid = swap ? a.target.slice(5) : a.target;
+      // Finding R8: a yard hand may have claimed the piece (or the loose thing) while the pickup was under
+      // way (crewDepart runs after bossStep in the tail): a claimed one is not taken and the act ends empty.
+      const claimed = s.pieces.find((q) => q.uid === uid)?.claim ?? thingOf(x, uid.replace(/\.p\d+$/, ''))?.by ?? null;
+      if (claimed) {
+        s.act = { kind: 'none', target: null, since: t, endsAt: null };
+        count(x, 'bossActs');
+        bossStep(x, t);
+        return;
+      }
       if (swap) {
         const worst = [...s.load].sort(byValue(c)).pop();
         if (worst) {

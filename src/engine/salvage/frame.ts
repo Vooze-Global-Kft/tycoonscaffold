@@ -6,7 +6,8 @@
  * fields of types.ts are still filled, so the screens compile while they move.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import { dayWord, priceOf } from './board';
+import { dayWord, priceOf, sellAmount, sellOn } from './board';
+import { lineAmount } from './money';
 import { skipLabelOf } from './cards';
 import { chevronOf } from './goals';
 import { bayOrder, bayPos, bayStocked, circleCount, circlePos, isStillage, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
@@ -31,6 +32,7 @@ import type {
   TextKey,
   ThingAt,
   ToolKind,
+  Txt,
 } from './types';
 import { TEXT_KEYS } from './types';
 
@@ -208,7 +210,6 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const fill = b.g <= 0 ? 0 : Math.min(4, 1 + Math.floor((3 * b.g) / cap));
     const price = priceOf(c, gr, day);
     const aside_g = b.aside.reduce((a, x) => a + x.g, 0);
-    const collectable = b.held ? Math.max(0, b.g - cap) : Math.max(0, b.g - b.forCrucible_g - b.forDeal_g);
     const deal = s.deal.phase === 'running' && gr === c.deal.grade ? { a_g: b.forDeal_g, q_g: s.deal.q_g } : null;
     const cru = cr.owned && cr.fromBays && b.forCrucible_g > 0 ? { a_g: b.forCrucible_g, b_g: Math.round(c.machines.crucible.pot * 1000) } : null;
     return {
@@ -222,7 +223,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       fill,
       held: b.held,
       g: b.g,
-      value: Math.round(((collectable + aside_g) / 1000) * price * 100) / 100,
+      // L10 / S4 / W4: what Sell would pay now, the board's own number (the bay less its reservations and what is set aside).
+      value: sellAmount(sellOn(c, g, gr, day)),
       price,
       word: dayWord(c, gr, day),
       forDeal: deal,
@@ -308,14 +310,26 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     if (z.tier <= s.tier) continue;
     labels.push({ id: `padlock.${zone}`, x: z.centre[0], y: z.centre[1] - z.r, kind: 'padlock', text: { key: z.tier >= 3 ? 'refusal.tool3' : 'refusal.tool2' } });
   }
+  // A bay's chip (L10, S4, W4): at most two lines. Line 1 the grade, its kilograms and what Sell would pay
+  // now (the board's number; "held" on a held bay; no value when nothing is free to sell). Line 2 at most
+  // one reserve: the deal's, the crucible's, or what is set aside (at its own prices). The day word is the
+  // board's alone.
   for (const b of bays) {
     if (b.g <= 0) continue;
-    labels.push({ id: `bay.${b.grade}`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.bay', args: { grade: { grade: b.grade }, kg: { mass_g: b.g, step: 'lot' }, x: { money: b.value } } } });
-    if (b.held) labels.push({ id: `bay.${b.grade}.held`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.held' } });
-    if (b.word !== 'usual') labels.push({ id: `bay.${b.grade}.word`, x: b.x, y: b.y, kind: 'bay', text: { key: b.word === 'low' ? 'chip.lowDay' : 'chip.highDay' } });
-    if (b.forDeal) labels.push({ id: `bay.${b.grade}.deal`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.reservedDeal', args: { foundry: { name: c.deal.partner }, a: { mass_g: b.forDeal.a_g, step: 'lot' }, b: { mass_g: b.forDeal.q_g, step: 'lot' } } } });
-    if (b.forCrucible) labels.push({ id: `bay.${b.grade}.crucible`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.forCrucible', args: { a: { mass_g: b.forCrucible.a_g, step: 'lot' }, b: { mass_g: b.forCrucible.b_g, step: 'lot' } } } });
-    if (b.aside_g > 0) labels.push({ id: `bay.${b.grade}.aside`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.aside', args: { kg: { mass_g: b.aside_g, step: 'lot' }, x: { money: b.value } } } });
+    const kg = { mass_g: b.g, step: 'lot' as const, ...(b.kind === 'heap' ? { ferrous: true } : {}) };
+    const line1: Txt = b.value > 0
+      ? { key: b.held ? 'chip.bayHeld' : 'chip.bay', args: { grade: { grade: b.grade }, kg, x: { money: b.value } } }
+      : { key: b.held ? 'chip.bayKgHeld' : 'chip.bayKg', args: { grade: { grade: b.grade }, kg } };
+    labels.push({ id: `bay.${b.grade}`, x: b.x, y: b.y, kind: 'bay', text: line1 });
+    const aside = s.bays[b.grade]?.aside ?? [];
+    const line2: FrameLabel | null = b.forDeal
+      ? { id: `bay.${b.grade}.deal`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.reservedDeal', args: { foundry: { name: c.deal.partner }, a: { mass_g: b.forDeal.a_g, step: 'lot' }, b: { mass_g: b.forDeal.q_g, step: 'lot' } } } }
+      : b.forCrucible
+        ? { id: `bay.${b.grade}.crucible`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.forCrucible', args: { a: { mass_g: b.forCrucible.a_g, step: 'lot' }, b: { mass_g: b.forCrucible.b_g, step: 'lot' } } } }
+        : b.aside_g > 0
+          ? { id: `bay.${b.grade}.aside`, x: b.x, y: b.y, kind: 'bay', text: { key: 'chip.aside', args: { kg: { mass_g: b.aside_g, step: 'lot' }, x: { money: aside.reduce((a, x) => a + lineAmount(x.g, x.price), 0) } } } }
+          : null;
+    if (line2) labels.push(line2);
   }
 
   const hired = s.crew.some((m) => m.role === 'hand');
@@ -389,5 +403,16 @@ export function specIndex(specs: readonly (readonly unknown[])[], k: number): nu
 
 /** Facade `frame(cfg, g)`: everything the world draws (types.ts FrameTable). */
 export function frameCfg(cfg: import('./types').SalvageConfig, g: SalvageGame): FrameTable {
-  return frameOf(cfg.salvage, g);
+  // H13: memoised on the state's identity (and the content's): the world, the fx canvas, the hints and the
+  // labels ask for the same frame several times a change. FrameTable is read-only for every caller.
+  // The frame reads g.cash besides the salvage state (a skip's load-cash refusal, the advice behind the chevron).
+  let byCfg = FRAMES.get(g.salvage);
+  if (!byCfg) FRAMES.set(g.salvage, (byCfg = new WeakMap()));
+  const hit = byCfg.get(cfg.salvage);
+  if (hit && hit.cash === g.cash) return hit.f;
+  const f = frameOf(cfg.salvage, g);
+  byCfg.set(cfg.salvage, { cash: g.cash, f });
+  return f;
 }
+
+const FRAMES = new WeakMap<SalvageGame['salvage'], WeakMap<SalvageContent, { cash: number; f: FrameTable }>>();

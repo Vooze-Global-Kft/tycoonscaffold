@@ -8,8 +8,10 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E32).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E34).
 - Part 3: the first yard after its review (S1 to S24).
+- Part 4: the first yard's map after the review of the built game (M1 to M7).
+- Part 5: the rulings on the review of the built game, by finding (S, R, H, P, W, L).
 
 ---
 
@@ -227,6 +229,7 @@ seed and for the slow player with at most half as much time again.
 **E10. The converter stays in stage 1** (decision D11 of the specification), papered as the
 specification has it; if it floods the last quarter of the hour its payable falls.
 
+---
 
 ## After the second prototype (25 November, afternoon)
 
@@ -445,6 +448,20 @@ a high day, two days at most"). The bots showed that a bay held and forgotten th
 cost a fifth to a third of three days' earnings; Hold is a small lever (E, the +3 % aim), never a
 trap.
 
+### After the rules review (19:00)
+
+**E33. The away cap grows with the rung.** Half an hour on rung 1, two hours on rung 2, four hours
+on rung 3; the Night watch adds two hours on any rung. The review showed that a player who stops
+after five minutes and returns after four hours holds twice the price of the whole hour's goal
+list (the public drop-off's copper and brass, carried whole by one yard hand, are worth about §70 a
+minute): the shop was showered, not saved for (E12). The away card says how long the yard ran
+without the boss and what makes it run longer ("The yard ran 30 min. From 2.4 t supplied it runs
+two hours."). S13 holds (a first sitting of five minutes pays).
+
+**E34. Deal deliveries happen at every midnight that passed**, inside the away cap or beyond it,
+from the reserve as it stood when the boss left; the away card lists them. Nothing is charged for
+a short day, as before.
+
 ---
 
 ## The first yard: the lead's rulings after its review (25 November)
@@ -624,3 +641,323 @@ bundle check before anyone creates it; the document's work packages say so.
 **S24. The prototype's players are people**: a reaction is spent before every leg, not once per
 decision; at least fifteen seeds; each beat is reported as a range and as the share of runs inside
 its band, for two opening routes.
+
+---
+
+## The map of the first yard: the lead's ruling for the fix pass (25 November, after the review)
+
+This outranks `docs/design/yard-ground.md`'s plan, the specification's section 3 and the content's
+present map wherever they differ. It answers findings P5, P6, P13, P15, P20, L1, L2, L5, L6 together.
+
+### Why
+
+Six reviewers and the lead saw the same thing in the running game: the first view is two thirds
+empty grey slab with one washer on it; no old stock is in sight; the working row floats in the
+middle of a 64 x 40 m slab; the walk to the tool rack and the office takes half a minute; the
+truck's line runs over the public drop-off. The art director's picture of the same yard
+(`look/stage1/yard-844.png`, drawn by `drawHero` in `src/ui/salvage/art/proof.draw.ts` ON THE MAP'S
+OWN COORDINATES) shows a different place: a working row against a lock-block back wall at y = 15.2
+with the neighbour's stacks and cranes over it, old stock heaped against the wall, everything close.
+The picture is right and the map is wrong. The map moves to the picture.
+
+Numbers for thinking: 40 points a metre, tilt 0.7, so a 844 x 390 screen shows 21.1 m by 13.9 m of
+ground and a 667 x 375 screen 16.7 m by 13.4 m. The top 84 points are under the bars and the goal
+card. The camera follows the boss, who stands at about 61 % of the screen's height.
+
+### The principles (the checker enforces M4 to M6; a person looks at the rest)
+
+M1 THE BACK WALL. The first yard ends north at a lock-block wall along y = 15.2, across the whole
+   width. Content gets `map.north: 15.2`. Nothing of the yard lies north of it; nobody walks or
+   drives north of it (it is solid); the camera never shows more than the wall and the band of far
+   yard over it. Every place and zone now north of it moves south of it.
+
+M2 THE WORKING ROW HUGS THE WALL. The bays, the scale house and the stillage block stand with their
+   backs against the back wall. The pads in front of them (platform scale, hand stripper with its
+   cable bundle, the price board, the crucible pad, the motor bench) have their centres within about
+   five metres of the wall, so that the wall and the far yard are in view while the boss works at
+   the scale, the stripper or the drop-off.
+
+M3 OLD STOCK IN SIGHT AND NEAR.
+   - Zone 1 (washers and bicycles, hand tools: the stock of the first ten minutes) lies in the
+     corner of the back wall and the east fence, north of the gate, its bed's near edge within about
+     three metres of the platform scale: it is in the first view at both sizes.
+   - The public drop-off is a small bay of its eight waiting places (two rows of four) by the gate,
+     NOT on the truck's line. The first washer stands on it at the start.
+   - Zone 2 (radiators, the bath, stoves, gates: the sledgehammer's stock) lies against the back
+     wall, the next nearest heap after zone 1.
+   - Zone 3 (beams, tanks, the car: the torch's stock) stays west of the dividing wall, south of the
+     back wall.
+   - A zone is a BED: a rectangle `zones.<id>.bed: { x0, y0, w, d }` (new field; `centre`, `r` and
+     `footprint` kept in step for old readers). Its things are laid inside it on a seeded, jittered
+     pattern by the rules (finding L5: rules-sim). A bed is a heap: dense (about 0.65 m2 a washer,
+     1 m2 a bicycle or a radiator, more for a beam, a tank, the car), against a wall or a fence on
+     at least one side, open to the boss on at least one long side.
+
+M4 ONE DRIVE LINE. From the gate west to the weighbridge, on to the merchant's stand, and to the
+   tipping floor and the truck's parking place: a corridor at least 3.6 m wide with NO place, bed,
+   waiting place, chalk circle or person's standing spot in it (the weighbridge deck and the stand
+   are part of it). The merchant's flatbed and the hook-lift truck drive only in it. The boss
+   crosses it; nothing stands in it.
+
+M5 SHORT WALKS. The tool rack and the office (the yard's gatehouse) stand within twelve metres'
+   walk of the platform scale and outside the drive line. From the drop-off's first place to the
+   platform scale at most ten metres; from the cable bundle to the hand stripper at most three; from
+   the stripper to the platform scale at most eight.
+
+M6 NO POCKETS. Between any two solids (places with `solid: true`, walls, the fence, the back wall,
+   every position of the stillage block at its full size) a gap is either at least 1.5 m or zero
+   (closed, and drawn closed). A pad that is not solid needs no gap.
+
+M7 THE TWO FRAMES.
+   - The first view (the boss at `start`, the camera kept inside the east fence): the drop-off's
+     first washer, zone 1's bed, the platform scale and the scale house's display are inside the
+     free world (below the top 84 points) at 844 x 390 and at 667 x 375.
+   - The hero frame (the store's first screenshot, `map.hero`): the back wall with at least 40
+     points of far yard under the top bar, the bays, the scale house, the platform scale, the hand
+     stripper's pad, the copper and brass stillages, the price board, the crucible pad, the north
+     edge of the weighbridge and some old stock (a zone's bed, at least 1.5 m of it) all inside ONE
+     frame of 16.7 m by 9.7 m of ground south of the wall (so that it holds at 667 x 375), and the
+     same frame widened at 844 x 390.
+
+### A sketch to start from (not a table to copy: fit it with the checker and LOOK at it)
+
+Back wall y 15.2 (its south face about 15.6). Back row against it, west to east: zone 2's bed about
+x 26.5 to 34; the stillage block, two rows, growing WEST from x 43.4 (copper and brass nearest the
+bays); the bays about x 44.6 to 52.6; the scale house closed against the bays' east end, about
+x 52.6 to 55.6; zone 1's bed in the corner, about x 57 to 63.4, y 15.8 to 19.8. Front row, centres
+about y 20 to 21: the platform scale under the scale house's display (about 54.3, 20), the cable
+bundle and the hand stripper's pad west of it (about 51 and 48.3), the price board, the crucible pad
+about (43.5, 21), the motor bench west of it. The drop-off's bay south of zone 1 and north of the
+drive line, the start beside its first place. Drive line y about 24 to 27.6 from the gate (centre
+about y 25.8, six metres wide) over the weighbridge (as now, about (50.5, 25.5)) to the merchant's
+stand west of it. South of the line: the tipping floor, the truck's parking place, the office as the
+gatehouse by the gate's south post with the tool rack at its door. West of the dividing wall, south
+of the back wall: zone 3 with the car, the back field's gate.
+
+The rubble skip is dressing: it goes wherever it closes a pocket, or away.
+
+---
+
+## The rulings on the review of the built first yard (25 November, evening)
+
+Six reviewers played and read the joined first yard and reported 101 findings. Each is listed with what it said in one sentence and the lead's ruling, which outranked the reviewer's own proposal in the one pass of fixes. "do" means: as the finding proposed.
+
+### Findings of the casual player (P)
+
+- **P1** (blocking). On every fresh game I played by hand, the first public trickle at 20 s is a crate of brass taps (8 kg, §181).
+  Ruling: do (blocking): the drop-off's first arrivals are a fixed opening list of washers and bicycles (no taps, no cable, no cylinder) until five minutes have passed; then the mix. The bots measure the opening again.
+- **P2** (blocking). The value-jump test compares a new grade with the HIGHEST price weighed before it.
+  Ruling: do (blocking): the lessons of the value grades (bare bright copper, brass, the converter) ALWAYS show on that grade's first weigh-in, whatever was weighed before; the hints' twin of the rule changes with it; a test with brass weighed first.
+- **P3** (blocking). The away card shows the gross sales as '§78,171 (already in your account)', but the cash counter shows §7,233.
+  Ruling: do (blocking): the away card says what was applied: 'Sales {x}', '{n} loads bought · −{y}', 'Net +{z} (already in your account)'; held stock is never listed as sold; one line says what to do next. With E33 its head says how long the yard ran.
+- **P4** (blocking). The most important number on screen is cut off with an ellipsis at 667 x 375 with font scale 1.3: '§280...' at minute 1 and '§14,0...' at m30.
+  Ruling: do (blocking): cash is never cut: fitted to its slot at every font scale, the slot wide enough for six figures at 667 and 1.3 (take width from the ladder chip, which has short forms); bars and cards print money without hundredths from §100 up (tickets keep them).
+- **P5** (blocking). The running game falls well short of look/stage1/yard-844.png.
+  Ruling: do (blocking): the running yard gets the composed picture's light and place: a warm wash from the west and shadows swept east for every standing thing and person, darker slab joints with weeds and dirt beds under heaps, the north wall with the far yard's skyline wherever the camera sees the north edge, and ground outside the fence everywhere the camera can show it (verge, road, neighbouring yards): never a void. Held against look/stage1/yard-844.png at ?view=hero and at the first second.
+- **P6** (important). The first view at 0:00 is mostly empty concrete with one small washer on an 8 x 2 m slab.
+  Ruling: do: the first second shows a full yard: zone 1's heap of washers and bicycles moves to within about ten metres of the platform scale and into the first view (zone 2 takes zone 1's old place, zone 3 stays behind the wall); the drop-off's slab shrinks to its waiting places; the hero frame holds some old stock. The content fixer moves the map FIRST and tells the world fixer and the bots the new places.
+- **P7** (important). Labels sit on what they name and on each other.
+  Ruling: do: one plate per thing ('Crucible · §800'), placed above its sprite, hidden while the boss stands in its footprint or a ticket is up there; plates and chips are laid out against each other and against the bars' rectangles; a plate that cannot be shown whole is not shown.
+- **P8** (important). The weigh-in ticket rises straight over the boss on the platform scale and hides him for its 4 s.
+  Ruling: do: the weigh-in ticket comes out beside the scale's display, never over the boss; tickets keep clear of the goal card at its real height; one ticket at a time, the next waits.
+- **P9** (important). For the first ~2-3 s of launch the curtain is half transparent.
+  Ruling: do: the loading curtain is opaque from its first frame.
+- **P10** (important). The first drive out is fiddly and empty.
+  Ruling: do: the boss drives at 9 m/s (the driver's speed is its own number); the camera zooms out while driving; the truck is drawn with a skip only when it carries one; a partner's label is placed where it can be read; the lane ends at a drawn barrier before the bridge.
+- **P11** (important). Hiring the yard hand feels like nothing at first: he stands idle for 35 s even though cut pieces are waiting at the drop-off, and he is not visible near the office.
+  Ruling: do: a yard hand sets out the moment he is hired, from the office door. While the boss is in the yard he carries PIECES only (cable to a stripper that runs by itself, else he leaves cable for the boss); whole things he carries only while the boss is away or when every waiting place at the drop-off is taken (ECONOMY.md E4 stands for time away).
+- **P12** (important). Money leaves without being shown.
+  Ruling: do: money going out is seen: a debit line under the cash counter at a hook ('−§1,877 · {partner}'); the skip ticket's amount reads 'Bought for {x}'.
+- **P13** (important). One-thumb walking keeps getting stuck.
+  Ruling: do: no gap between solids narrower than 1.2 m unless closed; the boss slides along an obstacle on a diagonal push; every drawn stillage is solid; the tool rack and the office stand within about twelve metres of the scales (the content fixer's map move, with P6).
+- **P14** (important). 'Fetch the farm's trial load' completes at the weighbridge, before the tip.
+  Ruling: do: a goal 'Tip it on the floor' follows the first fetch (done at the tip), before 'Hire a cutter'.
+- **P15** (important). The merchant's flatbed drives across the platform scale and over the boss while he stands on it, and its first parking spot covers the stripper pad's corner.
+  Ruling: do: the merchant's flatbed never drives through the scale's, the stripper's or the boss's place; its route and stand are checked at its full drawn size.
+- **P16** (minor). Passing the first rival, 'the first ranking moment', happens with no moment: between two screenshots 12 s apart the chip's words changed from 'next Bramley 0.01 t' to 'passed Bramley'.
+  Ruling: do: passing a rival slides the chip and shows a two-second line ('You passed {rival} · 25th of 26'), after any open card.
+- **P17** (minor). The rung box reads '0.00 t supplied · 0 metals' (rung 1's threshold), while the row below says 'Cinder Lane Yard 0.09 t' and I had sold five grades.
+  Ruling: do: the rung box shows the player's own tonnes and materials; the next rung's condition on its own line.
+- **P18** (minor). Right after hiring, the rota row reads 'Ben · level 1 / Carries 27.2 t an hour / Opens at 2.20 t supplied'.
+  Ruling: do: 'Level up opens at {t} supplied'; rates in words the yard uses (W5).
+- **P19** (minor). At 667 with font scale 1.3 the best news ('75 loads fetched', 'You passed Kolbeck', 'You passed Tunney & Sons', 'You passed Oakbridge') is below the fold of the scroll.
+  Ruling: do: away card order: net money, rivals passed, the next step, then at most three grade lines at large type.
+- **P20** (minor). Between minutes 5 and 10 the work pays very little.
+  Ruling: do through P6 and P13 (nearer stock, nearer rack and office) and P1 (copper and brass come from the drop-off after minute five and from zone 2's radiators with their brass valves); the bots report the walk-to-buy time of each purchase at a person's hand.
+
+### Findings of the look (L)
+
+- **L1** (blocking). The running world never draws the sky, the far-yard skyline, the warm low-sun wash or the multiply.
+  Ruling: do (blocking), with P5 and MAP.md M1: the RUNNING world is the art director's picture. (a) The back wall: one course of lock blocks along y = map.north across the yard, solid, drawn by the proof's own block function, with the proof's floodlight; above its top, in SCREEN space, the late-day sky and drawFarYard's skyline at a parallax of about 0.3 (never a flat colour, never the yard's own ground north of the wall). (b) Light: SUN_WASH under the sprites and SUN_MULTIPLY as one Multiply rectangle over the finished world (under the bars, tickets and cards), exactly as drawHero does; if a Multiply layer over the whole canvas costs frames on a phone, bake the multiply into the ground and atlas sheets instead and say what was measured. (c) Shadows swept east at the proof's low-sun angle for every standing thing and person. (d) The ground is the proof's warm concrete (drawConcrete with weeds) with its decals (paint lines, hatches, oil, puddles, weeds) at the proof's density, dirt beds under every heap. (e) Outside the east fence and along the lane: verge, road, hedges, fields: no clear colour anywhere the camera can go. The test of done: ?view=hero at 844 x 390 beside look/stage1/yard-844.png reads as the same place (the world fixer and the artist each look and say honestly where it still differs).
+- **L2** (blocking). ?view=hero-store, the first store screenshot, does not show copper, a ticket and a pour in one frame.
+  Ruling: do: (content) the hero frame of MAP.md M7 holds some old stock and fits 16.7 m; (world-b) the hero camera shows the wall with the far yard under the bar and every member at 844 and 667, and the store variant hides the edge arrow, the hint brackets, the stick, the one button and any plate cut by a bar; (wiring) a preset 'pour' PLAYED on the real rules and the real content to the first brass pour and frozen in its pour leg with a copper weigh-in ticket up (the state the store's first screenshot and the confirmation need); if the rules cannot hold a pour leg still, the preset stops one second before it and the view lets it run.
+- **L3** (blocking). World plates sit on top of what they name and on each other.
+  Ruling: do (blocking), with P7: one plate per thing, anchored ABOVE the sprite's top; hidden while the boss or a crew member stands in the footprint or works there, and while a ticket is up there; a padlock chip and its place's name are ONE plate ('Crucible · §800' with the padlock); identical 'Needs ...' plates of one floor or zone are ONE plate with a count; every plate laid out against the others and against the bars', the goal card's, the stick's and the one button's rectangles and the side margins; a plate that cannot be shown whole is not shown.
+- **L4** (important). The weigh-in ticket rises over the platform scale and covers the boss standing on it, the display it prints from and the scale's plate.
+  Ruling: do, with P8 and W17: the weigh-in ticket feeds out of the scale's printer slot (the manifest's slot of plant.scale.platform, as ticketOutOfSlot does in the proof) on the side AWAY from the boss and never covers his sprite box or the goal card; the collection ticket hangs at the flatbed's cab, the skip ticket beside the weighbridge's display clear of the cab; a ticket whose anchor is off screen falls back to under the cash counter, never to the far edge; every world ticket folds away while a card is open; one ticket at a time.
+- **L5** (important). Old stock reads as a stamp, not a scrapyard.
+  Ruling: do: (rules-sim) a zone's things lie inside the zone's bed rectangle (content zones.<id>.bed, MAP.md M3) on a seeded, jittered, rotated pattern with mirrored variants, no two sprites' footprints overlapping, the big things (the car, tanks, beams) placed first; the same seed gives the same heap; a test that every thing lies inside its bed and that from the bed's open side the boss can reach a thing (reach.work) without entering a pocket. Heap things are worked from the bed's edge inward: they are not walls to walk between. (art) each bed has its dirt-bed decal at its full rectangle when full and shrinking with the stock, drawn crisp at density 2 (baked at ground-sheet density), and the things of a kind have at least two looks (mirror, turn, a dent or a door open) chosen from the thing's id. (content) the beds' rectangles; the mix stays as tuned (zone 1 is washers and bicycles: its value must not change; variety comes from looks and from zone 2's bath, stoves, radiators and gates being in sight).
+- **L6** (important). Beat 1 and section 3 promise that the first view at both sizes shows the scales, the price board, the stripper pad, the crucible pad and the flatbed.
+  Ruling: do, changed: the first view is the FOLLOW view at the start, and MAP.md M7 says what it holds (the drop-off's first washer, zone 1's heap, the platform scale and the scale house's display); the specification's sentence about the crucible pad in the first view is withdrawn (the hero frame shows it). (world-a) on foot inside the yard the camera never shows more than about a metre of verge past the east fence or the south fence, and never north of the wall's skyline band; the boss stands at about 61 % of the screen's height (the free world's middle); the test: at 844 x 390 and 667 x 375, with the boss at start, the listed footprints lie inside the free world.
+- **L7** (important). The lane and the partner sites read as unfinished.
+  Ruling: do, with P10: (art) beyond the lane's hedges fields, hedgerows and the skyline band, never a void; roadside variety every 30 to 40 m (a milepost, a field gate, a telegraph pole, a lay-by) so that motion reads; each partner's site is a place: the farm with its yard, a gate sign carrying the partner's mark from the register, the skip under a lean-to; the demolition site with its hoarding and gate; the truck's north and south frames with wheels and a cab roof. (world-a) draws them from the lane's own sheet; the site's load plate above the skip, clear of the buildings; the camera zooms out to about 30 points a metre while the boss drives and back when he steps out; the lane ends at a drawn barrier before the bridge.
+- **L8** (important). The player's own row is clipped and looks like a placeholder.
+  Ruling: do, with S10 and W12: the rank cell fits '26th' at font scale 1.3 on one line; the player's row carries the yard's own mark (the yard's plate from the register and the art's mark function), never an empty box; the player's tonnes fit the row.
+- **L9** (important). At font scale 1.3 the cash is truncated to '§13,3...' in the top bar, so the player cannot read their money.
+  Ruling: do, with P4, H10 and W1 (one fix).
+- **L10** (important). A held bay's chip is a five-line paper card ('Cast iron 4,500 kg / today §0.00 / held / high day / For the foundry 150 kg / 150 kg') that covers the bays and the price board for the whole session.
+  Ruling: do, with S4 and W4: a bay's chip is two lines at most ('{grade} {kg} · held' / 'For the foundry {a} / {b}'), today's value from the board's own selector (what Sell would pay now), the day word only on the board; chips are plates and obey L3's layout.
+- **L11** (important). The curtain's first frame is translucent over the game: the top bar ('§0.00', '26th of 26'), the goal line and world plates ('Platform scale', 'Weighbridge', 'Public drop-off') show through the sky, and a lighter rectangle covers the right third.
+  Ruling: do, with P9, S11, H5: the curtain is opaque from its first frame (the splash's colour, then the sky); the bars, plates and buttons mount only when the gate starts to part; ingots dull brass, notched, with a dross skin and one glint; the mould on a stand under the tipping crucible with five separate cavities (it must not read as a progress bar); the last ticket's print at 11 points or more; the horizon lower with the yard's silhouette (the back wall and the far yard's cranes) on it.
+- **L12** (important). Plausible draw-order fault.
+  Ruling: do: a building with a door is sorted by its front edge and the boss is drawn in front when his y is greater; the boss is kept inside the fence and south of the back wall on foot; every card place can be REACHED: its standing spot (in front of its door or face) is free of solids and inside reach, and the autoplay's walk to each of them ends there (a test over every place with card: true).
+- **L13** (important). While the player is holding the stick and walking, the hint's ghost thumb plays its drag at the same time.
+  Ruling: do: the ghost thumb never shows while a real touch is down in the stick's zone, nor for two seconds after it lifts; target brackets are sized from the target's footprint plus half a metre.
+- **L14** (minor). Some machine card rows are titled by a state instead of a name.
+  Ruling: do, with W7 and W18: each machine section is titled by the machine's name with its state on the effect line; buttons are verbs ('Switch on', 'Switch off', 'Use', 'Start', 'Stop'); a list that scrolls shows it (a fade or a half row at its foot).
+- **L15** (minor). The skip card is a flat red rectangle (it reads as a box, not a skip) over an empty white card with one line.
+  Ruling: do: the skip card shows the oblique skip sprite with its fill and the partner's mark and the load's rows as on the site's plate; the rung sign takes its numbers from ONE selector (the rung's own threshold; with P17 the player's own tonnes on their own line).
+- **L16** (minor). The hook-lift truck with its skip at diagonal headings is drawn as a large dark-red wedge in a different projection from the oblique yard.
+  Ruling: do what the bake allows, in this order: (1) the truck is drawn with a skip only when it carries one, and with an empty skip after tipping (frames chosen from the truck's state; world-a selects, art bakes); (2) the cab from the side with a window and a raked bonnet; (3) the diagonal headings redrawn in the yard's tilt-0.7 oblique. Say which were done.
+- **L17** (minor). The splash is the icon inside a rounded tile on white, and the tongs and the mould break out past the tile's edge.
+  Ruling: do: a plain splash in the loading sky's first colour with the pour mark centred, no tile, nothing breaking an edge; the app's splash background colour is the same colour (through the game's app data and build script, whoever owns the line).
+
+### Findings of the store reviewer (S)
+
+- **S1** (important). The listing says the player buys the car: "Buy better tools and wheeled carriers: a sledgehammer and angle grinder for cast iron, a cutting torch for steel beams and a depolluted end-of-life car, delivered with its paperwork." Nobody buys the car in this stage.
+  Ruling: do: the listing says what is true (the car came with the yard and its paperwork; nobody buys it); fix the possessive.
+- **S2** (important). These sentences go to App Review and are not true of the build as it plays.
+  Ruling: do: REVIEW-NOTES says only what the build does (partner loads over the weighbridge with seller ID and transfer; household items signed in on a slip); the pour sentence stays only if the confirmation sees a pour with shield and apron.
+- **S3** (important). The skip weigh-in ticket prints "Paid §976.06" in bold for money the yard PAID OUT to Hob's Farm Clearance.
+  Ruling: do: the skip ticket's amount reads 'Bought for {x}' in a cost colour, no coin arc on a weigh-in over the weighbridge; 'Paid {x}' only where the yard is paid.
+- **S4** (important). A held bay's chip reads "Cast iron 4,500 kg / today §0.00 / held / high day".
+  Ruling: do: a bay's chip shows the value of ALL its grams at today's price; 'held' and reserves are their own lines; never §0.00 for a stocked bay.
+- **S5** (important). The closest overlap with Orbit Haulers is named nowhere.
+  Ruling: do (a): one line in REVIEW-NOTES and the fingerprint notes naming the kinship with the other game's delivery board and how the supply deal differs; keep 'foundry' and 'smelter' out of the keywords. Screenshots are a later step.
+- **S6** (important). Several 'differs' rest on declarations nobody checked against this build.
+  Ruling: do: the fingerprint declares only what this build contains (events: rung-sign, posted-price-step; systems: crews, partners, price-board, industry-table, process-board, goal list); re-run validate.
+- **S7** (important). Two of the eight must-differ dimensions are still pending, and each needs evidence that does not exist yet.
+  Ruling: not now: the pending dimensions (store set, export report, a person's verdict, the release date) belong to the store step before a submission, not to the owner's phone test.
+- **S8** (minor). This stage claims 'no ads and no purchases' (REVIEW-NOTES, RATING-NOTES), but the config still carries AdMob, and src/state/store.ts:448 calls ads.init() at boot.
+  Ruling: do: no ads block in this stage's game data (ads off), so no consent or tracking prompt can appear in any build of stage 1.
+- **S9** (minor). (1) The Settings 'Privacy' button opens store.privacyPolicyUrl, which is the placeholder https://example.com/scrap-to-ingot/privacy: the owner gets a broken page tonight, and a reviewer rejects it later.
+  Ruling: do both: hide the Privacy button while the link is a placeholder (the line about the save stays); an empty price board says 'Grades appear here once weighed in' under the fictional line.
+- **S10** (minor). Rungs 4 to 9 show padlocks with 'Opens at 150.00 t supplied · 6 metals' and so on up to 500,000 t.
+  Ruling: do: rungs past this stage's last show a bare padlock with their tonnage and no 'Opens'; the rank cell fits '26th' at font scale 1.3.
+- **S11** (minor). The cooled brass ingots on the loading screen are bright yellow bars with highlights and read as gold bars.
+  Ruling: do: the loading animation's ingots are dull brass with a notch or cast mark, one glint, never gold.
+- **S12** (minor). 'scrapyard' is both in the subtitle and in the keywords (Apple counts title and subtitle words already).
+  Ruling: do: keywords without 'scrapyard' (already in the subtitle) and 'smelter'; add 'idle', 'crucible'; stay within 100 characters and keep the overlap with the four other games at zero.
+
+### Findings of the phone engineer (H)
+
+- **H1** (blocking). save() stamps lastSavedAt = Date.now() even while the store is paused (in the background).
+  Ruling: do (blocking; a shared file, for all five games): save() never moves the start of the time away while the store is paused; a store-level test: pause, autosave, resume after ten minutes pays ten minutes; the four other games' regression tests stay green.
+- **H2** (important). On a warm resume the away card never opens.
+  Ruling: do: a warm resume opens the away card (subscribe to the waiting card as the finding proposes).
+- **H3** (important). The away pass is slow, and it runs synchronously in the AppState 'active' handler on the JS thread.
+  Ruling: do with R3 (the same fault): after R3's work the pass must be at most 150 ms in node on the played real state; if it is not, the resume shows the yard first and runs the pass after one frame.
+- **H4** (important). Sound loops outlive what they belong to.
+  Ruling: do: sound segments are cleared when the app leaves the foreground and re-seeded from the frame when it returns and when the epoch changes.
+- **H5** (important). The loading animation cannot show its first frame until every part has been baked into a CPU raster image at the screen's density (3 on an iPhone), synchronously inside the render of the app's loading screen.
+  Ruling: do: the loading animation shows its first frame from pictures; images are baked after it in slices; a rotation reuses them.
+- **H6** (important). The yard bake is started only by a fixed 1.5 s timer at module load.
+  Ruling: do: the loading stage starts the yard's bake at its third frame; the timer stays as a fallback; sheets A and B bake at density 2 on phones if that halves the time (say what was measured).
+- **H7** (important). Every touch move reads the stick's shared value on the JS thread.
+  Ruling: do: the stick never reads a shared value on the JS thread while steering; the one button asks a JS-side stickHeld().
+- **H8** (important). The frame worklet's closure holds the pools X, RC and C (3 x CAP = 3 x 1560 Skia objects: RSXforms, rects, Float32Array colours), statics, rects and T.
+  Ruling: do: the frame worklet is built once per bake and size; pools and statics live in one shared value; steer and insets are shared values.
+- **H9** (important). (a) The stick zone reaches the bottom of the screen (`height: height - y`), so a thumb that lands in the iOS home-indicator strip (bottom 21 pt) starts the stick, and pushing up there is the iPhone's go-home swipe.
+  Ruling: do: the stick zone ends above the home indicator and starts at least 20 points from the left edge; Android back is swallowed while a stick touch is held or just ended.
+- **H10** (important). At font scale 1.3 on a 667-point screen the cash, the game's main number, is cut with an ellipsis once it reaches five figures.
+  Ruling: do: the cash is fitted to its slot from its target value at every font scale.
+- **H11** (important). Atlas draws a frame exceed the lead's limit of 12 in the played states: people and pieces (sheet A) interleave in depth with vehicles, machines and props (sheet B).
+  Ruling: do if cheap: sort by depth band (a quarter metre) first and sheet second so neighbours of one sheet merge; check the hero frame's overlaps by eye; the lead's limit becomes twenty draws a frame for this stage.
+- **H12** (minor). A card that opens while the thumb steers (the rung sign, triggered from a tick) zeroes the stick in the shell's effect, but the finger stays tracked.
+  Ruling: do: a card that opens while the thumb steers releases the stick properly.
+- **H13** (minor). Each store change (about 20 a second while walking: ticks plus presence samples) computes the frame at least twice: useRulesTable and the FxCanvas push.
+  Ruling: do: the frame is memoised on the state's identity (callers never mutate it).
+- **H14** (minor). Intervals keep running while the app is in the background.
+  Ruling: do: intervals stop while the app is not active.
+- **H15** (minor). HintLayer builds its own hudLayout from useWindowDimensions().fontScale, while the HUD uses useFontScale(), which honours the preview's ?fontScale=.
+  Ruling: do: the hint layer uses the same font scale as the bars.
+- **H16** (minor). During a JS stall (the away pass, the loading prepare) the UI thread keeps queueing a presence sample every 100 ms.
+  Ruling: do: only the newest presence sample is applied after a stall.
+
+### Findings of the rules attacker (R)
+
+- **R1** (blocking). A recipe change with a heel in the pot pours the heel, and pour() then calls crucibleFromBays while the OLD recipe is still set.
+  Ruling: do (blocking): a recipe change pours the heel WITHOUT refilling, sets the new recipe, and only then takes from the bays; the test the finding names.
+- **R2** (important). If the boss uses Step out with a skip on the truck (weighed or not), the hired driver never touches it.
+  Ruling: do: the hired driver finishes a loaded truck the boss left (live and away); the test the finding names.
+- **R3** (important). Time away on the real content far exceeds the 50 ms aim, so the phone stalls when the player comes back.
+  Ruling: do: time away on the REAL content is cheap: running totals for the floor, the idle driver re-checked only when floor, cash or a skip changed, no per-instant sorting; a bench on games/scrap-yard/game.json at a played minute-60 state: six hours in at most 150 ms of node CPU (the aim stays 50).
+- **R4** (important). E31b is not built: hand.lev is 0.12 and cutter.lev is 0.15, not the quarter E31b asks for.
+  Ruling: do: crew.hand.lev and crew.cutter.lev 0.25 (E31b), levels priced by E13a; rebuild; the bots measure E31c again.
+- **R5** (important). Beats outside their bands on seeds the tuning never saw: (1) the buy-everything habit's first pour at 25:41 to 27:55, 0 of 5 in band (18 to 25); (2) the slow hand's first drive at a median of 11:05 and its torch at 17:10, 0 of 5 in band; (3) the brisk hand reaches rung 3 at 52:09, 0 of 5; (4) the day-word holder ends 20 % below the same days without Hold on one seed even with E32, so Hold is still a trap on some draws.
+  Ruling: partly: tune with the unseen seeds included; the first pour's band is for the buy-when-affordable habit (the other habit may pour later); the slow hand is judged by E24 (within half as long again of the normal hand: holds); the brisk hand may reach rung 3 early; find why Hold costs a fifth on that seed and say whether E32 needs a one-day limit.
+- **R6** (important). The first time away floods the shop.
+  Ruling: do, by a rule (ECONOMY.md E33): the away cap grows with the rung: half an hour on rung 1, two hours on rung 2, four hours on rung 3; the Night watch adds two hours on any rung; the away card says how long the yard ran and what makes it run longer. Then the bots measure the burst after 5 min + 4 h and after 15 min + 12 h.
+- **R7** (minor). The presence sample is not clamped.
+  Ruling: do: presence samples are clamped (standingFor, position inside yard and lane, driving only when the boss holds the truck).
+- **R8** (minor). When the boss's pickup act ends, takeFromPile takes the piece without checking its claim.
+  Ruling: do: a claimed piece is not taken by the boss's pickup.
+- **R9** (minor). A leftover debug test with no assertion.
+  Ruling: do: delete the debug test.
+- **R10** (minor). A deal day whose midnight falls beyond the away cap A is never delivered: the market day jumps without a day event.
+  Ruling: do, by a rule (ECONOMY.md E34): the supply deal delivers at every market midnight that passed while away, inside the cap or beyond it, from the reserve as it stood (it was set aside before the boss left); the away card lists the deliveries.
+
+### Findings of the trade and words desk (W)
+
+- **W1** (blocking). The player cannot read their money.
+  Ruling: do with P4.
+- **W2** (blocking). The card says the time away brought '§78,171 (already in your account)' and '75 loads fetched'.
+  Ruling: do with P3.
+- **W3** (important). The lesson prints 'From depolluted car ref.
+  Ruling: do: the record reference prints as written ('0012') everywhere; a test.
+- **W4** (important). The chip reads 'Cast iron 4,500 kg · today §0.00 · held'.
+  Ruling: do: a held bay's chip shows what Sell would pay now (the bay less its reservations at today's price), the board's own number.
+- **W5** (important). One yard hand 'Carries 27.2 t an hour', a cutter 'Cuts 36.0 t an hour', 'Another skip +21.1 t an hour', the hand stripper '1.0 kg a second' (3.6 t an hour of cable stripped by hand) and the powered stripper '6.0 kg a second'.
+  Ruling: do (a): no absolute tonnes-an-hour on any row in this stage: a yard hand 'Carries {kg} a trip', a cutter 'Cuts with the yard's best tool', a level '+25 % faster', another skip 'One more skip filling at {partner}', the hand stripper 'Turns while you stand at it', the powered stripper 'Runs by itself'.
+- **W6** (important). A whole bicycle is weighed in and sold as 'Appliances 15.0 kg §5.55'.
+  Ruling: do: the grade is 'Light iron, uncut' (short 'Uncut iron') in words and content.
+- **W7** (important). The motor bench card reads 'Electric motors → No.2 copper'.
+  Ruling: do: machine cards list every output, largest first; each owned machine's row is named by the machine.
+- **W8** (important). Light iron sells at 0.50 against HMS 80:20 at 1.20, a ratio of 0.42.
+  Ruling: not now: unprocessed light iron at about half of HMS is inside what yards pay; the price ladder is reviewed against the metals research when stage 2 adds the baler and the shredder. The lesson's computed multiple stays true to the board.
+- **W9** (important). No yard takes an end-of-life car shell apart with an oxy torch into eight 100 kg pieces.
+  Ruling: do: nobody torch-cuts a car body. The car gives its four wheels and its loom by hand, the torch frees the converter, and the stripped shell is weighed whole as 'Car body' and leaves on the merchant's next round from where it stands (one whole unit; no pieces to carry). Goal 'Strip the car for the shredder'; the torch's line 'Cuts beams and tanks; frees the converter'.
+- **W10** (important). The lit range chips are Light iron, Cast iron, HMS 80:20, Brass and No.2 copper.
+  Ruling: do, with the word 'materials': 'Supply {t} ({r} materials)', '{t} supplied · {r} materials'.
+- **W11** (important). Tonnes print with two fixed decimals: '21.50 t', '150.00 t', '2.20 t', '707.20 t', '0.00 t'.
+  Ruling: do: tonnes with at most three figures and no trailing zeros ('0.39 t', '2.4 t', '21.5 t', '150 t'); shop prices and labels without hundredths from §100.
+- **W12** (important). The player's rank '22nd' wraps to '22n / d' in the rank column, and the player's tonnes '25.93 t' are clipped at the row's right edge.
+  Ruling: do with S10.
+- **W13** (important). (a) The rung-2 sign says what the rung opened ('The cutting torch, a radiation portal and a supply deal') and, right under it, the padlock line 'Opens at 21.50 t supplied · 5 metals'.
+  Ruling: do both: 'Next:' before the next rung's condition; the held row prints 'Held until a high day, two days at most'.
+- **W14** (important). S3: household drop-offs are 'signed in' on a slip ('Washing machine · signed in · gate drop-off').
+  Ruling: do: a slip chip over the drop-off when a thing arrives (and for the first washer), and a chip for a deal delivery.
+- **W15** (important). The converter is the dearest piece of the first yard (about §990), and S7 says it is paid by payables shown on its card.
+  Ruling: do: the converter's payables line is printed on its bay card and in the ticket history.
+- **W16** (important). The first weigh-in of the game is 'Cinder Lane Yard · No.
+  Ruling: do: weigh-in tickets and sale tickets are numbered in two series, each from 1.
+- **W17** (important). When the goal card carries its lesson line, it covers the ticket's head (the yard's name and number): '...rd · No.
+  Ruling: do with P8.
+- **W18** (important). The recipe button's label is the recipe's name, so it shows 'Aluminium ...' (cut) beside the row 'Aluminium recipe · Off'.
+  Ruling: do: buttons name the action ('Use', 'Start', 'Stop'), rows name the state.
+- **W19** (minor). 'Sledge' alone means a sled to most readers of English as a second language; S6 names the purchase 'Sledgehammer and angle grinder'.
+  Ruling: do.
+- **W20** (minor). 'Away 3 h 12 m (cap 6 h)' and 'A longer away cap'.
+  Ruling: do, with E33: 'Away {t} · the yard ran {c}' and the line saying what makes it run longer; no 'cap' in any player text.
+- **W21** (minor). 'Work the drop-off' is an idiom (work = clear) that a second-language reader takes literally.
+  Ruling: do.
+- **W22** (minor). Small true-to-the-trade fixes.
+  Ruling: do.
+- **W23** (minor). rival.7's chip is the home town's word: the first yard also has Oakbridge (town), Oakbridge Vale and Oakbridge Foundry Co-op, so 'You passed Oakbridge.' reads as passing a town.
+  Ruling: do: rival.1 becomes a firm of the word 'Marchford' and rival.7 of 'Redport' (both cleared by the names desk as candidates and unused), with chips of at most 14 characters; the register records them with their existing check records and byId is rebuilt.
+- **W24** (minor). 'Buy the powered stripper', 'Buy the crucible', 'Charge the crucible' and 'Buy the motor bench' are unticked while all four are owned and the crucible is heating.
+  Ruling: do: a goal whose condition already holds is ticked in the list.
+- **W25** (minor). The motor bench's icon sits on the 'M' of 'Motor bench' and the aluminium recipe's icon on the 'A' of 'Aluminium'.
+  Ruling: do.
+- **W26** (minor). E31b ('a cutter's and a yard hand's level adds a quarter') and E31d (rung 2 at 2.4 t) are not in the content: hand.lev 0.12, cutter.lev 0.15, rung2.t 2.2.
+  Ruling: do with R4 (E31b and rung 2 at 2.4 t).

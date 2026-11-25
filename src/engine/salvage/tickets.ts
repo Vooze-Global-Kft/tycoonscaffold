@@ -10,6 +10,7 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { priceOf } from './board';
+import { convPaid } from './content';
 import { floorGrams, lineAmount, resolveGrams, roundMoney, sumAmounts } from './money';
 import type { GradeId, ObjectId, Piece, SalvageConfig, SalvageGame, Ticket, TicketLine, Txt } from './types';
 
@@ -97,9 +98,9 @@ export function lessonFor(cfg: SalvageConfig, g: SalvageGame, lines: readonly Ti
   return null;
 }
 
-/** A record reference ("0012") as an argument. STAND-IN: TxtArg has no plain-string kind (requested of contract: { ref: string }); a count prints it without its leading zeros. */
+/** A record reference ("0012") as an argument, printed exactly as written (W3, S7: it must match the car's record). */
 export function refArg(ref: string): NonNullable<Txt['args']>[string] {
-  return { n: Number(ref) || 0 };
+  return { ref };
 }
 
 const base = (no: number, at: number, day: number) => ({ no, at, day });
@@ -126,22 +127,22 @@ export function lotLine(c: SalvageContent, grade: GradeId, g: number, day: numbe
 }
 
 /**
- * The converter's assay (whole-game 4.3, 2.4): Σ metal grams × § a gram × payable, less the ceramic and
- * assay fees, each metal's price stepping by the day's pm move (x_pm). § for ONE converter.
+ * The converter's assay (whole-game 4.3, 2.4): ONE source, content.ts convPaid (Σ metal grams × § a gram ×
+ * payable, each metal stepping by the day's pm move, less the ceramic and assay fees). § for ONE converter.
  */
 export function converterPaid(c: SalvageContent, day: number): number {
-  const v = c.converter;
-  const step = c.grades.conv ? priceStep(c, 'conv', day) : 1;
-  const metal = (v.pt_g * v.pt * v.pay_pt + v.pd_g * v.pd * v.pay_pd + v.rh_g * v.rh * v.pay_rh) * step;
-  return roundMoney(Math.max(0, metal - v.ceramic_kg * v.ceramic_fee - v.assay_fee));
+  return convPaid(c, day);
 }
 
-/** 1 + x_f(D) of a grade's family (pm: the converter's daily step). */
-function priceStep(c: SalvageContent, grade: GradeId, day: number): number {
-  const fam = c.grades[grade]?.family ?? 'nf';
-  // priceOf rounds to hundredths; the converter's step is read from a unit price of its family.
-  const probe = { ...c, grades: { ...c.grades, __probe: { ...c.grades[grade], pbar: 1000, family: fam } } } as SalvageContent;
-  return priceOf(probe, '__probe', day) / 1000;
+/** W15: the converter's payables line, "Paid on assay: platinum 75 %, palladium …, less fees" (its bay card and the history). */
+export function converterLine(c: SalvageContent): Txt {
+  const v = c.converter;
+  return { key: 'card.converterPaid', args: { pt: { pct: v.pay_pt }, pd: { pct: v.pay_pd }, rh: { pct: v.pay_rh }, fee: { money: v.assay_fee }, ceramic: { money: roundMoney(v.ceramic_kg * v.ceramic_fee) } } };
+}
+
+/** Facade `converterLine(cfg)`. */
+export function converterLineCfg(cfg: SalvageConfig): Txt {
+  return converterLine(cfg.salvage);
 }
 
 /** The merchant's collection ticket (2.2): lines with amounts, "Paid §x" = their sum, the buyer named. */

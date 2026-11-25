@@ -29,16 +29,16 @@
  * methods (npm run lint:worklets).
  */
 import { BlendMode, FilterMode, MipmapMode, Skia, createPicture, type SkCanvas, type SkColor, type SkHostRect, type SkImage, type SkPicture, type SkRSXform } from '@shopify/react-native-skia';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
-import { runOnJS, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
+import { makeMutable, runOnJS, useFrameCallback, useSharedValue, type FrameInfo, type SharedValue } from 'react-native-reanimated';
 import { salvageActions } from '../../../modes/salvage/actions';
 import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
 import { ARRIVAL, ITEM, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, sortList, staticItems, type DrawList, type RulesScene } from './actors';
-import { EDGE_ROOM_M, cameraBounds } from './camera';
+import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
 import { DEAD, STICK_R, presenceStep, stick } from './stick';
@@ -67,8 +67,8 @@ export interface Motion {
 
 /** Feel values the content does not carry yet (requests.md [world-a] content: feel.*); D12: measured. */
 export const FEEL = {
-  /** The view while driving: this zoom (a wider view). */
-  driveZoom: 0.78,
+  /** The view while driving: this zoom (a wider view: 30 points a metre against 40 on foot; L7). */
+  driveZoom: 0.75,
   /** Seconds the camera eases its zoom. */
   zoomEase: 0.45,
   /** Seconds the camera looks at the crucible at the first pour. */
@@ -97,8 +97,14 @@ export interface YardAnim {
   pic: SharedValue<SkPicture>;
   /** The ground's transform (the camera, with its zoom about the screen centre). */
   ground: SharedValue<any[]>;
-  /** camX, camY in points before the zoom, and the zoom (1 on foot). */
+  /**
+   * camX, camY in points before the zoom and the zoom (1 on foot, FEEL.driveZoom driving, eased). A world
+   * point (wx, wy) is on screen at ((wx*ppm - x - SW/2)*zoom + SW/2, (wy*ppm*tilt - y - SH/2)*zoom + SH/2):
+   * the look's parallax derives from it.
+   */
   camera: SharedValue<{ x: number; y: number; zoom: number }>;
+  /** The screen y of the back wall's ground line (content map.north) this frame; NaN without one. */
+  northSy: SharedValue<number>;
   /** The boss's place in metres each frame (driving: the truck's). */
   body: SharedValue<{ x: number; y: number; driving: number }>;
   /** The interactable the body stands next to (index into yard.acts), -1 none. */
@@ -121,6 +127,21 @@ const CAP_SHADOW = 140;
 const CAP_SORT = 1000;
 const CAP = CAP_DECAL + CAP_SHADOW + CAP_SORT;
 const CELL_BASE = 2_000_000;
+const NO_ITEMS: number[] = [];
+const NO_LANE: number[] = [];
+
+/** What the frame draws with, set once per bake (H8): the host-object pools, the paint, the statics and the sheets. */
+interface DrawKit {
+  X: SkRSXform[];
+  RC: SkHostRect[];
+  C: SkColor[];
+  paint: ReturnType<typeof Skia.Paint>;
+  statics: number[];
+  T: ReturnType<typeof actorTable>;
+  images: (SkImage | null)[];
+  rects: number[][];
+  dens: number[];
+}
 
 /** A vehicle sprite and its shadow. */
 function vehicleInto(L: DrawList, SH: DrawList, V: Float64Array, cell: number, shadow: number, scale: number, wx: number, wy: number, key: number): void {
@@ -245,7 +266,7 @@ export function useYardLoop(opts: {
   const baked = useMemo(() => {
     if (!art || !content) return null;
     const res = makeResolver(art.sheets);
-    const statics = staticItems(content, res, yard.props.filter((p) => p.id.startsWith('stress-')));
+    const statics = staticItems(content, res, yard.props.filter((p) => p.id.startsWith('stress-')), yard.dressing);
     const T = actorTable(res, { hand: YARD.vestYardHand, cutter: YARD.vestCutter, driver: YARD.vestDriver });
     const images = art.sheets.map((s) => (s ? s.image : null));
     const rects = art.sheets.map((s) => (s ? s.rects : []));
@@ -253,19 +274,51 @@ export function useYardLoop(opts: {
     return { statics, T, images, rects, dens };
   }, [art, content, yard]);
 
-  const pools = useMemo(
-    () => ({
+  // H8: the pools, the statics and the sheets live in ONE shared value, set once per bake, so the frame
+  // worklet's closure never carries (and re-serialises) thousands of host objects; the steering switch and
+  // the insets are shared values too. The worklet is built once per bake and screen size.
+  const empty = useMemo(() => createPicture(() => {}), []);
+  const draw = useMemo(() => makeMutable<DrawKit | null>(null), []);
+  useEffect(() => {
+    if (!baked) {
+      draw.value = null;
+      return;
+    }
+    draw.value = {
       X: Array.from({ length: CAP }, () => Skia.RSXform(0, 0, 0, 0)),
       RC: Array.from({ length: CAP }, () => Skia.XYWHRect(0, 0, 1, 1)),
       C: Array.from({ length: CAP }, () => Skia.Color('white')),
       paint: Skia.Paint(),
-      empty: createPicture(() => {}),
-    }),
-    [],
-  );
-  const pic = useSharedValue<SkPicture>(pools.empty);
+      ...baked,
+    };
+  }, [baked, draw]);
+  const ctl = useSharedValue({ steer: steer ? 1 : 0, inL, inT, inR, inB });
+  useEffect(() => {
+    ctl.value = { steer: steer ? 1 : 0, inL, inT, inR, inB };
+  }, [ctl, steer, inL, inT, inR, inB]);
+  // H16: the presence sample goes through a ref; after a stall only the newest one is applied.
+  const sampleTo = useRef(onSample);
+  sampleTo.current = onSample;
+  const drivingTo = useRef(onDriving);
+  drivingTo.current = onDriving;
+  const pending = useRef<{ s: number[] | null; due: boolean }>({ s: null, due: false });
+  const sampleJS = useCallback((act: number, x: number, y: number, driving: number, moving: number, standingFor: number) => {
+    const p = pending.current;
+    p.s = [act, x, y, driving, moving, standingFor];
+    if (p.due) return;
+    p.due = true;
+    setTimeout(() => {
+      p.due = false;
+      const q = p.s;
+      p.s = null;
+      if (q) sampleTo.current(q[0], q[1], q[2], q[3], q[4], q[5]);
+    }, 0);
+  }, []);
+  const drivingJS = useCallback((on: boolean) => drivingTo.current(on), []);
+  const pic = useSharedValue<SkPicture>(empty);
   const ground = useSharedValue<any[]>([{ translateX: 0 }, { translateY: 0 }]);
   const camera = useSharedValue({ x: 0, y: 0, zoom: 1 });
+  const northSy = useSharedValue(NaN);
   const body = useSharedValue({ x: 0, y: 0, driving: 0 });
   const near = useSharedValue(-1);
   const stats = useSharedValue<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0, runs: 0 });
@@ -289,12 +342,9 @@ export function useYardLoop(opts: {
   const hPhase = useMemo(() => helpers.map((h) => h.phase), [helpers]);
   const topPx = (1.95 * lift + 0.4 * tilt + 0.1) * ppm + 8;
   const room = EDGE_ROOM_M * ppm;
-  const statics = baked?.statics ?? [];
-  const T = baked?.T ?? null;
-  const images = baked?.images ?? [null, null, null, null];
-  const rects = baked?.rects ?? [[], [], [], []];
-  const dens = baked?.dens ?? [1, 1, 1, 1];
-  const { X, RC, C, paint } = pools;
+  const north = yard.northFace;
+  const wallY = yard.north ?? NaN;
+  const bossV = content && typeof (content.truck as { bossV?: unknown }).bossV === 'number' ? (content.truck as unknown as { bossV: number }).bossV : motion.drive;
 
   const onFrame = useCallback(
     (info: FrameInfo) => {
@@ -316,6 +366,11 @@ export function useYardLoop(opts: {
         scratch.value = S;
       }
       const st = S.st;
+      const K = draw.value;
+      const statics = K !== null ? K.statics : NO_ITEMS;
+      const T = K !== null ? K.T : null;
+      const ctv = ctl.value;
+      const steer = ctv.steer === 1;
       const ms = info.timeSincePreviousFrame ?? 16.7;
       const dt = Math.min(0.05, Math.max(0, ms / 1000));
       st[18] += dt;
@@ -357,7 +412,7 @@ export function useYardLoop(opts: {
           st[2] = Rv.truck[1];
           st[3] = Rv.truck[2];
           st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
-          runOnJS(onDriving)(true);
+          runOnJS(drivingJS)(true);
         } else if (st[5] !== 1 && B[9] === B[9] && B[10] === B[10]) {
           // Where the rules have him, pushed out of anything solid he would stand inside (a body never does).
           moveBody(out, B[9], B[10], 0, 0, motion.workerR, solids, YW, YD, 0, 0, 0, Rv.solids, lane);
@@ -367,7 +422,7 @@ export function useYardLoop(opts: {
         }
       }
       const driving = st[5] === 1;
-      const speed = driving ? motion.drive : motion.walk;
+      const speed = driving ? bossV : motion.walk;
       const vx = ux * speed;
       const vy = uy * speed;
       st[16] = vx;
@@ -384,7 +439,8 @@ export function useYardLoop(opts: {
       }
       if (!driving) {
         const truckSolid = truckOwned && !truckBusy;
-        moveBody(out, st[0], st[1], vx * dt, vy * dt, motion.workerR, solids, YW, YD, st[2], st[3], truckSolid ? motion.truckR * 0.85 : 0, Rv.solids, lane);
+        // On foot the boss stays inside the fence (L12): the lane takes him only when he is already out on it (stepped out of the truck there).
+        moveBody(out, st[0], st[1], vx * dt, vy * dt, motion.workerR, solids, YW, YD, st[2], st[3], truckSolid ? motion.truckR * 0.85 : 0, Rv.solids, st[0] > YW - motion.workerR ? lane : NO_LANE);
         const moved = Math.sqrt((out[0] - st[0]) * (out[0] - st[0]) + (out[1] - st[1]) * (out[1] - st[1]));
         st[0] = out[0];
         st[1] = out[1];
@@ -404,7 +460,7 @@ export function useYardLoop(opts: {
           const d = Math.sqrt(dx * dx + dy * dy);
           if (st[6] === 1 && d < motion.enter && steering) {
             st[5] = 1;
-            runOnJS(onDriving)(true);
+            runOnJS(drivingJS)(true);
           } else if (st[6] === 0 && d > motion.enter + 0.8) st[6] = 1;
         }
       } else {
@@ -423,7 +479,7 @@ export function useYardLoop(opts: {
         }
         if (info.timestamp - st[23] >= 250) {
           st[23] = info.timestamp;
-          runOnJS(soundTruck)(dt > 0 ? Math.min(1, moved / dt / motion.drive) : 0);
+          runOnJS(soundTruck)(dt > 0 ? Math.min(1, moved / dt / bossV) : 0);
         }
         // Step out (the button): beside the truck, on the first free side.
         if (exit.value === 1) {
@@ -445,7 +501,7 @@ export function useYardLoop(opts: {
             st[5] = 0;
             st[6] = 0;
             st[8] = 0;
-            runOnJS(onDriving)(false);
+            runOnJS(drivingJS)(false);
             runOnJS(soundTruck)(-1);
             runOnJS(stepOutRules)();
           }
@@ -467,17 +523,26 @@ export function useYardLoop(opts: {
       const nudging = clock < st[26];
       const fx = nudging ? (bx + st[29]) / 2 : bx + vx * motion.lead;
       const fy = nudging ? (by + st[30]) / 2 : by + vy * motion.lead;
-      const tcx = fx * ppm - SW / 2;
-      const tcy = fy * ppm * tilt - SH / 2;
+      const wantZoom = st[5] === 1 ? FEEL.driveZoom : 1;
+      st[24] += (wantZoom - st[24]) * (1 - Math.exp(-dt / FEEL.zoomEase));
+      const zoom = st[24];
+      // The follow view: the body at the screen's middle across and at FOLLOW_Y of its height (the free
+      // world's middle under the bars, L6), whatever the zoom.
+      const cam = S.cam;
+      followCam(cam, fx * ppm, fy * ppm * tilt, SW, SH, zoom, FOLLOW_Y);
+      const tcx = cam[0];
+      const tcy = cam[1];
       const e = st[19] === 1 ? 1 - Math.exp(-dt / motion.ease) : 1;
       st[19] = 1;
       st[9] += (tcx - st[9]) * e;
       st[10] += (tcy - st[10]) * e;
-      const wantZoom = st[5] === 1 ? FEEL.driveZoom : 1;
-      st[24] += (wantZoom - st[24]) * (1 - Math.exp(-dt / FEEL.zoomEase));
-      const zoom = st[24];
-      const cam = S.cam;
-      cameraBounds(cam, pxW, pxH, SW, SH, inL, inT, inR, inB, room, topPx);
+      // The limits (L6): on foot inside the fence about a metre of verge past the east and south fences at
+      // most; driving or out on the lane, the lane's drawn length. Never further north than the follow view
+      // with the boss at the back wall. The east limit eases, so stepping out on the lane never jumps.
+      const outside = bx > YW;
+      const eastM = st[5] === 1 || outside ? drawW : YW;
+      st[34] = st[34] > 0 ? st[34] + (eastM - st[34]) * e : eastM;
+      zoomedBounds(cam, st[34] * ppm, pxH, SW, SH, ctv.inL, ctv.inT, ctv.inR, ctv.inB, room, topPx, zoom, north !== null ? north * ppm * tilt : NaN, FOLLOW_Y);
       st[9] = Math.max(cam[0], Math.min(cam[1], st[9]));
       st[10] = Math.max(cam[2], Math.min(cam[3], st[10]));
       // The hero frame's camera (world-b's ?view=hero): held there, unclamped, while on.
@@ -490,13 +555,14 @@ export function useYardLoop(opts: {
       const camY = st[10];
       ground.value = [{ translateX: SW / 2 }, { translateY: SH / 2 }, { scale: zoom }, { translateX: -camX - SW / 2 }, { translateY: -camY - SH / 2 }];
       camera.value = { x: camX, y: camY, zoom };
+      northSy.value = wallY === wallY ? (wallY * ppm * tilt - camY - SH / 2) * zoom + SH / 2 : NaN;
       body.value = { x: bx, y: by, driving: st[5] };
 
       // --- the presence sample: at most ten times a second --------------------------------------------------
       const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
       const ni = nearestAct(acts, bx, by, bodyR + motion.reach);
       if (near.value !== ni) near.value = ni;
-      if (sampleDue) runOnJS(onSample)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
+      if (sampleDue) runOnJS(sampleJS)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
 
       // --- the sprites of this frame ----------------------------------------------------------------------
       const V = S.view;
@@ -721,6 +787,9 @@ export function useYardLoop(opts: {
           const key = ty + 1;
           if (hook >= 0) {
             vehicleInto(L, SHD, V, T.truckHook[hook], T.shTruck[2], T.truckScale, tx, ty, key);
+          } else if (TR[4] === 0 && T.truckBare[h8] >= 0) {
+            // No skip on the hook (L16): the bare frame of this heading.
+            vehicleInto(L, SHD, V, T.truckBare[h8], T.shTruck[h8], T.truckScale, tx, ty, key);
           } else if (TR[4] === 0 && (h8 === 2 || h8 === 1 || h8 === 3)) {
             vehicleInto(L, SHD, V, T.truckHook[0], T.shTruck[2], T.truckScale, tx, ty, key);
           } else {
@@ -759,9 +828,10 @@ export function useYardLoop(opts: {
       sortList(L);
       let runs = 0;
       const picture = createPicture((cv) => {
-        runs += drawRuns(cv, D, false, X, RC, C, images, rects, dens, paint);
-        runs += drawRuns(cv, SHD, false, X, RC, C, images, rects, dens, paint);
-        runs += drawRuns(cv, L, true, X, RC, C, images, rects, dens, paint);
+        if (K === null) return;
+        runs += drawRuns(cv, D, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
+        runs += drawRuns(cv, SHD, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
+        runs += drawRuns(cv, L, true, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
       });
       pic.value = picture;
       if (IS_WEB) {
@@ -802,13 +872,13 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [statics, T, images, rects, dens, motion, body, camera, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxW, pxH, SW, SH, measure, onSample, onDriving, inL, inT, inR, inB, topPx, room, steer, lane, drawW, pts, soundStep, soundTruck, stepOutRules],
+    [draw, ctl, motion, bossV, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {
     cb.setActive(run);
     return () => cb.setActive(false);
   }, [run, cb]);
-  return useMemo(() => ({ pic, ground, camera, body, near, stats, exit, capacity: opts.capacity ?? 0 }), [pic, ground, camera, body, near, stats, exit, opts.capacity]);
+  return useMemo(() => ({ pic, ground, camera, northSy, body, near, stats, exit, capacity: opts.capacity ?? 0 }), [pic, ground, camera, northSy, body, near, stats, exit, opts.capacity]);
 }
 

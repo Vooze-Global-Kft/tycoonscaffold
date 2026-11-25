@@ -10,7 +10,7 @@
  * pour lighting the plates from below, the furnace hand at the handwheel, the ticket printing at the end.
  */
 import { BlendMode, Skia, type SkCanvas, type SkImage, type SkPath, type SkPicture } from '@shopify/react-native-skia';
-import { YARD, coolingColour, mix, shade } from '../art/palette';
+import { YARD, mix, shade } from '../art/palette';
 import { dotMatrix, sevenSeg, stencil } from '../art/letters';
 import { builder, circle, fill, hash01, hazard, linear, oval, poly, radial, rect, rgba, rrect, segment, stroke, VIEW } from '../art/pen';
 import { drawSkyline } from '../art/ground.draw';
@@ -43,6 +43,10 @@ export interface LoadingColours {
  * screen's density, which costs the frame far less than replaying the vectors (./compose.ts `part`).
  */
 export interface Part {
+  /** What the part looks like, as a key: a part with the same key draws the same (a rotation reuses it). */
+  key: string;
+  /** The most pixels a point its image needs (a soft light or the still background: fewer). */
+  dmax: number;
   pic: SkPicture;
   img: SkImage | null;
   /** The image's size in pixels. */
@@ -96,37 +100,82 @@ function record(draw: (c: SkCanvas) => void, w = 4096, h = 4096): SkPicture {
   return r.finishRecordingAsPicture();
 }
 
+/** A part baked into an image. */
+export interface Baked {
+  img: SkImage;
+  iw: number;
+  ih: number;
+}
+
 /**
- * Records a part; with a density, also bakes it into an image on a CPU raster surface (the world's
- * atlas does the same: src/ui/salvage/world/atlas.ts bakeImage), so any thread's canvas may draw it.
+ * Bakes a part's picture into an image on a CPU raster surface (the world's atlas does the same:
+ * src/ui/salvage/world/atlas.ts bakeImage), so any thread's canvas may draw it. `density` is capped by
+ * the part's own `dmax`.
  */
-function part(draw: (c: SkCanvas) => void, x: number, y: number, w: number, h: number, density: number): Part {
-  const pic = record(draw);
-  const iw = Math.max(1, Math.ceil(w * density));
-  const ih = Math.max(1, Math.ceil(h * density));
-  let img: SkImage | null = null;
-  if (density > 0) {
-    const raster = Skia.Surface.Make(iw, ih);
-    const surface = raster ?? Skia.Surface.MakeOffscreen(iw, ih);
-    if (surface) {
-      try {
-        const c = surface.getCanvas();
-        c.scale(density, density);
-        c.translate(-x, -y);
-        c.drawPicture(pic);
-        surface.flush();
-        const snap = surface.makeImageSnapshot();
-        if (raster) img = snap;
-        else {
-          img = snap.makeNonTextureImage() ?? null;
-          snap.dispose();
-        }
-      } finally {
-        surface.dispose();
-      }
-    }
+export function bakePart(p: Part, density: number): Baked | null {
+  const d = Math.min(density, p.dmax);
+  if (!(d > 0)) return null;
+  const iw = Math.max(1, Math.ceil(p.w * d));
+  const ih = Math.max(1, Math.ceil(p.h * d));
+  const raster = Skia.Surface.Make(iw, ih);
+  const surface = raster ?? Skia.Surface.MakeOffscreen(iw, ih);
+  if (!surface) return null;
+  try {
+    const c = surface.getCanvas();
+    c.scale(d, d);
+    c.translate(-p.x, -p.y);
+    c.drawPicture(p.pic);
+    surface.flush();
+    const snap = surface.makeImageSnapshot();
+    if (raster) return { img: snap, iw, ih };
+    const img = snap.makeNonTextureImage() ?? null;
+    snap.dispose();
+    return img ? { img, iw, ih } : null;
+  } finally {
+    surface.dispose();
   }
-  return { pic, img, iw, ih, x, y, w, h };
+}
+
+/**
+ * Records a part as a picture (cheap: the first frame draws from pictures, review H5). With a density
+ * (Node checks only) it is also baked at once; the app bakes later, in slices (./bake.ts).
+ */
+function part(key: string, draw: (c: SkCanvas) => void, x: number, y: number, w: number, h: number, density: number, dmax = 3): Part {
+  const p: Part = { key, dmax, pic: record(draw), img: null, iw: 0, ih: 0, x, y, w, h };
+  if (density > 0) {
+    const b = bakePart(p, density);
+    if (b) return { ...p, ...b };
+  }
+  return p;
+}
+
+/** Every part of a set that can be baked into an image, those drawn every frame first. */
+export function partsOf(Y: LoadingLayers): Part[] {
+  return [...Y.plates, Y.magnet, Y.trolley, Y.crucible, Y.mouth, Y.hand, Y.hood, Y.hoodGlow, Y.ticket, ...Y.plateGlow, ...Y.notches, Y.pool, Y.bg];
+}
+
+/** The same set with each part's image where `get` has one (parts without stay pictures). */
+export function withImages(Y: LoadingLayers, get: (p: Part) => Baked | undefined): LoadingLayers {
+  const f = (p: Part): Part => {
+    const b = get(p);
+    return b ? { ...p, ...b } : p;
+  };
+  return {
+    ...Y,
+    bg: f(Y.bg),
+    pool: f(Y.pool),
+    plates: Y.plates.map(f),
+    plateGlow: Y.plateGlow.map(f),
+    trolley: f(Y.trolley),
+    magnet: f(Y.magnet),
+    ticket: f(Y.ticket),
+    crucible: f(Y.crucible),
+    mouth: f(Y.mouth),
+    hand: f(Y.hand),
+    hood: f(Y.hood),
+    hoodGlow: f(Y.hoodGlow),
+    notches: Y.notches.map(f),
+  };
 }
 
 const col = (hex: string): Float32Array => Skia.Color(hex) as unknown as Float32Array;
@@ -220,8 +269,11 @@ function gantry(c: SkCanvas, L: LoadingLayout): void {
 
 function background(c: SkCanvas, L: LoadingLayout): void {
   const { w, h, k, horizon, ground } = L;
-  // the late-day sky and the far yard (containers, a dock crane, a chimney, trees) in haze
-  drawSkyline(c, 0, w, 0, horizon, 5);
+  // the late-day sky and the far yard (containers, a dock crane, a chimney, trees) in haze, standing on
+  // the yard's back wall; the far yard's own cranes rise behind the wall
+  drawSkyline(c, 0, w, 0, L.wallTop, 5);
+  farCranes(c, L);
+  backWall(c, L);
   // the yard floor: warm concrete with joints; the low sun's wash from the west
   c.drawRect({ x: 0, y: horizon, width: w, height: h - horizon }, fill(YARD.concrete));
   c.drawRect({ x: 0, y: horizon, width: w, height: h - horizon }, linear(0, 0, w, 0, [rgba(YARD.sun, 0.28), rgba(YARD.sun, 0)]));
@@ -253,32 +305,109 @@ function background(c: SkCanvas, L: LoadingLayout): void {
 
   gantry(c, L);
 
-  // the mould on its sand bed in front: a launder along its back, five cavities
-  const { mL, mR, mY, cavX, cavW, cavY, cavH, lX0, lY } = L;
-  c.drawPath(oval((mL + mR) / 2, mY + 30 * k, (mR - mL) / 2 + 30 * k, 12 * k), fill(YARD.sand));
-  c.drawPath(poly([mL - 10 * k, mY, mR + 10 * k, mY, mR + 16 * k, mY + 26 * k, mL - 16 * k, mY + 26 * k]), fill(YARD.castIron));
-  c.drawPath(poly([mL - 10 * k, mY, mR + 10 * k, mY, mR + 16 * k, mY + 26 * k, mL - 16 * k, mY + 26 * k]), stroke(INK, 1.8));
-  // the launder's head runs from under the crucible's lip; a refractory spout block holds it
-  c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), fill(YARD.refractory));
-  c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), stroke(INK, 1.4));
-  c.drawPath(rrect(lX0, lY - 3 * k, mR - lX0, 6 * k, 3 * k), fill(shade(YARD.castIron, -0.5)));
-  for (const x0 of cavX) {
-    c.drawPath(rrect(x0, cavY, cavW, cavH, 3), fill(shade(YARD.castIron, -0.5)));
-    c.drawPath(rrect(x0, cavY, cavW, cavH, 3), stroke(INK, 1.2));
-  }
+  casting(c, L);
 
   // the crucible's stand: a post on a foot, the trunnion at its top
-  const { sX, sY } = L;
-  c.drawPath(rect(sX - 4 * k, sY, 8 * k, mY + 26 * k - sY), fill(YARD.machineDark));
-  c.drawPath(rect(sX - 4 * k, sY, 8 * k, mY + 26 * k - sY), stroke(INK, 1.4));
-  c.drawPath(rrect(sX - 20 * k, mY + 22 * k, 40 * k, 8 * k, 2), fill(YARD.machineDark));
-  c.drawPath(rrect(sX - 20 * k, mY + 22 * k, 40 * k, 8 * k, 2), stroke(INK, 1.2));
-  // the extinguisher by the stand (yard-stage1 6.1)
+  const { sX, sY, footY, mR } = L;
+  c.drawPath(oval(sX, footY, 26 * k, 4 * k), fill(INK, 0.18));
+  c.drawPath(rect(sX - 4 * k, sY, 8 * k, footY - 6 * k - sY), fill(YARD.machineDark));
+  c.drawPath(rect(sX - 4 * k, sY, 8 * k, footY - 6 * k - sY), stroke(INK, 1.4));
+  c.drawPath(rrect(sX - 20 * k, footY - 8 * k, 40 * k, 8 * k, 2), fill(YARD.machineDark));
+  c.drawPath(rrect(sX - 20 * k, footY - 8 * k, 40 * k, 8 * k, 2), stroke(INK, 1.2));
+  // the extinguisher by the casting table (yard-stage1 6.1)
   const ex = mR + 24 * k;
-  const ey = mY + 24 * k;
+  const ey = footY;
   c.drawPath(rrect(ex - 4 * k, ey - 18 * k, 8 * k, 18 * k, 3 * k), fill('#C8352B'));
   c.drawPath(rrect(ex - 4 * k, ey - 18 * k, 8 * k, 18 * k, 3 * k), stroke(INK, 1.2));
   c.drawPath(rect(ex - 2 * k, ey - 21 * k, 4 * k, 3 * k), fill(INK));
+}
+
+/** The yard's back wall along the horizon: precast concrete panels between posts, in the haze. */
+function backWall(c: SkCanvas, L: LoadingLayout): void {
+  const { w, k, wallTop: top, horizon } = L;
+  const wall = mix(YARD.concreteDark, YARD.far, 0.35);
+  c.drawRect({ x: 0, y: top, width: w, height: horizon - top + 1 }, fill(wall));
+  // the panels' seams and a darker foot where the floor meets the wall
+  for (let x = 18 * k; x < w; x += 52 * k) {
+    c.drawPath(rect(x - 2.5 * k, top - 2 * k, 5 * k, horizon - top + 2 * k), fill(shade(wall, -0.12)));
+    c.drawPath(segment(x + 26 * k, top + 3 * k, x + 26 * k, horizon), stroke(shade(wall, -0.08), 1));
+  }
+  c.drawPath(rect(0, top, w, 2.5 * k), fill(mix(wall, '#FFFFFF', 0.25)));
+  c.drawPath(rect(0, horizon - 4 * k, w, 4 * k), fill(shade(wall, -0.1)));
+}
+
+/** The far yard's own cranes behind the wall, in the haze: a material handler with its grab, a tower crane. */
+function farCranes(c: SkCanvas, L: LoadingLayout): void {
+  const { w, k, wallTop: base } = L;
+  const sil = YARD.farDark;
+  // the material handler: its cab on a mast behind the wall, the boom up and out, the stick down, a grab
+  const hx = w * 0.36;
+  const cab = base - 34 * k;
+  c.drawPath(rect(hx - 5 * k, cab + 10 * k, 10 * k, base - cab - 10 * k), fill(sil));
+  c.drawPath(rrect(hx - 9 * k, cab, 18 * k, 12 * k, 2), fill(sil));
+  const bx = hx + 70 * k;
+  const by = base - 92 * k;
+  c.drawPath(segment(hx + 4 * k, cab + 6 * k, bx, by), stroke(sil, 5 * k));
+  c.drawPath(segment(bx, by, bx + 10 * k, by + 40 * k), stroke(sil, 3.6 * k));
+  const gy = by + 46 * k;
+  c.drawPath(poly([bx + 10 * k, gy - 6 * k, bx + 20 * k, gy + 6 * k, bx + 10 * k, gy + 3 * k, bx, gy + 6 * k]), fill(sil));
+  // a tower crane further off, lighter in the haze
+  const tx = w * 0.7;
+  const tt = base - 110 * k;
+  const far = YARD.far;
+  c.drawPath(rect(tx - 3 * k, tt, 6 * k, base - tt), fill(far));
+  for (let y = tt + 8 * k; y < base; y += 10 * k) c.drawPath(segment(tx - 3 * k, y, tx + 3 * k, y - 8 * k), stroke(mix(far, '#FFFFFF', 0.2), 0.8));
+  c.drawPath(rect(tx - 40 * k, tt - 4 * k, 130 * k, 4 * k), fill(far));
+  c.drawPath(rect(tx - 40 * k, tt, 14 * k, 6 * k), fill(far));
+  c.drawPath(segment(tx, tt - 14 * k, tx - 38 * k, tt - 4 * k), stroke(far, 1));
+  c.drawPath(segment(tx, tt - 14 * k, tx + 86 * k, tt - 4 * k), stroke(far, 1));
+  c.drawPath(rect(tx - 1.5 * k, tt - 16 * k, 3 * k, 12 * k), fill(far));
+  c.drawPath(segment(tx + 62 * k, tt, tx + 62 * k, tt + 30 * k), stroke(far, 0.9));
+}
+
+/**
+ * The casting: a steel table on legs under the crucible's lip, five separate cast-iron ingot moulds on
+ * it with a gap between each, and the launder along their backs from a refractory spout block, a short
+ * lip into each mould (review L11: five moulds on a stand, never one long trough).
+ */
+function casting(c: SkCanvas, L: LoadingLayout): void {
+  const { k, mL, mR, mY, mH, mouldX, mouldW, tableY, footY, cavX, cavW, cavY, cavH, lX0, lY } = L;
+  const tl = mL - 10 * k;
+  const tr = mR + 10 * k;
+  const steel = YARD.machineDark;
+  // shadow on the floor, the legs and their cross rail, the top
+  c.drawPath(oval((tl + tr) / 2, footY, (tr - tl) / 2 + 8 * k, 5 * k), fill(INK, 0.18));
+  const legX = [tl + 5 * k, (tl + tr) / 2, tr - 5 * k];
+  for (const x of legX) {
+    c.drawPath(rect(x - 2.5 * k, tableY + 4 * k, 5 * k, footY - tableY - 6 * k), fill(steel));
+    c.drawPath(rect(x - 2.5 * k, tableY + 4 * k, 5 * k, footY - tableY - 6 * k), stroke(INK, 1.1));
+    c.drawPath(rrect(x - 5 * k, footY - 3 * k, 10 * k, 3 * k, 1), fill(INK));
+  }
+  const railY = tableY + 4 * k + (footY - tableY) * 0.45;
+  c.drawPath(rect(tl + 5 * k, railY, tr - tl - 10 * k, 2.6 * k), fill(steel));
+  c.drawPath(rect(tl + 5 * k, railY, tr - tl - 10 * k, 2.6 * k), stroke(INK, 0.9));
+  c.drawPath(rect(tl, tableY, tr - tl, 5 * k), fill(YARD.steelDark));
+  c.drawPath(rect(tl, tableY, tr - tl, 1.5 * k), fill(YARD.galvanised));
+  c.drawPath(rect(tl, tableY, tr - tl, 5 * k), stroke(INK, 1.4));
+  // the moulds: each its own block, its cavity open at the top
+  for (let i = 0; i < mouldX.length; i++) {
+    const x0 = mouldX[i];
+    const block = poly([x0, mY, x0 + mouldW, mY, x0 + mouldW - 2 * k, tableY, x0 + 2 * k, tableY]);
+    c.drawPath(block, linear(x0, 0, x0 + mouldW, 0, [mix(YARD.castIron, '#FFFFFF', 0.12), YARD.castIron, shade(YARD.castIron, -0.25)]));
+    c.drawPath(block, stroke(INK, 1.4));
+    // two lugs to lift it by
+    for (const s of [-1, 1]) c.drawPath(rect(x0 + mouldW / 2 + s * (mouldW / 2 + 1.5 * k) - 1.5 * k, mY + 4 * k, 3 * k, 5 * k), fill(shade(YARD.castIron, -0.3)));
+    c.drawPath(rrect(cavX[i], cavY, cavW, cavH, 2), fill(shade(YARD.castIron, -0.55)));
+    c.drawPath(rrect(cavX[i], cavY, cavW, cavH, 2), stroke(INK, 1));
+    // the launder's short lip down into this mould
+    c.drawPath(rect(cavX[i] + 3 * k, lY + 2 * k, 4 * k, cavY - lY - 1.5 * k), fill(YARD.refractory));
+    c.drawPath(rect(cavX[i] + 3 * k, lY + 2 * k, 4 * k, cavY - lY - 1.5 * k), stroke(INK, 0.8));
+  }
+  // the launder: a refractory-lined channel from the spout block along the moulds' backs
+  c.drawPath(rrect(lX0, lY - 3 * k, mR - lX0, 6 * k, 3 * k), fill(shade(YARD.castIron, -0.5)));
+  c.drawPath(rrect(lX0, lY - 3 * k, mR - lX0, 6 * k, 3 * k), stroke(INK, 1.2));
+  c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), fill(YARD.refractory));
+  c.drawPath(rrect(lX0 - 8 * k, lY - 6 * k, 22 * k, 12 * k, 3 * k), stroke(INK, 1.4));
 }
 
 /**
@@ -361,16 +490,17 @@ function shaft(c: SkCanvas, L: LoadingLayout): void {
   c.drawPath(circle(sX, sY, 4 * k), stroke(INK, 1.2));
 }
 
+/** The weighbridge ticket: three lines of dot-matrix print, each glyph `tkPrint` (11 points or more) high. */
 function ticket(c: SkCanvas, L: LoadingLayout, kg: number): void {
-  const { k, tkX: tx, tkW: tw, tkH: th, slotY: ty, dX } = L;
-  const tp = poly([tx, ty, tx + tw, ty, tx + tw, ty + th, tx + tw * 0.75, ty + th - 3 * k, tx + tw * 0.5, ty + th, tx + tw * 0.25, ty + th - 3 * k, tx, ty + th]);
+  const { k, tkX: tx, tkW: tw, tkH: th, slotY: ty, dX, tkPrint: s } = L;
+  const tp = poly([tx, ty, tx + tw, ty, tx + tw, ty + th, tx + tw * 0.75, ty + th - 3, tx + tw * 0.5, ty + th, tx + tw * 0.25, ty + th - 3, tx, ty + th]);
   c.drawPath(tp, fill(YARD.paper));
   c.drawPath(tp, stroke(YARD.paperLine, 1));
-  c.drawPath(rect(tx + 4 * k, ty + 5 * k, tw - 8 * k, 11 * k), fill(YARD.hivis));
-  dotMatrix(c, 'LOADED', dX, ty + 7 * k, 7 * k, INK, { align: 'center', bold: true });
-  dotMatrix(c, `${groupKg(kg)} KG`, dX, ty + 22 * k, 7 * k, YARD.print, { align: 'center' });
-  c.drawPath(rrect(tx + 6 * k, ty + 35 * k, tw - 12 * k, 14 * k, 2), stroke(YARD.stampBlue, 1.4, 0.85));
-  dotMatrix(c, 'ID OK', dX, ty + 38.5 * k, 6 * k, YARD.stampBlue, { align: 'center', bold: true });
+  c.drawPath(rect(tx + 4 * k, ty + 4, tw - 8 * k, s + 6), fill(YARD.hivis));
+  dotMatrix(c, 'LOADED', dX, ty + 7, s, INK, { align: 'center', bold: true });
+  dotMatrix(c, `${groupKg(kg)} KG`, dX, ty + s + 13, s, YARD.print, { align: 'center', bold: true });
+  c.drawPath(rrect(tx + 5 * k, ty + 2 * s + 17, tw - 10 * k, s + 6, 2), stroke(YARD.stampBlue, 1.4, 0.85));
+  dotMatrix(c, 'ID OK', dX, ty + 2 * s + 20, s, YARD.stampBlue, { align: 'center', bold: true });
 }
 
 function trolley(c: SkCanvas, L: LoadingLayout): void {
@@ -405,15 +535,44 @@ function field(c: SkCanvas, L: LoadingLayout): void {
   for (let i = 0; i < 2; i++) c.drawPath(builder().addArc({ x: -mw - 8 * k - i * 8 * k, y: -10 * k - i * 6 * k, width: (mw + 8 * k + i * 8 * k) * 2, height: (30 + i * 12) * k }, 200, 140).build(), stroke(YARD.stampBlue, 1.6, 0.55));
 }
 
-/** The cooled ingot's marks: two break notches, the yard's stamp, a dull highlight. */
-function notches(c: SkCanvas, x0: number, cy: number, cw: number, ch: number): void {
-  for (const q of [0.33, 0.66]) c.drawPath(segment(x0 + cw * q, cy + 2, x0 + cw * q, cy + ch - 2), stroke(YARD.brassDark, 1.4));
-  c.drawPath(rrect(x0 + cw * 0.39, cy + ch * 0.3, cw * 0.22, ch * 0.42, 1.5), stroke(YARD.brassDark, 1));
-  c.drawPath(segment(x0 + 5, cy + 3, x0 + cw * 0.3, cy + 3), stroke(YARD.brassLight, 1.4));
+/** A cooled brass ingot's colour: dull, cast brass with its oxide, never the bright yellow of gold (S11). */
+export const INGOT_BRASS = '#B08A3A';
+const INGOT_DARK = '#7E6327';
+const DROSS = '#8C826C';
+
+/** The ingot's colour `t` seconds after the pour: white-hot, orange, then down to dull brass by 3 s. */
+export function ingotColour(t: number): string {
+  const q = Math.max(0, Math.min(1, t / 3));
+  if (q < 0.35) return mix(YARD.glowHot, YARD.glow, q / 0.35);
+  return mix(YARD.glow, INGOT_BRASS, (q - 0.35) / 0.65);
 }
 
+/**
+ * The cooled ingot's marks: a grey dross skin in patches over its top, the two break notches' shadows,
+ * the yard's cast stamp; no highlight (one glint passes once, ./compose.ts).
+ */
+function notches(c: SkCanvas, x0: number, cy: number, cw: number, ch: number, seed: number): void {
+  c.save();
+  c.clipPath(ingotPath(x0, cy, cw, ch), 1, true);
+  c.drawRect({ x: x0, y: cy + ch * 0.62, width: cw, height: ch }, fill(INGOT_DARK, 0.45));
+  for (let i = 0; i < 7; i++) {
+    const px = x0 + cw * (0.06 + 0.88 * hash01(i, seed));
+    const py = cy + ch * (0.12 + 0.4 * hash01(i, seed + 3));
+    c.drawPath(oval(px, py, (1.6 + 2.6 * hash01(i, seed + 5)) * (ch / 9), (0.8 + 0.9 * hash01(i, seed + 7)) * (ch / 9)), fill(DROSS, 0.55));
+  }
+  c.drawPath(segment(x0 + 4, cy + 1.6, x0 + cw - 4, cy + 1.6), stroke(DROSS, 1.2, 0.5));
+  for (const q of [1 / 3, 2 / 3]) c.drawPath(segment(x0 + cw * q, cy + ch * 0.38, x0 + cw * q, cy + ch - 1.5), stroke(INGOT_DARK, 1.2));
+  c.drawPath(rrect(x0 + cw * 0.42, cy + ch * 0.45, cw * 0.16, ch * 0.36, 1), stroke(INGOT_DARK, 0.9));
+  c.restore();
+}
+
+/** An ingot in its cavity: a long bar with two V break notches in its top edge (a cast ingot, not a bar of bullion). */
 export function ingotPath(x0: number, cy: number, cw: number, ch: number): SkPath {
-  return poly([x0 + 2, cy + ch - 1, x0 + 4, cy + 1, x0 + cw - 4, cy + 1, x0 + cw - 2, cy + ch - 1]);
+  const d = ch * 0.38;
+  const v = ch * 0.3;
+  const n1 = x0 + cw / 3;
+  const n2 = x0 + (2 * cw) / 3;
+  return poly([x0 + 2, cy + ch - 1, x0 + 4, cy + 1, n1 - v, cy + 1, n1, cy + 1 + d, n1 + v, cy + 1, n2 - v, cy + 1, n2, cy + 1 + d, n2 + v, cy + 1, x0 + cw - 4, cy + 1, x0 + cw - 2, cy + ch - 1]);
 }
 
 /**
@@ -425,13 +584,17 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
   const { w, h, k } = L;
   const d = density;
   const total = tl.kg.reduce((a, b) => a + b, 0);
+  // what a part depends on, as keys: the whole layout for parts drawn in place, less for parts drawn
+  // about their own origin (a plate, the magnet), so a rotation that keeps the scale reuses their images
+  const at = `${w}x${h}|${L.sl},${L.sr},${L.beamY},${L.mY}|${words.join(' ')}`;
+  const local = `${k}`;
   const digits: SkPicture[][] = L.cellX.map((x) =>
     Array.from({ length: 11 }, (_, d) => record((c) => sevenSeg(c, d === 10 ? ' ' : String(d), x + L.cellSize * 0.56, L.cellY, L.cellSize, YARD.led, YARD.ledOff))),
   );
   const cooling: Float32Array[] = [];
-  for (let i = 0; i <= 40; i++) cooling.push(col(coolingColour('brass', i / 10)));
+  for (let i = 0; i <= 40; i++) cooling.push(col(ingotColour(i / 10)));
   return {
-    bg: part((c) => background(c, L), 0, 0, w, h, d),
+    bg: part(`bg|${at}`, (c) => background(c, L), 0, 0, w, h, d, 2),
     pool: (() => {
       const gx = (L.mL + L.mR) / 2;
       const rx = (L.mR - L.mL) * 0.75;
@@ -441,6 +604,7 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
       const y1 = L.mY + 66 * k;
       // a soft light: half the density is plenty
       return part(
+        `pool|${at}`,
         (c) => {
           c.drawPath(oval(gx, L.mY + 18 * k, rx, 44 * k), radial(gx, L.mY + 18 * k, rx, [rgba('#FFB050', 0.5), rgba('#FFB050', 0)]));
           c.drawPath(oval(L.sX, L.mY + 22 * k, 70 * k, 22 * k), radial(L.sX, L.mY + 22 * k, 70 * k, [rgba('#FFB050', 0.45), rgba('#FFB050', 0)]));
@@ -450,30 +614,31 @@ export function recordLayers(L: LoadingLayout, words: readonly string[], tl: Loa
         x1 - x0,
         y1 - y0,
         d / 2,
+        1.5,
       );
     })(),
-    plates: words.map((wd, i) => part((c) => plate(c, wd, L.plateW[i], L.size, i * 7), -L.plateW[i] / 2 - 4, -L.plateH - L.size * 0.4 - 4, L.plateW[i] + 14, L.plateH + L.size * 0.4 + 14, d)),
-    plateGlow: words.map((wd, i) => part((c) => plateGlow(c, wd, L.plateW[i], L.size), -L.plateW[i] / 2 - 2, -L.plateH - 2, L.plateW[i] + 4, L.plateH + 4, d)),
-    trolley: part((c) => trolley(c, L), -34 * k, L.beamY - 44 * k, 68 * k, 54 * k, d),
-    magnet: part((c) => magnet(c, L), -40 * k, -26 * k, 80 * k, 46 * k, d),
+    plates: words.map((wd, i) => part(`plate|${wd}|${L.plateW[i]}|${L.size}|${i}`, (c) => plate(c, wd, L.plateW[i], L.size, i * 7), -L.plateW[i] / 2 - 4, -L.plateH - L.size * 0.4 - 4, L.plateW[i] + 14, L.plateH + L.size * 0.4 + 14, d)),
+    plateGlow: words.map((wd, i) => part(`plateGlow|${wd}|${L.plateW[i]}|${L.size}`, (c) => plateGlow(c, wd, L.plateW[i], L.size), -L.plateW[i] / 2 - 2, -L.plateH - 2, L.plateW[i] + 4, L.plateH + 4, d)),
+    trolley: part(`trolley|${local}|${L.beamY}`, (c) => trolley(c, L), -34 * k, L.beamY - 44 * k, 68 * k, 54 * k, d),
+    magnet: part(`magnet|${local}`, (c) => magnet(c, L), -40 * k, -26 * k, 80 * k, 46 * k, d),
     field: record((c) => field(c, L)),
     digits,
-    ticket: part((c) => ticket(c, L, total), L.tkX - 2, L.slotY - 2, L.tkW + 4, L.tkH + 4, d),
-    crucible: part((c) => crucible(c, L), -L.R - 12 * k, -38 * k, L.R * 2 + 30 * k, 66 * k, d),
-    mouth: part((c) => mouth(c, L), -L.R - 4, -36 * k, L.R * 2 + 8, 20 * k, d),
+    ticket: part(`ticket|${at}|${total}`, (c) => ticket(c, L, total), L.tkX - 2, L.slotY - 2, L.tkW + 4, L.tkH + 4, d),
+    crucible: part(`crucible|${local}`, (c) => crucible(c, L), -L.R - 12 * k, -38 * k, L.R * 2 + 30 * k, 66 * k, d),
+    mouth: part(`mouth|${local}`, (c) => mouth(c, L), -L.R - 4, -36 * k, L.R * 2 + 8, 20 * k, d),
     wheel: record((c) => wheel(c, L)),
     shaft: record((c) => shaft(c, L)),
-    hand: part((c) => {
+    hand: part(`hand|${at}`, (c) => {
       c.save();
       c.translate(L.manX, L.manY);
       c.scale(L.manScale, L.manScale);
       drawPerson(c, VIEW, { dir: 'e', pose: 'lever', look: crewLook(YARD.vestCutter, 3), shield: true, apron: true });
       c.restore();
     }, L.manX - 44 * k, L.manY - 80 * k, 110 * k, 96 * k, d),
-    hood: part((c) => hood(c, L), -20, L.hoodTop - 4, L.hoodX + 44 * k + 26, L.hoodBot - L.hoodTop + 8, d),
-    hoodGlow: part((c) => hoodGlow(c, L), L.hoodX - 46 * k, L.hoodBot - 8 * k, 92 * k, 20 * k, d),
+    hood: part(`hood|${at}`, (c) => hood(c, L), -20, L.hoodTop - 4, L.hoodX + 44 * k + 26, L.hoodBot - L.hoodTop + 8, d),
+    hoodGlow: part(`hoodGlow|${at}`, (c) => hoodGlow(c, L), L.hoodX - 46 * k, L.hoodBot - 8 * k, 92 * k, 20 * k, d),
     ingot: L.cavX.map((x0) => ingotPath(x0, L.cavY, L.cavW, L.cavH)),
-    notches: L.cavX.map((x0) => part((c) => notches(c, x0, L.cavY, L.cavW, L.cavH), x0 - 2, L.cavY - 2, L.cavW + 4, L.cavH + 4, d)),
+    notches: L.cavX.map((x0, i) => part(`notches|${at}|${i}`, (c) => notches(c, x0, L.cavY, L.cavW, L.cavH, 11 + i * 5), x0 - 2, L.cavY - 2, L.cavW + 4, L.cavH + 4, d)),
     colours: {
       ink: col(INK),
       rope: col(YARD.ink),

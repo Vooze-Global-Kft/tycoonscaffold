@@ -97,7 +97,11 @@ export function dropoffArrive(x: Ctx, t: number): void {
     return;
   }
   const n = d.n;
-  let obj = c.dropoff.initial[n];
+  let obj: string | undefined = c.dropoff.initial[n];
+  // The opening (finding P1): after the fixed first arrivals, the fixed opening list in order (again from
+  // its start) until openingUntil_s, so that no brass, cable or cylinder comes before the copper lesson.
+  const opening = c.dropoff.opening ?? [];
+  if (!obj && opening.length && t < (c.dropoff.openingUntil_s ?? 0)) obj = opening[(n - c.dropoff.initial.length) % opening.length];
   if (!obj) {
     const mix = c.dropoff.mix;
     const total = mix.reduce((a, [, w]) => a + w, 0);
