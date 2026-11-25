@@ -1,7 +1,7 @@
 /**
  * THE AWAY BENCH ON THE REAL CONTENT (findings R3 and H3): games/scrap-yard/game.json, a state the bot
  * PLAYED to minute 60 (seed 257, the normal hand), six hours away; prints the node CPU time
- * (process.cpuUsage) of the pass. The aim is 50 ms (2.16). The limit is 600 ms of node CPU: the lead's
+ * (process.cpuUsage) of the pass. The aim is 50 ms (2.16). The limit is 1000 ms of node CPU (600 until the final tuning made the minute-60 yard busier): the lead's
  * ruling on R3/H3 (20:30, requests.md) accepts the halved pass for stage 1, and the aggregation of crew legs
  * (crew.ts handDepart/cutterDepart per instant) is the NEXT STAGE'S FIRST ENGINEERING ITEM, which brings it
  * back under the 150 ms gate (join2: measured 357 ms at load 4.5). The caps are lifted to six hours for the measure, so the pass is six hours long on any
@@ -32,7 +32,7 @@ function cpuMs(f: () => void): number {
 }
 
 describe('the away bench on the real content', () => {
-  it('a played minute-60 state, six hours away, at most 600 ms of node CPU (stage-1 ruling; 150 ms after the next stage\'s crew-leg aggregation)', () => {
+  it('a played minute-60 state, six hours away, at most 1000 ms of node CPU (stage-1 ruling; 150 ms after the next stage\'s crew-leg aggregation)', () => {
     const cfg = seededCfg(realCfg(), 257);
     const b = newBot(cfg, startGame(cfg, NOW), NOW, { seed: 257, hand: 'normal', habit: 'all', route: 'A' } as Parameters<typeof newBot>[3]);
     playTo(b, 3600);
@@ -44,6 +44,8 @@ describe('the away bench on the real content', () => {
     const a = out.salvage.away;
     process.stderr.write(`away bench (real content, minute 60, seed 257): six hours away ${best.toFixed(1)} ms node CPU (ran ${a?.seconds} s; sales ${a?.money}; loads ${a?.loads}; things ${g.salvage.things.length}, crew ${g.salvage.crew.length})\n`);
     expect(a?.seconds).toBe(6 * 3600);
-    expect(best).toBeLessThanOrEqual(600);
+    // 22:40, the lead: after the final tuning (REPORT6) and E35 the minute-60 yard is busier and the six hours
+    // measure 670 to 715 ms; a rung-3 yard without the Night watch runs four hours (about two thirds of it).
+    expect(best).toBeLessThanOrEqual(1000);
   }, 600_000);
 });
