@@ -525,4 +525,41 @@ A numbers prototype (scratchpad `proto/`, starting from `ladder3.py`) runs secti
 
 ## 14. Lead decisions
 
-(Empty: the lead writes this section.)
+These override the text above where they differ. Decisions are numbered and dated; the reason is given so that a later engineer can tell a decision from an accident.
+
+**Decisions of 25 November, on the revised specification and its open questions.**
+
+**D1. The ruling stands in the text.** `RULING.md` (16 points, written after three designs and three judges) is part of this specification. Where a critic argued against a point, the outcome is below.
+
+**D2. Weekly brackets** are placed at the week's start by daily capacity and bounded by a daily credit ceiling (7.3), as the revision has it. Re-banding during a week is not built.
+
+**D3. The clock.** Ruling 8's sentence becomes: on one device, looking ahead by changing the clock gains nothing; a player who learns tomorrow's board from elsewhere (a second device, a fan page: the prices are the same for everyone and can be computed) gains at most about a quarter more money and never rank. This is a measured aim, not a promise.
+
+**D4. The hand's worth** has two aims at rungs 3, 6 and 8: at least a fifth more income for the player who uses the worker, and each rung reached at least a tenth sooner. No mechanism gives more than three fifths of the gain.
+
+**D5. The capacity ceiling per rung is a guard**, not the pace: the pace comes from the payback rule (what adds capacity costs a number of hours of the income it earns). A normal player should rarely meet the ceiling, and the next purchase of capacity is always within two sittings.
+
+**D6. A company's weekly order** is fed by lots that members send to lines they have claimed, priced like a deal. This counts as "normal deliveries" in the ruling's sense: nothing is asked that a member would not sell anyway, and the choice of line is the member's decision.
+
+**D7. Ad rewards** are capped at 4 % of a day's income and give currency only.
+
+**D8. Tickets.** Metal coming in carries "Seller ID checked · paid by transfer"; a lot going out names its buyer, "weighed out · paid by transfer". The site licence hangs in the cabin from the first minute; rungs carry no job titles that imply the yard was unlicensed before.
+
+**D9. Stages.** The uplands site and the carbide plant move to stage 6, as the revision has it, to keep stage 4 in hand.
+
+**D10. The copper jump** in the first ninety seconds comes from stock the yard starts with (a bundle of cable and a hand stripper that came with the yard), needing no purchase. The first-yard document owns the minutes; the prototype decides them.
+
+**D11. The stage-1 car keeps its catalytic converter**, sourced as the revision has it (a papered, depolluted end-of-life car from a named partner; the ticket says so; a test refuses a converter with any other source). It is the hour's last beat and the first sight of the precious metals. If the first-yard prototype shows it floods the hour with cash, its payable falls, not its paperwork.
+
+**D12. Feel is measured, not specified.** The delay before work starts, the truck's speed and turning, the camera's lead: the world engineer sets them with people-like players, under two tests that do bind: walking past a thing never works it, and stopping beside it always does within half a second.
+
+**D13. Names.** The names register (`scripts/content/yard/names.json`) is the one source of every invented name, the currency's included. A name in this document that the register has changed is wrong here, not there. Names a player sees must be short and plain enough for a reader of English as a second language to say right the first time.
+
+**D14. The range gate** scales with the rung, and its share may be smaller for the precious metals than for the base metals: the prototype sets it so that a steel-only climb stalls by rung 4 or 5 and no gate asks for more of a metal than the game's own sources can give at a person's pace.
+
+**D15. Money.** Until the owner chooses, the game is built to list A (no ad videos, looks, a plaque), and nothing in the economy is tuned to need list B. If the owner chooses list B it ships without "Early cover" (the away hours that play earns later), because that one product leaves a buyer far ahead on the all-time board for weeks; the store sentence is then rewritten to say plainly what a purchase brings forward.
+
+**D16. The process board** (the tree of unit processes, with bought nodes lit) is the game's progression screen from stage 1, where its first branch is the stripper, the motor bench and the crucible. The rungs are positions on the industry table, shown on the chip and the notice board, never a screen of titles.
+
+**D17. Length.** The document may stay at about 11,000 words; each later stage gets its own document, as the first yard has.
+
