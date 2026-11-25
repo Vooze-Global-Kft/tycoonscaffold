@@ -79,7 +79,7 @@ export function WorldLayer({ cfg, yard, anim, width, height, insets, active = tr
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <FxCanvas cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
-      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} />
+      <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} />
     </View>
   );
 }
@@ -91,8 +91,9 @@ function useLabelSize(): number {
   return labelSize(labelsDev.fontScale ?? fontScale);
 }
 
-function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number }) {
+function Labels({ cfg, yard, anim, width, height, insets }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets }) {
   const size = useLabelSize();
+  const { top: inT, left: inL, right: inR, bottom: inB } = insets;
   const [placed, setPlaced] = useState<PlacedLabel[]>([]);
   const [inv, setInv] = useState(1);
   const cam = anim.camera;
@@ -132,7 +133,13 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
       });
       // Plates keep their text size while the view zooms out (driving): stacked and drawn at 1 / zoom.
       const inv = Math.round((1 / z) * 20) / 20;
-      const next = stackLabels(shown, v, size * inv);
+      // Plates stay clear of the top bar and the goal card: a plate whose top would sit above the free
+      // world (4.1's rows) is lowered onto its edge, over its own pointer, at the camera of this pass.
+      const free = freeWorld(width, height, { top: inT, left: inL, right: inR, bottom: inB });
+      const next = stackLabels(shown, v, size * inv).map((p) => {
+        const top = (p.py - p.lift - 7 - p.h - cv.y - height / 2) * z + height / 2;
+        return top >= free.y0 + 2 ? p : { ...p, lift: p.lift - (free.y0 + 2 - top) / z };
+      });
       const key = `${inv};` + next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.lift)}`).join(';');
       if (key !== last) {
         last = key;
@@ -143,7 +150,7 @@ function Labels({ cfg, yard, anim, width, height }: { cfg: R.SalvageConfig; yard
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, anim.body, size, width, height]);
+  }, [cfg, yard, cam, anim.body, size, width, height, inT, inL, inR, inB]);
   const W = width;
   const H = height;
   const style = useAnimatedStyle(() => {
@@ -191,7 +198,7 @@ function Plate({ p, size, lineH, padX, padY, pad }: { p: PlacedLabel; size: numb
         </View>
       </View>
       {/* The pointer down to the thing (lifted plates get a longer stem). */}
-      <View style={[styles.stem, { height: 7 + p.lift, left: PLATE_SPAN / 2 - 1 }]} />
+      {p.lift > -7 ? <View style={[styles.stem, { height: 7 + p.lift, left: PLATE_SPAN / 2 - 1 }]} /> : null}
     </View>
   );
 }
