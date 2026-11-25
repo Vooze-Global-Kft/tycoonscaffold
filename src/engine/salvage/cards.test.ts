@@ -129,3 +129,30 @@ describe('every card of every frozen state', () => {
     }
   });
 });
+
+describe('a skip still filling (strings 16:45; 2.7: its contents are fixed when it fills)', () => {
+  it('prints no net and no price, on its card and on the Partners tab', () => {
+    let checked = 0;
+    for (const n of FIXTURE_NAMES) {
+      const g0 = fixtureGame(n, base(), FIXTURE_NOW);
+      for (const [pid, p] of Object.entries(g0.salvage.partners)) {
+        if (!p.open || !p.skips.length) continue;
+        const sk0 = p.skips[0];
+        const sk = { ...sk0, phase: 'filling' as const, trial: false, setAt: g0.salvage.t, fullAt: g0.salvage.t + 60, contents: {}, mass_g: 0, price: 0 };
+        const g: SalvageGame = { ...g0, salvage: { ...g0.salvage, partners: { ...g0.salvage.partners, [pid]: { ...p, skips: [sk, ...p.skips.slice(1)] } } } };
+        const card = cardOf(cfg, g, { kind: 'skip', partner: pid, slot: sk.slot } as CardRef);
+        const keys = JSON.stringify(card.lead ?? []);
+        expect(keys, `${n} ${pid}`).not.toContain('card.skipNet');
+        expect(keys, `${n} ${pid}`).not.toContain('card.skipPrice');
+        const tab = cardOf(cfg, g, { kind: 'office', tab: 'partners' });
+        const r = tab.rows.find((x) => x.id === `${pid}.${sk.slot}`);
+        if (r) expect(r.extra, `${n} ${pid}`).toBeNull();
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+  it('a duration never breaks inside itself (no-break spaces)', () => {
+    for (const s of [5, 250, 3 * 3600 + 12 * 60]) expect(R.fmtDuration(s)).not.toMatch(/ /);
+  });
+});

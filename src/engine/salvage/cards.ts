@@ -174,7 +174,7 @@ function partnerRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
       const lab = skipLabelOf(c, g, id, sk.slot);
       if (!lab) continue;
       const line: Txt = lab.state === 'filling' ? { key: 'refusal.filling', args: { t: { secs: lab.fullInS ?? 0 } } } : lab.refusal ?? { key: 'card.skipReady' };
-      out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : lab.state === 'full' ? { key: 'card.skipState', args: { partner: { name: id } } } : { key: 'title.place', args: { place: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
+      out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : lab.state === 'full' ? { key: 'card.skipState', args: { partner: { name: id } } } : { key: 'title.place', args: { place: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', lab.state === 'filling' ? null : { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
     }
     const lv = levelButton(cfg, g, { kind: 'partner', partner: id }, p.level);
     out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.buy', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state));
@@ -293,7 +293,8 @@ function skipCard(c: SalvageContent, g: SalvageGame, partner: PartnerId, slotIn?
   const slot = slotIn ?? p?.skips.filter((sk) => sk.phase === 'full').sort((a, b) => a.fullAt - b.fullAt)[0]?.slot ?? p?.skips[0]?.slot ?? 0;
   const lab = skipLabelOf(c, g, partner, slot);
   const rows = (lab?.things ?? []).map((th) => row(th.obj, { key: 'card.skipLine', args: { thing: { thing: th.obj }, n: { n: th.n }, kg: { mass_g: th.g, step: 'lot' } } }, c.objects[th.obj]?.certifiedEmpty ? { key: 'chip.certifiedEmpty' } : null, null, 'info'));
-  const lead: Txt[] = lab ? [{ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, { key: 'card.skipPrice', args: { x: { money: lab.price } } }] : [];
+  // A skip still filling has no contents yet (2.7: fixed when it fills): no net and no price until then.
+  const lead: Txt[] = lab && lab.state !== 'filling' ? [{ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, { key: 'card.skipPrice', args: { x: { money: lab.price } } }] : [];
   if (lab?.refusal) lead.push(lab.refusal);
   return { kind: 'skip', shape: 'panel', title: { key: 'title.skip', args: { partner: { name: partner } } }, lead, rows, foot: [], legal: { key: 'ticket.partnerLegal' }, skip: lab ?? undefined };
 }

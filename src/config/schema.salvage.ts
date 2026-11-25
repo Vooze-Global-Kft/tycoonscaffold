@@ -277,6 +277,8 @@ export const TruckSchema = z.object({
   radius: z.number().positive().default(1.3),
   /** How close the worker comes to its centre to get in, metres. */
   enter: z.number().positive().default(2.0),
+  /** After Step out, entering is armed again only once the worker is farther than enter + rearm from it, metres (the world's rule). */
+  rearm: z.number().nonnegative().default(0.8),
   /** The truck's stored tare and the empty skip's, kg (the skip ticket's "Tare"; content may add them, 0 until then). */
   tare_kg: z.number().nonnegative().default(0),
   skipTare_kg: z.number().nonnegative().default(0),
@@ -534,7 +536,7 @@ export const SalvageSchema = z.object({
   pick_s: z.number().nonnegative(),
   /** Seconds standing on the platform scale to weigh a load in. */
   weigh_s: z.number().nonnegative(),
-  truck: TruckSchema.default({ v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2.0, tare_kg: 0, skipTare_kg: 0 }),
+  truck: TruckSchema.default({ v: 9, handle_s: 14, driverFactor: 0.8, radius: 1.3, enter: 2.0, rearm: 0.8, tare_kg: 0, skipTare_kg: 0 }),
   machines: MachinesSchema,
   crew: CrewSchema,
   dropoff: DropoffSchema,

@@ -167,6 +167,10 @@ export function advance(x: Ctx, T: number): void {
     const tt = Math.max(s.t, e.at);
     accrueBoost(x, tt);
     s.t = tt;
+    // The rate stocks are brought to this instant BEFORE anything reads them (a yard hand claiming a tray
+    // at his departure): the cumulative rule makes this free of path, so ticking and jumping see the same
+    // trays (the 17:30 gate case, bots/gate5-state.json: a stale tray claimed 45 g where the tick had 285 g).
+    for (const id of RATE_MACHINES) credit(x, id, tt);
     let inner = 0;
     for (let e2: QueuedEvent | null = e; e2 && e2.at <= tt + EPS; e2 = firstEvent(x)) {
       apply(x, e2);

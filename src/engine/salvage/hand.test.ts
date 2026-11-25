@@ -125,3 +125,36 @@ describe('pickup and the swap', () => {
     expect(last).toBeGreaterThan(0);
   });
 });
+
+describe('the truck: entering by walking into it', () => {
+  it('after Step out he is set down beside it and stays out until he has walked away and back (17:30)', async () => {
+    const { begin, finish } = await import('./clock');
+    const { own } = await import('./rate');
+    let g = fresh();
+    const x = begin(cfg, g, [], true);
+    own(x, 'truck', 0);
+    g = finish(g, x);
+    const tr = g.salvage.truck;
+    const ev: import('./types').SalvageEvent[] = [];
+    const P = (px: number, py: number, moving: boolean) => (g = R.setPresence(cfg, g, { x: px, y: py, moving, driving: false, standingFor: moving ? 0 : 0.1, heading: 0 } as never, g.salvage.t, ev));
+    P(tr.x, tr.y, false);
+    expect(g.salvage.truck.by).toBe('boss');
+    g = R.stepOut(cfg, g, { x: tr.x, y: tr.y, heading: 0 } as never, g.salvage.t, ev);
+    expect(g.salvage.truck.by).toBe(null);
+    // The world sets him down radius + worker + 0.25 m beside it: inside `enter`, but not re-entered.
+    const beside = C.truck.enter - 0.05;
+    P(tr.x - beside, tr.y, false);
+    P(tr.x - beside + 0.3, tr.y, true);
+    expect(g.salvage.truck.by).toBe(null);
+    expect(ev.filter((e) => e.type === 'enterTruck').length).toBe(1);
+    // Not yet far enough away (enter + rearm), back in reach: still out.
+    P(tr.x - (C.truck.enter + C.truck.rearm - 0.1), tr.y, true);
+    P(tr.x - 1, tr.y, true);
+    expect(g.salvage.truck.by).toBe(null);
+    // Walked away past enter + rearm, then into it again: in.
+    P(tr.x - (C.truck.enter + C.truck.rearm + 0.2), tr.y, true);
+    P(tr.x - 1, tr.y, true);
+    expect(g.salvage.truck.by).toBe('boss');
+    expect(ev.filter((e) => e.type === 'enterTruck').length).toBe(2);
+  });
+});

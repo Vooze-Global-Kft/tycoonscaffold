@@ -610,12 +610,12 @@ export function useYardLoop(opts: {
             if (ph === 1) {
               const span = FB[2] - FB[1];
               const u = span > 0 ? Math.max(0, Math.min(0.999, (tNow - FB[1]) / span)) : 0;
-              addTo(L, V, key, T.flatbedWorking, fx2, fy2, 0, 0, T.vehicleScale, -1, 1);
-              if (FB[5] > 0) addTo(L, V, key + 1e-4, T.cargo[FB[5] - 1], fx2, fy2, T.cargoOff[8], T.cargoOff[9], T.vehicleScale, -1, 1);
-              addTo(L, V, key + 2e-4, T.crane[Math.floor(u * 3)], fx2, fy2, 0, 0, T.vehicleScale, -1, 1);
+              addTo(L, V, key, T.flatbedWorking, fx2, fy2, 0, 0, T.flatbedWorkScale, -1, 1);
+              if (FB[5] > 0) addTo(L, V, key + 1e-4, T.cargo[FB[5] - 1], fx2, fy2, T.cargoOff[8], T.cargoOff[9], T.flatbedWorkScale, -1, 1);
+              addTo(L, V, key + 2e-4, T.crane[Math.floor(u * 3)], fx2, fy2, 0, 0, T.flatbedWorkScale, -1, 1);
             } else {
               addTo(L, V, key, T.flatbed[h4], fx2, fy2, 0, 0, T.vehicleScale, -1, 1);
-              if (FB[5] > 0 && ph === 2) addTo(L, V, key + 1e-4, T.cargo[FB[5] - 1], fx2, fy2, T.cargoOff[h4 * 2], T.cargoOff[h4 * 2 + 1], T.vehicleScale, -1, 1);
+              if (FB[5] > 0 && ph === 2) addTo(L, V, key + 1e-4, T.cargo[FB[5] - 1], fx2, fy2, T.cargoOff[h4 * 2], T.cargoOff[h4 * 2 + 1], T.flatbedWorkScale, -1, 1);
             }
             actors++;
           }
@@ -683,8 +683,8 @@ export function useYardLoop(opts: {
           } else {
             addTo(SHD, V, 0, T.shFlatbed[ph === 1 ? 1 : h4], ax, ay, 0, 0, 1, -1, 1);
             if (ph === 1) {
-              addTo(L, V, ay + 1, T.flatbedWorking, ax, ay, 0, 0, T.vehicleScale, -1, 1);
-              addTo(L, V, ay + 1 + 2e-4, T.crane[Math.min(2, Math.floor(u * 3))], ax, ay, 0, 0, T.vehicleScale, -1, 1);
+              addTo(L, V, ay + 1, T.flatbedWorking, ax, ay, 0, 0, T.flatbedWorkScale, -1, 1);
+              addTo(L, V, ay + 1 + 2e-4, T.crane[Math.min(2, Math.floor(u * 3))], ax, ay, 0, 0, T.flatbedWorkScale, -1, 1);
             } else addTo(L, V, ay + 1, T.flatbed[h4], ax, ay, 0, 0, T.vehicleScale, -1, 1);
           }
           actors++;
@@ -720,11 +720,11 @@ export function useYardLoop(opts: {
           }
           const key = ty + 1;
           if (hook >= 0) {
-            vehicleInto(L, SHD, V, T.truckHook[hook], T.shTruck[2], T.vehicleScale, tx, ty, key);
+            vehicleInto(L, SHD, V, T.truckHook[hook], T.shTruck[2], T.truckScale, tx, ty, key);
           } else if (TR[4] === 0 && (h8 === 2 || h8 === 1 || h8 === 3)) {
-            vehicleInto(L, SHD, V, T.truckHook[0], T.shTruck[2], T.vehicleScale, tx, ty, key);
+            vehicleInto(L, SHD, V, T.truckHook[0], T.shTruck[2], T.truckScale, tx, ty, key);
           } else {
-            vehicleInto(L, SHD, V, T.truck[h8], T.shTruck[h8], T.vehicleScale, tx, ty, key);
+            vehicleInto(L, SHD, V, T.truck[h8], T.shTruck[h8], T.truckScale, tx, ty, key);
             if (TR[10] >= 0) addTo(L, V, key + 1e-4, T.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
           }
           actors++;

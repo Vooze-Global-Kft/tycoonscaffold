@@ -9,7 +9,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { dayWord, priceOf } from './board';
 import { skipLabelOf } from './cards';
 import { chevronOf } from './goals';
-import { bayOrder, bayPos, circleCount, circlePos, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
+import { bayOrder, bayPos, bayStocked, circleCount, circlePos, isStillage, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
 import type {
   FrameArrival,
   FrameBay,
@@ -195,10 +195,12 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       };
     });
 
-  const grades = [...bayOrder(c), ...Object.keys(s.bays).filter((gr) => !bayOrder(c).includes(gr))];
+  // The lead's stillage ruling (17:10): a stillage stands only for a grade that has had stock, in the block
+  // in the order of first stock (bayPos with the state); a ferrous heap with nothing shows fill 0 (its walls).
+  const grades = [...bayOrder(c), ...Object.keys(s.bays).filter((gr) => !bayOrder(c).includes(gr))].filter((gr) => !isStillage(c, gr) || bayStocked(s, gr));
   const bays: FrameBay[] = grades.map((gr) => {
     const b = s.bays[gr] ?? { g: 0, n: 0, held: false, aside: [], forCrucible_g: 0, forDeal_g: 0 };
-    const p = bayPos(c, gr);
+    const p = bayPos(c, gr, s);
     const cap = (c.bays[gr] ?? 2000) * 1000;
     const def = c.grades[gr];
     const isFe = def?.family === 'fe';

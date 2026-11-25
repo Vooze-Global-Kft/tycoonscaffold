@@ -10,6 +10,7 @@ import * as E from '../economy';
 import { FIXTURE_NAMES, FIXTURE_NOW, SALVAGE_TEST, fixtureGame, withTestContent } from '../fixtures/salvage';
 import { frameOf } from './frame';
 import { goalOf } from './goals';
+import { bayPos, bayStocked, isStillage } from './positions';
 import type { SalvageGame } from './types';
 import { TEXT_KEYS } from './types';
 
@@ -80,4 +81,24 @@ describe('the frame of each frozen state', () => {
       }
     });
   }
+});
+
+describe('the frame bays (the lead stillage ruling of 17:10; the integrator 17:57)', () => {
+  it('lists no stillage before its grade had stock, each stocked one where bayPos(c, grade, s) puts it, and an empty heap at fill 0', () => {
+    const g0 = fixtureGame('fresh', base(), FIXTURE_NOW);
+    const f0 = frameOf(C, g0);
+    expect(f0.bays.filter((b) => isStillage(C, b.grade))).toEqual([]);
+    for (const b of f0.bays) if (b.g <= 0) expect(b.fill, b.grade).toBe(0);
+    for (const n of FIXTURE_NAMES) {
+      const g = fixtureGame(n, base(), FIXTURE_NOW);
+      const f = frameOf(C, g);
+      for (const b of f.bays) {
+        if (!isStillage(C, b.grade)) continue;
+        expect(bayStocked(g.salvage, b.grade), `${n} ${b.grade}`).toBe(true);
+        expect({ x: b.x, y: b.y }, `${n} ${b.grade}`).toEqual(bayPos(C, b.grade, g.salvage));
+      }
+      // Every stillage grade with stock is drawn.
+      for (const [gr, bay] of Object.entries(g.salvage.bays)) if (isStillage(C, gr) && bay.g > 0) expect(f.bays.some((b) => b.grade === gr), `${n} ${gr}`).toBe(true);
+    }
+  });
 });

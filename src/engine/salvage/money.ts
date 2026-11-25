@@ -64,12 +64,15 @@ export function fmtMass(g: number, step: MassStep = 'platform', ferrous = false)
   return `${kg.toFixed(1)} kg`;
 }
 
-/** A duration: "40 s", "4 m 10 s", "3 h 12 m". */
+/** No-break space: a duration never wraps inside itself (strings 16:45: "7 h" / "30 m" at font scale 1.3). */
+const NB = '\u00A0';
+
+/** A duration: "40 s", "4 m 10 s", "3 h 12 m" (every space a no-break space). */
 export function fmtDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
-  if (s < 60) return `${s} s`;
-  if (s < 3600) return `${Math.floor(s / 60)} m ${s % 60} s`;
-  return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} m`;
+  if (s < 60) return `${s}${NB}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}${NB}m${NB}${s % 60}${NB}s`;
+  return `${Math.floor(s / 3600)}${NB}h${NB}${Math.floor((s % 3600) / 60)}${NB}m`;
 }
 
 /** An ordinal: 1st, 2nd, 3rd, 4th, 11th, 21st, 26th. */

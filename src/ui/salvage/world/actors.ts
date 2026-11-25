@@ -575,9 +575,12 @@ export interface ActorTable {
   shSkip: number;
   /** The truck without a skip and its hook and tip frames (east-facing only): bare, reach, incline, tipped. */
   truckHook: number[];
-  /** drawScale of carriers, vehicles. */
+  /** drawScale of carriers, vehicles. Each family is baked at its own scale (art/manifest/people.ts VEHICLE_K,
+   * TRUCK_K, FLATBED_K): one shared scale drew the flatbed's loading frames twice their size (join). */
   carrierScale: number;
   vehicleScale: number;
+  truckScale: number;
+  flatbedWorkScale: number;
   /** The vest colours of the roles (hand, cutter, driver) as 0xRRGGBB. */
   vests: number[];
 }
@@ -637,7 +640,9 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
     shSkip: res('shadow.skip', 0, 0),
     truckHook: [0, 1, 2, 3].map((f) => res('vehicle.truck.hook', f, 0)),
     carrierScale: scaleOf('carrier.sack'),
-    vehicleScale: scaleOf('vehicle.truck'),
+    vehicleScale: scaleOf('vehicle.flatbed'),
+    truckScale: scaleOf('vehicle.truck'),
+    flatbedWorkScale: scaleOf('vehicle.flatbed.working'),
     vests: [hexInt(vests.hand), hexInt(vests.cutter), hexInt(vests.driver)],
   };
 }

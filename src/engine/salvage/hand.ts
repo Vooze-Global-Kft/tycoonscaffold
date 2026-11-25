@@ -126,6 +126,9 @@ export function bossStep(x: Ctx, t: number): void {
     const key = `visited:${id}`;
     if (!s.counts![key] && atPlace(x, id, p.x, p.y)) s.counts![key] = 1;
   }
+  // After Step out he stands beside the truck, inside `enter`: entering is armed again only once he has
+  // walked farther than enter + rearm away (as the yard view does; the bots engineer's 17:30 case).
+  if (s.counts!['truck:out'] && s.truck.by !== 'boss' && Math.hypot(p.x - s.truck.x, p.y - s.truck.y) > c.truck.enter + c.truck.rearm) delete s.counts!['truck:out'];
   if (s.truck.by === 'boss') {
     truckBossStep(x, t);
     return;
@@ -152,7 +155,8 @@ export function bossStep(x: Ctx, t: number): void {
   }
   // Enter the truck by walking into it.
   const tr = s.truck;
-  if (tr.owned && tr.by === null && !tr.trip && !s.arriving.some((r) => r.item === 'truck') && Math.hypot(p.x - tr.x, p.y - tr.y) <= c.truck.enter) {
+  const dTruck = Math.hypot(p.x - tr.x, p.y - tr.y);
+  if (tr.owned && tr.by === null && !tr.trip && !s.counts?.['truck:out'] && !s.arriving.some((r) => r.item === 'truck') && dTruck <= c.truck.enter) {
     tr.by = 'boss';
     setAct(x, 'drive', null, t, null);
     x.ev.push({ type: 'enterTruck' });

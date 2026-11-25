@@ -206,7 +206,9 @@ export function stillageSlot(c: SalvageContent, s: Pick<SalvageState, 'counts'>,
   if (!rows.length) return null;
   const r0 = pointOf(c, rows[0]);
   const merchant = c.map.points.merchant ? pointOf(c, 'merchant') : r0;
-  const dir = merchant.x > r0.x ? -1 : 1;
+  // Away from the merchant's stand, judged against the block's middle (the stand moved under the block at
+  // 17:55, x 39.6..45.6 against a block from 43.6: the columns run west, as the integrator laid it out).
+  const dir = merchant.x > r0.x - (STILLAGE_ROW * STILLAGE_PITCH_M) / 2 ? -1 : 1;
   const row = Math.floor(k / STILLAGE_ROW) % 2;
   const col = k % STILLAGE_ROW;
   const ry = row === 0 ? r0.y : rows[1] ? pointOf(c, rows[1]).y : r0.y + STILLAGE_PITCH_M;

@@ -248,8 +248,9 @@ describe('the formatters and the board', () => {
     expect(R.fmtMass(13_565_000, 'bridge')).toBe('13.56 t');
     expect(R.fmtMass(12_346_000, 'lot')).toBe('12.35 t');
     expect(R.fmtPrice(0.95)).toBe('§0.95');
-    expect(R.fmtDuration(250)).toBe('4 m 10 s');
-    expect(R.fmtDuration(3 * 3600 + 12 * 60)).toBe('3 h 12 m');
+    expect(R.fmtDuration(250)).toBe('4\u00A0m\u00A010\u00A0s');
+    expect(R.fmtDuration(3 * 3600 + 12 * 60)).toBe('3\u00A0h\u00A012\u00A0m');
+    expect(R.fmtDuration(250)).not.toMatch(/ /);
     expect([1, 2, 3, 4, 11, 21, 26].map(R.fmtRank)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '21st', '26th']);
   });
 

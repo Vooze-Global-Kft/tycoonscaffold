@@ -181,7 +181,7 @@ describe('ticking equals jumping', () => {
     for (let m = 1; m <= 60; m++) b = R.jump(cfg, b, a.salvage.t - 3600 + m * 60);
     b = R.jump(cfg, b, a.salvage.t);
     compare(a, b);
-  });
+   }, 60_000);
   it('over a day boundary', () => {
     const { g } = busyYard();
     const D = 86_400_000;

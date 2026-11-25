@@ -171,6 +171,8 @@ export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number }
   }
   tr.by = null;
   tr.hookSince = null;
+  // Entering is disarmed until he has walked away from it (hand.ts bossStep; the world's rule, 17:30).
+  x.s.counts!['truck:out'] = 1;
   x.s.act = { kind: 'none', target: null, since: t, endsAt: null };
   x.ev.push({ type: 'leaveTruck' });
 }

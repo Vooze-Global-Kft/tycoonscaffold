@@ -45,9 +45,12 @@ export interface Leg {
 }
 
 /** The storyboard's two openings (1.2, S10) as places; positions come from the content's map. */
+/** After the opening, a person keeps working until the first rival is passed (beat 8): washers at the drop-off and zone 1. */
+const KEEP_WORKING: Leg[] = [0, 1, 2, 3].flatMap(() => [{ to: 'dropoff' }, { to: 'scale' }, { to: 'Z1' }, { to: 'scale' }]);
+
 export const ROUTES: Record<string, Leg[]> = {
-  '1': [{ to: 'dropoff' }, { to: 'scale' }, { to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }],
-  '2': [{ to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'dropoff' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }],
+  '1': [{ to: 'dropoff' }, { to: 'scale' }, { to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
+  '2': [{ to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'dropoff' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
 };
 
 /** The beats of ?hintBeat: the goal index (in content order) and the forced view. */
@@ -118,7 +121,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
       await sleep(500);
       const t0 = Date.now();
       for (const leg of route) {
-        if (stop || Date.now() - t0 > 300_000) break;
+        if (stop || Date.now() - t0 > 600_000) break;
         await sleep(teach.autoplayReactS * 1000);
         const goalAtStart = goalMark();
         const zone = zoneRef.current;
