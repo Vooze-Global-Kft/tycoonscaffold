@@ -63,11 +63,22 @@ export const DIMENSIONS: Dimension[] = [
 
 /** The closed vocabularies of spam.md section 4 (errata 7: sets, palette and voice are free kebab-case ids). */
 export const VOCABULARY: Record<string, readonly string[]> = {
-  core_verb: ['tap-target', 'hold', 'drag/route', 'swipe/aim', 'place/arrange', 'idle-only'],
-  production_topology: ['linear-chain-with-transport', 'parallel-generators', 'vertical-shaft', 'spatial-grid', 'network-routes', 'single-node'],
-  money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect'],
+  // steer: one thumb moves an avatar or a vehicle continuously through a world with a floating stick; work
+  // happens by stopping next to things; nothing is tapped, dragged onto or swiped at (the scrapyard,
+  // yard-design.md 1.2).
+  core_verb: ['tap-target', 'hold', 'drag/route', 'swipe/aim', 'place/arrange', 'idle-only', 'steer'],
+  // separation-tree: one input object splits into graded outputs and by-products that go to different
+  // places, and machines split them further: the reverse of an assembly chain, not a network of routes
+  // (the scrapyard, yard-design.md 1.2).
+  production_topology: ['linear-chain-with-transport', 'parallel-generators', 'vertical-shaft', 'spatial-grid', 'network-routes', 'single-node', 'separation-tree'],
+  // graded-lot-sale: material is weighed in by grade into bays and leaves as lots of one grade, collected by
+  // a named merchant or dealer at a price posted once a market day; any bay may be held for a better day;
+  // no customer, departure, completed order or timer pays (the scrapyard, yard-design.md 1.2).
+  money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect', 'graded-lot-sale'],
   // grid-board: a fixed board of cells as the whole play surface, no camera (Night Market, market-design.md 1.2).
-  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board'],
+  // three-quarter-world: a scrolling world several screens wide in three-quarter oblique view, followed by a
+  // camera, in landscape (the scrapyard, yard-design.md 1.2).
+  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board', 'three-quarter-world'],
   // office-ladder: a short fixed ladder of offices, each entered only by winning a vote at the end of a term of
   // decisions; a lost vote repeats the term in place; the top office continues as repeated terms (High Office,
   // office-design.md 1.2). Not location-levels (offices are never bought), endless-single or seasons.

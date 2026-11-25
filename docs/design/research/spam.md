@@ -68,10 +68,10 @@ Research date: 22 November 2026; policy pages read that day (Apple's guidelines 
 
 | # | Dimension | Values | Differs when | Read from |
 |---|---|---|---|---|
-| 1 | core_verb [M] | tap-target, hold, drag/route, swipe/aim, place/arrange, idle-only | values differ | cfg |
-| 2 | production_topology [M] | linear-chain-with-transport, parallel-generators, vertical-shaft, spatial-grid, network-routes, single-node | values differ | cfg |
-| 3 | money_moment [M] | customer-pays, sale-at-depot, contract-complete, auto-tick, tap-collect | values differ | cfg |
-| 4 | main_screen_layout [M] | side-cross-section, top-down-map, isometric-room, single-object-focus, card-list, grid-board (added for Night Market's fixed board, market-design.md 1.2) | values differ | cfg |
+| 1 | core_verb [M] | tap-target, hold, drag/route, swipe/aim, place/arrange, idle-only, steer (added for the scrapyard: one thumb moves an avatar or vehicle continuously through a world with a floating stick; work happens by stopping next to things; nothing is tapped, dragged onto or swiped at; yard-design.md 1.2) | values differ | cfg |
+| 2 | production_topology [M] | linear-chain-with-transport, parallel-generators, vertical-shaft, spatial-grid, network-routes, single-node, separation-tree (added for the scrapyard: one input object splits into graded outputs and by-products that go to different places, and machines split them further; the reverse of an assembly chain, not a network of routes; yard-design.md 1.2) | values differ | cfg |
+| 3 | money_moment [M] | customer-pays, sale-at-depot, contract-complete, auto-tick, tap-collect, graded-lot-sale (added for the scrapyard: material is weighed in by grade into bays and leaves as lots of one grade, collected by a named merchant or dealer at a price posted once a market day; any bay may be held for a better day; no customer, departure, completed order or timer pays; yard-design.md 1.2) | values differ | cfg |
+| 4 | main_screen_layout [M] | side-cross-section, top-down-map, isometric-room, single-object-focus, card-list, grid-board (added for Night Market's fixed board, market-design.md 1.2), three-quarter-world (added for the scrapyard: a scrolling world several screens wide in three-quarter oblique view, followed by a camera, in landscape; yard-design.md 1.2) | values differ | cfg |
 | 5 | art_asset_overlap [M] | share of image files shared by hash | 0 % | build |
 | 6 | store_text_overlap [M] | trigram overlap of title, subtitle, description, promo text, release notes | <10 % | store |
 | 7 | icon_and_screenshot_template [M] | own composition / shared template | own | human |

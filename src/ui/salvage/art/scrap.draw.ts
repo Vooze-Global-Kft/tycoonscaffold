@@ -2,7 +2,7 @@
  * The things a yard takes in and gives out (yard-style.md "Pieces, stacks and loads"), each anchored at
  * its footprint centre, drawn at the view's scale (true size: a washing machine is 0.6 x 0.6 x 0.85 m).
  * Each material shows its sheen mark so it reads without colour: light iron rust freckles, cast iron
- * dots, copper paired ticks, brass a four-point glint, aluminium a long stripe.
+ * dots, copper paired ticks, brass a short light streak, aluminium a long stripe.
  */
 import { ClipOp, FillType, type SkCanvas } from '@shopify/react-native-skia';
 import { LINE_W, METAL, YARD, coolingColour, mix, shade } from './palette';
@@ -17,7 +17,6 @@ import {
   facePath,
   fill,
   freckles,
-  glint,
   groundShadow,
   hash01,
   oval,
@@ -314,7 +313,8 @@ export function tapGlyph(c: SkCanvas, x: number, y: number, s: number, turn = 0)
   c.drawPath(segment(-0.5 * k, -1 * k, -0.5 * k, -4 * k), stroke(YARD.brass, 2.2 * k));
   c.drawPath(segment(-3.2 * k, -4.4 * k, 2.2 * k, -4.4 * k), stroke(INK, 2.2 * k + 0.9));
   c.drawPath(segment(-3.2 * k, -4.4 * k, 2.2 * k, -4.4 * k), stroke(YARD.brassDark, 2.2 * k));
-  glint(c, 1.6 * k, 0.4 * k, 1.6 * k + 0.6);
+  // brass's sheen mark is a short light streak (never a four-point sparkle: yard-style.md 11)
+  c.drawPath(segment(-3 * k, 0.2 * k, 1.6 * k, 0.2 * k), stroke(YARD.brassLight, Math.max(0.8, k * 0.8)));
   c.restore();
 }
 
