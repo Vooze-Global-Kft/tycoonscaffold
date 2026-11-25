@@ -325,6 +325,8 @@ export const P_WALK = 1;
 export const P_PUSH = 2;
 export const P_FEED = 3;
 export const P_POUR = 4;
+/** Within this many metres of the pot while the pour shows, a person is drawn pouring (frameLoop.ts's 3.5 m). */
+export const POUR_NEAR_M = 3.5;
 export const P_SPANNER = 5;
 export const P_SLEDGE = 6;
 export const P_GRINDER = 7;
@@ -621,6 +623,9 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     if (!fb) pose = guessPose(c, worked.obj);
   }
   const pa = pourAt as Pt | null;
+  // The pour (desk1): whoever stands at the pot while the picture shows the pour is drawn in the pour pose
+  // (face shield down, aluminised apron: art/people.draw.ts), the boss unless he is at work with a tool.
+  if (pa && fb && fb.x !== undefined && fb.y !== undefined && pose >= 0 && pose <= P_FEED && Math.hypot(fb.x - pa.x, fb.y - pa.y) < POUR_NEAR_M) pose = P_POUR;
   const boss = [carrier, f.load.pieces.length && carrier === 0 ? famIndex(fam) : -1, carrierFrameOf(fam && f.load.pieces.length ? fam : null), pose, target ? target.x : NaN, target ? target.y : NaN, pa ? pa.x : NaN, pa ? pa.y : NaN, f.load.pieces.length, fb?.x ?? NaN, fb?.y ?? NaN, fb?.heading ?? 0];
 
   // Crew legs (E17: the walk IS the leg; nothing here decides where anyone goes).
@@ -631,6 +636,7 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     const phase = m.phase === 'walkTo' ? 1 : m.phase === 'walkBack' ? 3 : m.phase === 'work' ? 2 : 0;
     let pc = m.pose ? poseCode(m.pose, m.tool, m.load[0]?.load ?? null) : P_STAND;
     if (!m.pose && phase === 2) pc = m.job === 'cutDropoff' || m.job === 'cutFloor' ? P_GRINDER : m.job === 'feed' ? P_FEED : m.job === 'pour' ? P_POUR : P_STAND;
+    if (pa && (phase === 0 || (phase === 2 && pc <= P_FEED)) && Math.hypot(m.to.x - pa.x, m.to.y - pa.y) < POUR_NEAR_M) pc = P_POUR;
     const lf = m.load.length ? ((m.load[0].load as LoadFamily | undefined) ?? famOfGrade(m.load[0].grade)) : null;
     const carrierKind = m.role === 'hand' ? 1 : 0;
     const hidden = pc === -1 || (m.job === 'drive' && (phase === 2 || f.truck.by === 'driver')) ? 1 : 0;

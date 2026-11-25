@@ -266,7 +266,8 @@ export interface CrucibleState extends MachineState {
   /** False until the first heat ever has poured (it waits at ready for the boss within first_wait_m, S11). */
   firstPoured: boolean;
   /** Ingots of the last pour while they cool (the frame draws them), with the span of their cooling. */
-  cooling: { grade: GradeId; n: number; short_g: number; since?: number; until?: number } | null;
+  /** `by`: who poured it ('boss', a crew id, or 'crucible'); absent on older saves (desk1: the pour's look). */
+  cooling: { grade: GradeId; n: number; short_g: number; since?: number; until?: number; by?: string } | null;
 }
 
 export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour';

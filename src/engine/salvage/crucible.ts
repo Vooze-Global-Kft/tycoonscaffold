@@ -182,7 +182,7 @@ export function pour(x: Ctx, t: number, by: string, wholeHeel = false, refill = 
   cr.phaseSince = t;
   cr.endsAt = null;
   cr.status = 'idle';
-  cr.cooling = { grade: out, n, short_g: wholeHeel ? toTray : 0, since: t };
+  cr.cooling = { grade: out, n, short_g: wholeHeel ? toTray : 0, since: t, by };
   if (toTray > 0) count(x, `made:${out}`);
   count(x, 'poured');
   count(x, 'worked:crucible');

@@ -55,8 +55,9 @@ ministries pay every second). This one is built differently, and where it is rel
 4. Hired crew (a yard hand, a cutter, a driver) are related to the managers of our restaurant game, the
    minders of Lantern Row and the ministers of Proudly Adequate, which we state openly: they are hired with
    in-game money, never random, and each takes over one step of the work the player does by hand.
-5. People are drawn adults in safety gear, as in Pizza Empire and Proudly Adequate; the art, sounds, music
-   and every text are this game's own.
+5. People are drawn adults in safety gear, as in Pizza Empire and Proudly Adequate (whoever stands at the
+   crucible while it pours wears a face shield and an aluminised apron); the art, sounds, music and every
+   text are this game's own.
 6. A list of goals on a clipboard leads the first hour, as the missions of Pizza Empire and Orbit Haulers do.
    Once the yard reaches its second rung, an optional supply deal offers to take one grade from the yard's
    own bays each day for a few days at a price locked when it is signed; it is related to Orbit Haulers'
@@ -84,10 +85,11 @@ Checklist (for the store step, not for pasting):
 - No number here that tuning can move (prices, times, the away cap, the rivals' count).
 - The kinships named here (crew, people, the goal list, the supply deal) are the ones the fingerprint names
   (store/fingerprint.json _notes).
-- Safety gear at the pour: the sentence "the worker wears a face shield and an aluminised apron at every pour"
-  was taken out in the fix pass (finding S2): nobody has yet seen the pour pose close enough on screen to
-  confirm both. Put it back only after a person sees it in the preview (`?preset=m30&pour=1`: the first pour,
-  by the boss, a moment after the curtain parts).
+- Safety gear at the pour: taken out in the fix pass (finding S2), put back in item 5 on 25 November 2026
+  (desk1) after it was seen in the preview at 844 x 390 and 667 x 375, density 2 (`?preset=pour`: the first
+  pour, by the boss, about a second after the curtain parts; the pot tilts, the stream fills the mould, the
+  boss side-on in the clear face shield and the silver apron for the six seconds the pour shows). Re-check
+  it on the submitted build.
 - Fix pass (25 November 2026, evening): the incoming-loads sentence says only what the build does (S2); the
   goal list and the supply deal's kinship are named (S5, S6).
 - Ratings: PENDING (store/RATING-NOTES.md, the hand-written block).

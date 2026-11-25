@@ -54,6 +54,35 @@ function emitWhenShown(cfg: R.SalvageConfig, name: FixtureName): void {
   emitEventsWhenShown(playedEvents(cfg, name));
 }
 
+/** How long the pour preset's heat is held under the curtain at most, yard seconds (released when shown). */
+const HOLD_S = 3600;
+let heldHeat: ReturnType<typeof setInterval> | null = null;
+
+/** Once the curtain has parted (and 0.9 s on), the held first heat ends `left` yard seconds later. */
+function releaseHeatWhenShown(left: number): void {
+  if (typeof location === 'undefined') return;
+  if (heldHeat) clearInterval(heldHeat);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { loadingClock } = require('../../ui/salvage/loading/clock') as typeof import('../../ui/salvage/loading/clock');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useGame } = require('../../state/store') as typeof import('../../state/store');
+  let after = -1;
+  heldHeat = setInterval(() => {
+    if (!loadingClock.done.value) return;
+    if (after < 0) after = Date.now() + 900;
+    if (Date.now() < after) return;
+    if (heldHeat) clearInterval(heldHeat);
+    heldHeat = null;
+    useGame.setState((st) => {
+      const g = st.game as unknown as SalvageGame;
+      const cr = g.salvage?.machines.crucible;
+      if (!cr || cr.firstPoured || cr.phase !== 'heating') return {};
+      const crucible = { ...cr, endsAt: g.salvage.t + left };
+      return { game: { ...g, salvage: { ...g.salvage, machines: { ...g.salvage.machines, crucible } } } as unknown as typeof st.game };
+    });
+  }, 250);
+}
+
 function emitEventsWhenShown(events: readonly SalvageEvent[]): void {
   if (!events.length || typeof location === 'undefined' || new URLSearchParams(location.search).get('events') === '0') return;
   if (pending) clearInterval(pending);
@@ -141,6 +170,12 @@ export function salvagePreset(cfg: GameConfig, name: PresetName, now: number): G
       const salvage = structuredClone(g.salvage);
       salvage.epoch += 1;
       salvage.clock = { ...salvage.clock, highMs: Math.max(now, salvage.clock.highMs) };
+      // desk1: the heat is HELD under the curtain (its end far off) and let go a moment after the curtain
+      // has parted, so the pour (and the pourer's shield and apron, frame.ts POUR_LOOK_S) happens in view:
+      // the yard's clock runs on under the curtain and the boss's presence reaches the rules before it parts.
+      const left = Math.max(0.5, poured.heatLeft_s) + 1.5;
+      salvage.machines.crucible.endsAt = salvage.t + HOLD_S;
+      releaseHeatWhenShown(left);
       emitEventsWhenShown(structuredClone(poured.events));
       return { ...base, cash: g.cash, lifetimeEarnings: g.lifetimeEarnings, runEarnings: g.lifetimeEarnings, stats: { ...base.stats, playSeconds: g.stats.playSeconds }, salvage, lastSavedAt: now } as GameState;
     }

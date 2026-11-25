@@ -612,9 +612,10 @@ export function useYardLoop(opts: {
           const span = CR[o + 7] - CR[o + 6];
           const u = walking ? (span > 0 ? (tNow - CR[o + 6]) / span : 1) : 1;
           along(o4, P, np, u);
-          const h = walking ? heading4(o4[2], o4[3]) : 0;
           const carrier = CR[o + 8] > 0 ? CR[o + 8] - 1 : -1;
           let pose = CR[o + 1];
+          // The pour side-on (as the boss's, above); else standing faces the camera.
+          const h = walking ? heading4(o4[2], o4[3]) : pose === P_POUR && B[6] === B[6] ? (B[6] >= o4[0] ? 1 : 3) : 0;
           let frame = Math.floor(clock / FEEL.workFrameS) % POSE_FRAMES[pose];
           if (walking) {
             pose = carrier >= 0 ? P_PUSH : P_WALK;
@@ -811,10 +812,11 @@ export function useYardLoop(opts: {
             pose = B[3];
             frame = Math.floor(clock / FEEL.workFrameS) % POSE_FRAMES[pose];
             if (B[4] === B[4]) h = heading4(B[4] - st[0], B[5] - st[1]);
-            else if (pose === P_POUR && B[6] === B[6]) h = heading4(B[6] - st[0], B[7] - st[1]);
+            // At the pot side-on, as the art director's pour (proof.draw.ts): the shield and the apron face the camera.
+            else if (pose === P_POUR && B[6] === B[6]) h = B[6] >= st[0] ? 1 : 3;
           } else if (B[6] === B[6] && Math.hypot(B[6] - st[0], B[7] - st[1]) < 3.5) {
             pose = P_POUR;
-            h = heading4(B[6] - st[0], B[7] - st[1]);
+            h = B[6] >= st[0] ? 1 : 3;
           } else if (carrier >= 0) pose = P_PUSH;
           if (h !== st[8] && !steering) st[8] = h;
           addTo(SHD, V, 0, T.shPerson, st[0], st[1], 0, 0, 1, -1, 1);

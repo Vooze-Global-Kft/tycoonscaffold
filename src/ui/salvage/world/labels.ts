@@ -67,6 +67,11 @@ export interface LabelItem {
   of?: string | null;
   /** Merged plates: how many things it stands for (1 or absent: one). */
   count?: number;
+  /**
+   * Try under its foot FIRST (desk1): a partner skip's plate stands on the road side, clear of the site's
+   * shed or hoarding behind the skip (north of it, so above it on screen); the usual places come after.
+   */
+  under?: boolean;
 }
 
 /** Heights of the sprites over the content's footprints (metres above the ground of the sprite's top edge), from the art manifest. */
@@ -193,7 +198,7 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
   for (const s of f.skips) {
     const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
     if (!lab) continue;
-    out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y });
+    out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y, under: true });
   }
   // join3 (L7/P10): each partner site's name on its gate sign, at the sign the lane's art places
   // (yard.ts laneSigns), the name from the register through the rules' partner data.
@@ -399,8 +404,11 @@ export function layoutPlates(items: LabelItem[], sc: PlateScene): PlacedLabel[] 
   for (const p of cand) {
     const shift = Math.max(0, p.w / 2 - 14);
     const tries: { dx: number; bottom: number; below: boolean }[] = [];
+    const under: typeof tries = [];
+    for (const dx of [0, -shift, shift]) under.push({ dx, bottom: p.fy + 4 + p.h, below: true });
+    if (p.it.under) tries.push(...under);
     for (const k of [0, 1, 2]) for (const dx of [0, -shift, shift]) tries.push({ dx, bottom: p.ty - STEM - k * (p.h + GAP), below: false });
-    for (const dx of [0, -shift, shift]) tries.push({ dx, bottom: p.fy + 4 + p.h, below: true });
+    if (!p.it.under) tries.push(...under);
     for (const t of tries) {
       const r: Rect = { x0: p.tx + t.dx - p.w / 2, x1: p.tx + t.dx + p.w / 2, y0: t.bottom - p.h, y1: t.bottom };
       if (!inside(r, sc.bounds)) continue;

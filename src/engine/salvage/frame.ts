@@ -83,13 +83,28 @@ export function pieceSprite(c: SalvageContent, p: Pick<Piece, 'grade' | 'from' |
   return (spec && spec.length > 3 ? (spec[3] as string) : undefined) ?? c.grades[p.grade]?.sprite ?? `piece.${p.grade}`;
 }
 
+/**
+ * How long the frame shows a pour, yard seconds (desk1). The rules pour in one instant (crucible.ts pour:
+ * heating or ready -> cooling); the picture shows the tilted pot, the stream into the mould and whoever is
+ * at the pot in the pour pose (face shield and aluminised apron) for this long after it. A look only:
+ * nothing of the rules waits on it.
+ */
+export const POUR_LOOK_S = 6;
+
+/** Is the crucible's pour on the picture at yard second t (the instant pour plus POUR_LOOK_S)? */
+export function pourShown(g: SalvageGame, t = g.salvage.t): boolean {
+  const cr = g.salvage.machines.crucible;
+  return cr.phase === 'pouring' || (cr.phase === 'cooling' && cr.cooling?.since !== undefined && t - cr.cooling.since < POUR_LOOK_S);
+}
+
 function machineLook(g: SalvageGame, id: MachineId): MachineLook {
   const m = g.salvage.machines[id];
   if (g.salvage.arriving.some((a) => a.item === id)) return 'arriving';
   if (!m.owned) return 'padlock';
   if (id === 'crucible') {
     const p = g.salvage.machines.crucible.phase;
-    return p === 'heating' ? 'heating' : p === 'ready' ? 'ready' : p === 'pouring' ? 'pour' : p === 'cooling' ? 'cooling' : 'idle';
+    if (pourShown(g)) return 'pour';
+    return p === 'heating' ? 'heating' : p === 'ready' ? 'ready' : p === 'cooling' ? 'cooling' : 'idle';
   }
   return m.status === 'working' ? 'working' : m.status === 'trayFull' ? 'trayFull' : 'idle';
 }
@@ -194,7 +209,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
         tray: trayG <= 0 ? 0 : trayG < cap / 3 ? 1 : trayG < (2 * cap) / 3 ? 2 : 3,
         trayShare: Math.min(1, trayG / Math.max(1, cap)),
         ingots: cool ? { grade: cool.grade, n: cool.n, cool: coolSpan ? Math.max(0, Math.min(1, (t - coolSpan.t0) / Math.max(1e-6, coolSpan.t1 - coolSpan.t0))) : 1, span: coolSpan } : null,
-        pourer: id === 'crucible' && (cr.phase === 'ready' || cr.phase === 'pouring') ? 'boss' : null,
+        pourer: id === 'crucible' && look === 'pour' ? (cr.cooling?.by ?? 'boss') : id === 'crucible' && cr.phase === 'ready' ? 'boss' : null,
         span: id === 'crucible' && cr.endsAt !== null ? { t0: cr.phaseSince, t1: cr.endsAt } : null,
       };
     });
