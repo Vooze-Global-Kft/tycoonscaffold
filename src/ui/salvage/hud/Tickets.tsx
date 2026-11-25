@@ -55,21 +55,23 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
   const c = cfg.salvage;
   const [scale, setScale] = useState<Slot | null>(null);
   const [cab, setCab] = useState<Slot | null>(null);
+  const [bridge, setBridge] = useState<Slot | null>(null);
   const bossIn = useRef(false);
   const ids = useRef(0);
-  const timers = useRef<{ scale?: ReturnType<typeof setTimeout>; cab?: ReturnType<typeof setTimeout> }>({});
+  const timers = useRef<{ scale?: ReturnType<typeof setTimeout>; cab?: ReturnType<typeof setTimeout>; bridge?: ReturnType<typeof setTimeout> }>({});
   const scalePt = R.point(cfg, 'scale');
   const cabPt = R.point(cfg, 'merchant');
+  const bridgePt = R.point(cfg, 'weighbridge');
 
   useEffect(() => {
-    const show = (which: 'scale' | 'cab', slot: Slot, ms: number) => {
-      const set = which === 'scale' ? setScale : setCab;
+    const show = (which: 'scale' | 'cab' | 'bridge', slot: Slot, ms: number) => {
+      const set = which === 'scale' ? setScale : which === 'cab' ? setCab : setBridge;
       clearTimeout(timers.current[which]);
       set(slot);
       timers.current[which] = setTimeout(() => {
         set(null);
         if (which === 'cab') hudAnchors.setCollection(null);
-        else hudAnchors.setWeighIn(null);
+        else if (which === 'scale') hudAnchors.setWeighIn(null);
       }, ms);
     };
     const offIn = yardEvents.on('weighIn', (e) => {
@@ -99,18 +101,26 @@ export function Tickets({ cfg, L, camera, yard }: { cfg: R.SalvageConfig; L: Hud
       }
       hudAnchors.setCollection(project(cabPt.x, cabPt.y, CAB_Z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift));
     });
+    // The skip's weigh-in ticket over the weighbridge (the truck stands on it).
+    const offBridge = yardEvents.on('bridgeWeighIn', (e) => {
+      const view = ticketView(e.ticket, c, null);
+      if (view) show('bridge', { id: ++ids.current, view, chip: null }, TICKET_MS.collection);
+    });
     const t = timers.current;
     return () => {
       offIn();
       offOut();
+      offBridge();
       clearTimeout(t.scale);
       clearTimeout(t.cab);
+      clearTimeout(t.bridge);
     };
   }, [c, cabPt.x, cabPt.y, scalePt.x, scalePt.y, camera, yard, L.width, L.height, L.s]);
 
   return (
     <>
       {scale ? <Anchored key={scale.id} slot={scale} at={scalePt} z={SLOT_Z} L={L} camera={camera} yard={yard} c={c} other={null} /> : null}
+      {bridge ? <Anchored key={bridge.id} slot={bridge} at={bridgePt} z={CAB_Z} L={L} camera={camera} yard={yard} c={c} other={null} /> : null}
       {cab ? <Anchored key={cab.id} slot={cab} at={cabPt} z={CAB_Z} L={L} camera={camera} yard={yard} c={c} other={scale ? { at: scalePt, z: SLOT_Z, ...sizeOf(scale, L, c) } : null} /> : null}
     </>
   );

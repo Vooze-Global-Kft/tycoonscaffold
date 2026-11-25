@@ -42,6 +42,10 @@ function query(): URLSearchParams | null {
 export interface Leg {
   to: string;
   open?: boolean;
+  /** Buy this shop item in the card that `open` opens (else the goal's purchase). */
+  buy?: string;
+  /** Before walking, wait (at most this many seconds) until nothing is on its way to the yard. */
+  waitArrivals?: number;
 }
 
 /** The storyboard's two openings (1.2, S10) as places; positions come from the content's map. */
@@ -50,6 +54,9 @@ const KEEP_WORKING: Leg[] = [0, 1, 2, 3].flatMap(() => [{ to: 'dropoff' }, { to:
 
 export const ROUTES: Record<string, Leg[]> = {
   '1': [{ to: 'dropoff' }, { to: 'scale' }, { to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
+  // The first drive out (1.3 item 4; with &cash= from the dev switches): buy the truck at the park, walk into
+  // it, drive out to the farm's skip, hook it, back over the weighbridge, tip on the floor.
+  drive: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
   '2': [{ to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'dropoff' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
 };
 
@@ -123,6 +130,10 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
       for (const leg of route) {
         if (stop || Date.now() - t0 > 600_000) break;
         await sleep(teach.autoplayReactS * 1000);
+        if (leg.waitArrivals) {
+          const w0 = Date.now();
+          while (!stop && game().salvage?.arriving?.length && Date.now() - w0 < leg.waitArrivals * 1000) await sleep(300);
+        }
         const goalAtStart = goalMark();
         const zone = zoneRef.current;
         const home = ghostHome(zone);
@@ -135,7 +146,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         while (!stop) {
           const g = game();
           const p = boss();
-          const spot = spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
+          const spot = leg.to.startsWith('skip:') ? (() => { const z = R.skipZone(cfg, leg.to.slice(5) as R.PartnerId, 0); return { x: z.x, y: z.y, id: leg.to }; })() : spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
           if (!p || !spot) break;
           const dist = Math.hypot(spot.x - p.x, spot.y - p.y);
           if (dist <= cfg.salvage.reach.place * 0.8) break;
@@ -146,7 +157,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
             side = side === 0 ? 1 : -side; // stuck on something: slide along it, the other way next time
             bestAt = Date.now();
           }
-          if (Date.now() - legStart > 25_000) {
+          if (Date.now() - legStart > 60_000) {
             log(`gave up walking to ${leg.to} at ${dist.toFixed(1)} m`);
             break;
           }
@@ -172,9 +183,9 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
             await sleep(700);
           }
           // The goal's purchase: press its row's button as a thumb would (a click on the button itself).
-          if (goalHere?.buy) {
+          if (leg.buy || goalHere?.buy) {
             const g = game();
-            const want = goalHere.buy;
+            const want = (leg.buy ?? goalHere?.buy) as string;
             const top = useCards.getState().ref;
             const rows = top ? R.cardOf(cfg, g, top, Date.now()).rows : [];
             const row = rows.find((w) => w.button && ((w.button.action.act === 'buy' && w.button.action.item === want) || (w.button.action.act === 'hire' && want.startsWith(w.button.action.role))));
@@ -197,7 +208,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         // Stand until the goal moves on, or long enough.
         // While the boss works, picks up, weighs or strips there, a person keeps standing (at most 40 s).
         const standStart = Date.now();
-        const BUSY = new Set(['work', 'pickup', 'weigh', 'feed', 'strip', 'circle']);
+        const BUSY = new Set(['work', 'pickup', 'weigh', 'feed', 'strip', 'circle', 'hook', 'tip']);
         while (!stop && Date.now() - standStart < 40_000) {
           if (goalMark() !== goalAtStart && !BUSY.has(game().salvage?.act?.kind ?? 'none')) break;
           if (Date.now() - standStart > teach.autoplayStandS * 1000 && !BUSY.has(game().salvage?.act?.kind ?? 'none')) break;

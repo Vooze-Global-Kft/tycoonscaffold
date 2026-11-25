@@ -91,6 +91,27 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
       legal: [say({ key: 'ticket.lotSoldTo', args: { merchant: { name: t.buyer } } }, c), say({ key: 'ticket.weighedOut' }, c)],
     };
   }
+  if (t.kind === 'skipWeighIn') {
+    // The skip's weigh-in on the weighbridge (2.2, 2.7): the partner and the load, its things as rows, the
+    // price paid bold, gross / tare / net and the seller line as its legal lines (join: it had no screen).
+    const things = t.things.map((x) => ({
+      grade: x.obj,
+      name: (c.objects[x.obj] as { name?: string } | undefined)?.name || x.obj,
+      kg: `× ${x.n}`,
+      right: '',
+      note: null,
+    }));
+    const bridge = (g: number) => ({ mass_g: g, step: 'bridge' as const });
+    return {
+      kind: 'collection',
+      no: t.no,
+      head: t.trial ? say({ key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } }, c) : say({ key: 'title.skip', args: { partner: { name: t.partner } } }, c),
+      rows: things,
+      total: say({ key: 'ticket.paid', args: { x: { money: t.paid } } }, c),
+      lesson: null,
+      legal: [say({ key: 'ticket.grossTareNet', args: { a: bridge(t.gross_g), b: bridge(t.tare_g), c: bridge(t.net_g) } }, c), say({ key: 'ticket.partnerLegal' }, c)],
+    };
+  }
   return null;
 }
 
