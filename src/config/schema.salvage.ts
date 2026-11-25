@@ -539,7 +539,7 @@ const AdviceSchema = z.object({ minutes: z.number().positive().default(3), promp
 
 // ---------------------------------------------------------------------------------------- the block
 
-export const SalvageSchema = z.object({
+const SalvageObject = z.object({
   /** True while the block is the frozen TEST content of hour 0 (validate says so as a warning). */
   skeletonPlaceholder: z.boolean().default(false),
   /** Free text: which content this is (content3 `version`), its units line, its changes and its key list (provenance, never read). */
@@ -634,6 +634,22 @@ export const SalvageSchema = z.object({
     })
     .optional(),
 });
+
+/**
+ * desk2 (E33): content written before E33 (regression data: bots' saved states, the content3 prototype) names
+ * the away cap as `awayCap_h: [without, with the Night watch]`; it reads as one rung at the first figure
+ * and the Night watch adding the difference. The schema itself holds no away-cap number.
+ */
+function legacyAwayCap(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const o = raw as Record<string, unknown>;
+  const old = o.awayCap_h;
+  if (!Array.isArray(old) || old.length !== 2 || typeof old[0] !== 'number' || typeof old[1] !== 'number') return raw;
+  const { awayCap_h: _drop, ...rest } = o;
+  return { ...rest, awayCapByRung_h: rest.awayCapByRung_h ?? [old[0]], nightWatch_h: rest.nightWatch_h ?? Math.max(0, old[1] - old[0]) };
+}
+
+export const SalvageSchema = z.preprocess(legacyAwayCap, SalvageObject);
 
 export type SalvageContent = z.infer<typeof SalvageSchema>;
 

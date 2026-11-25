@@ -54,6 +54,13 @@ describe('desk2: the Night watch row (E33)', () => {
       expect(args.a.n).toBe(cfg.salvage.awayCapByRung_h[Math.min(rung, cfg.salvage.awayCapByRung_h.length) - 1]);
     });
   }
+  it('content written before E33 (awayCap_h [a, b]) reads as one rung at a, the Night watch adding b - a', () => {
+    const { awayCapByRung_h: _r, nightWatch_h: _n, ...old } = (gameJson as { salvage: Record<string, unknown> }).salvage;
+    const c = SalvageSchema.parse({ ...old, awayCap_h: [4, 6] });
+    expect(c.awayCapByRung_h).toEqual([4]);
+    expect(c.nightWatch_h).toBe(2);
+    expect('awayCap_h' in c).toBe(false);
+  });
   it('before any absence the row is not offered', () => {
     for (const rung of [1, 2, 3]) expect(nightRow(at(rung, false))).toBeUndefined();
     expect(nightRow(playedGame(cfg, 'fresh', base(), FIXTURE_NOW) as SalvageGame)).toBeUndefined();
