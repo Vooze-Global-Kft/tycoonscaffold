@@ -33,9 +33,9 @@
  */
 import { SalvageSchema, type SalvageContent } from '../../config/schema.salvage';
 import type { GameConfig } from '../../config/schema';
-import { freshSalvage, marketDay, priceOf } from '../salvage';
-import { pointOf, thingPos } from '../salvage/positions';
-import type { AwayCard, BayState, CrewMember, GroundPiece, Piece, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, ThingState, Ticket, TicketLine, Txt } from '../salvage/types';
+import { buy, createSalvage, shopPrice } from '../salvage';
+import { playStates, type Played } from '../salvage/director';
+import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from '../salvage/types';
 import type { GameState } from '../types';
 
 /** The fixture's device time: 25 November 2026, 12:00 UTC (a Wednesday). */
@@ -299,374 +299,82 @@ export interface FixtureState {
   salvage: SalvageState;
 }
 
-const C = SALVAGE_TEST;
-const CFG = { salvage: C } as SalvageConfig;
-const DAY = marketDay(CFG, FIXTURE_NOW);
-const P = (g: string) => priceOf(CFG, g, DAY);
-const r2 = (x: number) => Math.round(x * 100) / 100;
-const line = (grade: string, g: number, extra: Partial<TicketLine> = {}): TicketLine => ({ grade, g, price: P(grade), amount: r2((g / 1000) * P(grade)), ...extra });
-const total = (ls: TicketLine[]) => r2(ls.reduce((a, l) => a + l.amount, 0));
-const base = (no: number, at: number) => ({ no, at, day: DAY });
-const slip = (no: number, at: number, thing: string): Ticket => ({ ...base(no, at), kind: 'dropOffSlip', thing });
-const weighIn = (no: number, at: number, by: string, lines: TicketLine[], lessonText: Txt | null = null): Ticket => ({ ...base(no, at), kind: 'weighIn', by, lines, todaysValue: total(lines), lessonText, lesson: lessonText?.key ?? null });
-const collection = (no: number, at: number, lines: TicketLine[], withBoss: boolean, firstGrades: string[] = []): Ticket => ({ ...base(no, at), kind: 'collection', buyer: 'merchant', lines, paid: total(lines), withBoss, firstGrades });
-const bay = (g: number, o: Partial<BayState> = {}): BayState => ({ g, n: 0, held: false, aside: [], forCrucible_g: 0, forDeal_g: 0, ...o });
-/** A whole piece cut off a thing: uid `${thing}.p${n}`, spec its index in the object's pieces. */
-const piece = (thing: string, n: number, grade: string, g: number, spec: number): Piece => ({ uid: `${thing}.p${n}`, grade, g, from: thing, spec });
-const ground = (p: Piece, pile: string, k: number, claim: string | null = null): GroundPiece => ({ ...p, pile, k, claim });
-const crewOf = (id: string, o: Partial<CrewMember>): CrewMember => ({ id, role: id.split('.')[0] as CrewMember['role'], slot: Number(id.split('.')[1]) || 0, name: 0, level: 1, job: 'idle', phase: 'wait', from: { place: 'scalehouse' }, to: { place: 'scalehouse' }, t0: 0, t1: 0, carries: null, load: [], claims: [], cut: null, ...o });
-const nearThing = (things: ThingState[], uid: string) => {
-  const th = things.find((x) => x.uid === uid)!;
-  const p = thingPos(C, th.at);
-  // Beside it, outside its footprint (world-a: a boss inside the car's footprint is hidden under its sprite).
-  return { x: p.x, y: p.y + (C.objects[th.obj]?.size.d ?? 0.8) / 2 + C.worker.radius + 0.1 };
+const CFG = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
+
+// The states are PLAYED through the real engine (src/engine/salvage/director.ts: a person-like hand with
+// the screen's actions, and time away), once, on first use: each is a state the game can reach.
+let PLAYED: Played | null = null;
+const playedCache = new WeakMap<object, Played>();
+
+/** The five states played on a content (memoised per content object). `dt` is the person's tick. */
+export function playedOn(cfg: SalvageConfig, dt = 0.5): Played {
+  const hit = playedCache.get(cfg.salvage);
+  if (hit) return hit;
+  const g0 = createSalvage(cfg, { cash: 0, lifetimeEarnings: 0, runEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as unknown as GameState, FIXTURE_NOW);
+  const p = playStates(cfg, g0, FIXTURE_NOW, dt);
+  for (const n of FIXTURE_NAMES) deepFreeze(p.games[n]);
+  playedCache.set(cfg.salvage, p);
+  return p;
+}
+
+function played(): Played {
+  if (!PLAYED) PLAYED = playedOn(CFG);
+  return PLAYED;
+}
+
+function lazy<T>(make: (n: FixtureName) => T): Readonly<Record<FixtureName, T>> {
+  const memo: Partial<Record<FixtureName, T>> = {};
+  const o = {} as Record<FixtureName, T>;
+  for (const n of FIXTURE_NAMES) Object.defineProperty(o, n, { enumerable: true, get: () => (memo[n] ??= make(n)) });
+  return Object.freeze(o);
+}
+
+const stateOf = (p: Played, n: FixtureName): FixtureState => {
+  const g = p.games[n];
+  return deepFreeze({ cash: g.cash, playSeconds: g.stats.playSeconds, lifetimeEarnings: g.lifetimeEarnings ?? 0, salvage: g.salvage });
 };
-const bbRatio = Math.round(P('bb') / P('li'));
 
-function fresh(): SalvageState {
-  return freshSalvage(CFG, FIXTURE_NOW);
+/** The five frozen states (frozen objects: copy before changing; the store's updates copy anyway). Played on first use. */
+export const FIXTURE_STATES: Readonly<Record<FixtureName, FixtureState>> = lazy((n) => stateOf(played(), n));
+
+/** A refusal the screen would get at this state: the first shop item it cannot pay for (a real refusal through `buy`). */
+function refusalAt(cfg: SalvageConfig, g: SalvageGame): SalvageEvent | null {
+  for (const item of [...cfg.salvage.shop, ...cfg.salvage.dayOneList]) {
+    if (item.kind === 'crew') continue;
+    const ev: SalvageEvent[] = [];
+    const price = shopPrice(cfg, g, item.key) ?? item.price;
+    buy(cfg, g, item.key, price, g.salvage.t, ev);
+    const r = ev.find((e) => e.type === 'refused');
+    if (r && r.type === 'refused' && r.key !== 'owned') return r;
+  }
+  return null;
+}
+
+/** The events a state re-emits once in the preview: the last of each kind the play emitted up to it (and a real refusal). */
+function eventsOf(cfg: SalvageConfig, p: Played, n: FixtureName): SalvageEvent[] {
+  const evs = p.events[n];
+  const last = (pred: (e: SalvageEvent) => boolean) => [...evs].reverse().find(pred) ?? null;
+  const out: (SalvageEvent | null)[] = [];
+  if (n === 'm5') out.push(last((e) => e.type === 'weighIn' && e.by !== 'boss') ?? last((e) => e.type === 'weighIn'), last((e) => e.type === 'collected'));
+  if (n === 'm15') out.push(last((e) => e.type === 'rung'), last((e) => e.type === 'dealOffered'), last((e) => e.type === 'bridgeWeighIn'), refusalAt(cfg, p.games[n]));
+  if (n === 'm30') out.push(last((e) => e.type === 'weighIn' && e.ticket.kind === 'weighIn' && !!e.ticket.lessonText) ?? last((e) => e.type === 'weighIn'), last((e) => e.type === 'lesson'), last((e) => e.type === 'collected'), refusalAt(cfg, p.games[n]));
+  if (n === 'back') out.push(last((e) => e.type === 'awayReport'), last((e) => e.type === 'dealDelivered'));
+  return deepFreeze(out.filter((e): e is SalvageEvent => !!e));
 }
 
 /**
- * Minute 5. Mass: d0 (a washer) cut by the boss and sold (li 20, mot 5, waste 15); bundle1's cable
- * stripped (bb 6.3, no2 0.7, PVC 3 to waste); Z1.washer.1 cut and sold (li 20, mot 5, waste 15);
- * Z1.washer.0 cut whole and on the load with Z1.cable.3 and Z1.taps.4 (40 kg: the sack is full); d2 (a
- * cable bundle) carried whole by the yard hand and weighed in (the lot in the bays); the merchant away
- * with the lot of ticket 10; the yard hand walking to the drop-off for d1 (a whole washer, E4).
+ * Events the preview emits ONCE after a preset loads (tickets, chips, cards and sounds can be looked at
+ * without playing), taken from what the play emitted: m5 a weigh-in (a crew member's if any) and a
+ * collection; m15 the rung sign, the deal's offer, a skip ticket and a refusal (each when it happened);
+ * m30 a weigh-in (with its lesson when one was dealt), the lesson, a collection, a refusal; back the
+ * away report and a deal delivery.
  */
-function m5(): FixtureState {
-  const s = fresh();
-  const t = 300;
-  const things = s.things
-    .filter((th) => !['d0', 'bundle1.cable.0', 'Z1.washer.1', 'Z1.washer.0', 'Z1.cable.3', 'Z1.taps.4'].includes(th.uid))
-    .concat([
-      { uid: 'd1', obj: 'washer', at: { at: 'dropoff', slot: 0 }, cut: 0, progress: 0, by: 'hand.0' },
-      { uid: 'd3', obj: 'radiator', at: { at: 'dropoff', slot: 1 }, cut: 0, progress: 0, by: null },
-    ]);
-  const lot = [line('li', 20000), line('mot', 5000, { n: 1 })];
-  const tickets: Ticket[] = [
-    slip(1, 0, 'washer'),
-    slip(2, 20, 'washer'),
-    weighIn(3, 22, 'boss', [line('li', 20000), line('mot', 5000, { n: 1 })]),
-    collection(4, 25, [line('li', 20000), line('mot', 5000, { n: 1 })], true, ['li', 'mot']),
-    weighIn(5, 90, 'boss', [line('bb', 6300), line('no2', 700)], { key: 'lesson.bb', args: { n: { n: bbRatio } } }),
-    collection(6, 93, [line('bb', 6300), line('no2', 700)], true, ['bb', 'no2']),
-    slip(7, 120, 'cable'),
-    slip(8, 220, 'radiator'),
-    weighIn(9, 282, 'boss', lot),
-    collection(10, 285, lot, true),
-    weighIn(11, 296, 'hand.0', [line('cab', 10000)]),
-  ];
-  const paid = 2 * total(lot) + total([line('bb', 6300), line('no2', 700)]);
-  const hand = crewOf('hand.0', { job: 'wholeThing', phase: 'walkTo', from: { place: 'scale' }, to: { thing: 'd1' }, t0: 298, t1: 301, claims: ['d1'] });
-  return {
-    cash: r2(paid - 50 - 100),
-    playSeconds: t,
-    lifetimeEarnings: paid,
-    salvage: {
-      ...s,
-      t,
-      clock: { ...s.clock, highMs: FIXTURE_NOW + t * 1000 },
-      owned: ['sack'],
-      carrier: 'sack',
-      load: [piece('Z1.washer.0', 0, 'li', 10000, 0), piece('Z1.washer.0', 1, 'li', 10000, 0), piece('Z1.washer.0', 2, 'mot', 5000, 1), piece('Z1.cable.3', 0, 'cab', 10000, 0), piece('Z1.taps.4', 0, 'brs', 5000, 0)],
-      presence: { ...nearThing(s.things, 'Z1.washer.0'), driving: false, moving: false, standingFor: 1.2, heading: 0 },
-      presenceAt: t - 0.05,
-      act: { kind: 'none', target: null, since: t - 1, endsAt: null },
-      things,
-      pieces: [],
-      waste_g: 15000 + 3000 + 15000 + 15000,
-      bays: { li: bay(0), mot: bay(0), bb: bay(0), no2: bay(0), cab: bay(10000) },
-      crew: [hand],
-      merchant: { phase: 'away', since: 285, endsAt: 305, lot: lot.map((l) => ({ grade: l.grade, g: l.g, n: l.n, price: l.price, amount: l.amount })) },
-      dropoff: { nextAt: 320, n: 4 },
-      foreman: { day: DAY, used_s: 0, lastWorkAt: t - 1 },
-      ladder: { supplied_g: 57000, worth: { lightiron: 20, copper: r2(6.3 * C.grades.bb.pbar + 0.7 * C.grades.no2.pbar) }, rung: 1, passed: 0 },
-      goals: { done: ['takeWasher', 'weighIt', 'stripCable', 'buySack', 'hireHand'], skipped: [], lastPromptAt: 150, repeats: 0 },
-      lessonsSeen: ['bb'],
-      seen: { places: ['dropoff', 'scale', 'stripper', 'rack', 'office'], cards: ['rack', 'rota'] },
-      tickets,
-      ticketNo: 12,
-      income: { minute: 5, buckets: [total([line('bb', 6300), line('no2', 700)]), 0, 0, 2 * total(lot), 0] },
-    },
-  };
+export const FIXTURE_EVENTS: Readonly<Record<FixtureName, readonly SalvageEvent[]>> = lazy((n) => eventsOf(CFG, played(), n));
+
+/** A played state's events on any content (the preview on the game's own content). */
+export function playedEvents(cfg: SalvageConfig, n: FixtureName): readonly SalvageEvent[] {
+  return eventsOf(cfg, playedOn(cfg), n);
 }
-
-/**
- * Minute 15: rung 2 just reached (the rung event and the deal's offer wait in FIXTURE_EVENTS.m15). The
- * boss drives the truck with the farm's trial skip, weighed in on the weighbridge, to the tipping floor;
- * the farm's next skip fills; the powered stripper has filled its tray and stands.
- */
-function m15(): FixtureState {
-  const s = fresh();
-  const t = 900;
-  const trialMass = Object.entries(C.partners.partnerFarm.trial).reduce((a, [o, n]) => a + C.objects[o].gross_g * n, 0);
-  const lot = [line('li', 120000), line('ci', 60000), line('bb', 14000), line('no2', 2000)];
-  const tickets: Ticket[] = [
-    slip(30, 820, 'washer'),
-    weighIn(31, 830, 'boss', [line('ci', 30000)], { key: 'lesson.ci' }),
-    weighIn(32, 840, 'hand.0', [line('li', 40000)]),
-    collection(33, 845, lot, true),
-    collection(34, 870, [line('li', 20000)], false),
-    { ...base(35, 885), kind: 'skipWeighIn', partner: 'partnerFarm', trial: true, gross_g: 6_000_000 + trialMass, tare_g: 6_000_000, net_g: trialMass, paid: C.partners.partnerFarm.trialPrice, things: Object.entries(C.partners.partnerFarm.trial).map(([obj, n]) => ({ obj, n })) },
-  ];
-  const wb = pointOf(C, 'weighbridge');
-  return {
-    cash: 640,
-    playSeconds: t,
-    lifetimeEarnings: 2400,
-    salvage: {
-      ...s,
-      t,
-      clock: { ...s.clock, highMs: FIXTURE_NOW + t * 1000 },
-      owned: ['sack', 'sledge', 'truck', 'stripper'],
-      tier: 2,
-      carrier: 'sack',
-      presence: { x: wb.x, y: wb.y + 3, driving: true, moving: true, standingFor: 0, heading: 0 },
-      presenceAt: t - 0.05,
-      act: { kind: 'drive', target: null, since: 886, endsAt: null },
-      things: s.things.filter((th) => !['d0', 'bundle1.cable.0', 'Z1.washer.0', 'Z1.washer.1', 'Z1.cable.3', 'Z1.taps.4', 'Z2.radiator.0'].includes(th.uid)),
-      waste_g: 60000,
-      bays: { li: bay(0), ci: bay(0), bb: bay(0), no2: bay(0), mot: bay(5000, { n: 1 }) },
-      machines: {
-        ...s.machines,
-        stripper: { owned: true, level: 1, hopper: [], work: null, tray_g: { bb: 18000, no2: 2000 }, trayClaim_g: {}, status: 'trayFull', since: 700 },
-      },
-      crew: [crewOf('hand.0', { name: 0, job: 'idle', phase: 'wait', from: { place: 'scalehouse' }, to: { place: 'scalehouse' }, t0: 842, t1: 842 })],
-      partners: {
-        partnerFarm: { open: true, trialUsed: true, level: 1, skips: [{ slot: 0, phase: 'filling', setAt: 880, fullAt: 880 + C.partners.partnerFarm.fill_s, contents: { ...C.partners.partnerFarm.skip }, mass_g: C.partners.partnerFarm.skipMass_kg * 1000, price: C.partners.partnerFarm.skipPrice, priceDay: DAY, trial: false, n: 1 }] },
-        partnerDemolition: s.partners.partnerDemolition,
-      },
-      truck: { owned: true, x: wb.x, y: wb.y + 3, heading: 0, skip: { partner: 'partnerFarm', slot: 0, contents: { ...C.partners.partnerFarm.trial }, mass_g: trialMass, price: C.partners.partnerFarm.trialPrice, trial: true, weighed: true }, by: 'boss', trip: null, hookSince: null, earmark: null },
-      merchant: { phase: 'waiting', since: 893, endsAt: null, lot: [] },
-      dropoff: { nextAt: 920, n: 9 },
-      deal: { step: 0, phase: 'offered', q_g: 0, days: 0, price: 0, delivered: 0, trust: C.deal.trust.start, last: null },
-      foreman: { day: DAY, used_s: 600, lastWorkAt: 880 },
-      ladder: { supplied_g: 2_010_000, worth: { lightiron: 300, castiron: 200, copper: 1500 }, rung: 2, passed: 3 },
-      goals: { done: ['takeWasher', 'weighIt', 'stripCable', 'buySack', 'hireHand', 'buySledge', 'supplyRung2'], skipped: [], lastPromptAt: 850, repeats: 0 },
-      lessonsSeen: ['bb', 'ci'],
-      seen: { places: ['dropoff', 'scale', 'stripper', 'rack', 'office', 'park', 'weighbridge'], cards: ['rack', 'rota', 'machine', 'park'] },
-      tickets,
-      ticketNo: 36,
-      income: { minute: 15, buckets: [120, 90, 160, total(lot) + 10, 0] },
-    },
-  };
-}
-
-/** Minute 30 (see the header). The first heat waits at "Ready to pour"; the boss cuts the car's fourth wheel with two radiator pieces on his trolley. */
-function m30(): FixtureState {
-  const s = fresh();
-  const t = 1800;
-  const gone = ['d0', 'bundle1.cable.0', 'Z1.washer.0', 'Z1.washer.1', 'Z1.cable.3', 'Z1.taps.4', 'Z2.radiator.0', 'Z3.beam.0'];
-  const things: ThingState[] = s.things
-    .filter((th) => !gone.includes(th.uid))
-    .map((th) => (th.uid === 'Z3.car.2' ? { ...th, cut: 3, progress: 0.1, by: 'boss' } : th.uid === 'Z2.radiator.1' ? { ...th, cut: 2 } : th))
-    .concat([
-      { uid: 'd5', obj: 'washer', at: { at: 'dropoff', slot: 0 }, cut: 0, progress: 0, by: 'cutter.0' },
-      { uid: 'd6', obj: 'radiator', at: { at: 'dropoff', slot: 1 }, cut: 0, progress: 0, by: null },
-      { uid: 'f0', obj: 'washer', at: { at: 'floor', slot: 0 }, cut: 0, progress: 0, by: null },
-      { uid: 'f1', obj: 'radiator', at: { at: 'floor', slot: 1 }, cut: 0, progress: 0, by: null },
-    ]);
-  const car = 'Z3.car.2';
-  const lot = [line('bb', 21000), line('li', 160000), line('brs', 4000), line('no2', 2000)];
-  const farm = C.partners.partnerFarm;
-  const cut = C.objects.car.pieces[0];
-  const cutLen = Math.max(C.cut.minS, ((cut[1] as number) / 1000) * C.objects.car.h / C.tools.torch.P);
-  const tickets: Ticket[] = [
-    { ...base(38, 1500), kind: 'skipWeighIn', partner: 'partnerFarm', trial: false, gross_g: 6_000_000 + farm.skipMass_kg * 1000, tare_g: 6_000_000, net_g: farm.skipMass_kg * 1000, paid: farm.skipPrice, things: Object.entries(farm.skip).map(([obj, n]) => ({ obj, n })) },
-    weighIn(39, 1700, 'boss', [line('hms', 80000), line('alw', 10000)]),
-    collection(40, 1703, [line('hms', 80000), line('alw', 10000)], true, ['hms', 'alw']),
-    weighIn(41, 1792, 'boss', lot),
-    collection(42, 1795, lot, true),
-    weighIn(43, 1798, 'hand.0', [line('li', 20000)]),
-  ];
-  return {
-    cash: 2480,
-    playSeconds: t,
-    lifetimeEarnings: 9300,
-    salvage: {
-      ...s,
-      t,
-      clock: { ...s.clock, highMs: FIXTURE_NOW + t * 1000 },
-      owned: ['sack', 'sledge', 'trolley', 'truck', 'stripper', 'bench', 'crucible', 'torch'],
-      tier: 3,
-      carrier: 'trolley',
-      load: [piece('Z2.radiator.1', 0, 'ci', 10000, 0), piece('Z2.radiator.1', 1, 'ci', 10000, 0)],
-      presence: { ...nearThing(s.things, car), driving: false, moving: false, standingFor: 2.4, heading: 3 },
-      presenceAt: t - 0.05,
-      act: { kind: 'work', target: car, since: t - 0.2, endsAt: t - 0.2 + cutLen - 0.1 },
-      things,
-      pieces: [
-        ground(piece(car, 0, 'alw', 10000, 0), `beside.${car}`, 0),
-        ground(piece(car, 1, 'alw', 10000, 0), `beside.${car}`, 1),
-        ground(piece(car, 2, 'alw', 10000, 0), `beside.${car}`, 2),
-        ground(piece('f2', 1, 'li', 10000, 0), 'floor', 1),
-        ground(piece('Z1.washer.1', 0, 'li', 10000, 0), 'circle.0', 0),
-      ],
-      waste_g: 120000,
-      bays: { li: bay(20000), ci: bay(260000, { held: true, forDeal_g: 60000 }), hms: bay(0), brs: bay(0), bb: bay(0), no2: bay(0), alw: bay(0), bri: bay(0) },
-      machines: {
-        hand_stripper: { ...s.machines.hand_stripper, status: 'idle' },
-        stripper: { owned: true, level: 2, hopper: [piece('d4', 0, 'cab', 10000, 0)], work: { piece: piece('d3', 0, 'cab', 10000, 0), startAt: t - 1, rate_kg_s: 5 * 1.1, credited: { bb: 3000, no2: 300 } }, tray_g: { bb: 9000, no2: 1000 }, trayClaim_g: {}, status: 'working', since: 700 },
-        bench: { owned: true, level: 1, hopper: [piece('f2', 2, 'mot', 5000, 1)], work: { piece: piece('f3', 2, 'mot', 5000, 1), startAt: t - 1, rate_kg_s: 2, credited: { no2: 200, li: 1600, alcast: 200 } }, tray_g: { no2: 1000, li: 8000, alcast: 1000 }, trayClaim_g: {}, status: 'working', since: 900 },
-        crucible: { ...s.machines.crucible, owned: true, level: 1, status: 'idle', since: 1400, recipe: 'brass', fromBays: true, charge_g: 20000, heel_g: 0, phase: 'ready', phaseSince: t - 30, endsAt: null, lastFeedAt: 1700, firstPoured: false, cooling: null },
-      },
-      crew: [
-        crewOf('hand.0', { name: 0, level: 2, job: 'floor', phase: 'walkTo', from: { pile: 'floor', k: 0 }, to: { place: 'scale' }, t0: t - 1, t1: t + 4, carries: 'li', load: [piece('f2', 0, 'li', 10000, 0)] }),
-        crewOf('cutter.0', { name: 1, level: 2, job: 'cutDropoff', phase: 'work', from: { thing: 'd5' }, to: { thing: 'd5' }, t0: t - 6, t1: t + 4, cut: { thing: 'd5', whole: true } }),
-        crewOf('driver.0', { name: 2, level: 1, job: 'drive', phase: 'wait', from: { truck: true }, to: { truck: true }, t0: t - 8, t1: t - 8 }),
-      ],
-      partners: {
-        partnerFarm: {
-          open: true,
-          trialUsed: true,
-          level: 2,
-          skips: [
-            { slot: 0, phase: 'full', setAt: 1200, fullAt: 1500, contents: { ...farm.skip }, mass_g: farm.skipMass_kg * 1000, price: farm.skipPrice, priceDay: DAY, trial: false, n: 3 },
-            { slot: 1, phase: 'filling', setAt: 1595, fullAt: 1895, contents: { ...farm.skip }, mass_g: farm.skipMass_kg * 1000, price: farm.skipPrice, priceDay: DAY, trial: false, n: 4 },
-          ],
-        },
-        partnerDemolition: { ...s.partners.partnerDemolition, open: true, level: 1 },
-      },
-      truck: { owned: true, x: 56, y: 36, heading: 2, skip: null, by: 'driver', trip: { partner: 'partnerFarm', slot: 0, phase: 'out', t0: t - 8, endsAt: t + 12 }, hookSince: null, earmark: { money: farm.skipPrice, floor_g: farm.skipMass_kg * 1000 } },
-      merchant: { phase: 'away', since: 1795, endsAt: 1815, lot: lot.map((l) => ({ grade: l.grade, g: l.g, price: l.price, amount: l.amount })) },
-      dropoff: { nextAt: t + 12, n: 7 },
-      deal: { step: 0, phase: 'running', q_g: 100000, days: 3, price: r2(C.grades.ci.pbar * 1.1), delivered: 0, trust: 50, last: null },
-      foreman: { day: DAY, used_s: 1400, lastWorkAt: t - 1 },
-      ladder: { supplied_g: 6_200_000, worth: { lightiron: 800, castiron: 900, steel: 300, copper: 4100, brass: 600, alu: 40 }, rung: 2, passed: 5 },
-      goals: { done: ['takeWasher', 'weighIt', 'stripCable', 'buySack', 'hireHand', 'buySledge', 'supplyRung2', 'signDeal'], skipped: [], lastPromptAt: 1650, repeats: 0 },
-      lessonsSeen: ['li', 'bb', 'mot', 'cab', 'brs', 'ci', 'no2'],
-      seen: { places: ['dropoff', 'scale', 'stripper', 'rack', 'office', 'park', 'weighbridge', 'bench', 'crucible', 'scalehouse', 'bays', 'noticeboard', 'floor'], cards: ['rack', 'rota', 'machine', 'park', 'board', 'partners', 'processBoard', 'table', 'deal'] },
-      tickets,
-      ticketNo: 44,
-      income: { minute: 30, buckets: [410, 380, 520, total([line('hms', 80000), line('alw', 10000)]), total(lot)] },
-    },
-  };
-}
-
-/** After 3 h 12 m away (see the header): advanced by hand to a state the away pass reaches. */
-function back(): FixtureState {
-  const b = m30();
-  const A = 3 * 3600 + 12 * 60;
-  const t = b.salvage.t + A;
-  const card: AwayCard = {
-    seconds: A,
-    capS: C.awayCap_h[0] * 3600,
-    lines: [
-      { grade: 'li', g: 410000, money: 205 },
-      { grade: 'bb', g: 31000, money: 1085 },
-      { grade: 'ci', g: 120000, money: 120 },
-      { grade: 'no2', g: 4000, money: 120 },
-      { grade: 'hms', g: 60000, money: 60 },
-      { grade: 'bri', g: 15000, money: 375 },
-    ],
-    supplied_g: 1_900_000,
-    money: 1965,
-    loads: 2,
-    deliveries: 0,
-    passed: ['rival.6'],
-    hint: { key: 'away.hintHand' },
-  };
-  const s = b.salvage;
-  const farm = C.partners.partnerFarm;
-  return {
-    cash: b.cash + card.money,
-    playSeconds: b.playSeconds,
-    lifetimeEarnings: b.lifetimeEarnings + card.money,
-    salvage: {
-      ...s,
-      t,
-      epoch: s.epoch + 1,
-      clock: { ...s.clock, highMs: s.clock.highMs + A * 1000 },
-      act: { kind: 'none', target: null, since: t, endsAt: null },
-      presence: { ...s.presence, moving: false, standingFor: 0 },
-      presenceAt: b.salvage.t,
-      things: s.things
-        .filter((th) => !['d5', 'd6', 'f0', 'f1'].includes(th.uid))
-        .map((th) => (th.by === 'boss' ? { ...th, by: null } : th))
-        .concat([
-          { uid: 'd40', obj: 'washer', at: { at: 'dropoff', slot: 0 }, cut: 0, progress: 0, by: 'cutter.0' },
-          { uid: 'd41', obj: 'radiator', at: { at: 'dropoff', slot: 1 }, cut: 0, progress: 0, by: null },
-          { uid: 'd42', obj: 'washer', at: { at: 'dropoff', slot: 2 }, cut: 0, progress: 0, by: null },
-          { uid: 'd43', obj: 'cable', at: { at: 'dropoff', slot: 3 }, cut: 0, progress: 0, by: null },
-        ]),
-      pieces: s.pieces.filter((p) => p.pile !== 'floor' && p.pile !== 'circle.0'),
-      bays: { ...s.bays, li: s.bays.li && { ...s.bays.li, g: 0 }, ci: { ...s.bays.ci, g: 380000, forDeal_g: 100000 }, bri: { ...s.bays.bri, g: 0 } },
-      machines: {
-        ...s.machines,
-        stripper: { ...s.machines.stripper, hopper: [], work: null, tray_g: {}, status: 'idle' },
-        bench: { ...s.machines.bench, hopper: [], work: null, tray_g: {}, status: 'waiting' },
-        crucible: { ...s.machines.crucible, status: 'working', charge_g: 15000, heel_g: 3000, phase: 'heating', phaseSince: t - 20, endsAt: t + 20, lastFeedAt: t - 25, firstPoured: true, cooling: null },
-      },
-      crew: [
-        crewOf('hand.0', { name: 0, level: 2, job: 'idle', phase: 'wait', from: { place: 'scalehouse' }, to: { place: 'scalehouse' }, t0: t - 30, t1: t - 30 }),
-        crewOf('cutter.0', { name: 1, level: 2, job: 'cutDropoff', phase: 'work', from: { thing: 'd40' }, to: { thing: 'd40' }, t0: t - 3, t1: t + 7, cut: { thing: 'd40', whole: true } }),
-        crewOf('driver.0', { name: 2, level: 1, job: 'idle', phase: 'wait', from: { place: 'park' }, to: { place: 'park' }, t0: t - 200, t1: t - 200 }),
-      ],
-      partners: {
-        ...s.partners,
-        partnerFarm: {
-          ...s.partners.partnerFarm,
-          skips: [
-            { slot: 0, phase: 'filling', setAt: t - 120, fullAt: t - 120 + farm.fill_s, contents: { ...farm.skip }, mass_g: farm.skipMass_kg * 1000, price: farm.skipPrice, priceDay: DAY, trial: false, n: 6 },
-            { slot: 1, phase: 'full', setAt: t - 400, fullAt: t - 100, contents: { ...farm.skip }, mass_g: farm.skipMass_kg * 1000, price: farm.skipPrice, priceDay: DAY, trial: false, n: 5 },
-          ],
-        },
-      },
-      truck: { ...s.truck, x: 56, y: 36, heading: 0, by: null, trip: null, earmark: null, skip: null },
-      merchant: { phase: 'waiting', since: t - 40, endsAt: null, lot: [] },
-      dropoff: { nextAt: t + 30, n: 44 },
-      ladder: { ...s.ladder, supplied_g: s.ladder.supplied_g + card.supplied_g, passed: 6 },
-      goals: { ...s.goals, done: [...s.goals.done, 'pourFirst'] },
-      tickets: [...s.tickets, collection(44, t - 40, [line('li', 410000), line('bb', 31000), line('ci', 120000), line('no2', 4000), line('hms', 60000)], false)],
-      ticketNo: 45,
-      away: card,
-      beenAway: true,
-      income: { minute: Math.floor(t / 60), buckets: [300, 280, 0, 310, 0] },
-    },
-  };
-}
-
-/** The five frozen states (frozen objects: copy before changing; the store's updates copy anyway). */
-export const FIXTURE_STATES: Readonly<Record<FixtureName, FixtureState>> = deepFreeze({
-  fresh: { cash: 0, playSeconds: 0, lifetimeEarnings: 0, salvage: fresh() },
-  m5: m5(),
-  m15: m15(),
-  m30: m30(),
-  back: back(),
-});
-
-const lastTicket = (n: FixtureName, kind: Ticket['kind']) => [...FIXTURE_STATES[n].salvage.tickets].reverse().find((x) => x.kind === kind)!;
-
-/**
- * Events the preview emits ONCE after a preset loads (the screens' tickets, chips, cards and sounds can
- * be looked at without playing): m5 a crew weigh-in chip and a collection; m15 the rung sign, the
- * deal's offer, the skip ticket and a skip refusal; m30 a weigh-in with its lesson, a collection, a
- * refused purchase; back the away report and a deal delivery ticket.
- */
-export const FIXTURE_EVENTS: Readonly<Record<FixtureName, readonly SalvageEvent[]>> = deepFreeze({
-  fresh: [],
-  m5: [
-    { type: 'weighIn', ticket: lastTicket('m5', 'weighIn'), pieces: ['d2.p0'], by: 'hand.0' },
-    { type: 'collected', ticket: lastTicket('m5', 'collection'), first: false },
-  ],
-  m15: [
-    { type: 'rung', n: 2 },
-    { type: 'dealOffered', step: 0 },
-    { type: 'bridgeWeighIn', ticket: lastTicket('m15', 'skipWeighIn') },
-    { type: 'refused', key: 'loadCash', args: { x: { money: 100 } }, retry: null },
-  ],
-  m30: [
-    { type: 'weighIn', ticket: weighIn(44, 1800, 'boss', [line('ci', 20000)], { key: 'lesson.ci' }), pieces: ['Z2.radiator.1.p0', 'Z2.radiator.1.p1'], by: 'boss' },
-    { type: 'lesson', grade: 'ci', text: { key: 'lesson.ci' } },
-    { type: 'collected', ticket: lastTicket('m30', 'collection'), first: true },
-    { type: 'refused', key: 'cash', args: { x: { money: 120 } }, retry: null },
-  ],
-  back: [
-    { type: 'awayReport', card: FIXTURE_STATES.back.salvage.away! },
-    { type: 'dealDelivered', ticket: { ...base(46, FIXTURE_STATES.back.salvage.t), kind: 'dealDelivery', buyer: 'foundry', grade: 'ci', g: 100000, paid: r2(100 * C.grades.ci.pbar * 1.1) } },
-  ],
-});
 
 /**
  * A frozen state laid over a shared state (`base`, e.g. economy.createInitialState(cfg, now)). The
@@ -675,7 +383,15 @@ export const FIXTURE_EVENTS: Readonly<Record<FixtureName, readonly SalvageEvent[
  * on today's board.
  */
 export function fixtureGame(name: FixtureName, base: GameState, now?: number): SalvageGame {
-  const f = FIXTURE_STATES[name];
+  return gameOf(FIXTURE_STATES[name], base, now);
+}
+
+/** The same state played on the game's OWN content (the preview's presets on game.json): `cfg` is the game's config. */
+export function playedGame(cfg: SalvageConfig, name: FixtureName, base: GameState, now?: number): SalvageGame {
+  return gameOf(stateOf(playedOn(cfg), name), base, now);
+}
+
+function gameOf(f: FixtureState, base: GameState, now?: number): SalvageGame {
   const salvage = structuredClone(f.salvage) as SalvageState;
   salvage.epoch += 1;
   if (now !== undefined) salvage.clock = { ...salvage.clock, highMs: Math.max(now, salvage.clock.highMs) };

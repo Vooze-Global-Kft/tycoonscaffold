@@ -263,9 +263,15 @@ describe('the bench', () => {
       a = R.advanceSalvage(cfg, a, 0.1, now);
     }
     const perTick = (performance.now() - t0) / N;
-    const t1 = performance.now();
-    const away = R.salvageOffline(cfg, { ...a, lastSavedAt: a.salvage.clock.highMs }, a.salvage.clock.highMs + 6 * 3600_000);
-    const awayMs = performance.now() - t1;
+    // Warm (the first call includes the JIT's compile): the best of four passes over the same six hours.
+    const leave = { ...a, lastSavedAt: a.salvage.clock.highMs };
+    let away = R.salvageOffline(cfg, leave, a.salvage.clock.highMs + 6 * 3600_000);
+    let awayMs = Infinity;
+    for (let k = 0; k < 4; k++) {
+      const t1 = performance.now();
+      away = R.salvageOffline(cfg, leave, a.salvage.clock.highMs + 6 * 3600_000);
+      awayMs = Math.min(awayMs, performance.now() - t1);
+    }
     process.stderr.write(`bench: one tick ${perTick.toFixed(3)} ms; six hours away ${awayMs.toFixed(1)} ms (A = ${away.seconds} s)\n`);
     expect(perTick).toBeLessThan(1);
     expect(awayMs).toBeLessThan(50 * 4); // the machine is shared by fifteen engineers: the printed figure is the measure

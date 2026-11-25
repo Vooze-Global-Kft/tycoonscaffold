@@ -607,7 +607,7 @@ export type BoardPlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed';
 
 /** A plate's glyph by the plate's id (the rules' plate ids; recipes melt in the crucible). */
 export function plateGlyph(id: string): PlateGlyph | null {
-  if (id === 'hand_stripper' || id === 'hand') return 'stripper';
+  if (id === 'hand_stripper' || id === 'handStripper' || id === 'hand') return 'stripper';
   if (id === 'stripper') return 'power';
   if (id === 'bench') return 'bench';
   if (id === 'crucible' || id === 'brass' || id === 'alu') return 'crucible';

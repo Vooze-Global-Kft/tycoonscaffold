@@ -400,7 +400,7 @@ export type ShopItem = z.infer<typeof ShopItemSchema>;
  * Levels (content3 `levels`, E13a): price = tau(L) × the rated kg a minute the level adds at full feed ×
  * the margin a kg of its target (`margin_per_kg`: stripper, bench, crucible; `yard` for crew and
  * partners), tau(L) = min(cap, first × growth^(L−1)) minutes; at most `maxLevel`; sold from the
- * purchase `opens`. Machine levels are LINEAR in the level (the lead): rate × (1 + lev × (L − 1)).
+ * gate `opens`: a rung id (`rung2`, E25: levels open at rung 2) or a shop key owned. Machine levels are LINEAR in the level (the lead): rate × (1 + lev × (L − 1)).
  * Partner levels are "another skip in rotation" (E13b; the specification's model binds, so
  * `skipLevel` is a check of content3's, not a rule). `bases` is content2's (unused).
  */
@@ -618,6 +618,10 @@ export function lintSalvage(s: SalvageContent): string[] {
     for (const o of [...Object.keys(p.trial), ...Object.keys(p.skip)]) object(o, `partners.${pid}`);
     if (s.map.lane[p.lane] === undefined) out.push(`partners.${pid}.lane "${p.lane}" is not in map.lane`);
     if (!s.shop.some((i) => i.key === p.opens)) out.push(`partners.${pid}.opens "${p.opens}" is not a shop key`);
+  }
+  {
+    const o = s.levels.opens;
+    if (o && !/^rung\d+$/.test(o) && !s.shop.some((i) => i.key === o) && !s.dayOneList.some((i) => i.key === o)) out.push(`levels.opens "${o}" is neither a rung id (rung2) nor a shop key`);
   }
   for (const [o] of s.dropoff.mix) object(o, 'dropoff.mix');
   for (const o of s.dropoff.initial) object(o, 'dropoff.initial');

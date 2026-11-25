@@ -25,7 +25,6 @@ import { FIXTURE_EVENTS, fixtureGame, type FixtureName } from '../../engine/fixt
 import * as R from '../../engine/salvage';
 import type { GameState } from '../../engine/types';
 import { modeEvents } from '../../state/modeEvents';
-import { loadingClock } from '../../ui/salvage/loading/clock';
 
 const BY_PRESET: Record<PresetName, FixtureName> = { fresh: 'fresh', early: 'm5', mid: 'm30', late: 'back' };
 
@@ -42,6 +41,9 @@ function emitWhenShown(name: FixtureName): void {
   const events = FIXTURE_EVENTS[name];
   if (!events.length || typeof location === 'undefined' || new URLSearchParams(location.search).get('events') === '0') return;
   if (pending) clearInterval(pending);
+  // Required here, not at the top: the clock holds Reanimated values, which the entry's node tests cannot load.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { loadingClock } = require('../../ui/salvage/loading/clock') as typeof import('../../ui/salvage/loading/clock');
   let after = -1;
   pending = setInterval(() => {
     if (!loadingClock.done.value) return;

@@ -112,7 +112,7 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
   return (
     <WideCard title={data.title} onClose={onClose} tabs={tabs} onTab={onTab}>
       <View style={styles.rows}>
-        <Canvas pointerEvents="none" style={[styles.canvas, { width: canvasW, height: canvasH }]}>
+        <Canvas pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: canvasW, height: canvasH }}>
           <Picture picture={pic} />
         </Canvas>
         {board?.rows.map((r) => (
@@ -145,7 +145,6 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
   rows: { paddingHorizontal: PAD_X, paddingTop: PAD_TOP },
-  canvas: { position: 'absolute', left: 0, top: 0 },
   row: { flexDirection: 'row', alignItems: 'center' },
   cell: { flexDirection: 'row', alignItems: 'center' },
   plate: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

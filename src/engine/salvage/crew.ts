@@ -79,7 +79,8 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const cap = x.c.crew.hand.load * 1000;
   // Nothing anywhere to carry: stay at the stand (offered work again at every later event).
   let any = false;
-  for (const p of s.pieces) if (!p.claim) {
+  // Only the piles a yard hand takes from count (2.6: never from the heaps; pieces beside a thing in a zone are the boss's).
+  for (const p of s.pieces) if (!p.claim && (p.pile === 'dropoff' || p.pile === 'floor' || p.pile.startsWith('circle.'))) {
     any = true;
     break;
   }
