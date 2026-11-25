@@ -7,7 +7,7 @@
  * Owner: rules-sim.
  */
 import { capOf } from './bays';
-import { count, printTicket, spend, standingFor, ticketBase, type Ctx } from './clock';
+import { boostFactor, count, printTicket, spend, standingFor, ticketBase, type Ctx } from './clock';
 import { laneM, legM, routeM } from './content';
 import { atPlace } from './machines';
 import { resolveGrams } from './money';
@@ -181,7 +181,7 @@ export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number }
 function driverV(x: Ctx): number {
   const d = x.s.crew.find((m) => m.role === 'driver');
   const L = d?.level ?? 1;
-  return x.c.truck.v * x.c.truck.driverFactor * (1 + x.c.crew.driver.lev * Math.max(0, L - 1));
+  return x.c.truck.v * x.c.truck.driverFactor * (1 + x.c.crew.driver.lev * Math.max(0, L - 1)) * boostFactor(x, x.s.t);
 }
 
 const pt = (x: Ctx, id: string) => pointOf(x.c, id);

@@ -4,7 +4,7 @@
  * S12's priority and claim at departure; cutters cut at the drop-off, then on the tipping floor, never
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
-import { bossFresh, type Ctx } from './clock';
+import { boostFactor, bossFresh, type Ctx } from './clock';
 import { byValue, cutTime, legM, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
 import { meltPiece } from './crucible';
 import { accepts, atPlace, feedPiece, takeTray, trayFree } from './machines';
@@ -21,7 +21,7 @@ function posOf(x: Ctx, spot: Spot): { x: number; y: number } {
 
 function handV(x: Ctx, m: CrewMember): number {
   const h = x.c.crew.hand;
-  return h.v * (1 + h.lev * Math.max(0, m.level - 1));
+  return h.v * (1 + h.lev * Math.max(0, m.level - 1)) * boostFactor(x, x.s.t);
 }
 
 function leg(x: Ctx, m: CrewMember, job: CrewJob, phase: CrewPhase, to: Spot, t: number, extra: number, fromXY?: { x: number; y: number }): void {
@@ -308,7 +308,7 @@ function handLegEnd(x: Ctx, m: CrewMember, t: number): void {
 export function cutterP(x: Ctx, m: CrewMember): number {
   const P = toolP(x.c, x.s.tier);
   const k = x.c.crew.cutter;
-  return Math.min(k.cap * P, P * k.share * (1 + k.lev * Math.max(0, m.level - 1)));
+  return Math.min(k.cap * P, P * k.share * (1 + k.lev * Math.max(0, m.level - 1))) * boostFactor(x, x.s.t);
 }
 
 /** The time to cut what is left of a thing at power P. */

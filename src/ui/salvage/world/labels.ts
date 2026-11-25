@@ -237,7 +237,7 @@ export interface PlacedLabel {
  * Plates in the world's pixels, lifted so that none overlaps another: plates nearer the viewer (lower
  * on screen) keep their place, plates behind move up by whole plate heights. Pure.
  */
-export function stackLabels(items: LabelItem[], v: { ppm: number; tilt: number; lift: number }, size: number): PlacedLabel[] {
+export function stackLabels(items: LabelItem[], v: { ppm: number; tilt: number; lift: number }, size: number, clampTop?: number): PlacedLabel[] {
   const placed: PlacedLabel[] = items
     .map((item) => {
       const { w, h } = plateSize(item, size);
@@ -247,6 +247,11 @@ export function stackLabels(items: LabelItem[], v: { ppm: number; tilt: number; 
   const gap = 2;
   const done: PlacedLabel[] = [];
   for (const p of placed) {
+    // `clampTop` (the free world's top edge in the layer's pixels): a plate whose thing is in view below it
+    // but whose plate would rise above it is lowered onto that edge (over its own pointer), and makes way
+    // for the plates already placed by going further DOWN; a thing above the edge keeps its plate there.
+    const down = clampTop !== undefined && p.py >= clampTop && p.py - p.h - 7 < clampTop;
+    if (down) p.lift = p.py - 7 - p.h - clampTop!;
     for (let guard = 0; guard < 12; guard++) {
       const top = p.py - p.lift - p.h - 7;
       const hit = done.find((q) => {
@@ -254,7 +259,8 @@ export function stackLabels(items: LabelItem[], v: { ppm: number; tilt: number; 
         return Math.abs(q.px - p.px) < (q.w + p.w) / 2 + gap && top < qt + q.h + gap && qt < top + p.h + gap;
       });
       if (!hit) break;
-      p.lift = p.py - 7 + gap - (hit.py - hit.lift - hit.h - 7);
+      if (down) p.lift = p.py - 7 - p.h - (hit.py - hit.lift - 7 + gap);
+      else p.lift = p.py - 7 + gap - (hit.py - hit.lift - hit.h - 7);
     }
     done.push(p);
   }

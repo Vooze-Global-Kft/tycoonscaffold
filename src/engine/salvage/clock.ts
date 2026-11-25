@@ -144,6 +144,43 @@ export function bossFresh(x: Ctx, t: number): boolean {
   return x.live && x.s.presenceAt >= 0 && t - x.s.presenceAt <= x.c.feel.staleS + 1e-9;
 }
 
+// ---------------------------------------------------------------------------------------- the foreman (2.6)
+
+const BOOST_EPS = 1e-6;
+
+/**
+ * Is the foreman's boost on at yard second t (2.6, master 3.4)? Live play only (never away), the boss
+ * worked within the last `foreman.windowS`, the day's `minutesPerDay` not used up, someone to boost
+ * (a crew member). The same condition the frame's vest meter reads (frame.ts).
+ */
+export function boostOn(x: Ctx, t: number): boolean {
+  const f = x.c.foreman;
+  const fm = x.s.foreman;
+  if (!x.live || f.boost <= 0 || fm.lastWorkAt < 0 || fm.day !== x.s.clock.day || x.s.crew.length === 0) return false;
+  return t - fm.lastWorkAt < f.windowS - BOOST_EPS && fm.used_s < f.minutesPerDay * 60 - BOOST_EPS;
+}
+
+/** The rate factor of crew and machines at t: 1 + foreman.boost while the boost is on, else 1. */
+export function boostFactor(x: Ctx, t: number): number {
+  return boostOn(x, t) ? 1 + x.c.foreman.boost : 1;
+}
+
+/** The yard second the boost ends (the `boostEnd` event; derived, never saved), or null when it is off. */
+export function boostEndsAt(x: Ctx): number | null {
+  const t = x.s.t;
+  if (!boostOn(x, t)) return null;
+  const fm = x.s.foreman;
+  return Math.min(fm.lastWorkAt + x.c.foreman.windowS, t + (x.c.foreman.minutesPerDay * 60 - fm.used_s));
+}
+
+/** Count the boost's seconds from the draft's clock to `to` (the boost is constant between events). */
+export function accrueBoost(x: Ctx, to: number): void {
+  const t = x.s.t;
+  if (to <= t || !boostOn(x, t)) return;
+  const fm = x.s.foreman;
+  fm.used_s = Math.min(x.c.foreman.minutesPerDay * 60, fm.used_s + (to - t));
+}
+
 /** How long the boss has stood still at yard second t (0 while moving), from the last sample. */
 export function standingFor(x: Ctx, t: number): number {
   const p = x.s.presence;

@@ -10,12 +10,12 @@
  */
 import { awayPass } from './away';
 import { marketDay } from './board';
-import { begin, finish, nextDayAt, bossFresh, type Ctx } from './clock';
+import { accrueBoost, begin, boostEndsAt, finish, nextDayAt, bossFresh, type Ctx } from './clock';
 import { crewDepart, crewLegEnd } from './crew';
 import { crucibleCheckReady, crucibleEvent, crucibleFromBays } from './crucible';
 import { dealDeliver, dealOffer, dealReprice } from './deal';
 import { bossActEnd, bossStep } from './hand';
-import { credit, finishPiece, RATE_MACHINES, rerate, workEndsAt } from './machines';
+import { credit, finishPiece, RATE_MACHINES, rerate, rerateAll, workEndsAt } from './machines';
 import { fillSkip, openPartners } from './partners';
 import { roundEvent, roundTry } from './round';
 import { arrive, checks } from './rate';
@@ -30,7 +30,7 @@ const ORDER: Record<QueuedKind, number> = { day: 0, machine: 1, crucible: 2, act
 const EPS = 1e-6;
 
 /** Every dated event of a state (the queue is derived, 2.12), earliest first. `dayAt` is the yard second of the next day boundary. */
-function eventsOf(s: SalvageState, dayAt: number): QueuedEvent[] {
+function eventsOf(s: SalvageState, dayAt: number, boostAt: number | null = null): QueuedEvent[] {
   const out: QueuedEvent[] = [];
   const add = (at: number | null | undefined, kind: QueuedKind, ref = '') => {
     if (at !== null && at !== undefined && Number.isFinite(at) && at >= s.t - EPS) out.push({ at, kind, ref });
@@ -46,6 +46,7 @@ function eventsOf(s: SalvageState, dayAt: number): QueuedEvent[] {
   for (const [pid, p] of Object.entries(s.partners)) if (p.open) for (const sk of p.skips) if (sk.phase === 'filling') add(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
   for (const a of s.arriving) add(a.at, 'arrival', a.item);
   add(dayAt, 'day');
+  add(boostAt, 'boostEnd');
   out.sort((a, b) => a.at - b.at || ORDER[a.kind] - ORDER[b.kind] || (a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0));
   return out;
 }
@@ -71,6 +72,7 @@ function firstEvent(x: Ctx): QueuedEvent | null {
   }
   for (const a of s.arriving) add(a.at, 'arrival', a.item);
   add(nextDayAt(x), 'day');
+  add(boostEndsAt(x), 'boostEnd');
   return best;
 }
 
@@ -120,6 +122,7 @@ function apply(x: Ctx, e: QueuedEvent): void {
       roundEvent(x, t);
       return;
     case 'boostEnd':
+      // The boost's end is derived (boostEndsAt): the tail re-rates the machines at this instant.
       return;
   }
 }
@@ -128,6 +131,8 @@ function apply(x: Ctx, e: QueuedEvent): void {
 function tail(x: Ctx, t: number): void {
   if (x.live) bossStep(x, t);
   else rerate(x, 'hand_stripper', t);
+  // The foreman's boost started or ended at this instant (2.6): machines change rate here; crew from their next leg.
+  rerateAll(x, t);
   crucibleFromBays(x, t);
   crucibleCheckReady(x, t);
   roundTry(x, t);
@@ -147,6 +152,7 @@ export function advance(x: Ctx, T: number): void {
     const e = firstEvent(x);
     if (!e || e.at > T + EPS) break;
     const tt = Math.max(s.t, e.at);
+    accrueBoost(x, tt);
     s.t = tt;
     let inner = 0;
     for (;;) {
@@ -158,7 +164,10 @@ export function advance(x: Ctx, T: number): void {
     tail(x, tt);
     if (++guard > 200_000) break;
   }
-  if (T > s.t) s.t = T;
+  if (T > s.t) {
+    accrueBoost(x, T);
+    s.t = T;
+  }
   for (const id of RATE_MACHINES) credit(x, id, s.t);
   checks(x, s.t, !x.live);
 }
@@ -219,7 +228,8 @@ export function advanceNoBoss(x: Ctx, seconds: number): void {
 export function nextEvent(cfg: SalvageConfig, g: SalvageGame): QueuedEvent | null {
   const s = g.salvage;
   const nextDayMs = cfg.salvage.board.epochMs + (s.clock.day + 1) * 86_400_000;
-  return eventsOf(s, s.t + Math.max(0, (nextDayMs - s.clock.highMs) / 1000))[0] ?? null;
+  const live = { c: cfg.salvage, s, live: true } as unknown as Ctx;
+  return eventsOf(s, s.t + Math.max(0, (nextDayMs - s.clock.highMs) / 1000), boostEndsAt(live))[0] ?? null;
 }
 
 /**

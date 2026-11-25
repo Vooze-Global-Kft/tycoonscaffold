@@ -148,10 +148,17 @@ export function bayOrder(c: SalvageContent): string[] {
 export function bayPos(c: SalvageContent, grade: string): { x: number; y: number } {
   const gr = c.grades[grade];
   if (gr?.bay?.place && c.map.points[gr.bay.place]) {
-    const p = pointOf(c, gr.bay.place);
-    const w = c.map.places[gr.bay.place]?.w ?? 2;
+    // Slots stay inside the place's footprint (prejoin 17:05: 1.7 m slots from a 1.2 m place stood on the
+    // stripper pad): the place's width shared by its slots, at most 1.7 m apart, centred on the place.
+    const place = gr.bay.place;
+    const p = pointOf(c, place);
+    const w = c.map.places[place]?.w ?? 2;
+    let n = 0;
+    for (const g of Object.values(c.grades)) if (g.bay?.place === place) n = Math.max(n, (g.bay.slot ?? 0) + 1);
+    n = Math.max(1, n);
+    const pitch = Math.min(1.7, w / n);
     const slot = gr.bay.slot ?? 0;
-    return { x: p.x - w / 2 + 0.85 + 1.7 * slot, y: p.y };
+    return { x: p.x + pitch * (slot - (n - 1) / 2), y: p.y };
   }
   const order = bayOrder(c);
   const fe = order.filter((g) => c.grades[g]?.family === 'fe');

@@ -95,10 +95,20 @@ export function byValue(c: SalvageContent) {
   return (a: Pick<Piece, 'grade' | 'g' | 'uid'>, b: Pick<Piece, 'grade' | 'g' | 'uid'>) => vpk(c, b.grade) - vpk(c, a.grade) || b.g - a.g || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
 }
 
-/** The converter's payment on assay for one unit on market day D (2.4): content `paid` stepped by the pm family's x (the lead: pm for the daily step only). */
+/**
+ * The converter's assay at a price step (2.4, whole-game 4.3, E21): Σ metal grams × § a gram × payable,
+ * the metals' prices × `step`, less the ceramic and assay fees; § for ONE converter. Content `paid` is the
+ * prototype's figure for the record only: the rules pay from the payables.
+ */
+export function convAssay(c: SalvageContent, step = 1): number {
+  const v = c.converter;
+  const metal = (v.pt_g * v.pt * v.pay_pt + v.pd_g * v.pd * v.pay_pd + v.rh_g * v.rh * v.pay_rh) * step;
+  return Math.round(Math.max(0, metal - v.ceramic_kg * v.ceramic_fee - v.assay_fee) * 100) / 100;
+}
+
+/** The converter's payment on assay for one unit on market day D: the metals step by the pm family's x (the lead: pm for the daily step only). */
 export function convPaid(c: SalvageContent, day: number, stepped = true): number {
-  const x = stepped ? boardX(c, 'pm', day) : 0;
-  return Math.round(c.converter.paid * (1 + x) * 100) / 100;
+  return convAssay(c, 1 + (stepped ? boardX(c, 'pm', day) : 0));
 }
 
 /** The price a lot pays a kilogram on day D (2.12): the posted price; the converter its assay per unit's kg. */

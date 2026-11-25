@@ -393,6 +393,8 @@ export const TEXT = {
   'refusal.earmark': '{x} is kept for the load on its way',
   'refusal.notOwned': 'Buy it first',
   'refusal.stopFirst': 'Stop the truck first',
+  // E25's gate by another item owned (moved from TEXT_PENDING by rules-sim with REFUSAL_KEYS' needsItem, 17:10)
+  'refusal.needsItem': 'Opens with: {item}', // item: { text: item.* }
 } as const satisfies Record<R.TextKey, string>;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).
@@ -405,10 +407,7 @@ void _noExtra;
  * into TEXT above and leaves here. `check.ts --all` checks it like TEXT (fit, voice, names).
  * Holes are the arguments the caller passes; the comment says which formatter fills each.
  */
-export const TEXT_PENDING = {
-  // refusals (5.4): E25's gate by another item owned; waits for the rules' REFUSAL_KEYS (refusals.ts) to add `needsItem`
-  'refusal.needsItem': 'Opens with: {item}', // item: { text: item.* }
-} as const;
+export const TEXT_PENDING: Record<string, string> = {};
 
 // ================================================================================================ names
 
@@ -509,6 +508,7 @@ function argText(a: R.TxtArg, c: Content): string {
   if ('name' in a) return c.names[a.name] ?? a.name;
   if ('grade' in a) return c.grades[a.grade]?.name ?? a.grade;
   if ('thing' in a) return c.objects[a.thing]?.name ?? a.thing;
+  if ('ref' in a) return a.ref;
   return say({ key: a.text }, c);
 }
 

@@ -7,7 +7,7 @@
  *
  *   <LoadingCurtain />      // the shell's last child, full screen
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
@@ -21,7 +21,11 @@ let gone = false;
 
 export function LoadingCurtain() {
   const cfg = useGame((s) => s.cfg);
-  const [done, setDone] = useState(gone || loadingClock.done.value);
+  // The clock is a shared value: read it in an effect, never while rendering (AGENTS.md phone rules).
+  const [done, setDone] = useState(gone);
+  useEffect(() => {
+    if (!gone && loadingClock.done.value) setDone(true);
+  }, []);
   if (done || !R.isSalvage(cfg)) return null;
   return (
     <Curtain

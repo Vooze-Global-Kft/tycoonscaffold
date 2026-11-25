@@ -686,6 +686,7 @@ export type TxtArg =
   | { name: NameId } // an invented name from content.names
   | { grade: GradeId } // a grade's name from content.grades
   | { thing: ObjectId } // a thing's name from content.objects
+  | { ref: string } // a record reference printed as it is: the car's treatment record "0012"
   | { text: TextKey }; // another line (a tool's name in a refusal, an item in a goal)
 export type TxtArgs = Record<string, TxtArg>;
 /** A line as data: a key of strings.ts and its arguments (holes `{arg}` in the text). */

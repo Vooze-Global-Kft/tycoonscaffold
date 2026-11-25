@@ -6,7 +6,7 @@
  * exact remainder (the rest is waste), so ticking and jumping credit the same grams. A full tray stops
  * it, nothing lost. Owner: rules-sim. The crucible is crucible.ts's.
  */
-import { bossFresh, count, type Ctx } from './clock';
+import { boostFactor, boostOn, bossFresh, count, type Ctx } from './clock';
 import { machineInputs, machinePlace, machineShares, sumStock } from './content';
 import { pointOf } from './positions';
 import type { MachineId, MachineState, Piece } from './types';
@@ -42,9 +42,29 @@ export function rateOf(x: Ctx, id: MachineId, t: number): number {
   const m = x.s.machines[id];
   if (!m.owned) return 0;
   const d = defOf(x, id);
-  const base = d.rate * (1 + (d.lev ?? 0) * Math.max(0, m.level - 1));
+  const base = d.rate * (1 + (d.lev ?? 0) * Math.max(0, m.level - 1)) * boostFactor(x, t);
   if (id === 'hand_stripper') return bossAt(x, machinePlace(id), t) ? base : 0;
   return base;
+}
+
+/** Re-rate every machine with a piece in work (a level, the foreman's boost starting or ending). */
+export function rerateAll(x: Ctx, t: number): void {
+  for (const id of RATE_MACHINES) if (x.s.machines[id].work) rerate(x, id, t);
+}
+
+/**
+ * The boss worked at t (a cut, a feed, a weigh-in, the hand stripper; 2.6): the foreman's window restarts;
+ * when the boost was off it starts now and the machines are re-rated (crew take it from their next leg).
+ */
+export function bossWorked(x: Ctx, t: number): void {
+  const fm = x.s.foreman;
+  if (fm.day !== x.s.clock.day) {
+    fm.day = x.s.clock.day;
+    fm.used_s = 0;
+  }
+  const was = boostOn(x, t);
+  fm.lastWorkAt = t;
+  if (!was && boostOn(x, t)) rerateAll(x, t);
 }
 
 export const hopper_g = (m: MachineState): number => m.hopper.reduce((a, p) => a + p.g, 0);

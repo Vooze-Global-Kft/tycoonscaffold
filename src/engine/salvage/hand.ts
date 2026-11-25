@@ -9,7 +9,7 @@
 import { bossFresh, count, standingFor, type Ctx } from './clock';
 import { byValue, carrierCap_g, cutTime, pieceSpec, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
-import { accepts, atPlace, feedPiece, rerate, takeTray, trayFree } from './machines';
+import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
 import { weighIn } from './scales';
 import { cutOff, dropOnPile, nextPiece, takeFromPile, thingOf } from './things';
@@ -24,7 +24,11 @@ const PLACE_MACHINES: Record<string, MachineId[]> = { stripper: ['stripper', 'ha
 
 function setAct(x: Ctx, kind: Ctx['s']['act']['kind'], target: string | null, t: number, endsAt: number | null): void {
   x.s.act = { kind, target, since: t, endsAt };
+  if (WORK_ACTS.has(kind)) bossWorked(x, t);
 }
+
+/** The boss's acts that count as work for the foreman (2.6: cut, fed, weighed, stripping by hand). */
+const WORK_ACTS = new Set<string>(['work', 'feed', 'weigh', 'strip']);
 
 /** Cancel the act in progress (moving, leaving, a stale sample): work keeps its progress on the thing. */
 export function cancelAct(x: Ctx, t: number): void {
@@ -176,6 +180,7 @@ export function bossStep(x: Ctx, t: number): void {
     }
     if (hp === 'stripper' && s.machines.hand_stripper.owned && (s.machines.hand_stripper.work || s.machines.hand_stripper.hopper.length)) {
       if (s.act.kind !== 'strip') setAct(x, 'strip', 'hand_stripper', t, null);
+      else bossWorked(x, t);
       return;
     }
     if (s.act.kind === 'strip') setAct(x, 'none', null, t, null);
@@ -248,7 +253,7 @@ export function bossActEnd(x: Ctx, t: number): void {
     cancelAct(x, t);
     return;
   }
-  s.foreman.lastWorkAt = t;
+  if (WORK_ACTS.has(a.kind)) bossWorked(x, t);
   if (a.kind === 'work') {
     const th = thingOf(x, a.target);
     if (th) {

@@ -66,7 +66,7 @@ function lessonFor(x: Ctx, lines: readonly TicketLine[], t: number): { grade: st
     }
     if (x.c.grades[grade]?.family === 'pm') {
       const ref = convRef(x);
-      if (ref) args.ref = { n: Number(ref) || 0 };
+      if (ref) args.ref = { ref };
     }
     return { grade, text: { key: key as Txt['key'], args } };
   }
