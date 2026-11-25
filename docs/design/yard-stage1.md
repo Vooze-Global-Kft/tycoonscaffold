@@ -649,3 +649,17 @@ section is right. Changes of BEHAVIOUR are marked so.
     monetisation step: this stage shows none, and a store build waits for that step. The store's
     screenshots, the release date and a person's verdict (fingerprint dimensions 7, 8, 13, 19)
     belong to the store step. The light-iron price ladder is reviewed with the baler and shredder.
+16. **The tipping floor (2.7, 2.8; behaviour; E35).** A whole thing that needs no cutting (motors,
+    cable coils, fittings) is taken off the tipping floor by a yard hand whenever the boss is away,
+    and while he is in the yard once more than half of the floor's room is used: motors to the
+    bench's hopper, cable to the powered stripper's hopper when owned, otherwise to the platform
+    scale at the thing's as-found grade. The floor's slots stay inside its footprint.
+17. **The advice line (2.10; behaviour).** Pieces already cut that wait where a yard hand takes from
+    are the carry's backlog: the advice names a yard hand (a level, or another hand); the cutter
+    binds only when uncut things wait on the floor and no carry backlog stands.
+18. **The away card's unsold line (4.5).** Under the net: 'In the bays, not yet sold: {x}', the
+    value at today's price of what the absence put into the bays and the merchant has not collected.
+19. **As measured (REPORT6; E36).** The opening's eight beats, the first drive, the torch, rung 2,
+    the first pour and rung 3 are in their bands on 12 to 15 of 15 seeds. Accepted misses: sales of
+    §1,757 a minute at the hour's end against §2,000; a long absence after rung 2 buys the rest of
+    the goal list; Hold never beats selling at once (reworked with the exchanges in the next stage).

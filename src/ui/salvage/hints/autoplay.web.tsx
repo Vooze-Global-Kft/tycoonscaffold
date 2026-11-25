@@ -10,6 +10,9 @@
  * happens). For the integrator, the judges and the store screenshots; it reads positions from the rules'
  * frame and decides nothing for the game.
  *
+ * `?goal=<goal id>` (desk1): the goals before it are marked done once the preset has loaded (never undone:
+ *   only while the yard's goal is still an earlier one), e.g. `?preset=fresh&goal=buyTruck&cash=3000&autoplay=opening&route=drive`
+ *   plays a fresh game's first fetch to its end: buy the truck, fetch the farm's trial load, tip it.
  * `?hintBeat=1..8`: shows one beat's hint from a preset (the goal of that beat and its stall escalation
  * forced on): 1 the first second (ghost thumb), 2 the washer (let go), 3 weigh it (drag to the scale),
  * 4 the cable (drag to the stripper), 5 the copper's weigh-in, 6 the sack truck (the Open ring), 7 the
@@ -145,6 +148,21 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         if (i >= 0 && g?.salvage && R.nextGoal(cfg, g)?.id !== id) useGame.setState({ game: { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, done, at: i } } } as never });
         if (Date.now() - t0 > 20_000 && demoTimer) clearInterval(demoTimer);
       }, 500);
+    }
+    const goalQ = q?.get('goal') ?? null;
+    const gi = goalQ ? cfg.salvage.goals.findIndex((d) => d.id === goalQ) : -1;
+    if (gi >= 0) {
+      const done = cfg.salvage.goals.slice(0, gi).map((d) => d.id);
+      const t0 = Date.now();
+      const goalTimer = setInterval(() => {
+        const g = useGame.getState().game as R.SalvageGame;
+        const cur = g?.salvage ? cfg.salvage.goals.findIndex((d) => d.id === R.nextGoal(cfg, g)?.id) : -1;
+        if (g?.salvage && cur >= 0 && cur < gi) useGame.setState({ game: { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, done: [...new Set([...g.salvage.goals.done, ...done])] } } } as never });
+        if (Date.now() - t0 > 20_000) clearInterval(goalTimer);
+      }, 500);
+      const prev = demoTimer;
+      demoTimer = goalTimer;
+      if (prev) clearInterval(prev);
     }
     if (q?.get('autoplay') !== 'opening') return () => (demoTimer ? clearInterval(demoTimer) : undefined);
     const route = ROUTES[q.get('route') ?? '1'] ?? ROUTES['1'];

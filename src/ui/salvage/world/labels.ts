@@ -72,7 +72,16 @@ export interface LabelItem {
    * shed or hoarding behind the skip (north of it, so above it on screen); the usual places come after.
    */
   under?: boolean;
+  /** Metres south of (x, y) where the sprite's foot lies (the under placement starts there); absent: 0. */
+  footDy?: number;
+  /** Half the sprite's width, metres: with `under`, a plate that has no room under the foot stands beside the sprite at its foot. */
+  halfW?: number;
 }
+
+/** A skip's foot south of its centre, metres (the skip sprite's front edge with a little air). */
+export const SKIP_FOOT_M = 1.1;
+/** Half a skip's drawn width, metres (the plate beside it keeps clear of it). */
+export const SKIP_HALF_M = 1.4;
 
 /** Heights of the sprites over the content's footprints (metres above the ground of the sprite's top edge), from the art manifest. */
 export interface LabelTops {
@@ -198,7 +207,7 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
   for (const s of f.skips) {
     const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
     if (!lab) continue;
-    out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y, under: true });
+    out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y, under: true, footDy: SKIP_FOOT_M, halfW: SKIP_HALF_M });
   }
   // join3 (L7/P10): each partner site's name on its gate sign, at the sign the lane's art places
   // (yard.ts laneSigns), the name from the register through the rules' partner data.
@@ -395,7 +404,7 @@ export function layoutPlates(items: LabelItem[], sc: PlateScene): PlacedLabel[] 
     .filter((it) => plateFits(it, size) && !plateHidden(it, sc))
     .map((it) => {
       const d = boss ? Math.hypot(it.x - boss.x, it.y - boss.y) : 0;
-      return { it, d, tx: sx(it.x), ty: sy(it.y, it.z), fy: sy(it.y, 0), ...plateSize(it, size) };
+      return { it, d, tx: sx(it.x), ty: sy(it.y, it.z), fy: sy(it.y + (it.footDy ?? 0), 0), ...plateSize(it, size) };
     })
     .filter((p) => p.tx >= 0 && p.tx <= W && p.fy >= 0 && p.ty <= H)
     .sort((a, b) => ORDER[a.it.kind] - ORDER[b.it.kind] + (a.it.near === b.it.near ? 0 : a.it.near ? -10 : 10) || a.d - b.d || a.it.id.localeCompare(b.it.id));
@@ -406,7 +415,12 @@ export function layoutPlates(items: LabelItem[], sc: PlateScene): PlacedLabel[] 
     const tries: { dx: number; bottom: number; below: boolean }[] = [];
     const under: typeof tries = [];
     for (const dx of [0, -shift, shift]) under.push({ dx, bottom: p.fy + 4 + p.h, below: true });
-    if (p.it.under) tries.push(...under);
+    if (p.it.under) {
+      tries.push(...under);
+      // Beside the sprite on the road side: the plate's foot level with the sprite's, east then west of it.
+      const side = p.w / 2 + (p.it.halfW ?? 0) * v.ppm * z + GAP;
+      for (const dx of [side, -side]) tries.push({ dx, bottom: p.fy, below: true });
+    }
     for (const k of [0, 1, 2]) for (const dx of [0, -shift, shift]) tries.push({ dx, bottom: p.ty - STEM - k * (p.h + GAP), below: false });
     if (!p.it.under) tries.push(...under);
     for (const t of tries) {

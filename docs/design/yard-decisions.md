@@ -8,7 +8,7 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E34).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E36).
 - Part 3: the first yard after its review (S1 to S24).
 - Part 4: the first yard's map after the review of the built game (M1 to M7).
 - Part 5: the rulings on the review of the built game, by finding (S, R, H, P, W, L).
@@ -461,6 +461,35 @@ two hours."). S13 holds (a first sitting of five minutes pays).
 **E34. Deal deliveries happen at every midnight that passed**, inside the away cap or beyond it,
 from the reserve as it stood when the boss left; the away card lists them. Nothing is charged for
 a short day, as before.
+
+### After the bots' second measurement on the real rules (21:47)
+
+**E35. The tipping floor never silts up.** A whole thing that needs no cutting (motors, cable coils,
+fittings) is taken off the tipping floor by a yard hand whenever the boss is away, and while he is
+in the yard once more than half of the floor's room is used: motors to the bench's hopper when the
+bench is owned, cable to the powered stripper's hopper when it is owned, otherwise to the platform
+scale at the thing's as-found grade. The floor's slots stay inside its footprint (past the last slot
+things share slots; room stays by mass). The bots found the dead end: after an hour and 11.75 hours
+away the floor held 275 things nobody would ever move, and the next absence of the same length paid
+§155. E4 (no dead end without the hand) is the principle; this closes its hole.
+
+### After the bots' final measurement (REPORT6, 22:15)
+
+**E36. What the first yard misses and keeps for the next stage.** REPORT6 measured the game as it
+goes to the owner: the eight beats of the opening, the first drive, the torch, rung 2, the first
+pour and rung 3 are in their bands on 12 to 15 of 15 seeds and on five new seeds; no hard promise
+broke on 124 runs; a tick equals a jump. Three aims miss and are accepted for this stage, each with
+the reason: (a) E31c: sales at minutes 55 to 60 are a median §1,757 a minute against §2,000; the one
+truck and the cutting bind; the driver's level adding a quarter, or the second truck, is the next
+stage's first tuning step (no number changes now: the game the owner plays is the game that was
+measured). (b) E33 at fifteen minutes: a long absence after rung 2 runs the yard two hours and buys
+the four goal purchases left at once; that is the return an idle game owes its player, and levels,
+the Night watch and rung 3 remain to save for. (c) Hold never beats selling at once in this stage
+(the bots' day-word holder loses 4 to 39 per cent, through absences in which every bay is held and
+nothing sells); it costs no value (the away card prints what stands in the bays, not yet sold), and
+it is reworked with the two exchanges in the next stage, where timing a sale is the game. (d) The
+slow hand's first drive is within one and a half times the normal hand's on 11 seeds of 15 (E24
+asks nine of ten): kept as measured.
 
 ---
 

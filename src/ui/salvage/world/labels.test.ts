@@ -269,3 +269,40 @@ describe('join3: the partners\' names on their lane signs (L7, P10)', () => {
     }
   });
 });
+
+describe('desk1: a partner skip\'s plate stands on the road side', () => {
+  it('a skip plate is laid UNDER its foot (south, clear of the site\'s buildings behind it) when there is room; other plates above', () => {
+    const sc: PlateScene = {
+      view: { ppm: 40, tilt: 0.9, lift: 0.7 },
+      cam: { x: 0, y: 0, zoom: 1 },
+      W: 844,
+      H: 390,
+      size: LABEL_PT,
+      bounds: { x0: 0, x1: 844, y0: 0, y1: 390 },
+      blocks: [],
+      hides: [],
+      people: [],
+      workAt: new Set(),
+      busy: new Set(),
+      footprints: {},
+      boss: null,
+    };
+    const lines = [{ text: 'Hob\'s Farm Clearance · trial load', tone: 'strong' as const, max: 38 }, { text: 'Net 540 kg · §150', tone: 'strong' as const, max: 38 }];
+    const at = { x: 10.5, y: 4 };
+    const skip: LabelItem = { id: 'skip.farm.0', kind: 'skip', x: at.x, y: at.y, z: 2.2, lines, padlock: false, near: false, place: null, at: null, under: true, footDy: 1.1 };
+    const [p] = layoutPlates([skip], sc);
+    expect(p.below).toBe(true);
+    // Its top lies under the skip's foot on screen (the shed stands north of the skip, so above it on screen).
+    const footY = (at.y + 1.1) * 40 * 0.9;
+    expect(p.y).toBeGreaterThanOrEqual(footY);
+    const [q] = layoutPlates([{ ...skip, id: 'other', under: undefined, footDy: undefined }], sc);
+    expect(q.below).toBe(false);
+    // No room under the foot (the skip low on the screen): BESIDE it, its foot level with the skip's, not over the shed.
+    const low = { ...skip, x: 10.5, y: 9.5, halfW: 1.4 };
+    const [r] = layoutPlates([low], sc);
+    expect(r.below).toBe(true);
+    const foot = (low.y + 1.1) * 40 * 0.9;
+    expect(r.y + r.h).toBeCloseTo(foot, 5);
+    expect(Math.abs(r.x + r.w / 2 - low.x * 40)).toBeGreaterThanOrEqual(r.w / 2 + 1.4 * 40);
+  });
+});
