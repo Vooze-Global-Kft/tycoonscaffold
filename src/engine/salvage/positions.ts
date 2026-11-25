@@ -136,10 +136,54 @@ export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number
     const row = Math.floor(at.slot / cols) % rows;
     return { x: p.x - pl.w / 2 + (pl.w / cols) * (col + 0.5), y: p.y - pl.d / 2 + (pl.d / rows) * (row + 0.5) };
   }
+  return floorSlotPos(c, at.slot);
+}
+
+/** The tipping floor's grid pitch and a thing's half-size kept inside the footprint, metres. */
+const FLOOR_PITCH_X = 1.5;
+const FLOOR_PITCH_Y = 1.4;
+const FLOOR_MARGIN = 0.45;
+
+/**
+ * How many slots of its own the tipping floor has (E35): the 4-wide grid's rows that lie inside the
+ * floor's footprint (content `map.places.floor`), at least one row. Past the last slot things share slots.
+ */
+export function floorSlots(c: SalvageContent): number {
+  const pl = c.map.places.floor;
+  if (!pl) return 12;
+  const rows = Math.max(1, Math.floor((pl.d / 2 + 1 - FLOOR_MARGIN) / FLOOR_PITCH_Y + 1e-9) + 1);
+  const colsFit = Math.max(1, Math.floor((pl.w / 2 + 2.25 - FLOOR_MARGIN) / FLOOR_PITCH_X + 1e-9) + 1);
+  return rows * Math.min(4, colsFit);
+}
+
+/**
+ * Where tipping-floor slot `slot` lies (E35): slot k < floorSlots on the grid; past the last slot a thing
+ * shares slot k mod N, set a little off it (a heap, drawn overlapping), and every point stays inside the
+ * floor's footprint. Room on the floor stays by mass (things.ts floorMass_g).
+ */
+export function floorSlotPos(c: SalvageContent, slot: number): { x: number; y: number } {
   const p = pointOf(c, 'floor');
-  const col = at.slot % 4;
-  const row = Math.floor(at.slot / 4);
-  return { x: p.x - 2.25 + 1.5 * col, y: p.y - 1 + 1.4 * row };
+  const n = floorSlots(c);
+  const base = slot % n;
+  const layer = Math.floor(slot / n);
+  const cols = Math.min(4, n);
+  const col = base % cols;
+  const row = Math.floor(base / cols);
+  let x = p.x - 2.25 + FLOOR_PITCH_X * col;
+  let y = p.y - 1 + FLOOR_PITCH_Y * row;
+  if (layer > 0) {
+    // A seeded small offset per layer: the shared slot reads as a heap, not one thing on another.
+    x += (hash01(c.worldSeed, 0xf100, slot) - 0.5) * 0.7;
+    y += (hash01(c.worldSeed, 0xf101, slot) - 0.5) * 0.5;
+  }
+  const pl = c.map.places.floor;
+  if (pl) {
+    const hx = Math.max(0, pl.w / 2 - FLOOR_MARGIN);
+    const hy = Math.max(0, pl.d / 2 - FLOOR_MARGIN);
+    x = Math.min(p.x + hx, Math.max(p.x - hx, x));
+    y = Math.min(p.y + hy, Math.max(p.y - hy, y));
+  }
+  return { x, y };
 }
 
 /** The base point of a pile (pile keys: types.ts `PileKey`). */

@@ -981,12 +981,18 @@ function truckLeg(b: Bot, partner: string, slot: number): void {
   }
   const here = pos(b);
   travel(b, turn ? [{ x: here.x, y: turn.y }, turn, park] : [park], v);
+  leaveTruck(b);
+}
+
+/** Step out (the button) and walk off: the world sets him down beside the truck (frameLoop: truckR + workerR + 0.25 m). */
+function leaveTruck(b: Bot): void {
+  const c = b.cfg.salvage;
   stand(b, b.opts.standDt);
   const p = pos(b);
   b.g = stepOut(b.cfg, b.g, { x: p.x, y: p.y, heading: (b.g.salvage.truck.heading ?? 0) as never }, b.g.salvage.t, b.ev);
-  // The world sets him down beside the truck (frameLoop: truckR + workerR + 0.25 m) and he walks off.
   const off = c.truck.radius + BODY + 0.25;
-  const out = { x: p.x - off - 1, y: p.y };
+  // West of the truck, or east when west is outside the yard.
+  const out = p.x - off - 1 > 0.5 ? { x: p.x - off - 1, y: p.y } : { x: p.x + off + 1, y: p.y };
   sample(b, out.x, out.y, true, 4);
   step(b, b.opts.dt);
 }
@@ -1006,6 +1012,14 @@ export function decide(b: Bot): void {
   // The card manager takes over after the second hire.
   if (o.manager && s.crew.length >= 2) b.managing = true;
   if (b.managing) return manage(b);
+  // In the truck without meaning to drive (he walked into it beside the scale as it arrived, REPORT6's slow
+  // hand sat there for 70 minutes): a person presses Step out and walks on.
+  if (driving(b)) {
+    // He parks it first: left on the scale it would take him in again on his next weigh-in.
+    const park = pointOf(c, 'park');
+    if (Math.hypot(pos(b).x - park.x, pos(b).y - park.y) > 1) travel(b, [park], c.truck.bossV ?? c.truck.v);
+    return leaveTruck(b);
+  }
   if (o.holder) holdByWord(b);
   if (s.away) press(b, { act: 'ackAway' }, false);
   // The opening (S10).

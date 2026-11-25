@@ -7,10 +7,10 @@
 import { boostFactor, bossFresh, type Ctx } from './clock';
 import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
 import { meltPiece } from './crucible';
-import { accepts, atPlace, feedPiece, takeTray, trayFree } from './machines';
+import { accepts, atPlace, feedPiece, hopperRoom, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
-import { cutOff, dropOnPile, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
+import { cutOff, dropOnPile, floorMass_g, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, Spot, ThingState } from './types';
 
 const RATE_FED: MachineId[] = ['stripper', 'bench'];
@@ -193,6 +193,41 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     m.dest = 'scale';
     return true;
   };
+  // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
+  // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
+  // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
+  // truck tips nothing more.
+  const floorStep = (): boolean => {
+    const floor = free.filter((p) => waitsAt(x, p) === 'floor' && carryable(p));
+    // E35: whole things that need no cutting leave the floor whenever the boss is away, and while he is in
+    // the yard once more than half of the floor's room is used; the bigger waiting heap goes first.
+    if (!inYard || floorFirst) {
+      const trip = floorWholeTrip(x, cap);
+      if (trip && trip.waiting_g >= floor.reduce((a, p) => a + p.g, 0)) {
+        for (const th of trip.things) th.by = m.id;
+        m.claims = trip.things.map((th) => `loose:${th.uid}`);
+        m.cut = null;
+        leg(x, m, 'floor', 'walkTo', { thing: trip.things[0].uid }, t, x.c.crew.hand.handle_s);
+        m.dest = trip.dest;
+        return true;
+      }
+    }
+    const looseFloor = loose('floor');
+    if (!floor.length && looseFloor) return takeLoose(looseFloor, 'floor');
+    if (floor.length) {
+      const pile = floor.some((p) => p.pile === 'floor') ? 'floor' : floor[0].pile;
+      const pick = choose(x, floor.filter((p) => p.pile === pile), cap);
+      if (pick.length) {
+        claim(pick);
+        leg(x, m, 'floor', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+        m.dest = 'scale';
+        return true;
+      }
+    }
+    return false;
+  };
+  const floorFirst = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
+  if (floorFirst && floorStep()) return true;
   // (4) the drop-off's pieces.
   const drop = free.filter((p) => waitsAt(x, p) === 'dropoff' && carryable(p));
   const looseDrop = loose('dropoff');
@@ -231,20 +266,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
       return true;
     }
   }
-  // (6) the tipping floor's pieces, then such a whole thing.
-  const floor = free.filter((p) => waitsAt(x, p) === 'floor' && carryable(p));
-  const looseFloor = loose('floor');
-  if (!floor.length && looseFloor) return takeLoose(looseFloor, 'floor');
-  if (floor.length) {
-    const pile = floor.some((p) => p.pile === 'floor') ? 'floor' : floor[0].pile;
-    const pick = choose(x, floor.filter((p) => p.pile === pile), cap);
-    if (pick.length) {
-      claim(pick);
-      leg(x, m, 'floor', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
-      m.dest = 'scale';
-      return true;
-    }
-  }
+  if (!floorFirst && floorStep()) return true;
   if (!inYard && noCutter) {
     const th = wholeThing('floor');
     if (th) {
@@ -256,6 +278,52 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     }
   }
   return false;
+}
+
+/** E35: the floor's room share above which a yard hand clears whole uncut things off it while the boss is in the yard. */
+export const FLOOR_CLEAR_SHARE = 0.5;
+
+/** Where a whole thing that needs no cutting goes from the floor (E35): motors to the bench's hopper, cable to the powered stripper's, else the scale. */
+function floorWholeDest(x: Ctx, th: ThingState): MachineId | 'scale' {
+  const grade = pieceSpec(x.c, th.obj, th.cut)?.grade ?? '';
+  for (const id of ['bench', 'stripper'] as MachineId[]) {
+    if (x.s.machines[id]?.owned && machineInputs(x.c, x.s, id).includes(grade) && hopperRoom(x, id) > 0) return id;
+  }
+  return 'scale';
+}
+
+/** Grams still in a thing (its pieces not yet off, and its waste). */
+function thingLeft_g(x: Ctx, th: ThingState): number {
+  let g = x.c.objects[th.obj]?.waste_g ?? 0;
+  const n = pieceCount(x.c, th.obj);
+  for (let k = th.cut; k < n; k++) g += pieceSpec(x.c, th.obj, k)?.g ?? 0;
+  return g;
+}
+
+/**
+ * One trip of whole tier-0 things off the tipping floor (E35): the oldest such thing fixes where the trip
+ * goes; more things for the same place join it while they fit his load (and the hopper's room); `waiting_g`
+ * is all such things' grams (the heap the floor's pieces are weighed against). Null when none waits.
+ */
+function floorWholeTrip(x: Ctx, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
+  const cands = x.s.things
+    .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap)
+    .sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
+  if (!cands.length) return null;
+  const dest = floorWholeDest(x, cands[0]);
+  let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), thingLeft_g(x, cands[0])));
+  const things: ThingState[] = [];
+  let g = 0;
+  for (const th of cands) {
+    if (floorWholeDest(x, th) !== dest) continue;
+    const w = thingLeft_g(x, th);
+    if (w > room) continue;
+    things.push(th);
+    room -= w;
+    g += w;
+  }
+  const waiting_g = cands.reduce((a, th) => a + thingLeft_g(x, th), 0);
+  return things.length ? { things, dest, g, waiting_g } : null;
 }
 
 /** A yard hand's leg ends: pick (claimed items onto his carrier, then to the scale or the machine), or drop. */
