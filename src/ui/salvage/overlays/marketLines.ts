@@ -39,7 +39,8 @@ export function awayLines(a: AwayCard): { head: Txt; lines: Txt[]; summary: Txt[
   if (a.loads > 0) summary.push({ key: 'away.loads', args: { n: { n: a.loads } } });
   if (a.deliveries > 0) summary.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
   for (const r of a.passed) summary.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
-  if (a.hint) summary.push(a.hint);
+  // The rules' hint can be the very line already printed ("Nothing was weighed out." twice): print it once.
+  if (a.hint && !summary.some((t) => t.key === a.hint!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(a.hint!.args ?? {}))) summary.push(a.hint);
   return { head, lines, summary };
 }
 
