@@ -193,17 +193,20 @@ class Checker:
         return out
 
 
-def wikidata_titles(titles, sleep=0.6):
-    """{title: description or None}: does English Wikipedia have a page of exactly this title"""
-    found = {}
-    titles = list(dict.fromkeys(titles))
+def wikidata_titles(titles, sleep=1.5):
+    """{title: description or None}: does English Wikipedia have a page of exactly this title.
+    With WD_CACHE=<file> in the environment, answers are kept in that JSON file and a rerun asks only
+    for titles not yet answered (Wikidata limits how fast one client may ask)."""
+    cache_path = os.environ.get('WD_CACHE')
+    found = json.load(open(cache_path)) if cache_path and os.path.isfile(cache_path) else {}
+    titles = [t for t in dict.fromkeys(titles) if t not in found]
     for i in range(0, len(titles), 50):
         chunk = titles[i:i + 50]
         u = 'https://www.wikidata.org/w/api.php?' + urllib.parse.urlencode({
             'action': 'wbgetentities', 'sites': 'enwiki', 'titles': '|'.join(chunk),
             'props': 'sitelinks|descriptions', 'languages': 'en', 'format': 'json'})
         d = None
-        for attempt in range(6):
+        for attempt in range(8):
             s = subprocess.run(['curl', '-s', '--max-time', '40', '-A', 'NamesCheck/1.0 (research script)', u],
                                capture_output=True, text=True, errors='ignore').stdout
             try:
@@ -212,7 +215,9 @@ def wikidata_titles(titles, sleep=0.6):
             except Exception:
                 time.sleep(3 + 3 * attempt)
         if d is None:
-            raise SystemExit(f'Wikidata did not answer for titles {chunk[0]} .. {chunk[-1]}')
+            if cache_path:
+                json.dump(found, open(cache_path, 'w'))
+            raise SystemExit(f'Wikidata did not answer for titles {chunk[0]} .. {chunk[-1]}; rerun to continue')
         hits = {}
         for e in d.values():
             t = e.get('sitelinks', {}).get('enwiki', {}).get('title')
@@ -220,7 +225,11 @@ def wikidata_titles(titles, sleep=0.6):
                 hits[t.lower()] = e.get('descriptions', {}).get('en', {}).get('value', '') or '(page)'
         for t in chunk:
             found[t] = hits.get(t.lower())
+        if cache_path and (i // 50) % 10 == 0:
+            json.dump(found, open(cache_path, 'w'))
         time.sleep(sleep)
+    if cache_path:
+        json.dump(found, open(cache_path, 'w'))
     return found
 
 
