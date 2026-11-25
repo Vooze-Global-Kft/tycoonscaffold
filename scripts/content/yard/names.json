@@ -1,0 +1,1466 @@
+{
+  "$comment": "names.json: the names register of the scrapyard game (game id scrap-yard; ruling 14 in the lead's RULING.md; yard-design.md section 2 lists the names). Every invented proper noun is searched here BEFORE art or text is built on it. THIS IS AN ENGINEER'S CHECK, RECORDED AS SUCH: IT IS NOT LEGAL CLEARANCE. No trademark register (USPTO, EUIPO, UKIPO, WIPO Global Brand Database, CNIPA) was searched; the owner's own trade-mark search of at least the title is still required before release (yard-design.md 7.7, yard-policy.md 2). Filled on 2026-11-25 by the step labelled 'names'. Four checks per name: (a) a real company, brand or product of that name or one letter or one sound away, above all in metals, recycling, mining, electronics, cars, shipping and finance (UK Companies House search, web search, Bing exact-word results, the stores' publisher names); (b) a real exchange, index, port, town or region (web search, gazetteers met in results); (c) an app or game of that name on the stores (App Store search API, country US, 50 results; Google Play web search, US); (d) a name already used in this developer's four games, exact or one letter or one Soundex step away (grep of games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json and the three store files; plus scripts/content/build-space.py by hand for Orbit Haulers' sector and buyer names). Threshold used: an exact name of any real firm, product, app or game, or a word one letter or one sound from a real firm in the listed trades, a real town or region, or a name in the four games, fails; a common surname or given name shared only with unrelated small firms (builders, cafes) passes and is recorded. Verdicts: 'clear', 'changed' (with 'replacedBy'), 'new (replacement)' (with 'replaces'; it passed the same four checks). The specification is NOT edited here: the lead designer applies this register. Web queries contained only the candidate names and generic trade words. Method and scripts: notes/names.md in the shared notes folder.",
+  "version": 1,
+  "checkedOn": "2026-11-25",
+  "summary": {
+    "clear": [
+      "Scrap to Ingot",
+      "Heavy Melt",
+      "Calvany",
+      "Bellmarch",
+      "Saltreach",
+      "Sennath Union",
+      "Bellmarch Metal Exchange",
+      "scrip",
+      "Hob's Farm Clearance",
+      "Hob Garnett",
+      "Quenwick Electrolysers",
+      "Pennick Scrap",
+      "Lindqvist-Barr Metals",
+      "Crayle International",
+      "Teodor Metals"
+    ],
+    "changed": {
+      "Fennick": "Kelderby",
+      "Fennick Vale": "Kelderby Vale",
+      "Kettle Lane": "Thwaiteby Lane",
+      "Kettle Lane Yard": "Thwaiteby Lane Yard",
+      "Varn Ridge": "Ashendry Ridge",
+      "Kaymor": "Meskarn",
+      "Kaymor Point": "Meskarn Point",
+      "Ambrel Coast": "Coralind Coast",
+      "Kaymor Metal Exchange": "Meskarn Metal Exchange",
+      "Ruddock Demolition": "Fernhough Demolition",
+      "Rosa Ruddock": "Edie Fernhough",
+      "Larkin's Garage": "Hollace's Garage",
+      "Pell Street Plumbing": "Tolleth Street Plumbing",
+      "Fennick Foundry Co-op": "Kelderby Foundry Co-op",
+      "Durnav Steel": "Garrowfield Steel",
+      "Ostro Cable Works": "Rowkirk Cable Works",
+      "Vantorra Electronics": "Corlaith Electronics",
+      "Veyra Motors": "Aurenne Motors",
+      "Aldane Aerospace": "Overvane Aerospace",
+      "Corrin Tooling": "Halcarn Tooling",
+      "Meridane Glass": "Ambleth Glass",
+      "Dobbin & Daughters Scrap": "Haddersby & Daughters Scrap",
+      "Wrenfield Metals": "Hebblewick Metals",
+      "Cobbet Lane Metals": "Tenterby Lane Metals",
+      "Corvay Recycling": "Kolbeck Recycling",
+      "Mardle & Sons": "Odderwick & Sons",
+      "Fennick Metal Recovery": "Kelderby Metal Recovery",
+      "Stannard Ferrous": "Cawdrey Ferrous",
+      "Lowmoor Non-Ferrous": "Cradsworth Non-Ferrous",
+      "Harkwood Reclaim": "Skelderwick Reclaim",
+      "Tallis-Merrow Metals": "Ashendry Metals",
+      "Ashgrove Ferrous": "Aldermoss Ferrous",
+      "Pollard Recycling": "Gannetby Recycling",
+      "Saxby Resource Recovery": "Morrance Resource Recovery",
+      "Kestrel Bay Metals": "Saltreach Metals",
+      "Haverin Steel & Alloys": "Tervalen Steel & Alloys",
+      "Ondine Metallurgy": "Kestrane Metallurgy",
+      "Hemsted-Pryce Resources": "Ulmeth Resources",
+      "Marenko Global": "Ondrell Global",
+      "Halvard Steel & Alloys": "Coralind Steel & Alloys",
+      "Sunmere Metals Holding": "Tarlevan Metals Holding",
+      "Orrin Global Metals": "Vessendal Global Metals"
+    }
+  },
+  "names": [
+    {
+      "name": "Scrap to Ingot",
+      "kind": "title (working)",
+      "usedIn": "RULING 1; yard-design.md header, 1.2 table",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no company, brand or product of this name; the phrase occurs only as a generic trade description (a 1987 US patent title 'Process for preparing an ingot from metal scrap', two Scribd teaching documents titled 'Scrap to Ingot', recyclers' explainer pages). Companies House: no company. A web search for the title with 'trademark' found no mark (nearest: SCRAP BRINGER, SCRAPCHASERS, SCRAP SQUAD, SCRAP!; all different). The trademark registers themselves (USPTO, EUIPO, UKIPO, WIPO) were NOT searched: see couldNotVerify in notes/names.md.",
+        "b_exchange_index_port_town_region": "not a place, exchange or index",
+        "c_apps_and_games_on_the_stores": "App Store search API (US, 50 results) and Google Play web search (US) for 'Scrap to Ingot': no app or game of this name or near it; nearest titles 'Scrap to Cash' (a selling app, Play), 'Melt Scrap' (iOS game, different words), 'Scrap Metal Factory : IdleGame', 'Idle Junkyard Tycoon'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      },
+      "note": "Descriptive of the game; a store may find it weakly distinctive, which helps against clashes and hurts as a mark. 'Salvage' is avoided as asked."
+    },
+    {
+      "name": "Heavy Melt",
+      "kind": "title (first fallback)",
+      "usedIn": "RULING 1; yard-design.md 2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no game, app or company of this name; 'heavy melt' is a generic trade term (heavy melting steel, HMS), so it can be used but is weak as a mark. Companies House: none.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store and Google Play: no title 'Heavy Melt'; nearest 'Melt and Fill' (Voodoo), 'Stack Heavy', 'Melt Prices'.",
+        "d_four_games": "clear as a name; NOTE Orbit Haulers has an upgrade 'Heavy Ore' (scripts/content/build-space.py): one shared common word, not a near-miss of the name, but the lead should weigh it against Orbit's fingerprint (dimension 6, store text)."
+      }
+    },
+    {
+      "name": "Calvany",
+      "kind": "country (the West)",
+      "usedIn": "yard-design.md 2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web and Companies House: no company or brand.",
+        "b_exchange_index_port_town_region": "web: no place of this spelling; nearest Calvana (an Italian cattle breed, also a hill range in Tuscany), Calvanico (an Italian comune, two letters away). Accepted: two edits, not a sound-alike of a country.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: no app of this name.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Bellmarch",
+      "kind": "capital and market city of Calvany",
+      "usedIn": "yard-design.md 2, 5.2, 5.4",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: none (nearest Belmarque, a trademark owner, two edits). Companies House: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Bellmund (Swiss municipality), Bellmount, Bellsbank: two or more edits. No real city.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Fennick",
+      "kind": "home town",
+      "usedIn": "yard-design.md 2, 5.4; rival 'Fennick Metal Recovery'; handle example 'Steady Anvil of Fennick'",
+      "verdict": "changed",
+      "replacedBy": "Kelderby",
+      "why": "fails (a), (b) and (c): an exact game title on Google Play and one letter from a real town and retail brand.",
+      "check": {
+        "a_company_brand_product": "Companies House: FENNICK LIMITED and FENNICKS LTD exist; Fenwick (one letter away) is a UK department-store brand.",
+        "b_exchange_index_port_town_region": "one letter from Fenwick, a real town (Northumberland; also Fenwick, Ontario; Fenwick, Kyloe).",
+        "c_apps_and_games_on_the_stores": "Google Play: a game 'Fennick Blocks' (Kajtna DEV) and 'Fenrick: Think & Play Offline'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Fennick Vale",
+      "kind": "home district",
+      "usedIn": "yard-design.md 2",
+      "verdict": "changed",
+      "replacedBy": "Kelderby Vale",
+      "why": "its first word fails (see Fennick).",
+      "check": {
+        "a_company_brand_product": "see Fennick",
+        "b_exchange_index_port_town_region": "see Fennick",
+        "c_apps_and_games_on_the_stores": "see Fennick",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Kettle Lane",
+      "kind": "home lane",
+      "usedIn": "yard-design.md 1.1, 2, 5.4, 9",
+      "verdict": "changed",
+      "replacedBy": "Thwaiteby Lane",
+      "why": "an exact real company name, two cosy-life games with 'Kettle' in the title, the echo of Kettle's Yard and the lead's own flag; renamed before art as the spec asks.",
+      "check": {
+        "a_company_brand_product": "Companies House: KETTLE LANE LTD and KETTLE LANE STUDIO LTD exist (exact name). 'Kettle Lane Yard' also reads close to Kettle's Yard, a well-known gallery in Cambridge.",
+        "b_exchange_index_port_town_region": "a common street name (not counted as a town); see (a) for Kettle's Yard.",
+        "c_apps_and_games_on_the_stores": "Google Play: 'Kettle Street: Cosy Life Sim' (a game), 'Crumb & Kettle: Cosy Café' (a game on iOS).",
+        "d_four_games": "the word 'kettle' occurs as a common noun in Proudly Adequate (games/high-office/game.json, scripts/content/office/phrases.json: 'the kettle filling', 'CARPET ROLLED OUT TO KETTLE'); not a name, and not in the bundle string denylist, but flagged by the spec (yard-design.md 2 and 13.8)."
+      }
+    },
+    {
+      "name": "Kettle Lane Yard",
+      "kind": "the home yard",
+      "usedIn": "yard-design.md 2, 5.5 table",
+      "verdict": "changed",
+      "replacedBy": "Thwaiteby Lane Yard",
+      "why": "see Kettle Lane.",
+      "check": {
+        "a_company_brand_product": "see Kettle Lane; Companies House also has KETTLE YARD LIMITED",
+        "b_exchange_index_port_town_region": "see Kettle Lane",
+        "c_apps_and_games_on_the_stores": "see Kettle Lane",
+        "d_four_games": "see Kettle Lane"
+      }
+    },
+    {
+      "name": "Saltreach",
+      "kind": "deep-water port site 220 km west (stage 4)",
+      "usedIn": "yard-design.md 2, 5.4, 5.5",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "Companies House: SALTREACH LIMITED exists (sector not shown). Accepted for a place name: a port in the game does not trade as that company and no trade (metals, shipping, finance) is shown for it. If the lead prefers no exact company name even for places, rename it.",
+        "b_exchange_index_port_town_region": "web: no real place; one fictional settlement on a worldbuilding wiki (World Anvil, 'Greland' setting). Nearest real: Saltern (a word), Sallachy. Not a real port.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear as a name; NOTE Orbit Haulers has 'Halden Reach' and 'Verdigris Reach' (two-word sector names). 'Saltreach' is one word and differs in every other letter; accepted, but the lead may want to avoid the shared '-reach' ending."
+      },
+      "note": "Also used for rival 16, 'Saltreach Metals' (see below)."
+    },
+    {
+      "name": "Varn Ridge",
+      "kind": "uplands site 380 km north (stage 4)",
+      "usedIn": "yard-design.md 2, 5.4, 5.5",
+      "verdict": "changed",
+      "replacedBy": "Ashendry Ridge",
+      "why": "one letter from a real port city, plus a company group of the same word.",
+      "check": {
+        "a_company_brand_product": "Companies House: VARN LIMITED, VARN GROUP LTD, VARN CONSTRUCTION LIMITED; Google Play 'Varn: Self-Study Languages'.",
+        "b_exchange_index_port_town_region": "one letter from Varna, a large Bulgarian port city.",
+        "c_apps_and_games_on_the_stores": "Play: 'Varn' (a language app).",
+        "d_four_games": "clear (nearest 'Earn', 'Vary': common words)"
+      }
+    },
+    {
+      "name": "Sennath Union",
+      "kind": "country (the East)",
+      "usedIn": "yard-design.md 2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web and Companies House: no company or brand 'Sennath'.",
+        "b_exchange_index_port_town_region": "web: no real place; nearest Sennar (a Sudanese city, two edits) and St Senach. Accepted: two edits and a different stress.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      },
+      "note": "Near-match in fiction only: 'Sennatt', a minor Star Wars Legends planet (one letter). Not a game title, company or real place, so it passes the four checks; recorded so the lead can weigh it."
+    },
+    {
+      "name": "Kaymor",
+      "kind": "port city of the East, seat of its exchange",
+      "usedIn": "yard-design.md 2, 5.2, 5.4, 5.5",
+      "verdict": "changed",
+      "replacedBy": "Meskarn",
+      "why": "a real town: fails (b), which is fatal for the exchange's name.",
+      "check": {
+        "a_company_brand_product": "Companies House: KAYMOR LTD, KAYMOR ACCESS LTD, KAYMORE LIMITED and others.",
+        "b_exchange_index_port_town_region": "Kaymor is a real commune in the Kaolack region of Senegal (bamwor.com gazetteer; Dakaractu reports on the Kaymor and Dabaly communes). An exchange may not carry a real town's name.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Kaymor Point",
+      "kind": "refinery headland site (stage 4)",
+      "usedIn": "yard-design.md 2, 5.5",
+      "verdict": "changed",
+      "replacedBy": "Meskarn Point",
+      "why": "see Kaymor.",
+      "check": {
+        "a_company_brand_product": "see Kaymor",
+        "b_exchange_index_port_town_region": "see Kaymor",
+        "c_apps_and_games_on_the_stores": "see Kaymor",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Ambrel Coast",
+      "kind": "battery and electronics coast site (stage 4)",
+      "usedIn": "yard-design.md 2, 5.4, 5.5",
+      "verdict": "changed",
+      "replacedBy": "Coralind Coast",
+      "why": "a near-miss of another of this developer's games (d) and one letter from an induction-heating company (a).",
+      "check": {
+        "a_company_brand_product": "Companies House: AMBRELL LIMITED; Ambrell is a US maker of induction heating systems (metal heating: the game's own trade), one letter away. App Store 'Ambrel: Visual library'; Play 'Ambrel Koi'.",
+        "b_exchange_index_port_town_region": "web: no real place; fiction 'Amber Coast' in several games.",
+        "c_apps_and_games_on_the_stores": "App Store: 'Ambrel: Visual library'; Play: 'Ambrel Koi'.",
+        "d_four_games": "near-miss of Orbit Haulers' sector 'Ambry Field' (scripts/content/build-space.py line 152; Ambry vs Ambrel)."
+      }
+    },
+    {
+      "name": "Bellmarch Metal Exchange",
+      "kind": "exchange (West)",
+      "usedIn": "yard-design.md 2, 5.2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no exchange or company of this name; Companies House: none.",
+        "b_exchange_index_port_town_region": "no real city in it (Bellmarch is invented, see above); not an echo of the London exchange's name or abbreviation.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      },
+      "note": "Keep 'no abbreviations shown anywhere' (spec 2): 'BME' is the abbreviation of a real exchange operator (Bolsas y Mercados Espanoles)."
+    },
+    {
+      "name": "Kaymor Metal Exchange",
+      "kind": "exchange (East)",
+      "usedIn": "yard-design.md 2, 5.2",
+      "verdict": "changed",
+      "replacedBy": "Meskarn Metal Exchange",
+      "why": "carries a real town's name.",
+      "check": {
+        "a_company_brand_product": "see Kaymor",
+        "b_exchange_index_port_town_region": "contains a real town's name (Kaymor, Senegal)",
+        "c_apps_and_games_on_the_stores": "none",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "scrip",
+      "kind": "currency (one word, symbol §)",
+      "usedIn": "yard-design.md conventions, 2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "a generic English noun (company scrip); Companies House has SCRIP LTD and similar, as for any common word. Not a brand of currency or a real currency.",
+        "b_exchange_index_port_town_region": "not a real currency name.",
+        "c_apps_and_games_on_the_stores": "Play: 'Scrip Ledger: Gift Card Wallet' (a utility, generic word).",
+        "d_four_games": "the string 'scrip' occurs only inside other words ('description', 'scripted'); 'Scrap' is a near spelling and the game's own theme word."
+      },
+      "note": "§ is the section sign, not a real currency symbol."
+    },
+    {
+      "name": "Hob's Farm Clearance",
+      "kind": "local partner (supplier)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no business of this name (nearest Hob Lane Farm, Hobbs Hole Farm, Hobdell Farm Ltd: different names, farms, no trade). Companies House: none.",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Hob Garnett",
+      "kind": "partner contact (Hob's Farm Clearance)",
+      "usedIn": "yard-design.md 2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no person or business 'Hob Garnett'. Garnett is a common surname (Companies House has many unrelated Garnett firms); garnet is also an abrasive mineral. A person's name on a business card, not a company: accepted.",
+        "b_exchange_index_port_town_region": "not a place (a Garnett, Kansas exists as a town, but a surname on a card does not name a place).",
+        "c_apps_and_games_on_the_stores": "Play: 'City of Garnett' (a town app); no game.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Ruddock Demolition",
+      "kind": "local partner (supplier)",
+      "usedIn": "yard-design.md 5.3; Rosa Ruddock in 2",
+      "verdict": "changed",
+      "replacedBy": "Fernhough Demolition",
+      "why": "an existing firm of that name in the metals trade.",
+      "check": {
+        "a_company_brand_product": "N.T. Ruddock Company, a US supplier of 'Abrasives, Metals & Sandblast Equipment' (Bing, exact word, metals trade); Companies House: RUDDOCK LIMITED and others. Neil 'Razor' Ruddock is a well-known English former footballer.",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: no app 'Ruddock'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Rosa Ruddock",
+      "kind": "partner contact (Ruddock Demolition)",
+      "usedIn": "yard-design.md 2",
+      "verdict": "changed",
+      "replacedBy": "Edie Fernhough",
+      "why": "first name from Pizza Empire (d); surname of a real metals firm (a).",
+      "check": {
+        "a_company_brand_product": "see Ruddock Demolition",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "none",
+        "d_four_games": "'Rosa' is Pizza Empire's character 'Nonna Rosa' (games/pizza-empire/game.json: 'Nonna Rosa herself')."
+      }
+    },
+    {
+      "name": "Larkin's Garage",
+      "kind": "local partner (stage 2: depolluted cars)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "changed",
+      "replacedBy": "Hollace's Garage",
+      "why": "an existing garage of the same name (cars).",
+      "check": {
+        "a_company_brand_product": "real garages: 'Larkins Garage Mobile Mechanical' (Tamborine, Queensland), Larkins Automotive Ltd (Sheffield), Larkin's Service Center (New Jersey); Companies House: LARKIN AUTO ELECTRICAL LIMITED.",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "Play: Larkin apps (staffing, fitness); no game.",
+        "d_four_games": "clear (nearest 'Larson' in another game's text, two edits)"
+      }
+    },
+    {
+      "name": "Pell Street Plumbing",
+      "kind": "local partner (stage 2)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "changed",
+      "replacedBy": "Tolleth Street Plumbing",
+      "why": "real plumbing firms named Pell and a well-known real street.",
+      "check": {
+        "a_company_brand_product": "Pell Plumbing Company, Inc. (Georgia, USA) and Pell Plumbing Heating and Construction (New York) exist; Companies House: ACQUESTRA (PELL STREET) LIMITED.",
+        "b_exchange_index_port_town_region": "Pell Street is a real, well-known street in New York's Chinatown.",
+        "c_apps_and_games_on_the_stores": "Play: 'Pell+Control', 'PELL-CM'; no game.",
+        "d_four_games": "clear (nearest common words 'Sell', 'Poll')"
+      }
+    },
+    {
+      "name": "Fennick Foundry Co-op",
+      "kind": "local partner (stage 1's supply deal)",
+      "usedIn": "yard-design.md 5.3, 9",
+      "verdict": "changed",
+      "replacedBy": "Kelderby Foundry Co-op",
+      "why": "carries the failed town name.",
+      "check": {
+        "a_company_brand_product": "see Fennick",
+        "b_exchange_index_port_town_region": "see Fennick",
+        "c_apps_and_games_on_the_stores": "see Fennick",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Durnav Steel",
+      "kind": "regional firm (an electric-arc mill)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "changed",
+      "replacedBy": "Garrowfield Steel",
+      "why": "one letter from a real name used by finance firms.",
+      "check": {
+        "a_company_brand_product": "one letter from 'Dunav' (the Danube in Serbian and Bulgarian), the name of large real firms (Dunav Osiguranje insurance, Dunav Banka) and of apps 'Dunav Ultra', 'Dunav Televizija' (Play).",
+        "b_exchange_index_port_town_region": "Dunav is a real river; Drnava (Slovakia) is two edits.",
+        "c_apps_and_games_on_the_stores": "Play: 'Dunav Ultra', 'Dunav Televizija' (one letter).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Ostro Cable Works",
+      "kind": "regional firm (cable)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "changed",
+      "replacedBy": "Rowkirk Cable Works",
+      "why": "exact word used by a mining and a finance firm, and one letter from a cable maker.",
+      "check": {
+        "a_company_brand_product": "Companies House: OSTRO MINERALS (UK) LIMITED (mining), OSTRO CAPITAL MANAGEMENT LTD (finance), OSTRO LIMITED; Astro Industries, Inc., a US wire and cable maker, is one letter away.",
+        "b_exchange_index_port_town_region": "near Ostrava (Czech city), sound.",
+        "c_apps_and_games_on_the_stores": "Play: 'Ostron', 'Ostra'; iOS 'Bistro OSTRO'.",
+        "d_four_games": "near-miss of 'Astro' in another game's text (corpus check)."
+      }
+    },
+    {
+      "name": "Vantorra Electronics",
+      "kind": "corporation (phones and boards take-back)",
+      "usedIn": "yard-design.md 2, 5.3, 11 (teal four-point star)",
+      "verdict": "changed",
+      "replacedBy": "Corlaith Electronics",
+      "why": "a near-miss of a name in Orbit Haulers (d), and one letter from two finance apps.",
+      "check": {
+        "a_company_brand_product": "one letter from apps 'Vantora: Your Tracker' and 'Vantora - Expense Tracker' (Play); Hankook's 'Vantra' tyre line and Vanterra Ventures are two edits.",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "Play: 'Vantora' twice (one letter).",
+        "d_four_games": "near-miss of Orbit Haulers' sector 'Vantor Deep' (scripts/content/build-space.py line 152): Vantor + ra."
+      }
+    },
+    {
+      "name": "Veyra Motors",
+      "kind": "corporation (car maker)",
+      "usedIn": "yard-design.md 2, 5.3, 11 (two coral chevrons)",
+      "verdict": "changed",
+      "replacedBy": "Aurenne Motors",
+      "why": "many real products of the exact name and a sound-alike of a famous car.",
+      "check": {
+        "a_company_brand_product": "Companies House: VEYRA LTD, VEYRA BELTS LIMITED and others; a 'VEYRA' motorcycle sold as a game asset; the name sounds like the Bugatti Veyron (cars).",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: at least eight apps named Veyra (subtitles, music player, travel journal, outfit planner).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Aldane Aerospace",
+      "kind": "corporation (superalloy offtake)",
+      "usedIn": "yard-design.md 2, 5.3, 11 (swept navy triangle)",
+      "verdict": "changed",
+      "replacedBy": "Overvane Aerospace",
+      "why": "a game on Google Play carries the word (c), and one letter from a real town.",
+      "check": {
+        "a_company_brand_product": "Companies House: ALDANE LIMITED, ALDANE ADVISORY LTD (advisory, finance-side), ALDANE PROPERTY GROUP LTD.",
+        "b_exchange_index_port_town_region": "not a place (Aldan, a Russian town and river, is one letter away).",
+        "c_apps_and_games_on_the_stores": "Play: a game 'Aldane Rex: Rise of a Kingdom' (Serban Adrian); 'Aldan'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Corrin Tooling",
+      "kind": "corporation (carbide take-back)",
+      "usedIn": "yard-design.md 2, 5.3, 11 (notched orange hexagon)",
+      "verdict": "changed",
+      "replacedBy": "Halcarn Tooling",
+      "why": "the name of a well-known character in another company's games (L9) and of existing firms.",
+      "check": {
+        "a_company_brand_product": "Companies House: CORRIN LTD, CORRIN DATA AND SYSTEMS LTD (an app publisher), CORRIN DESIGN & CONSTRUCTION LTD.",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: apps published by Corrin Data and Systems Ltd; Corrin is also the protagonist of Nintendo's 'Fire Emblem Fates' and a 'Super Smash Bros.' fighter (memory), a character of another company's game (L9).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Quenwick Electrolysers",
+      "kind": "corporation (iridium tolling)",
+      "usedIn": "yard-design.md 2, 5.3, 11 (split indigo droplet)",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: none (nearest the 'Quickwick' kobold tribe in World of Warcraft, two edits). Companies House: none for Quenwick or for the full name.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Fenwick, Benwick, Kenswick (real places, two letters away). Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Meridane Glass",
+      "kind": "corporation (rhodium and platinum tolling)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "changed",
+      "replacedBy": "Ambleth Glass",
+      "why": "a sound-alike of real glass companies in the same trade.",
+      "check": {
+        "a_company_brand_product": "sounds like 'Meridian', used by real glass firms: Atlas Meridian GlassWorks, Meridian Plate Glass Corp; Meriden Flint Glass (historic); Companies House: MERIDAN ESTATES LIMITED; App Store: Meridian International Holding.",
+        "b_exchange_index_port_town_region": "near Meriden (a real English village and a US city).",
+        "c_apps_and_games_on_the_stores": "App Store: 'Flatiron by Meridan'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Dobbin & Daughters Scrap",
+      "kind": "rival firm (simulated), 0.15 t",
+      "usedIn": "yard-design.md 6.2; 6.4 chip example",
+      "verdict": "changed",
+      "replacedBy": "Haddersby & Daughters Scrap",
+      "why": "one letter from a finance app and several products; the smallest rival is replaced by an invented surname.",
+      "check": {
+        "a_company_brand_product": "Companies House: DOBBIN HOLDINGS LTD, A & M DOBBIN LIMITED and others; Play: 'Dobin: Manage Your Money' (a finance app, one letter); 'Dobbin: Baby Tracker'.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "Play: 'Dobbin Dog Ranch', 'Dobbin: Baby Tracker'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Pennick Scrap",
+      "kind": "rival firm (simulated), 1.5 t",
+      "usedIn": "yard-design.md 6.2; 6.4 chip example",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no scrap, metals or recycling business named Pennick; Companies House: unrelated family firms (C.J. PENNICK (HOLDINGS), PENNICK'S PLUMBING LIMITED). A real surname with no firm in the listed trades: accepted.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear (Fennick, its near-miss, is renamed)"
+      }
+    },
+    {
+      "name": "Wrenfield Metals",
+      "kind": "rival firm (simulated), 5 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Hebblewick Metals",
+      "why": "games of the exact word on Google Play and existing firms.",
+      "check": {
+        "a_company_brand_product": "Companies House: WRENFIELD LIMITED, WRENFIELD ELECTRICAL LTD and others; Wakefield Metals (New Zealand metals distributor) is a sound-alike.",
+        "b_exchange_index_port_town_region": "not a place (Wakefield, a real city, is a sound-alike)",
+        "c_apps_and_games_on_the_stores": "Play: 'Wrenfield: Friends & Fall-outs', 'Wrenfield: The Clubhouse' (games).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Cobbet Lane Metals",
+      "kind": "rival firm (simulated), 18 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Tenterby Lane Metals",
+      "why": "one letter from an existing environmental firm's name.",
+      "check": {
+        "a_company_brand_product": "one letter from Cobbett (COBBETT ENVIRONMENTAL LIMITED and others at Companies House; William Cobbett).",
+        "b_exchange_index_port_town_region": "Cobbett is also a street name in several towns",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Corvay Recycling",
+      "kind": "rival firm (simulated), 45 t; named in the away card example (5.6)",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Kolbeck Recycling",
+      "why": "a near-miss of a metals firm in Orbit Haulers (d) and of two finance apps.",
+      "check": {
+        "a_company_brand_product": "Play: 'Corway: Remittance Comparison' (finance, one letter), Corpay (payments, one letter).",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "Play: Corway, Corpay apps.",
+        "d_four_games": "near-miss of Orbit Haulers' buyer 'Corvo Metals' and sector 'Corvo Expanse' (scripts/content/build-space.py): a metals firm in another of this developer's games."
+      }
+    },
+    {
+      "name": "Mardle & Sons",
+      "kind": "rival firm (simulated), 120 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Odderwick & Sons",
+      "why": "a game of the exact word (c) and a finance firm (a).",
+      "check": {
+        "a_company_brand_product": "Companies House: MARDLE LTD, MARDLE CAPITAL LIMITED (finance), MARDLE CONSTRUCTION LTD.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "Play: a game 'Mardle: Swipe Labyrinth Maze' and an app 'Mardles'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Fennick Metal Recovery",
+      "kind": "rival firm (simulated), 300 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Kelderby Metal Recovery",
+      "why": "carries the failed town name.",
+      "check": {
+        "a_company_brand_product": "see Fennick",
+        "b_exchange_index_port_town_region": "see Fennick",
+        "c_apps_and_games_on_the_stores": "see Fennick",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Stannard Ferrous",
+      "kind": "rival firm (simulated), 800 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Cawdrey Ferrous",
+      "why": "one letter from a finance brand.",
+      "check": {
+        "a_company_brand_product": "one letter from 'Standard' (The Standard, StanCorp Financial Group, an app on the store; Standard Chartered); Companies House: many Stannard builders.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store: 'The Standard - My Retirement' (finance), Doug Stannard radio apps.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Lowmoor Non-Ferrous",
+      "kind": "rival firm (simulated), 2 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Cradsworth Non-Ferrous",
+      "why": "an existing firm of the same word in the scrap trade.",
+      "check": {
+        "a_company_brand_product": "Companies House: LOWMOOR CARBREAKERS LIMITED (a car breaker: the scrap trade itself), LOWMOOR AUTOMOTIVE ENGINEERING LTD.",
+        "b_exchange_index_port_town_region": "Low Moor is a real place (Bradford)",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Harkwood Reclaim",
+      "kind": "rival firm (simulated), 4.5 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Skelderwick Reclaim",
+      "why": "one letter from real towns.",
+      "check": {
+        "a_company_brand_product": "Companies House: HARKWOOD LIMITED, HARKWOOD BUILDERS LIMITED; one letter from Hardwood.",
+        "b_exchange_index_port_town_region": "one letter from Harwood (real towns in Lancashire and North Dakota; 'Harwood ND' app on the store).",
+        "c_apps_and_games_on_the_stores": "Play: 'Harwood District', 'Hardwood Empire' (a game), 'Heroes of Larkwood'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Tallis-Merrow Metals",
+      "kind": "rival firm (simulated), 10 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Ashendry Metals",
+      "why": "a near-miss of a name in Orbit Haulers (d), a real village and finance firms.",
+      "check": {
+        "a_company_brand_product": "Merrow is a sewing-machine brand; Companies House: MERROW CAPITAL LTD, MERROW ASSET MANAGEMENT LIMITED (finance); TALLIS LIMITED.",
+        "b_exchange_index_port_town_region": "Merrow is a real village (Surrey).",
+        "c_apps_and_games_on_the_stores": "App Store / Play: no game.",
+        "d_four_games": "'Merrow' is one letter from Orbit Haulers' sector 'Morrow Belt' (scripts/content/build-space.py)."
+      }
+    },
+    {
+      "name": "Ashgrove Ferrous",
+      "kind": "rival firm (simulated), 22 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Aldermoss Ferrous",
+      "why": "games of the exact word, a real suburb and a materials firm.",
+      "check": {
+        "a_company_brand_product": "Companies House: ASHGROVE ASSET MANAGEMENT LIMITED (finance) and many others; Ash Grove Cement Company (a large US materials firm) is a sound-alike.",
+        "b_exchange_index_port_town_region": "Ashgrove is a real suburb (Brisbane) and several villages.",
+        "c_apps_and_games_on_the_stores": "Play: 'Ashgrove: The Silent Hour', 'Still Waters: Ashgrove Mystery' (games).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Lindqvist-Barr Metals",
+      "kind": "rival firm (simulated), 45 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no firm of this name; Companies House: none for the full name (unrelated LINDQVIST and BARR firms; Forsyth Barr and AG Barr exist but share only a common surname inside a double name). Accepted.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none for the name.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Pollard Recycling",
+      "kind": "rival firm (simulated), 90 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Gannetby Recycling",
+      "why": "a listed company of the exact word.",
+      "check": {
+        "a_company_brand_product": "Pollard Banknote Limited (a listed company, lottery printing: finance-adjacent) publishes several apps; Companies House: POLLARD & SONS LIMITED and others.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: 'Pollard Chicken', apps by Pollard Banknote Limited.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Saxby Resource Recovery",
+      "kind": "rival firm (simulated), 170 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Morrance Resource Recovery",
+      "why": "a real village and a brand one letter away.",
+      "check": {
+        "a_company_brand_product": "Saxbys (US coffee chain) and Zaxby's (restaurants) are one letter away; Companies House: SAXBY LIMITED, SAXBY BRANDS LTD.",
+        "b_exchange_index_port_town_region": "Saxby is a real village (Leicestershire, Lincolnshire).",
+        "c_apps_and_games_on_the_stores": "App Store: 'Saxbys' (two publishers).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Kestrel Bay Metals",
+      "kind": "rival firm (simulated), 320 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Saltreach Metals",
+      "why": "a crowded real brand word, including finance.",
+      "check": {
+        "a_company_brand_product": "Kestrel is a crowded brand word (Kestrel weather meters by Nielsen-Kellerman, 'Kestrel Portfolio' finance app, KESTREL LIMITED and dozens more at Companies House).",
+        "b_exchange_index_port_town_region": "not found as a real bay.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: 'Kestrel LiNK', 'Kestrel Portfolio' (finance).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Haverin Steel & Alloys",
+      "kind": "rival firm (simulated), 550 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Tervalen Steel & Alloys",
+      "why": "one letter from a real London borough with a demolition and recycling firm of that name.",
+      "check": {
+        "a_company_brand_product": "one letter from Havering (HAVERING DEMOLITION & RECYCLING LIMITED, HAVERING AGGREGATES LIMITED); HAVERIN' MEDIA LTD exists.",
+        "b_exchange_index_port_town_region": "one letter from Havering, a London borough.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Ondine Metallurgy",
+      "kind": "rival firm (simulated), 850 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Kestrane Metallurgy",
+      "why": "existing firms including one in cars, and apps of the exact name.",
+      "check": {
+        "a_company_brand_product": "Companies House: ONDINE CARS LIMITED (cars), ONDINE BIOMEDICAL LIMITED, ONDINE LLP.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "Play: 'Ondine' (Quantoria Labs), 'Ondine - Hospitality Assistant'.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Crayle International",
+      "kind": "rival firm (simulated), 1.25 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no company 'Crayle' (nearest Crayola, Crayhill, Crayex: different names); Companies House: none.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Hemsted-Pryce Resources",
+      "kind": "rival firm (simulated), 1.8 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Ulmeth Resources",
+      "why": "a real place and a car firm of the same word.",
+      "check": {
+        "a_company_brand_product": "Companies House: HEMSTED LTD, HEMSTED CARS LIMITED (cars), PRYCE LIMITED.",
+        "b_exchange_index_port_town_region": "Hemsted is a real estate and forest in Kent (Hemsted Park, Hemsted Forest) and a sound-alike of Hempstead (Hemel Hempstead).",
+        "c_apps_and_games_on_the_stores": "Play: 'Pryce' (Hard Core Logo).",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Teodor Metals",
+      "kind": "rival firm (simulated), 2.5 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "clear",
+      "check": {
+        "a_company_brand_product": "web: no firm 'Teodor Metals'; Teodor is a common given name (Companies House: TEODOR LTD, TEODOR CONSTRUCTION LTD; no metals, recycling or finance firm). Accepted.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: only apps by developers whose first name is Teodor.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Marenko Global",
+      "kind": "rival firm (simulated), 3.4 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Ondrell Global",
+      "why": "one letter from a real firm and real towns.",
+      "check": {
+        "a_company_brand_product": "one letter from Marengo (MARENGO JSC, a Moscow manufacturer) and Marenco (a family name of listed-company insiders); Marenkov is a surname.",
+        "b_exchange_index_port_town_region": "Marengo is a real town (Italy; several in the USA).",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Halvard Steel & Alloys",
+      "kind": "rival firm (simulated), 4.5 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Coralind Steel & Alloys",
+      "why": "an existing finance firm of the exact word.",
+      "check": {
+        "a_company_brand_product": "Companies House: HALVARD MONEY SERVICE LTD (finance), HALVARDS LIMITED; Halvard is a Norwegian given name.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "App Store / Play: none.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Sunmere Metals Holding",
+      "kind": "rival firm (simulated), 5.6 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Tarlevan Metals Holding",
+      "why": "a game of the word on Google Play (c).",
+      "check": {
+        "a_company_brand_product": "Companies House: SUNMERE LTD, SUNMERE HOSPITALITY LTD; Play: an app publisher 'Sunmere'.",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "Play: a game 'Hero of Sunmere' (Mind Game Labs) and 'TripArchive' by Sunmere.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Orrin Global Metals",
+      "kind": "rival firm (simulated), 7 Mt (the largest rival; logo 'a globe of rings')",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "changed",
+      "replacedBy": "Vessendal Global Metals",
+      "why": "existing shipping and finance firms of the exact word, a metals sound-alike, and finance apps.",
+      "check": {
+        "a_company_brand_product": "Companies House: ORRIN LOGISTICS LIMITED (shipping), ORRIN FINANCE LTD (finance), ORRIN LTD; Orion Metals (ASX) is a sound-alike in metals.",
+        "b_exchange_index_port_town_region": "the River Orrin (Scotland) is real.",
+        "c_apps_and_games_on_the_stores": "App Store / Play: 'Orrin Budget Planner' and other finance apps named Orrin.",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json"
+      }
+    },
+    {
+      "name": "Kelderby",
+      "kind": "home town",
+      "usedIn": "yard-design.md 2, 5.4; 'Kelderby Metal Recovery'; 'Kelderby Foundry Co-op'; handle place tag (e.g. 'Steady Anvil of Kelderby')",
+      "verdict": "new (replacement)",
+      "replaces": "Fennick",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: no company, brand or product.",
+        "b_exchange_index_port_town_region": "web: no place of this spelling; nearest Keldby (a Danish hamlet) and Kelby (a Lincolnshire village), two edits each. Plain northern '-by' form.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Kelderby Vale",
+      "kind": "home district",
+      "usedIn": "yard-design.md 2",
+      "verdict": "new (replacement)",
+      "replaces": "Fennick Vale",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it or the phrase.",
+        "b_exchange_index_port_town_region": "no real 'Kelderby Vale'; see Kelderby.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Thwaiteby Lane",
+      "kind": "home lane",
+      "usedIn": "yard-design.md 1.1, 2, 5.4, 9",
+      "verdict": "new (replacement)",
+      "replaces": "Kettle Lane",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it ('Thwaiteby' alone and with Lane); web: none.",
+        "b_exchange_index_port_town_region": "web: no place 'Thwaiteby'; 'thwaite' is a common Old Norse place-name element (Thwaite, Suffolk; Thwaite St Mary, Norfolk): a real element, not a real town of this name. Pronounced THWAYT-bee.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      },
+      "note": "If the lead finds it hard to say aloud, an alternative that also passed the store and company checks is 'Gannetby Lane' (Gannetby is then free only if rival 14 takes another word)."
+    },
+    {
+      "name": "Thwaiteby Lane Yard",
+      "kind": "the home yard",
+      "usedIn": "yard-design.md 2, 5.5",
+      "verdict": "new (replacement)",
+      "replaces": "Kettle Lane Yard",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it.",
+        "b_exchange_index_port_town_region": "see Thwaiteby Lane.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Ashendry Ridge",
+      "kind": "uplands site (stage 4)",
+      "usedIn": "yard-design.md 2, 5.4, 5.5; rival 'Ashendry Metals'",
+      "verdict": "new (replacement)",
+      "replaces": "Varn Ridge",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Ashenbury (a fictional settlement on World Anvil), Ashendon (a Buckinghamshire village, two edits), Ashbury. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Meskarn",
+      "kind": "port city of the East, seat of its exchange",
+      "usedIn": "yard-design.md 2, 5.2, 5.4, 5.5",
+      "verdict": "new (replacement)",
+      "replaces": "Kaymor",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest 'skarn' (a geological word for a contact-metamorphic ore rock: generic, harmless, even apt), Meshakenari (Azerbaijan), Mesgaran (Iran): two or more edits. No real city.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Meskarn Point",
+      "kind": "refinery headland site (stage 4)",
+      "usedIn": "yard-design.md 2, 5.5",
+      "verdict": "new (replacement)",
+      "replaces": "Kaymor Point",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it.",
+        "b_exchange_index_port_town_region": "see Meskarn.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Meskarn Metal Exchange",
+      "kind": "exchange (East)",
+      "usedIn": "yard-design.md 2, 5.2",
+      "verdict": "new (replacement)",
+      "replaces": "Kaymor Metal Exchange",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "no real city in it; not an echo of the Shanghai exchange's name.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      },
+      "note": "No abbreviations shown (MME would also be ambiguous)."
+    },
+    {
+      "name": "Coralind Coast",
+      "kind": "battery and electronics coast site (stage 4)",
+      "usedIn": "yard-design.md 2, 5.4, 5.5; rival 'Coralind Steel & Alloys'",
+      "verdict": "new (replacement)",
+      "replaces": "Ambrel Coast",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none (results only for coral, coralline).",
+        "b_exchange_index_port_town_region": "web: no place.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Fernhough Demolition",
+      "kind": "local partner (supplier)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Ruddock Demolition",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it (also the full name); web: no business; Fernihough / Fernyhough are real Staffordshire surname variants (one letter): a family surname, no firm in the listed trades found.",
+        "b_exchange_index_port_town_region": "not a place (Fernhurst, a Sussex village, is three edits).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Edie Fernhough",
+      "kind": "partner contact (Fernhough Demolition)",
+      "usedIn": "yard-design.md 2",
+      "verdict": "new (replacement)",
+      "replaces": "Rosa Ruddock",
+      "check": {
+        "a_company_brand_product": "a person's name on a business card; see Fernhough Demolition. 'Edie' is a common first name (also the FDIC's 'EDIE' estimator, unrelated).",
+        "b_exchange_index_port_town_region": "not a place",
+        "c_apps_and_games_on_the_stores": "not searched as an app title: a common first name; the surname passed (see Fernhough Demolition).",
+        "d_four_games": "clear: 'Edie' does not occur in the four games (grep), nor any name one letter from it."
+      }
+    },
+    {
+      "name": "Hollace's Garage",
+      "kind": "local partner (stage 2)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Larkin's Garage",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: no garage or company 'Hollace' (results only for Holly Springs, Hollister, Holland).",
+        "b_exchange_index_port_town_region": "not a place (Hollis, Hollins: two edits).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Tolleth Street Plumbing",
+      "kind": "local partner (stage 2)",
+      "usedIn": "yard-design.md 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Pell Street Plumbing",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no street or place 'Tolleth' (nearest Ambleston, unrelated).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Kelderby Foundry Co-op",
+      "kind": "local partner (stage 1's supply deal)",
+      "usedIn": "yard-design.md 5.3, 9",
+      "verdict": "new (replacement)",
+      "replaces": "Fennick Foundry Co-op",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it or the phrase.",
+        "b_exchange_index_port_town_region": "see Kelderby.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Garrowfield Steel",
+      "kind": "regional firm (an electric-arc mill)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Durnav Steel",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Garrow (Perth and Kinross), Garrowhill (Glasgow), Garrowgill wood: compound differs. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Rowkirk Cable Works",
+      "kind": "regional firm (cable)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Ostro Cable Works",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Rowfoot, Rowanburn, Bowden Kirk. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Corlaith Electronics",
+      "kind": "corporation (phones and boards take-back; logo a teal four-point star)",
+      "usedIn": "yard-design.md 2, 5.3, 11",
+      "verdict": "new (replacement)",
+      "replaces": "Vantorra Electronics",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Irish townlands Corlat, Corlough (two edits). Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      },
+      "note": "Logo check (two colours, shape-and-colour pair against known brands) is the art step's, not this register's."
+    },
+    {
+      "name": "Aurenne Motors",
+      "kind": "corporation (car maker; logo two coral chevrons)",
+      "usedIn": "yard-design.md 2, 5.3, 11",
+      "verdict": "new (replacement)",
+      "replaces": "Veyra Motors",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none; no car brand of the name or one letter from it (Aurus, a Russian car brand, is four edits).",
+        "b_exchange_index_port_town_region": "web: no place; nearest Aurenja (Catalan/Occitan name of Orange, France) and Varenne (river): two edits. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Overvane Aerospace",
+      "kind": "corporation (superalloy offtake; logo a swept navy triangle)",
+      "usedIn": "yard-design.md 2, 5.3, 11",
+      "verdict": "new (replacement)",
+      "replaces": "Aldane Aerospace",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none (nearest 'Overthane', a Warcraft title).",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Halcarn Tooling",
+      "kind": "corporation (carbide take-back; logo a notched orange hexagon)",
+      "usedIn": "yard-design.md 2, 5.3, 11",
+      "verdict": "new (replacement)",
+      "replaces": "Corrin Tooling",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none (nearest Hallowvale in RuneScape, House Halovar in a web series: different names).",
+        "b_exchange_index_port_town_region": "not a place.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Ambleth Glass",
+      "kind": "corporation (rhodium and platinum tolling)",
+      "usedIn": "yard-design.md 2, 5.3",
+      "verdict": "new (replacement)",
+      "replaces": "Meridane Glass",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web: none.",
+        "b_exchange_index_port_town_region": "web: no place; nearest Ambleston (Pembrokeshire village, three edits), Amble (Northumberland town, two edits). Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Haddersby & Daughters Scrap",
+      "kind": "rival firm (simulated), 0.15 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Dobbin & Daughters Scrap",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Haddiscoe, Gaddesby (villages, two or more edits).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Hebblewick Metals",
+      "kind": "rival firm (simulated), 5 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Wrenfield Metals",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place (the Hebble is a West Yorkshire brook; 'Hebblewick' is not a town).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Tenterby Lane Metals",
+      "kind": "rival firm (simulated), 18 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Cobbet Lane Metals",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place 'Tenterby'.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Kolbeck Recycling",
+      "kind": "rival firm (simulated), 45 t; use it in the away card example",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Corvay Recycling",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; Kolbeck is a rare surname. Kloeckner Metals is a sound-adjacent metals firm but differs by more than one sound (KLURK-ner); recorded, accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Odderwick & Sons",
+      "kind": "rival firm (simulated), 120 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Mardle & Sons",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Otterswick (a bay on Sanday, Orkney), three edits.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Kelderby Metal Recovery",
+      "kind": "rival firm (simulated), 300 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Fennick Metal Recovery",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "see Kelderby.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Cawdrey Ferrous",
+      "kind": "rival firm (simulated), 800 t",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Stannard Ferrous",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; Cawdrey is a rare surname (Robert Cawdrey, 1604 dictionary-maker); Cawdor (Scotland) is two edits.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Cradsworth Non-Ferrous",
+      "kind": "rival firm (simulated), 2 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Lowmoor Non-Ferrous",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Cradley (two villages), Cratley: different names.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Skelderwick Reclaim",
+      "kind": "rival firm (simulated), 4.5 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Harkwood Reclaim",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Skelderskew (a historic site near Guisborough), three edits.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Ashendry Metals",
+      "kind": "rival firm (simulated), 10 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Tallis-Merrow Metals",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "named after the game's own uplands (Ashendry Ridge); see Ashendry Ridge.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Aldermoss Ferrous",
+      "kind": "rival firm (simulated), 22 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Ashgrove Ferrous",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Red Moss, Alderbank, Alderstone House: different names.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Gannetby Recycling",
+      "kind": "rival firm (simulated), 90 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Pollard Recycling",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place (results only for gannet the bird and Gannet islands).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Morrance Resource Recovery",
+      "kind": "rival firm (simulated), 170 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Saxby Resource Recovery",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Morrens (a Swiss municipality, three edits), 'marrance' (an Older Scots word).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Saltreach Metals",
+      "kind": "rival firm (simulated), 320 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Kestrel Bay Metals",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "named after the game's own port (Saltreach): see the Saltreach entry (SALTREACH LIMITED exists; accepted for a place, and here it names a firm: if the lead wants no exact company name for a firm, take 'Gannetby Bay Metals' and keep Gannetby only once).",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Tervalen Steel & Alloys",
+      "kind": "rival firm (simulated), 550 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Haverin Steel & Alloys",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Tervola (Finnish municipality) and Tervela (a US IT firm), two edits. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Kestrane Metallurgy",
+      "kind": "rival firm (simulated), 850 kt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Ondine Metallurgy",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Kestla (Estonia), Kestle (Cornwall), 'Kestan' (a Warcraft character): two or more edits.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Ulmeth Resources",
+      "kind": "rival firm (simulated), 1.8 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Hemsted-Pryce Resources",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Ulmen (German town) and Ulmetum (a Roman fort), two edits. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Ondrell Global",
+      "kind": "rival firm (simulated), 3.4 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Marenko Global",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Rondell (a surname, one letter) and Ondrej (a given name): people's names, no firm in the listed trades found.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Coralind Steel & Alloys",
+      "kind": "rival firm (simulated), 4.5 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Halvard Steel & Alloys",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "named after the game's own East coast (Coralind Coast): an Eastern giant.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Tarlevan Metals Holding",
+      "kind": "rival firm (simulated), 5.6 Mt",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Sunmere Metals Holding",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Tarlan, Qaleh-ye Tarvan (Iran): two or more edits.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    },
+    {
+      "name": "Vessendal Global Metals",
+      "kind": "rival firm (simulated), 7 Mt, the largest rival (logo a globe of rings)",
+      "usedIn": "yard-design.md 6.2",
+      "verdict": "new (replacement)",
+      "replaces": "Orrin Global Metals",
+      "check": {
+        "a_company_brand_product": "Companies House search for the distinctive word: no company of that word or one letter from it; web search of the distinctive word: no company, brand or product of it.",
+        "b_exchange_index_port_town_region": "no place; nearest Vassenden (a Norwegian village of 327), two edits. Accepted.",
+        "c_apps_and_games_on_the_stores": "App Store search API (US) and Google Play search (US) for the distinctive word: no app or game of that word or one letter from it",
+        "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (pipe.py corpus check)"
+      }
+    }
+  ],
+  "generated": {
+    "crewFirstNames": {
+      "usedIn": "yard-design.md 2 and 3.3 (crew get first names from a curated list of 60)",
+      "verdict": "proposed list, check (d) only",
+      "check": "each name: not in the four games' text and not one letter from, a prefix of, or prefixed by a proper noun there (rejected on that ground: Ada, Kit, Dev, Sal, Win, Finn, Tess, Theo, Owen, Mal (Mallaby), Pat (Patrick), Ros (Rosa), Tam (Tamsin), Flo (Florence), Gwen (Gwendolyn), Hal (Halden), Cal (too close to Calvany)). Common first names are not searched against companies or stores: they name no firm. Contacts Hob and Edie are kept out of the crew list.",
+      "names": [
+        "Alf",
+        "Amos",
+        "Asha",
+        "Bea",
+        "Bram",
+        "Col",
+        "Dot",
+        "Eli",
+        "Elsie",
+        "Fay",
+        "Frank",
+        "Gail",
+        "Gus",
+        "Ivy",
+        "Jas",
+        "Jed",
+        "Joss",
+        "Kay",
+        "Len",
+        "Lou",
+        "Mae",
+        "Meg",
+        "Mo",
+        "Ned",
+        "Nia",
+        "Pip",
+        "Raf",
+        "Ray",
+        "Reg",
+        "Rhi",
+        "Sam",
+        "Sid",
+        "Sol",
+        "Tom",
+        "Una",
+        "Viv",
+        "Wes",
+        "Yas",
+        "Zac",
+        "Zoe",
+        "Bev",
+        "Cyd",
+        "Dil",
+        "Ezra",
+        "Huw",
+        "Ike",
+        "Jun",
+        "Kev",
+        "Lyn",
+        "Nat",
+        "Ravi",
+        "Tia",
+        "Vic",
+        "Wyn",
+        "Arlo",
+        "Abe",
+        "Effie",
+        "Bryn",
+        "Ian",
+        "Lena"
+      ]
+    },
+    "pending": [
+      "handle words (40 adjectives x 60 nouns x 30 place tags, yard-design.md 7.6): not written yet; the place tags must come from this register's places or pass the same four checks",
+      "company name parts (40 x 40 x 8, yard-design.md 7.2): not written yet; the parts must be curated against bad pairs and against every name above and the four games",
+      "rung names (yard-design.md 6.1: Back-lane yard, Licensed dealer, District merchant, ...) and product names (Night shift contract, Yard livery, Founder's plaque, Trade Book): generic descriptions, not proper nouns; not registered"
+    ]
+  }
+}

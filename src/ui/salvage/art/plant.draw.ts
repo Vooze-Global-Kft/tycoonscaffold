@@ -6,7 +6,7 @@
  */
 import { Skia, type SkCanvas } from '@shopify/react-native-skia';
 import { LINE_W, YARD, coolingColour, shade } from './palette';
-import { sevenSeg } from './letters';
+import { sevenSeg, stencil } from './letters';
 import {
   box,
   boxShadow,
@@ -155,14 +155,14 @@ export function drawWeighDisplay(c: SkCanvas, v: View3q, text: string): void {
   groundShadow(c, v, 0.25, 0.2);
   box(c, v, { len: 0.12, wid: 0.12, h: 2.0, color: YARD.galvanised, line: 1 });
   const [x, y] = proj(v, 0, 0, 2.0);
-  const w = 64;
+  const w = 76;
   const h = 26;
   c.drawPath(rrect(x - w / 2 - 3, y - h - 6, w + 6, h + 10, 4), fill(YARD.hivis));
   c.drawPath(rrect(x - w / 2 - 3, y - h - 6, w + 6, h + 10, 4), stroke(INK, LINE_W));
   c.drawPath(rrect(x - w / 2, y - h - 3, w, h + 4, 2.5), fill(YARD.ledCase));
-  sevenSeg(c, text, x + w / 2 - 14, y - h + 1, 17, YARD.led, YARD.ledOff);
+  sevenSeg(c, text, x + w / 2 - 17, y - h + 1, 17, YARD.led, YARD.ledOff);
   // "kg" in tiny LED-green stencil-free strokes: a k and a g
-  const kx = x + w / 2 - 9;
+  const kx = x + w / 2 - 12;
   const ky = y - 6;
   const s = stroke(YARD.led, 1.1);
   c.drawPath(segment(kx, ky - 6, kx, ky), s);
@@ -275,6 +275,14 @@ export function drawCrucible(c: SkCanvas, v: View3q, o: { tilt?: number; hot?: b
     // a few light droplets (never flame)
     for (let i = 0; i < 5; i++) c.drawCircle(mx + (hash01(i, 4) - 0.5) * 16, my - 2 - hash01(i, 5) * 8, 1.2, fill(YARD.spark));
   }
+  if (hot) {
+    // heat shimmer: three thin wavy lines rising from the mouth
+    for (let i = 0; i < 3; i++) {
+      const x0 = px - 8 + i * 8 + tilt * 14;
+      const y0 = py - H * 0.55 - 6;
+      c.drawPath(builder().moveTo(x0, y0).quadTo(x0 - 4, y0 - 5, x0, y0 - 10).quadTo(x0 + 4, y0 - 15, x0, y0 - 20).build(), stroke(YARD.glowHot, 1.3, 0.55));
+    }
+  }
 }
 
 /** Where the mould stands east of the crucible's anchor, metres. */
@@ -282,6 +290,21 @@ export const MOULD_X = 1.4;
 
 /** The furnace corner as the yard shows it: crucible, mould 1.0 m east and (cooled) a sample ingot. */
 export function drawFurnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling', t = 0): void {
+  // Drawn 1.35 times its true size, as the stripper: the pour is the yard's moment and must read.
+  c.save();
+  c.scale(FURNACE_SCALE, FURNACE_SCALE);
+  furnaceSet(c, v, state, t);
+  c.restore();
+}
+
+export const FURNACE_SCALE = 1.35;
+
+function furnaceSet(c: SkCanvas, v: View3q, state: 'cold' | 'pouring' | 'cooling', t: number): void {
+  if (state !== 'cold') {
+    // the warm light the melt throws on the pad (light, not a fill: the pad stays concrete)
+    const [gx, gy] = proj(v, MOULD_X * 0.6, 0.1, 0);
+    c.drawPath(oval(gx, gy, 2.0 * v.ppm, 1.1 * v.ppm * v.tilt), radial(gx, gy, 2.0 * v.ppm, ['rgba(255,190,90,0.45)', 'rgba(255,190,90,0)']));
+  }
   if (state === 'cold') {
     drawMould(c, v, { ox: MOULD_X });
     drawCrucible(c, v, { tilt: 0, hot: false });
@@ -483,4 +506,90 @@ export function drawPad(c: SkCanvas, v: View3q, w: number, d: number, locked = f
     },
   });
 }
+
+
+/**
+ * A storage bay: three walls of interlocking concrete blocks (0.8 m cubes) open to the south, its
+ * material heaped inside, a stencil code painted on the back wall, and a hi-vis Hold flag when held.
+ * w x d metres; anchor the bay's footprint centre.
+ */
+export function drawBay(c: SkCanvas, v: View3q, w: number, d: number, o: { heap: string[]; code: string; hold?: boolean; seed?: number }): void {
+  const b = 0.8;
+  const seed = o.seed ?? 1;
+  const block = (x: number, y: number, z = 0) =>
+    box(c, v, {
+      len: b,
+      wid: b,
+      h: b * 0.75,
+      ox: x,
+      oy: y,
+      z,
+      color: '#BDB8AC',
+      line: 1,
+      onTop: (q) => {
+        for (const [s0, t0] of [[0.3, 0.5], [0.7, 0.5]]) {
+          const [kx, ky] = proj(v, ...subQuad(q, s0, s0, t0, t0)[0]);
+          c.drawPath(oval(kx, ky, 3.2, 2.2), fill(shade('#BDB8AC', -0.1)));
+          c.drawPath(oval(kx, ky, 3.2, 2.2), stroke(INK, 0.7));
+        }
+      },
+    });
+  const nx = Math.round(w / b);
+  // the back wall, two blocks high, with the code painted on its face
+  for (let i = 0; i < nx; i++) {
+    block(-w / 2 + b / 2 + i * b, -d / 2 + b / 2);
+    block(-w / 2 + b / 2 + i * b, -d / 2 + b / 2, b * 0.75);
+  }
+  const [cx, cy] = proj(v, 0, -d / 2 + b, b * 1.3);
+  stencil(c, o.code, cx, cy - 7, 13, YARD.ink, { align: 'center', alpha: 0.85 });
+  // the heap: a mound in the metal's dark tone, pieces piled on it against the back wall
+  {
+    const look = METAL_COLS[o.heap[0]] ?? METAL_COLS.light_iron;
+    const [m0x, m0y] = proj(v, 0, -d / 2 + b + 0.1, 0);
+    const mw = (w - 0.3) * v.ppm * 0.5;
+    const mh = (d - b) * v.ppm * v.tilt;
+    const mound = builder().moveTo(m0x - mw, m0y + mh * 0.8).quadTo(m0x - mw, m0y - 18, m0x, m0y - 24).quadTo(m0x + mw, m0y - 18, m0x + mw, m0y + mh * 0.8).quadTo(m0x, m0y + mh * 1.15, m0x - mw, m0y + mh * 0.8).close().build();
+    c.drawPath(mound, fill(shade(look[0], -0.35)));
+    c.drawPath(mound, stroke(INK, 1));
+  }
+  for (let i = 0; i < 34; i++) {
+    const metal = o.heap[i % o.heap.length];
+    const look = METAL_COLS[metal] ?? METAL_COLS.light_iron;
+    const a = hash01(seed, i, 1);
+    const r = hash01(seed, i, 2) ** 0.8;
+    const x = (a - 0.5) * (w - 0.3) * 0.92;
+    const y = -d / 2 + b + r * (d - b) * 0.8;
+    const z = Math.max(0.04, (0.7 - r * 0.6) * (1 - Math.abs(a - 0.5) * 1.2));
+    const [sx, sy] = proj(v, x, y, z);
+    const turn = (hash01(seed, i, 3) - 0.5) * 60;
+    c.save();
+    c.translate(sx, sy);
+    c.rotate(turn, 0, 0);
+    const pw = 9 + hash01(seed, i, 4) * 8;
+    const pc = metal === 'copper' ? poly([-pw / 2, -3, pw / 2, -3.5, pw / 2 + 1, 2.5, -pw / 2, 3]) : poly([-pw / 2, -2.6, pw / 2, -3.2, pw / 2, 2.4, -pw / 2 - 1, 3]);
+    c.drawPath(pc, fill(i % 3 ? look[0] : look[1]));
+    c.drawPath(pc, stroke(INK, 0.9));
+    if (metal === 'copper' && i % 3 === 0) c.drawPath(segment(-2, -1, 1, -2), stroke(YARD.copperSheen, 1.1));
+    if (metal === 'brass' && i % 4 === 0) c.drawPath(segment(-1.5, -1.2, 1.5, -1.2), stroke('#FFFFFF', 1));
+    c.restore();
+  }
+  // short side walls at the back corners
+  for (const side of [-1, 1]) block(side * (w / 2 + b / 2), -d / 2 + b / 2);
+  if (o.hold) {
+    const [fx, fy] = proj(v, w / 2 + b / 2, -d / 2 + b / 2, b * 0.75);
+    c.drawPath(segment(fx, fy, fx, fy - 30), stroke(INK, 1.6));
+    const flag = poly([fx, fy - 30, fx + 20, fy - 25, fx, fy - 19]);
+    c.drawPath(flag, fill(YARD.hivis));
+    c.drawPath(flag, stroke(INK, 1.1));
+  }
+}
+
+const METAL_COLS: Record<string, [string, string]> = {
+  light_iron: ['#8E979E', '#B9C0C5'],
+  cast_iron: [YARD.castIron, '#6E737A'],
+  hms: [YARD.rust, YARD.rustLight],
+  copper: [YARD.copper, YARD.copperLight],
+  brass: [YARD.brass, YARD.brassLight],
+  aluminium: [YARD.aluminium, YARD.aluminiumLight],
+};
 

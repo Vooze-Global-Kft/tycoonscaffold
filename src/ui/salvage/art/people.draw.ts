@@ -36,6 +36,8 @@ export interface PersonOptions {
   stack?: Stack;
   /** Cutting: the spark burst's phase 0..1 (varies the fan). */
   spark?: number;
+  /** The face shield down without cutting (at the furnace). */
+  shield?: boolean;
 }
 
 /** The design height of a person in points at 40 points a metre (feet to hat top). */
@@ -264,7 +266,7 @@ export function drawPerson(c: SkCanvas, v: View3q, o: PersonOptions): void {
     arm(c, 8.4, torsoTop + 3, 10.2, torsoTop + 15);
   }
 
-  head(c, dir, look, hy, o.pose === 'cut');
+  head(c, dir, look, hy, o.pose === 'cut' || !!o.shield);
 
   // From behind, the stack covers the back.
   if (stack.length && dir === 'n') backStack(c, stack, 0, torsoTop + 14, 16);

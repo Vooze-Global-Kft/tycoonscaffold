@@ -4,9 +4,10 @@
  * Each material shows its sheen mark so it reads without colour: light iron rust freckles, cast iron
  * dots, copper paired ticks, brass a four-point glint, aluminium a long stripe.
  */
-import { FillType, type SkCanvas } from '@shopify/react-native-skia';
+import { ClipOp, FillType, type SkCanvas } from '@shopify/react-native-skia';
 import { LINE_W, METAL, YARD, coolingColour, mix, shade } from './palette';
 import {
+  blob as blobPath,
   box,
   boxShadow,
   builder,
@@ -189,7 +190,7 @@ export function drawCoil(c: SkCanvas, v: View3q, kind: 'cable' | 'bright', R = 0
     .build();
   c.drawPath(ring, fill(shade(base, -0.45)));
   const turns = kind === 'cable' ? 5 : 6;
-  const jackets = [YARD.pvcGrey, YARD.pvc, '#3D6FA8', YARD.pvcGrey, '#7A6A5A', YARD.pvc];
+  const jackets = ['#8D9399', YARD.pvc, '#8D9399', '#6D7277', YARD.pvc, '#8D9399'];
   const wire = ((R - r) / turns) * v.ppm * 0.78;
   for (let i = 0; i < turns; i++) {
     const k = r + ((R - r) * (i + 0.5)) / turns;
@@ -220,6 +221,66 @@ export function drawCoil(c: SkCanvas, v: View3q, kind: 'cable' | 'bright', R = 0
     ticks(c, cx - RX * 0.45, cy1 + (cy0 - cy1) * 0.55, 6);
     ticks(c, cx + RX * 0.45, cy1 - RY * 0.55, 5);
   }
+}
+
+/**
+ * A cable drum standing on its flanges (axis north-south): a wooden front flange with bolt holes and a
+ * centre hole, insulated cable wound behind it showing on top, the back flange's rim above. r is the
+ * flange radius; the drum is `depth` metres long. Unmistakably cable at any size (a coil lying flat
+ * reads as a tyre).
+ */
+export function drawCableDrum(c: SkCanvas, v: View3q, r = 0.5, depth = 0.55, seed = 1): void {
+  boxShadow(c, v, r * 2 + 0.05, depth + 0.1);
+  const yb = -depth / 2;
+  const yf = depth / 2;
+  const u: V3 = [1, 0, 0];
+  const w: V3 = [0, 0, 1];
+  // back flange
+  c.drawPath(discPath(v, [0, yb, r], u, w, r), fill(shade(YARD.wood, -0.25)));
+  c.drawPath(discPath(v, [0, yb, r], u, w, r), stroke(INK, LINE_W));
+  // the wound cable: a cylinder between the flanges, its top visible
+  const rc = r * 0.82;
+  const [x0, yTopB] = proj(v, 0, yb, r + rc);
+  const [, yTopF] = proj(v, 0, yf, r + rc);
+  const cw = rc * v.ppm;
+  const band = builder()
+    .moveTo(x0 - cw, (yTopB + yTopF) / 2 + cw * 0.5)
+    .lineTo(x0 - cw * 0.92, yTopB + cw * 0.4)
+    .quadTo(x0, yTopB - 2, x0 + cw * 0.92, yTopB + cw * 0.4)
+    .lineTo(x0 + cw, (yTopB + yTopF) / 2 + cw * 0.5)
+    .lineTo(x0, yTopF + cw)
+    .close()
+    .build();
+  c.drawPath(band, fill(YARD.pvc));
+  c.save();
+  c.clipPath(band, ClipOp.Intersect, true);
+  for (let i = 0; i < 6; i++) {
+    const yy = yTopB + ((yTopF - yTopB) * (i + 0.5)) / 6;
+    c.drawPath(builder().addArc({ x: x0 - cw, y: yy - 3, width: cw * 2, height: cw * 1.4 }, 200, 140).build(), stroke(i % 2 ? '#8D9399' : '#5C6268', 2.2));
+  }
+  c.restore();
+  c.drawPath(band, stroke(INK, LINE_W));
+  // front flange: wood with grain, bolts and the centre hole
+  const ctr: V3 = [0, yf, r];
+  c.drawPath(discPath(v, ctr, u, w, r), fill(YARD.wood));
+  const [cx, cy] = proj(v, ...ctr);
+  for (let i = 0; i < 4; i++) c.drawPath(segment(cx - r * v.ppm * 0.9, cy - r * v.ppm * v.lift * (0.6 - i * 0.4), cx + r * v.ppm * 0.9, cy - r * v.ppm * v.lift * (0.6 - i * 0.4)), stroke(shade(YARD.wood, -0.15), 1, 0.7));
+  c.drawPath(discPath(v, ctr, u, w, r), stroke(INK, LINE_W));
+  c.drawPath(discPath(v, ctr, u, w, r * 0.82), stroke(shade(YARD.wood, -0.3), 1));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + hash01(seed) * 0.5;
+    const [bx, by] = proj(v, Math.cos(a) * r * 0.62, yf, r + Math.sin(a) * r * 0.62);
+    c.drawCircle(bx, by, 1.2, fill(YARD.steelDark));
+  }
+  c.drawPath(discPath(v, ctr, u, w, r * 0.16), fill(INK));
+  // the loose end hanging down the front, cut to show copper
+  const [ex, ey] = proj(v, r * 0.75, yf + 0.05, r * 1.7);
+  const [gx, gy] = proj(v, r * 1.1, yf + 0.25, 0.04);
+  const tail = builder().moveTo(ex, ey).cubicTo(ex + 8, ey + 8, gx - 4, gy - 14, gx, gy).build();
+  c.drawPath(tail, stroke(INK, 4.6));
+  c.drawPath(tail, stroke('#8D9399', 2.8));
+  c.drawCircle(gx, gy, 2.2, fill(YARD.copperLight));
+  c.drawCircle(gx, gy, 2.2, stroke(INK, 0.8));
 }
 
 /** A bundle of bare bright copper: two bright coils, one on the other. */
@@ -361,33 +422,57 @@ export function drawIngot(c: SkCanvas, v: View3q, metal: string, t = 99, o: { ox
   }
 }
 
-/** A loose heap of cast-off pieces (the gate tip), mixed metals, seeded. */
+/** A loose heap of mixed scrap (the gate tip): a lumpy mound with pieces sticking out of it, seeded. */
 export function drawHeap(c: SkCanvas, v: View3q, r: number, h: number, seed = 3): void {
-  groundShadow(c, v, r * 1.02, r * 0.95);
+  groundShadow(c, v, r * 1.05, r * 0.95);
   const P = v.ppm;
   const rx = r * P;
   const ry = r * P * v.tilt;
   const top = h * P * v.lift;
-  const mound = builder().moveTo(-rx, 0).quadTo(-rx * 0.55, -top * 1.15, 0, -top).quadTo(rx * 0.55, -top * 1.15, rx, 0).quadTo(0, ry * 1.15, -rx, 0).close().build();
-  c.drawPath(mound, fill(shade(YARD.steel, -0.18)));
+  // the silhouette: lumps along an arch
+  const pts: number[] = [];
+  const n = 11;
+  for (let i = 0; i <= n; i++) {
+    const a = i / n;
+    const x = -rx + 2 * rx * a;
+    const bump = 0.75 + hash01(seed, i, 9) * 0.35;
+    const y = -top * Math.sin(Math.PI * a) ** 0.8 * bump;
+    pts.push(x, y);
+  }
+  pts.push(rx * 0.7, ry * 0.6, 0, ry * 0.9, -rx * 0.7, ry * 0.6);
+  const mound = blobOpen(pts);
+  c.drawPath(mound, fill('#7C858C'));
+  c.save();
+  c.clipPath(mound, ClipOp.Intersect, true);
+  c.drawRect({ x: -rx, y: -top * 0.25, width: rx * 2, height: top + ry }, fill('#69727A'));
+  c.restore();
   c.drawPath(mound, stroke(INK, LINE_W));
-  const metals = ['light_iron', 'light_iron', 'hms', 'light_iron', 'aluminium', 'cast_iron', 'light_iron', 'hms'];
-  for (let i = 0; i < 14; i++) {
+  const metals = ['light_iron', 'hms', 'light_iron', 'aluminium', 'cast_iron', 'light_iron', 'hms', 'enamel'];
+  for (let i = 0; i < 22; i++) {
     const a = hash01(seed, i, 1) * 2 - 1;
     const b = hash01(seed, i, 2);
-    const x = a * rx * 0.75;
-    const y = -top * b * (1 - Math.abs(a) * 0.6) + ry * 0.3 * hash01(seed, i, 4);
-    const m = METAL[metals[i % metals.length]];
-    const w = 6 + hash01(seed, i, 3) * 9;
-    const turn = (hash01(seed, i, 5) - 0.5) * 50;
+    const x = a * rx * 0.85;
+    const yTop = -top * Math.sin(Math.PI * (a + 1) / 2) ** 0.8 * 0.9;
+    const y = yTop + (ry * 0.5 - yTop) * b * 0.8;
+    const key = metals[i % metals.length];
+    const base = key === 'enamel' ? YARD.enamel : METAL[key].base;
+    const light = key === 'enamel' ? '#FFFFFF' : METAL[key].light;
+    const w = 7 + hash01(seed, i, 3) * 10;
+    const turn = (hash01(seed, i, 5) - 0.5) * 70;
     c.save();
     c.translate(x, y);
     c.rotate(turn, 0, 0);
-    const p = poly([-w / 2, -2.2, w / 2, -3, w / 2 + 1, 2, -w / 2, 2.6]);
-    c.drawPath(p, fill(i % 3 === 0 ? m.light : m.base));
+    const kind = i % 4;
+    const p = kind === 0 ? poly([-w / 2, -1.6, w / 2, -1.6, w / 2, 1.6, -w / 2, 1.6]) : kind === 1 ? poly([-w / 2, -3, w / 3, -4, w / 2, 2, -w / 2 + 2, 3.4]) : poly([-w / 2, -2.4, w / 2, -2.8, w / 2 - 1, 2.6, -w / 2, 2.2]);
+    c.drawPath(p, fill(i % 3 === 0 ? light : base));
     c.drawPath(p, stroke(INK, 0.9));
+    if (key === 'light_iron' && i % 2) c.drawCircle(w * 0.15, 0, 0.9, fill(YARD.rust));
     c.restore();
   }
+}
+
+function blobOpen(pts: number[]): ReturnType<typeof poly> {
+  return blobPath(pts);
 }
 
 /** The colour of a carried or piled piece of a metal at its south face (for chips and legends). */
