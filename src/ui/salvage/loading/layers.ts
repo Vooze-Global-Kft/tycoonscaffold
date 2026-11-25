@@ -177,8 +177,8 @@ function gantry(c: SkCanvas, L: LoadingLayout): void {
   const Y = YARD.hivis;
   const D = YARD.hivisDark;
   c.drawRect({ x: 0, y: ground + 4 * k, width: w, height: 3 * k }, fill(YARD.steelDark));
-  for (const lx of [w * 0.035, w * 0.965]) {
-    const spread = 34 * k;
+  const spread = L.spread;
+  for (const lx of [L.legL, L.legR]) {
     const leg = (x0: number) => poly([x0 - 6 * k, ground, x0 + 6 * k, ground, lx + 5 * k, beamY, lx - 5 * k, beamY]);
     for (const x0 of [lx - spread, lx + spread]) {
       c.drawPath(leg(x0), fill(x0 < lx ? Y : D));

@@ -40,6 +40,10 @@ export interface LoadingLayout {
   plateH: number;
   plateW: number[];
   plateX: number[];
+  /** The gantry's legs: centre x of the west and east A-frames, and their half spread at the rail. */
+  legL: number;
+  legR: number;
+  spread: number;
   /** The display: centre x, box top, width, height; the printer's slot y; the LED cells' left x and top. */
   dX: number;
   dY: number;
@@ -124,8 +128,13 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
   // the display on its post at the east end, inside the safe area
   const dW = 112 * k;
   const dH = 66 * k;
-  const dX = Math.min(at(0.9), sr - dW / 2 - 8 * k);
   const dY = ground - 118 * k;
+  // the gantry's A-frame legs stand near the frame's edges; the display keeps clear of the east one
+  const legL = w * 0.025;
+  const legR = w * 0.975;
+  const spread = 34 * k;
+  const legInner = (y: number) => legR - spread + ((ground - y) / (ground - beamY)) * (spread - 5 * k);
+  const dX = Math.min(at(0.9), sr - dW / 2 - 8 * k, legInner(dY + dH) - dW / 2 - 8 * k);
   const slotY = dY + dH - 12 * k;
   const cellSize = 25 * k;
   const cellRight = dX + dW / 2 - 14 * k;
@@ -197,6 +206,9 @@ export function loadingLayout(w: number, h: number, insets: Insets, words: reado
     plateH,
     plateW,
     plateX,
+    legL,
+    legR,
+    spread,
     dX,
     dY,
     dW,
