@@ -136,9 +136,12 @@ function Labels({ cfg, yard, anim, width, height, insets }: { cfg: R.SalvageConf
       // Plates stay clear of the top bar and the goal card: a plate whose top would sit above the free
       // world (4.1's rows) is lowered onto its edge, over its own pointer, at the camera of this pass.
       const free = freeWorld(width, height, { top: inT, left: inL, right: inR, bottom: inB });
+      // Only a plate whose thing is itself in view below the bars moves; a thing under the bars keeps its
+      // plate there (it is not pulled into view).
       const next = stackLabels(shown, v, size * inv).map((p) => {
-        const top = (p.py - p.lift - 7 - p.h - cv.y - height / 2) * z + height / 2;
-        return top >= free.y0 + 2 ? p : { ...p, lift: p.lift - (free.y0 + 2 - top) / z };
+        const sy = (y: number) => (y - cv.y - height / 2) * z + height / 2;
+        const top = sy(p.py - p.lift - 7 - p.h);
+        return top >= free.y0 + 2 || sy(p.py) < free.y0 ? p : { ...p, lift: p.lift - (free.y0 + 2 - top) / z };
       });
       const key = `${inv};` + next.map((p) => `${p.item.id}:${p.item.lines.map((l) => l.text).join('|')}:${Math.round(p.lift)}`).join(';');
       if (key !== last) {

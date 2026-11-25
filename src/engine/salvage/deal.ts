@@ -106,6 +106,11 @@ export function dealDeliver(x: Ctx, t: number): void {
 /** On a new day an offered deal's price follows the board (shown equals applied: signDeal checks today's terms). */
 export function dealReprice(x: Ctx, t: number): void {
   const d = x.s.deal;
+  // A declined offer comes back the next market day (2.9, v3).
+  if (d.phase === 'declined' && d.step !== null) {
+    d.phase = 'offered';
+    x.ev.push({ type: 'dealOffered', step: d.step });
+  }
   if (d.phase !== 'offered' || d.step === null) return;
   const terms = dealTerms(x, d.step, dayAt(x, t));
   if (terms) d.price = terms.price;

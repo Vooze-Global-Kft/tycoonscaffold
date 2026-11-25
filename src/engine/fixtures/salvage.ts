@@ -318,7 +318,8 @@ const crewOf = (id: string, o: Partial<CrewMember>): CrewMember => ({ id, role: 
 const nearThing = (things: ThingState[], uid: string) => {
   const th = things.find((x) => x.uid === uid)!;
   const p = thingPos(C, th.at);
-  return { x: p.x + 0.6, y: p.y + 0.5 };
+  // Beside it, outside its footprint (world-a: a boss inside the car's footprint is hidden under its sprite).
+  return { x: p.x, y: p.y + (C.objects[th.obj]?.size.d ?? 0.8) / 2 + C.worker.radius + 0.1 };
 };
 const bbRatio = Math.round(P('bb') / P('li'));
 

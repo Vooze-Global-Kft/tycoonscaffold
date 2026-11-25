@@ -5,8 +5,9 @@
  * "All deliveries made". Sign presses `signDeal(terms)` with the terms the card showed ("Price updated"
  * asks again with the rules' retry); "supply deal", never "contract" (S21).
  *
- * Data: the rules' card (cardOf) when it carries lead lines or buttons; until then the lines are read
- * from the deal's state and the offered terms come from ./marketSample.ts (a STAND-IN, requests.md).
+ * Data: the rules' card (cardOf: lead, info rows, the no-charge line, the foot's buttons) when it carries
+ * lead lines or buttons; else the lines are read from the deal's state and the offered terms come from
+ * ./marketSample.ts (a STAND-IN for an older cardOf).
  */
 import { StyleSheet, View } from 'react-native';
 import type { CardButton, Txt } from '../../../engine/salvage';
@@ -14,7 +15,7 @@ import { CentredCard } from './CentredCard';
 import { DataLine, nameOf, useAsk, useContent, useSeenOnClose } from './marketParts';
 import { offeredTerms } from './marketSample';
 import type { CardViewProps } from './OverlayHost';
-import { BuyButton, INK, Lead, LocalButton, RefusalLine } from './parts';
+import { BuyButton, INK, Lead, Line, LocalButton, RefusalLine } from './parts';
 
 export function SupplyDeal({ cfg, g, data, onClose }: CardViewProps) {
   const c = useContent();
@@ -54,6 +55,19 @@ export function SupplyDeal({ cfg, g, data, onClose }: CardViewProps) {
       {lead.map((t, i) => (
         <Lead key={i} t={t} bold={i === 0} />
       ))}
+      {fromRules
+        ? data.rows.map((r) => (
+            <View key={r.id} style={styles.info}>
+              <Line t={r.name} size="name" lines={2} />
+              {r.line ? <Line t={r.line} size="line" colour={INK.soft} lines={2} /> : null}
+            </View>
+          ))
+        : null}
+      {fromRules && data.legal ? (
+        <View style={styles.info}>
+          <Line t={data.legal} size="line" colour={INK.soft} lines={3} />
+        </View>
+      ) : null}
       {ask.asked ? <RefusalLine t={ask.asked.txt} /> : null}
       {foot.length ? (
         <View style={styles.foot}>
@@ -71,5 +85,6 @@ export function SupplyDeal({ cfg, g, data, onClose }: CardViewProps) {
 
 const styles = StyleSheet.create({
   firm: { paddingTop: 6, paddingBottom: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
+  info: { paddingVertical: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
   foot: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingTop: 10 },
 });

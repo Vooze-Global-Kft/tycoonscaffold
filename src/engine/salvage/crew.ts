@@ -77,6 +77,21 @@ function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
 function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const s = x.s;
   const cap = x.c.crew.hand.load * 1000;
+  // Nothing anywhere to carry: stay at the stand (offered work again at every later event).
+  let any = false;
+  for (const p of s.pieces) if (!p.claim) {
+    any = true;
+    break;
+  }
+  if (!any) for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) if (trayFree(x, id) > 0) {
+    any = true;
+    break;
+  }
+  if (!any) for (const th of s.things) if (!th.by && th.at.at !== 'zone') {
+    any = true;
+    break;
+  }
+  if (!any) return false;
   const free = s.pieces.filter((p) => !p.claim);
   const claim = (ps: GroundPiece[]) => {
     for (const p of ps) p.claim = m.id;

@@ -13,9 +13,9 @@ import { proj, viewOf } from '../art/pen';
 import { CRANE_HOOK, drawHungSign, drawSignCrane } from '../art/site.draw';
 import { CentredCard } from './CentredCard';
 import { rungLines } from './marketLines';
-import { Drawing, useSeenOnClose } from './marketParts';
+import { Drawing, useAsk, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
-import { INK, Line, LocalButton, useFrame } from './parts';
+import { INK, Line, LocalButton, PadlockLine, useFrame } from './parts';
 import { TYPE, pt } from './layout';
 
 /** The crane's view (points a metre) and the sign's (larger, so its words fit at font scale 1.3). */
@@ -29,11 +29,15 @@ const AY = 142;
 export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
   const { layout } = useFrame();
   useSeenOnClose('rung');
-  const n = g.salvage.ladder.rung;
+  const n = Math.max(1, g.salvage.ladder.rung);
   const rung = cfg.salvage.ladder.rungs.find((r) => r.n === n);
   const tonnes = rung?.t ?? (n === 2 ? cfg.salvage.ladder.rung2.t : n === 3 ? cfg.salvage.ladder.rung3.t : 0);
   const cap = (cfg.salvage.ceilings_t_h as number[] | undefined)?.[n - 1] ?? null;
-  const { sign, opens } = rungLines(n, tonnes, cap);
+  const mine = rungLines(n, tonnes, cap);
+  // The rules' card: lead [sign, ...opens], a locked row for the next rung, OK opening the table.
+  const sign = data.lead[0] ?? mine.sign;
+  const opens = data.lead.length ? data.lead.slice(1) : mine.opens ? [mine.opens] : [];
+  const ask = useAsk();
   const reduce = useReducedMotion();
   const drop = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
@@ -59,9 +63,16 @@ export function RungSign({ cfg, g, data, onClose }: CardViewProps) {
           </Animated.View>
         </View>
       </View>
-      {opens ? <Line t={opens} size="name" bold lines={2} center /> : null}
+      {opens.map((t, i) => (
+        <Line key={i} t={t} size="name" bold lines={2} center />
+      ))}
+      {data.rows.map((r) => (
+        <View key={r.id} style={styles.next}>
+          {r.state === 'locked' ? <PadlockLine t={r.name} /> : <Line t={r.name} size="line" colour={INK.soft} lines={2} center />}
+        </View>
+      ))}
       <View style={styles.foot}>
-        <LocalButton label={{ key: 'ok' }} onPress={onClose} />
+        {data.foot.length ? data.foot.map((b, i) => <LocalButton key={i} label={b.label} onPress={() => ask.press(b.action, 'foot')} />) : <LocalButton label={{ key: 'ok' }} onPress={onClose} />}
       </View>
     </CentredCard>
   );
@@ -71,5 +82,6 @@ const styles = StyleSheet.create({
   stage: { alignItems: 'center', paddingTop: 4 },
   sign: { position: 'absolute' },
   words: { position: 'absolute', left: 5, top: 5, alignItems: 'center', justifyContent: 'center' },
+  next: { alignItems: 'center', paddingTop: 4 },
   foot: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: INK.rule, marginTop: 6 },
 });

@@ -11,7 +11,6 @@ import { lintSalvage, SalvageSchema } from '../../config/schema.salvage';
 import { FIXTURE_NOW, SALVAGE_TEST, SALVAGE_TEST_RAW } from '../fixtures/salvage';
 import * as R from '../salvage';
 import { pieceCount, pieceSpec } from './content';
-import { contentsMass_g } from './partners';
 import { hand, stand, standUntil, walkTo } from './play';
 import { pointOf, thingPos } from './positions';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
@@ -67,45 +66,25 @@ function busyYard(cash = 100_000): { g: SalvageGame; events: SalvageEvent[] } {
   return { g, events: ev };
 }
 
-const hookedMass = (events: SalvageEvent[], g: SalvageGame) => {
-  let m = 0;
-  for (const e of events) if (e.type === 'hook') m += contentsMass_g({ c: C } as never, e.slot === 0 && g ? (C.partners[e.partner].trial as Record<string, number>) : {});
-  return m;
-};
-void hookedMass;
 
 describe('mass is kept everywhere', () => {
   it('over an hour of a busy yard with no boss (crew, machines, the driver, the round)', () => {
     const { g } = busyYard();
     const ev: SalvageEvent[] = [];
     const g1 = R.jump(cfg, g, g.salvage.t + 3600, ev);
+    // Skips hooked bring their label's mass: the trial's contents the first time, then the partner's skip.
+    const seen = new Set<string>();
     let hooked = 0;
-    for (const e of ev) if (e.type === 'hook') hooked += 0;
-    // Skips hooked bring their label's mass: read it from the bridge tickets and the truck.
-    const tickets = ev.filter((e): e is Extract<SalvageEvent, { type: 'hook' }> => e.type === 'hook');
-    void tickets;
-    void hooked;
-    const inn = cameIn(g, ev);
-    let skipsIn = 0;
-    for (const e of ev) if (e.type === 'bridgeWeighIn' && e.ticket.kind === 'skipWeighIn') skipsIn += e.ticket.net_g;
-    // The weighbridge rounds net to its step: use the hooked skips' true masses instead.
-    const trueSkips = ev.filter((e) => e.type === 'hook').length;
-    expect(trueSkips).toBeGreaterThan(0);
-    const out = g1.salvage.ladder.supplied_g;
-    const now = inYard(g1.salvage) + out - g1.salvage.scaleRound_g;
-    const hookedTrue = (() => {
-      let m = 0;
-      for (const e of ev) if (e.type === 'tip') void e;
-      return m;
-    })();
-    void hookedTrue;
-    // inYard counts the truck's skip; tipped things are things. The difference is exactly the skips hooked.
-    const diff = now - inn;
-    const expected = ev.filter((e): e is Extract<SalvageEvent, { type: 'hook' }> => e.type === 'hook').map((e) => (e.price >= 0 ? 1 : 0));
-    void expected;
-    expect(diff).toBeGreaterThan(0);
-    expect(diff % 1).toBe(0);
-    void skipsIn;
+    for (const e of ev) {
+      if (e.type !== 'hook') continue;
+      const p = C.partners[e.partner];
+      const contents = seen.has(e.partner) ? p.skip : p.trial;
+      seen.add(e.partner);
+      for (const [o, n] of Object.entries(contents)) hooked += C.objects[o].gross_g * n;
+    }
+    expect(seen.size).toBeGreaterThan(0);
+    const s = g1.salvage;
+    expect(inYard(s) + s.ladder.supplied_g - s.scaleRound_g).toBe(cameIn(g, ev) + hooked);
   });
 
   it('the first minute by hand keeps every gram (cut, carry, weigh, collect)', () => {
@@ -290,5 +269,24 @@ describe('the bench', () => {
     process.stderr.write(`bench: one tick ${perTick.toFixed(3)} ms; six hours away ${awayMs.toFixed(1)} ms (A = ${away.seconds} s)\n`);
     expect(perTick).toBeLessThan(1);
     expect(awayMs).toBeLessThan(50 * 4); // the machine is shared by fifteen engineers: the printed figure is the measure
+  });
+});
+
+describe('the frozen states', () => {
+  it('each runs an hour of the real engine (ticked and jumped) without a throw, cash and stocks finite', async () => {
+    const { FIXTURE_NAMES, fixtureGame } = await import('../fixtures/salvage');
+    for (const n of FIXTURE_NAMES) {
+      let g = fixtureGame(n, base(0), FIXTURE_NOW);
+      g = { ...g, lastSavedAt: g.salvage.clock.highMs };
+      let now = g.salvage.clock.highMs;
+      for (let i = 0; i < 600; i++) {
+        now += 100;
+        g = R.advanceSalvage(cfg, g, 0.1, now);
+      }
+      g = R.jump(cfg, g, g.salvage.t + 3600);
+      expect(Number.isFinite(g.cash), n).toBe(true);
+      expect(g.cash, n).toBeGreaterThanOrEqual(0);
+      for (const b of Object.values(g.salvage.bays)) expect(b.g, n).toBeGreaterThanOrEqual(0);
+    }
   });
 });

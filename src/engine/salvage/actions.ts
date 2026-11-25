@@ -5,7 +5,7 @@
  * (`priceUpdated`, retry = the same act at the price now) when they differ: shown equals applied.
  * Owner: rules-sim. The prices are the book's (ladder.ts): the card and the check read one function.
  */
-import { goalOf } from './cards';
+import { nextGoal } from './goals';
 import { priceOf } from './board';
 import { asideOf, bayOf, freeOf } from './bays';
 import { begin, count, finish, spend } from './clock';
@@ -234,9 +234,8 @@ export function declineDeal(cfg: SalvageConfig, g: SalvageGame, clock: number, e
   void clock;
   if (g.salvage.deal.phase !== 'offered' || g.salvage.deal.step === null) return refuse(g, events, 'nothing');
   const x = begin(cfg, g, events, true);
+  // Declined: the offer comes back the next market day (2.9, v3); the optional goal is passed over.
   x.s.deal.phase = 'declined';
-  // The optional goal may be skipped by the card's Not now (skipGoal); declining keeps the offer on the wall for later.
-  x.s.deal.phase = 'offered';
   const id = (cfg.salvage.goals.find((q) => q.done === 'deal:signed') ?? null)?.id;
   if (id && !x.s.goals.skipped.includes(id) && !x.s.goals.done.includes(id)) x.s.goals.skipped.push(id);
   return finish(g, x);
@@ -255,7 +254,7 @@ export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: 
 /** The goal card's Not now on an optional goal (refused `nothing` when it is not the current optional goal). */
 export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
-  const cur = goalOf(cfg.salvage, g);
+  const cur = nextGoal(cfg, g);
   if (!cur || cur.id !== id || !cur.optional) return refuse(g, events, 'nothing');
   return { ...g, salvage: { ...g.salvage, goals: { ...g.salvage.goals, skipped: [...g.salvage.goals.skipped, id] } } };
 }

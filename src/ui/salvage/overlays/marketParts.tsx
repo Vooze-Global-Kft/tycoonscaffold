@@ -12,7 +12,7 @@ import { Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native'
 import { Canvas, Picture, Skia, type SkCanvas } from '@shopify/react-native-skia';
 import type { CardAction, CardKind, SalvageContent, Txt } from '../../../engine/salvage';
 import { salvageActions, type Refusal } from '../../../modes/salvage/actions';
-import { useCards } from './cardStack';
+import { openCard, useCards } from './cardStack';
 import { INK, Line, useFrame } from './parts';
 import { TYPE, pt } from './layout';
 
@@ -133,6 +133,12 @@ export function useAsk(): { asked: Asked | null; press: (a: CardAction, row: str
     [],
   );
   const press = (a: CardAction, row: string) => {
+    if (a.act === 'open') {
+      // Opening is the screen's: the rules only note it as seen (press does that).
+      salvageActions.press(a);
+      openCard(a.card);
+      return;
+    }
     const r: Refusal | null = salvageActions.press(a);
     if (alive.current) setAsked(r ? { row, txt: { key: `refusal.${r.key}`, args: r.args }, retry: r.retry } : null);
   };

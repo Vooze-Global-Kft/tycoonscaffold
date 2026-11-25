@@ -91,7 +91,7 @@ export function DevBoard({ bottom, left }: { bottom: number; left: number }) {
 const styles = StyleSheet.create({
   tab: { position: 'absolute', zIndex: 60, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 10, height: 24, borderRadius: 6, justifyContent: 'center' },
   tabText: { color: '#9EF59E', fontSize: 11, fontFamily: 'monospace' },
-  board: { position: 'absolute', zIndex: 60, width: 330, maxHeight: 300, backgroundColor: 'rgba(0,0,0,0.82)', borderRadius: 8, padding: 6 },
+  board: { position: 'absolute', zIndex: 60, width: 330, maxHeight: 250, backgroundColor: 'rgba(0,0,0,0.82)', borderRadius: 8, padding: 6 },
   last: { color: '#FFE66D', fontSize: 11, fontFamily: 'monospace', marginBottom: 4 },
   list: { paddingBottom: 6 },
   head: { color: '#9EF59E', fontSize: 11, fontFamily: 'monospace', marginTop: 4, marginBottom: 2 },

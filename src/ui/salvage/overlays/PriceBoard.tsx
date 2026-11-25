@@ -28,7 +28,8 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
   const c = useContent();
   const ask = useAsk();
   useSeenOnClose('board');
-  const board = boardWithSell(cfg, g, data.board ?? R.priceBoard(cfg, g, Date.now()));
+  // The rules' board when the card carries one (Sell priced by the rules); else the selector with the stand-in's Sell.
+  const board = data.board ?? boardWithSell(cfg, g, R.priceBoard(cfg, g, Date.now()));
   const focus = data.focus ?? null;
   // A bay's card opens the board at its row: the focused row first, marked (STAND-IN for a scroll offset: requests.md).
   const rows = focus ? [...board.rows.filter((r) => r.grade === focus), ...board.rows.filter((r) => r.grade !== focus)] : board.rows;
@@ -57,12 +58,13 @@ export function PriceBoard({ cfg, g, data, onClose }: CardViewProps) {
         </Note>
       ) : null}
       <View style={{ height: off.total }}>
-        <View style={styles.pictos} pointerEvents="none">
-          <Drawing w={PICTO} h={off.total} deps={[rows.map((r) => r.grade).join(), off.total]} draw={(cv) => rows.forEach((r, i) => gradePictogram(cv, r.grade, 0, off.tops[i] + (off.heights[i] - PICTO) / 2, PICTO))} />
-        </View>
         {rows.map((r, i) => (
           <BoardLine key={r.grade} r={r} h={off.heights[i]} focused={r.grade === focus} name={gradeName(c, r.grade)} onPress={(b) => ask.press(b.action, r.grade)} />
         ))}
+        {/* After the rows, so a marked row's shade does not hide its pictogram. */}
+        <View style={styles.pictos} pointerEvents="none">
+          <Drawing w={PICTO} h={off.total} deps={[rows.map((r) => r.grade).join(), off.total]} draw={(cv) => rows.forEach((r, i) => gradePictogram(cv, r.grade, 0, off.tops[i] + (off.heights[i] - PICTO) / 2, PICTO))} />
+        </View>
       </View>
       {ask.asked ? (
         <View style={styles.asked}>
