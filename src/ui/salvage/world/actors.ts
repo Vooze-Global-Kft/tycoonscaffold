@@ -32,7 +32,10 @@ import { CARRIER_FRAMES, HAND_FAMILIES, carrierFrameOf, handFamilyOf } from '../
 import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
 import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf } from '../art/manifest/things';
 import { loadFamily, type LoadFamily } from '../art/people.draw';
+import { laneDrawEnd, laneGeo, type LaneGeo } from './yard';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
+
+export { laneDrawEnd, laneGeo, type LaneGeo };
 
 export const ITEM = 12;
 export const L_DECAL = 0;
@@ -143,35 +146,6 @@ export const PLACE_ART: Readonly<Record<string, { id?: string; flat?: boolean; c
   'prop.truckpark': { lines: true },
   'prop.backfield.gate': { id: 'plant.gate.field', extra: [{ id: 'plant.sign.plate', dx: 1.9, dy: 0.2 }] },
 };
-
-/** The lane's geometry from content: the gate, the lane's width, each partner's distance, the bridge. */
-export interface LaneGeo {
-  gx: number;
-  gy: number;
-  /** Half the asphalt's width, metres. */
-  half: number;
-  /** Partner id -> x of its site (the gate plus its lane distance). */
-  sites: { id: string; x: number; look: number }[];
-  /** x of the weight-limited bridge (null: none), and how far a vehicle may go. */
-  bridge: number | null;
-  end: number;
-}
-
-export function laneGeo(c: SalvageContent): LaneGeo | null {
-  const g = c.map.points.gate;
-  if (!g) return null;
-  const lane = c.map.lane ?? {};
-  const half = ((c.map as { laneWidth?: number }).laneWidth ?? 6) / 2;
-  const sites = Object.entries(c.partners).map(([id, p], i) => ({ id, x: g[0] + (lane[p.lane] ?? 0), look: i }));
-  const bridgeKey = Object.keys(lane).find((k) => k.startsWith('bridge'));
-  const bridge = bridgeKey ? g[0] + lane[bridgeKey] : null;
-  const far = Math.max(g[0] + 20, ...sites.map((s) => s.x + 12));
-  const end = bridge !== null ? bridge - 2 : far;
-  return { gx: g[0], gy: g[1], half, sites, bridge, end };
-}
-
-/** How far the drawn lane runs east (asphalt past the bridge). */
-export const laneDrawEnd = (l: LaneGeo) => (l.bridge !== null ? l.bridge + 14 : l.end);
 
 /** The yard's static sprites (see the header): built once per config and baked art. */
 export function staticItems(c: SalvageContent, res: Resolver): number[] {
@@ -627,4 +601,137 @@ export function heading4(dx: number, dy: number): number {
   'worklet';
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 1 : 3;
   return dy > 0 ? 0 : 2;
+}
+
+// =====================================================================================================
+// 4. The frame's sprite lists (worklets: the frame loop calls them on the UI thread, the tests under node)
+// =====================================================================================================
+
+/** One list of sprites of a frame: decals, shadows or the depth-sorted list. */
+export interface DrawList {
+  key: Float64Array;
+  cell: Float64Array;
+  sx: Float64Array;
+  sy: Float64Array;
+  k: Float64Array;
+  tint: Float64Array;
+  al: Float64Array;
+  order: Int32Array;
+  n: number;
+  cap: number;
+  /** Offset of this list in the shared host-object pools. */
+  base: number;
+}
+
+/** View numbers for addTo: camX, camY, ppm, tilt, lift, SW, SH, zoom. */
+export function addTo(L: DrawList, V: Float64Array, key: number, cell: number, wx: number, wy: number, dx: number, dy: number, scale: number, tint: number, alpha: number): void {
+  'worklet';
+  if (cell < 0 || L.n >= L.cap) return;
+  const z = V[7];
+  const k40 = V[2] / 40;
+  const cx = V[5] / 2;
+  const cy = V[6] / 2;
+  const sx = (wx * V[2] - V[0] - cx) * z + cx + dx * k40 * z;
+  const sy = (wy * V[2] * V[3] - V[1] - cy) * z + cy + dy * k40 * z;
+  const m = 420 * z;
+  if (sx < -m || sx > V[5] + m || sy < -m || sy > V[6] + m) return;
+  const i = L.n;
+  L.key[i] = key;
+  L.cell[i] = cell;
+  L.sx[i] = sx;
+  L.sy[i] = sy;
+  L.k[i] = scale * k40 * z;
+  L.tint[i] = tint;
+  L.al[i] = alpha;
+  L.n = i + 1;
+}
+
+/** A person and what they carry or push, in the people artist's layer order (art/manifest/people.ts personLayers). */
+export function personInto(L: DrawList, V: Float64Array, T: ActorTable, who: number, pose: number, frame: number, h: number, hand: number, cKind: number, cFrame: number, tint: number, wx: number, wy: number, key: number): number {
+  'worklet';
+  const north = h === 2;
+  const f = Math.min(frame, POSE_FRAMES[pose] - 1);
+  let pc = T.person[((who * 9 + pose) * 4 + f) * 4 + h];
+  if (pc < 0) pc = T.person[((who * 9 + P_STAND) * 4) * 4 + h];
+  const hc = who === 0 && hand >= 0 ? T.hand[hand * 4 + h] : -1;
+  let cc = -1;
+  let cdx = 0;
+  let cdy = 0;
+  if (cKind >= 0 && pose === P_PUSH) {
+    cc = T.carrier[(cKind * 4 + cFrame) * 4 + h];
+    const m = T.ahead[cKind];
+    cdx = h === 1 ? m * 40 : h === 3 ? -m * 40 : 0;
+    cdy = h === 0 ? m * 28 : h === 2 ? -m * 28 : 0;
+  }
+  let k = key;
+  let n = 0;
+  if (hc >= 0 && !north) addTo(L, V, (k += 1e-4), hc, wx, wy, 0, 0, 1, -1, 1);
+  if (cc >= 0 && north) addTo(L, V, (k += 1e-4), cc, wx, wy, cdx, cdy, T.carrierScale, -1, 1);
+  addTo(L, V, (k += 1e-4), pc, wx, wy, 0, 0, 1, -1, 1);
+  n++;
+  if (who === 1) {
+    let vc = T.vest[(pose * 4 + f) * 4 + h];
+    if (vc < 0) vc = T.vest[(P_STAND * 4) * 4 + h];
+    addTo(L, V, (k += 1e-4), vc, wx, wy, 0, 0, 1, tint, 1);
+  }
+  if (hc >= 0 && north) addTo(L, V, (k += 1e-4), hc, wx, wy, 0, 0, 1, -1, 1);
+  if (cc >= 0 && !north) addTo(L, V, (k += 1e-4), cc, wx, wy, cdx, cdy, T.carrierScale, -1, 1);
+  return n;
+}
+
+/** The point at share u (0..1) along a polyline of `np` points in `pts`; writes x, y, dx, dy into out. */
+export function along(out: number[], pts: number[], np: number, u: number): void {
+  'worklet';
+  let total = 0;
+  for (let i = 1; i < np; i++) total += Math.hypot(pts[i * 2] - pts[i * 2 - 2], pts[i * 2 + 1] - pts[i * 2 - 1]);
+  let rem = Math.max(0, Math.min(1, u)) * total;
+  out[0] = pts[0];
+  out[1] = pts[1];
+  out[2] = np > 1 ? pts[2] - pts[0] : 0;
+  out[3] = np > 1 ? pts[3] - pts[1] : 1;
+  for (let i = 1; i < np; i++) {
+    const sx = pts[i * 2] - pts[i * 2 - 2];
+    const sy = pts[i * 2 + 1] - pts[i * 2 - 1];
+    const sl = Math.hypot(sx, sy);
+    out[2] = sx;
+    out[3] = sy;
+    if (rem <= sl || i === np - 1) {
+      const f = sl > 0 ? Math.min(1, rem / sl) : 0;
+      out[0] = pts[i * 2 - 2] + sx * f;
+      out[1] = pts[i * 2 - 1] + sy * f;
+      return;
+    }
+    rem -= sl;
+  }
+}
+
+/** Length of a polyline of np points. */
+export function pathLen(pts: number[], np: number): number {
+  'worklet';
+  let total = 0;
+  for (let i = 1; i < np; i++) total += Math.hypot(pts[i * 2] - pts[i * 2 - 2], pts[i * 2 + 1] - pts[i * 2 - 1]);
+  return total;
+}
+
+/** Insertion sort of a list's order by key (nearly sorted from frame to frame). */
+export function sortList(L: DrawList): void {
+  'worklet';
+  const o = L.order;
+  for (let i = 0; i < L.n; i++) o[i] = i;
+  for (let i = 1; i < L.n; i++) {
+    const v = o[i];
+    const kv = L.key[v];
+    let j = i - 1;
+    while (j >= 0 && L.key[o[j]] > kv) {
+      o[j + 1] = o[j];
+      j--;
+    }
+    o[j + 1] = v;
+  }
+}
+
+/** makeList for the UI thread. */
+export function makeListW(cap: number, base: number): DrawList {
+  'worklet';
+  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), n: 0, cap, base };
 }

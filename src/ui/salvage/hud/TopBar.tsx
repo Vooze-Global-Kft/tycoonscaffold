@@ -11,7 +11,7 @@ import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { PAL } from '../palette';
 import { say } from '../strings';
-import { useSalvageUi } from '../uiState';
+import { openCard } from '../overlays/cardStack';
 import { hudAnchors } from './anchors';
 import { coinSize, cashCoinPoint, fitText, pickForm, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
@@ -42,7 +42,7 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
         <Coin size={coinSize(s)} />
         <RollingCash value={v.cash} pt={Math.min(15 * s, h / 1.25)} />
       </Paper>
-      <Pressable accessibilityRole="button" accessibilityLabel={ladderText} onPress={() => useSalvageUi.getState().openCard({ kind: 'table' })} style={[styles.abs, { left: x2, top: y, width: slots.ladder, height: h }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={ladderText} onPress={() => openCard({ kind: 'table' })} style={[styles.abs, { left: x2, top: y, width: slots.ladder, height: h }]}>
         {({ pressed }) => (
           <Paper style={StyleSheet.absoluteFill} face={[styles.row, styles.ladder, pressed && styles.pressed]}>
             <Rung />
@@ -57,7 +57,7 @@ export function TopBar({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
           {carry}
         </BarText>
       </Paper>
-      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'title.clipboard' }, c)} onPress={() => useSalvageUi.getState().openCard({ kind: 'clipboard' })} style={[styles.abs, { left: x4, top: y, width: slots.clip, height: h }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'title.clipboard' }, c)} onPress={() => openCard({ kind: 'clipboard' })} style={[styles.abs, { left: x4, top: y, width: slots.clip, height: h }]}>
         {({ pressed }) => (
           <Paper style={StyleSheet.absoluteFill} face={[styles.row, styles.center, pressed && styles.pressed]}>
             <Clipboard />

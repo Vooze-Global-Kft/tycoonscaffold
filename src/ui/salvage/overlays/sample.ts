@@ -246,7 +246,7 @@ export function crucibleRows(cfg: SalvageConfig, g: SalvageGame, data: CardData)
   const c = data.machine?.crucible;
   if (!c) return [];
   const rows: CardRow[] = [];
-  rows.push({ id: 'recipe', name: { key: RECIPE_NAME[c.recipe] ?? 'card.recipe', args: { recipe: { text: 'card.empty' } } }, line: data.machine!.status, button: null, icon: null });
+  rows.push({ id: 'recipe', name: { key: RECIPE_NAME[c.recipe] ?? 'card.recipe', args: { recipe: { text: 'card.empty' } } }, line: null, button: null, icon: null });
   rows.push({ id: 'charge', name: { key: 'card.charge', args: { a: { mass_g: c.charge_g, step: 'lot' }, b: { mass_g: c.pot_g, step: 'lot' } } }, line: c.ready ? { key: 'card.readyToPour' } : c.poursInS !== null ? { key: 'card.poursIn', args: { t: { secs: c.poursInS } } } : null, button: null, icon: null });
   if (c.heel_g > 0) rows.push({ id: 'heel', name: { key: 'card.heel', args: { kg: { mass_g: c.heel_g, step: 'lot' } } }, line: null, button: null, icon: null });
   return rows;

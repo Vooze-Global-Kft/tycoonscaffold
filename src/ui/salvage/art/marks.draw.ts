@@ -109,3 +109,46 @@ export function drawPadlockChip(c: SkCanvas): void {
   c.drawPath(rrect(x + 5, y + 5, h - 10, h - 10, 5), fill(INK));
   padlock(c, x + 5 + (h - 10) / 2, y + h / 2, 9, YARD.hivis);
 }
+
+// ---------------------------------------------------------------------------
+// Effects (yard-stage1.md 6.1): sparks, dust, the torch's flame, the coin. Baked in a few frames each
+// and drawn at the work point (anchor) by the world; light only, never fire made fun (yard-style 11).
+// ---------------------------------------------------------------------------
+
+/** A fan of grinder or torch sparks thrown east-down from the anchor: short bright streaks, never four-point stars. frame 0..2. */
+export function drawSparks(c: SkCanvas, frame = 0): void {
+  for (let i = 0; i < 9; i++) {
+    const a = -0.5 + hash01(i, frame, 31) * 1.5;
+    const r0 = 3 + hash01(i, frame, 32) * 4;
+    const r1 = r0 + 6 + hash01(i, frame, 33) * 10;
+    const col = i % 3 === 0 ? YARD.glowWhite : YARD.spark;
+    c.drawPath(segment(Math.cos(a) * r0, Math.sin(a) * r0, Math.cos(a) * r1, Math.sin(a) * r1 + 2), stroke(col, 1.2));
+  }
+  c.drawPath(oval(0, 0, 3.5, 3), radial(0, 0, 5, [YARD.glowWhite, 'rgba(255,230,128,0)']));
+}
+
+/** A puff of dust where a sledge lands or a piece drops: three soft grey lobes, growing and fading over frames 0..2. */
+export function drawDust(c: SkCanvas, frame = 0): void {
+  const k = 1 + frame * 0.45;
+  const a = 0.5 - frame * 0.14;
+  for (let i = 0; i < 4; i++) {
+    const x = (i - 1.5) * 6 * k;
+    const y = -3 * k - hash01(i, 41) * 4 * k;
+    c.drawPath(oval(x, y, 6 * k, 4 * k), fill('#BDB7AA', a));
+  }
+}
+
+/** The cutting torch's flame at its nozzle: a short blue-white cone with a bright core (frames 0, 1 flicker). */
+export function drawFlame(c: SkCanvas, frame = 0): void {
+  const l = frame ? 11 : 9;
+  c.drawPath(poly([0, -2.4, l, -0.6, l + 1.5, 0, l, 0.6, 0, 2.4]), fill('#8FC8FF', 0.85));
+  c.drawPath(poly([0, -1.2, l * 0.55, -0.3, l * 0.6, 0, l * 0.55, 0.3, 0, 1.2]), fill(YARD.glowWhite));
+}
+
+/** One scrip coin flying to the cash chip (the § as two stacked S strokes is the interface's; here a plain disc with a rim). */
+export function drawCoin(c: SkCanvas): void {
+  c.drawPath(oval(0, 0, 6, 6), fill(YARD.hivis));
+  c.drawPath(oval(0, 0, 6, 6), stroke(INK, 1.2));
+  c.drawPath(oval(0, 0, 4, 4), stroke(YARD.hivisDark, 1));
+  c.drawPath(segment(-2.2, -3.2, -2.8, -1.2), stroke('#FFFFFF', 1, 0.7));
+}

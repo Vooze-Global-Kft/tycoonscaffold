@@ -40,6 +40,7 @@ import {
   drawSkipLoad,
   drawTrailer,
   drawVan,
+  drawPublicCar,
   flatbedBedCentre,
   headingRad,
   skipTopOnTruck,
@@ -349,6 +350,13 @@ const VEHICLES: PeopleEntry[] = [
     footprint: { w: 3.4, d: 1.8 },
     tint: YARD.enamel,
     draw: (c, v, _f, h) => drawVan(c, v, headingRad(h4to8(h))),
+  }),
+  vehicle('vehicle.car', {
+    frames: ['car'],
+    headings: 4,
+    footprint: { w: 2.8, d: 1.4 },
+    tint: YARD.enamel,
+    draw: (c, v, _f, h) => drawPublicCar(c, v, headingRad(h4to8(h))),
   }),
   vehicle('vehicle.trailer', {
     frames: ['trailer'],

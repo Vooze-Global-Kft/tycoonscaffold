@@ -14,7 +14,7 @@
  * - the event pump (./hud/pump.ts): ONE listener on the rules' events hands them to every subscriber
  *   (tickets, toasts, the world's effects, hints, the card triggers) and plays their sounds (section 7).
  * Package 4 (`hud`) owns this file: the bars, tickets and toasts are ./hud/*; the cards are the overlay
- * engineers' (./overlays/*), opened through ./uiState.ts `openCard`.
+ * engineers' (./overlays/*), opened through ./overlays/cardStack.ts `openCard`.
  *
  * Hour-0 joint (contract step): the motion numbers come from the rules' content (`walk`, `truck.v`,
  * `worker`), the presence sample is the contract's `Presence` (with `standingFor`), and the place the
@@ -31,7 +31,6 @@ import { useGame } from '../../state/store';
 import { DevPanel } from './dev/DevPanel';
 import { LoadingCurtain } from './loading';
 import { yardSwitches } from './dev/switches';
-import { CardStandIn } from './hud/CardStandIn';
 import { hudDemo } from './hud/dev';
 import { useFontScale } from './hud/fontScale';
 import { HudLayer, OneButton, RotateCard } from './hud/Hud';
@@ -184,7 +183,6 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
       <OverlayHost width={width} height={height} insets={insets} />
-      <CardStandIn cfg={cfg} L={L} insets={insets} />
       {portrait ? <RotateCard cfg={cfg} s={L.s} /> : null}
       <LoadingCurtain />
     </View>

@@ -135,7 +135,7 @@ function boxCorners(F: ReturnType<typeof frameOf>, len: number, wid: number, h: 
 // Shadows
 // ---------------------------------------------------------------------------
 
-export type ActorKind = 'person' | 'truck' | 'flatbed' | 'van' | 'trailer' | 'skip' | 'sack' | 'trolley';
+export type ActorKind = 'person' | 'truck' | 'flatbed' | 'van' | 'car' | 'trailer' | 'skip' | 'sack' | 'trolley';
 
 /** Footprint (len along heading, wid) and height in metres of each actor, for its shadow. */
 export const ACTOR_SIZE: Readonly<Record<ActorKind, { len: number; wid: number; h: number; ahead?: number }>> = {
@@ -143,6 +143,7 @@ export const ACTOR_SIZE: Readonly<Record<ActorKind, { len: number; wid: number; 
   truck: { len: 4.6, wid: 2.0, h: 2.3 },
   flatbed: { len: 4.6, wid: 2.0, h: 2.2 },
   van: { len: 3.4, wid: 1.8, h: 1.9 },
+  car: { len: 2.8, wid: 1.4, h: 1.3 },
   trailer: { len: 1.6, wid: 1.3, h: 0.7, ahead: -2.75 },
   skip: { len: 2.7, wid: 1.75, h: 0.95 },
   sack: { len: 0.6, wid: 0.5, h: 0.8, ahead: 0.65 },
@@ -1046,4 +1047,80 @@ export function drawVan(c: SkCanvas, v: View3q, heading: number, o: { body?: str
   }
   for (const [u, s] of wheels) if (Math.sign(s) === nearSign) truckWheel(c, v, F.at(u, s, 0.33), F.f, 0.33, sideOf(s));
   if (o.trailer && !trailerFirst) drawTrailer(c, v, heading);
+}
+
+// ---------------------------------------------------------------------------
+// The public's car (a small hatchback that brings a washer in its boot or a trailer behind)
+// ---------------------------------------------------------------------------
+
+export const CAR = { len: 2.8, wid: 1.4 } as const;
+
+/**
+ * The public's car at a heading: a low body, a narrower glasshouse set back (glass on its sloped and side
+ * faces, a body-coloured roof), four wheels, a driver. `body` its paint (the atlas may tint the enamel
+ * one). Footprint 2.8 x 1.4 m (two thirds of a real car's length, as vehicles are); the trailer, when the
+ * world draws one, hitches as it does to the van.
+ */
+export function drawPublicCar(c: SkCanvas, v: View3q, heading: number, o: { body?: string; driver?: boolean } = {}): void {
+  const F = frameOf(heading);
+  const body = o.body ?? YARD.enamel;
+  const nearSign = F.ly >= 0 ? 1 : -1;
+  const wheels: [number, number][] = [
+    [0.88, 0.6],
+    [-0.88, 0.6],
+    [0.88, -0.6],
+    [-0.88, -0.6],
+  ];
+  const sideOf = (s: number): V3 => [F.lx * Math.sign(s), F.ly * Math.sign(s), 0];
+  for (const [u, s] of wheels) if (Math.sign(s) !== nearSign) truckWheel(c, v, F.at(u, s, 0.27), F.f, 0.27, sideOf(s));
+  const isFront = (n: V3) => n[0] * F.fx + n[1] * F.fy > 0.7;
+  const isBack = (n: V3) => n[0] * F.fx + n[1] * F.fy < -0.7;
+  const b = F.at(0, 0, 0);
+  box(c, v, {
+    len: CAR.len,
+    wid: CAR.wid,
+    h: 0.5,
+    z: 0.22,
+    ox: b[0],
+    oy: b[1],
+    heading,
+    color: body,
+    bevel: true,
+    onFace: (q, n) => {
+      if (isFront(n)) {
+        faceFill(c, v, subQuad(q, 0.06, 0.24, 0.5, 0.78), YARD.paper, 0.8);
+        faceFill(c, v, subQuad(q, 0.76, 0.94, 0.5, 0.78), YARD.paper, 0.8);
+        faceFill(c, v, subQuad(q, 0.32, 0.68, 0.2, 0.42), shade(body, -0.4), 0.8);
+      } else if (isBack(n)) {
+        faceFill(c, v, subQuad(q, 0.06, 0.22, 0.5, 0.78), '#9C3A33', 0.8);
+        faceFill(c, v, subQuad(q, 0.78, 0.94, 0.5, 0.78), '#9C3A33', 0.8);
+      } else {
+        faceFill(c, v, subQuad(q, 0.02, 0.98, 0.0, 0.16), shade(body, -0.3));
+        faceFill(c, v, subQuad(q, 0.47, 0.49, 0.18, 0.95), shade(body, -0.3));
+      }
+    },
+  });
+  // the glasshouse: a narrower box set back, its faces glass, its roof the body's colour
+  const g = F.at(-0.25, 0, 0);
+  box(c, v, {
+    len: 1.4,
+    wid: CAR.wid * 0.84,
+    h: 0.42,
+    z: 0.72,
+    ox: g[0],
+    oy: g[1],
+    heading,
+    color: YARD.glassDark,
+    top: shade(body, 0.12),
+    line: 1,
+    onFace: (q, n) => {
+      if (!isFront(n) && !isBack(n)) faceFill(c, v, subQuad(q, 0.46, 0.52, 0, 1), shade(body, -0.1));
+      faceFill(c, v, subQuad(q, 0.1, 0.25, 0.15, 0.85), YARD.glass, 0, 0.7);
+    },
+  });
+  if (o.driver !== false) {
+    const hc = P2(v, F.at(0.05, nearSign * 0.3, 1.0));
+    c.drawPath(oval(hc[0], hc[1], 3, 3), fill(shade(YARD.glassDark, -0.45)));
+  }
+  for (const [u, s] of wheels) if (Math.sign(s) === nearSign) truckWheel(c, v, F.at(u, s, 0.27), F.f, 0.27, sideOf(s));
 }

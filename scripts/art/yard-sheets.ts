@@ -150,6 +150,41 @@ headless(async (H) => {
         for (const { e, n } of rows) console.log(`${e.sheet} ${e.id.padEnd(36)} ${(n / 1e3).toFixed(0).padStart(6)} k  frames ${e.frames.length} headings ${e.headings} drawScale ${(e.drawScale ?? 1).toFixed(2)}`);
       },
     });
+  // the art director: measure the ink of entries whose id starts with MEASURE (env), per baked heading, and print them
+  REGISTRY.push({
+    name: 'measure',
+    run: async () => {
+      const M = MF();
+      const pre = process.env.MEASURE ?? 'vehicle.car';
+      for (const e of M.MANIFEST.filter((m) => m.id.startsWith(pre))) {
+        const out: string[] = [];
+        for (const h of M.bakedHeadings(e)) {
+          let l = 1e9;
+          let t = 1e9;
+          let r = -1e9;
+          let b = -1e9;
+          const half = 300;
+          for (let f = 0; f < e.frames.length; f++) {
+            const img = H.image({ width: half * 2, height: half * 2, scale: 1 }, (c) => {
+              c.translate(half, half);
+              e.draw(c, V, f, h);
+            });
+            const px = img.readPixels(0, 0, { width: half * 2, height: half * 2, colorType: 4, alphaType: 3 }) as Uint8Array;
+            for (let y = 0; y < half * 2; y++)
+              for (let x = 0; x < half * 2; x++)
+                if (px[(y * half * 2 + x) * 4 + 3] > 4) {
+                  l = Math.min(l, x - half);
+                  r = Math.max(r, x - half + 1);
+                  t = Math.min(t, y - half);
+                  b = Math.max(b, y - half + 1);
+                }
+          }
+          out.push(`B(${l - 2}, ${t - 2}, ${r - l + 4}, ${b - t + 4})`);
+        }
+        console.log(`  '${e.id}': [${out.join(', ')}],`);
+      }
+    },
+  });
   REGISTRY.push({
     name: 'bounds',
     run: async () => {

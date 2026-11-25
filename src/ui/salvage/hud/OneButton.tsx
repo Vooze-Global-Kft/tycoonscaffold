@@ -9,6 +9,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type { SalvageConfig } from '../../../engine/salvage';
 import { PAL } from '../palette';
 import { say } from '../strings';
+import { openCard } from '../overlays/cardStack';
 import { useSalvageUi } from '../uiState';
 import { stick } from '../world/stick';
 import { fitText, type HudLayout } from './metrics';
@@ -26,7 +27,7 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   const press = () => {
     if (stick.value.on) return;
     if (mode === 'stepOut') onStepOut();
-    else if (mode === 'open' && place) useSalvageUi.getState().openCard({ kind: 'place', place });
+    else if (mode === 'open' && place) openCard({ kind: 'place', place });
   };
   return (
     <Pressable

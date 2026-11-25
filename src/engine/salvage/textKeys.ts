@@ -1,0 +1,189 @@
+/**
+ * EVERY TextKey the salvage rules and screens print, grouped by the package that shows it (BUILD.md:
+ * moved here out of types.ts by the contract's fix pass, 25 November; from now on this file is the
+ * `strings` package's: a new key is ONE request, to `strings`). The words are
+ * src/ui/salvage/strings.ts's `TEXT`, which must define exactly these keys (the typecheck holds both
+ * sides). types.ts re-exports `TEXT_KEYS` and `TextKey`, so every import of them stays as it was.
+ *
+ * Refusal keys live in types.ts (`REFUSAL_KEYS`, the rules' list); their text keys `refusal.<key>`
+ * are derived here.
+ */
+import { REFUSAL_KEYS } from './refusals';
+
+export const TEXT_KEYS = {
+  /** Package 4: the top bar, the goal card, the one button (4.1). */
+  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'trialLoad', 'skipLoad', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok'],
+  /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
+  place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages'],
+  /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
+  chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate'],
+  /** Package 4: card titles (4.3). */
+  title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place'],
+  /** Package 4: card rows and buttons (4.3, 5.2). */
+  card: [
+    'card.buy',
+    'card.hire',
+    'card.level',
+    'card.levelN',
+    'card.levelFromTo',
+    'card.owned',
+    'card.onItsWay',
+    'card.cameWithYard',
+    'card.sell',
+    'card.hold',
+    'card.sign',
+    'card.notNow',
+    'card.on',
+    'card.off',
+    'card.fromBays',
+    'card.poursIn',
+    'card.readyToPour',
+    'card.firstPour',
+    'card.heelAsk',
+    'card.working',
+    'card.trayFull',
+    'card.waitingFor',
+    'card.idle',
+    'card.heating',
+    'card.cooling',
+    'card.handOnly',
+    'card.hopper',
+    'card.tray',
+    'card.levelOnBoard',
+    'card.inOut',
+    'card.rateKgS',
+    'card.charge',
+    'card.heel',
+    'card.recipe',
+    'card.siteLicence',
+    'card.crewRow',
+    'card.carriesRate',
+    'card.cutsRate',
+    'card.drivesRate',
+    'card.opensAt',
+    'card.nightWatch',
+    'card.dealTerms',
+    'card.dealDaysLeft',
+    'card.dealReserve',
+    'card.dealTrust',
+    'card.dealLast',
+    'card.dealNoCharge',
+    'card.dealDone',
+    'card.skipState',
+    'card.skipLine',
+    'card.skipNet',
+    'card.skipPrice',
+    'card.skipsInRotation',
+    'card.skipTrial',
+    'card.skipReady',
+    'card.skipOnTruck',
+    'card.anotherSkip',
+    'card.partnerLine',
+    'card.businessCard',
+    'card.converterPaid',
+    'card.levelAdds',
+    'card.notBottleneck',
+    'card.keptForLoad',
+    'card.empty',
+  ],
+  /** Package 4: what each machine, tool, carrier, role and item is, and its effect line (≤ 38). */
+  item: [
+    'item.sack',
+    'item.trolley',
+    'item.frame',
+    'item.spanners',
+    'item.sledge',
+    'item.torch',
+    'item.truck',
+    'item.handStripper',
+    'item.stripper',
+    'item.bench',
+    'item.crucible',
+    'item.brass',
+    'item.alu',
+    'item.night',
+    'item.skip',
+    'role.hand',
+    'role.cutter',
+    'role.driver',
+    'effect.frame',
+    'effect.spanners',
+    'effect.sack',
+    'effect.trolley',
+    'effect.sledge',
+    'effect.torch',
+    'effect.truck',
+    'effect.handStripper',
+    'effect.stripper',
+    'effect.bench',
+    'effect.crucible',
+    'effect.brass',
+    'effect.alu',
+    'effect.night',
+    'effect.hand',
+    'effect.cutter',
+    'effect.driver',
+  ],
+  /** Package 4: the price board and bays (4.4). */
+  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice'],
+  /** Package 4: the process board's plates (4.5). */
+  plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung'],
+  /** Package 4: the industry table and the rung sign (2.11). */
+  table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.locked', 'opens.rung2', 'opens.rung3'],
+  /** Package 4: the away card (4.4). */
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.hintCutter', 'away.hintHand', 'away.nothing'],
+  /** Packages 3 and 4: tickets and slips (2.2). */
+  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
+  /** Package 4: lines of 5.2. */
+  line: ['line.portal', 'line.crewAway', 'line.backfield', 'line.fictional', 'line.shortened', 'line.carName'],
+  /** Package 4: the clipboard, Settings and Help (4.3). */
+  clip: ['clip.goals', 'clip.places', 'clip.tickets', 'clip.settings', 'clip.sound', 'clip.music', 'clip.haptics', 'clip.help', 'clip.privacy', 'clip.privacyLine', 'clip.version', 'clip.restart', 'clip.restartConfirm', 'clip.restartYes', 'clip.restartNo', 'clip.glossary', 'help.lessons', 'help.glossary', 'help.about'],
+  /** Package 8: the goals (5.3, ≤ 30), in 1.3's order; `goal.widen` / `goal.widenLevel` are the repeating goal of the lead's ruling (args {item: {text}}). */
+  goal: [
+    'goal.takeWasher',
+    'goal.weighIt',
+    'goal.stripCable',
+    'goal.weighCopper',
+    'goal.buySack',
+    'goal.takeAWasher',
+    'goal.hireHand',
+    'goal.workDropoff',
+    'goal.buySledge',
+    'goal.breakRadiators',
+    'goal.buyTruck',
+    'goal.fetchTrial',
+    'goal.buyBench',
+    'goal.breakMotor',
+    'goal.supplyRung2',
+    'goal.hireCutter',
+    'goal.signDeal',
+    'goal.buyTrolley',
+    'goal.buyStripper',
+    'goal.buyCrucible',
+    'goal.chargeCrucible',
+    'goal.pourFirst',
+    'goal.hireDriver',
+    'goal.buyTorch',
+    'goal.cutCar',
+    'goal.fetchDemolition',
+    'goal.buyNight',
+    'goal.buyAlu',
+    'goal.widen',
+    'goal.widenLevel',
+    'goal.supplyRung3',
+    'goal.hireHand2',
+    'goal.hireCutter2',
+    'goal.finishDeal',
+    'goal.passRival',
+    'goal.visitBackfield',
+  ],
+  /** Package 8: the advice line (2.10; Advice.line). */
+  advice: ['advice.buy', 'advice.level'],
+  /** Package 8 and the tickets: lessons (5.5, ≤ 48 on the ticket). */
+  lesson: ['lesson.li', 'lesson.drum', 'lesson.mot', 'lesson.cab', 'lesson.bb', 'lesson.no2', 'lesson.brs', 'lesson.alw', 'lesson.alcast', 'lesson.ci', 'lesson.hms', 'lesson.hmsu', 'lesson.cbody', 'lesson.bri', 'lesson.dross', 'lesson.ali', 'lesson.conv'],
+  /** Every package: refusals (5.4). */
+  refusal: REFUSAL_KEYS.map((k) => `refusal.${k}` as const),
+} as const;
+
+type Values<T> = T extends readonly (infer U)[] ? U : never;
+export type TextKey = { [G in keyof typeof TEXT_KEYS]: Values<(typeof TEXT_KEYS)[G]> }[keyof typeof TEXT_KEYS];

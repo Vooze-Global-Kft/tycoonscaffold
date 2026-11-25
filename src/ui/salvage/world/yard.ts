@@ -21,7 +21,6 @@
  */
 import type { SalvageContent, SalvageProp } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
-import { laneDrawEnd, laneGeo } from './actors';
 
 const asCfg = (s: SalvageContent) => ({ salvage: s }) as R.SalvageConfig;
 const pointOf = (s: SalvageContent, id: string) => R.point(asCfg(s), id);
@@ -214,3 +213,33 @@ export function rulesProps(s: SalvageContent): SalvageProp[] {
 export function screensSpanned(y: YardLayout, w: number, h: number): { wide: number; high: number } {
   return { wide: y.pxW / w, high: y.pxH / h };
 }
+
+/** The lane's geometry from content: the gate, the lane's width, each partner's distance, the bridge. */
+export interface LaneGeo {
+  gx: number;
+  gy: number;
+  /** Half the asphalt's width, metres. */
+  half: number;
+  /** Partner id -> x of its site (the gate plus its lane distance). */
+  sites: { id: string; x: number; look: number }[];
+  /** x of the weight-limited bridge (null: none), and how far a vehicle may go. */
+  bridge: number | null;
+  end: number;
+}
+
+export function laneGeo(c: SalvageContent): LaneGeo | null {
+  const g = c.map.points.gate;
+  if (!g) return null;
+  const lane = c.map.lane ?? {};
+  const half = ((c.map as { laneWidth?: number }).laneWidth ?? 6) / 2;
+  const sites = Object.entries(c.partners).map(([id, p], i) => ({ id, x: g[0] + (lane[p.lane] ?? 0), look: i }));
+  const bridgeKey = Object.keys(lane).find((k) => k.startsWith('bridge'));
+  const bridge = bridgeKey ? g[0] + lane[bridgeKey] : null;
+  const far = Math.max(g[0] + 20, ...sites.map((s) => s.x + 12));
+  const end = bridge !== null ? bridge - 2 : far;
+  return { gx: g[0], gy: g[1], half, sites, bridge, end };
+}
+
+/** How far the drawn lane runs east (asphalt past the bridge). */
+export const laneDrawEnd = (l: LaneGeo) => (l.bridge !== null ? l.bridge + 14 : l.end);
+

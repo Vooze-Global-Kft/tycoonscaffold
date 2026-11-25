@@ -48,12 +48,21 @@ import {
   drawSignCrane,
   drawStillage,
   drawToolRack,
+  drawSamplePallet,
+  drawPortal,
+  drawIdDesk,
+  drawNoticeBoard,
+  noticeSlot,
+  drawPvcBin,
+  drawRungSign,
+  rungSlot,
+  drawMachineCrate,
   platformSlots,
   scaleHouseBoard,
   type CrucibleState,
 } from '../site.draw';
-import { drawBarrier, drawFarmShed, drawHedge, drawHoarding, drawHoardingGate, drawHoardingLeafOpen, drawLimitSign, drawParapet, limitSlot } from '../lane.draw';
-import { POUR_LIGHT_SCALE, RING_R, drawChalkCircle, drawChevron, drawEdgeArrow, drawPadlockChip, drawPickupShadow, drawPourLight, drawWorkRing } from '../marks.draw';
+import { drawBarrier, drawExcavator, drawFarmShed, drawHedge, drawHoarding, drawHoardingGate, drawHoardingLeafOpen, drawLimitSign, drawParapet, limitSlot } from '../lane.draw';
+import { POUR_LIGHT_SCALE, RING_R, drawCoin, drawDust, drawFlame, drawSparks, drawChalkCircle, drawChevron, drawEdgeArrow, drawPadlockChip, drawPickupShadow, drawPourLight, drawWorkRing } from '../marks.draw';
 import { drawGroundTile, drawGroundDecal, GROUND_TILES, GROUND_DECALS, TILE_M } from '../ground.draw';
 import type { Bounds, ManifestEntry, Sheet } from './index';
 
@@ -355,6 +364,20 @@ export const PLANT: ManifestEntry[] = [
   entry('lane.parapet', 'lane', 'B', [3.0, 0.4], B(-65, -40, 160, 55), one, (c, v) => drawParapet(c, v), { k: LANE }),
   entry('lane.sign.limit', 'lane', 'B', [0.3, 0.3], B(-18, -80, 70, 90), one, (c, v) => drawLimitSign(c, v), { slots: { limit: slot(limitSlot(V)) }, k: EDGE }),
   entry('lane.barrier', 'lane', 'B', [4.0, 0.3], B(-95, -40, 200, 55), one, (c, v) => drawBarrier(c, v, false), { k: LANE }),
+  // --- the first yard's extras (6.1) -----------------------------------------------------------------
+  entry('plant.pallet.sample', 'plant', 'B', [1.2, 0.8], B(-35, -40, 80, 55), ['ingots', 'bright', 'motor'], (c, v, f) => drawSamplePallet(c, v, f), { k: STATIC }),
+  entry('plant.portal', 'plant', 'B', [0.4, 3.8], B(-25, -110, 70, 160), ['idle', 'check'], (c, v, f) => drawPortal(c, v, f), { k: EDGE }),
+  entry('plant.desk.id', 'plant', 'B', [1.3, 0.6], B(-35, -70, 75, 85), one, (c, v) => drawIdDesk(c, v), { k: STATIC }),
+  entry('plant.board.notice', 'plant', 'B', [1.4, 0.3], B(-35, -70, 80, 80), one, (c, v) => drawNoticeBoard(c, v), { k: EDGE, slots: { words: slot(noticeSlot(V)) } }),
+  entry('plant.bin.pvc', 'plant', 'B', [1.0, 1.0], B(-30, -50, 70, 65), ['empty', 'part', 'full'], (c, v, f) => drawPvcBin(c, v, f), { k: STATIC }),
+  entry('plant.sign.rung', 'plant', 'B', [0.7, 0.2], B(-20, -55, 50, 60), one, (c, v) => drawRungSign(c, v), { k: EDGE, slots: { words: slot(rungSlot(V)) } }),
+  entry('plant.floodlight', 'plant', 'B', [0.3, 0.3], B(-20, -180, 120, 190), one, (c, v) => drawFloodlight(c, v), { k: LANE }),
+  entry('plant.crate.machine', 'plant', 'B', [1.4, 1.0], B(-40, -80, 95, 100), ['deck', 'slung', 'set'], (c, v, f) => drawMachineCrate(c, v, f), { k: STATIC }),
+  entry('lane.excavator', 'lane', 'B', [3.2, 2.4], B(-80, -150, 220, 190), ['parked', 'working'], (c, v, f) => drawExcavator(c, v, f), { k: LANE }),
+  entry('fx.sparks', 'fx', 'B', [0.1, 0.1], B(-6, -10, 30, 26), ['a', 'b', 'c'], (c, _v, f) => drawSparks(c, f)),
+  entry('fx.dust', 'fx', 'B', [0.1, 0.1], B(-26, -24, 52, 30), ['a', 'b', 'c'], (c, _v, f) => drawDust(c, f), { k: STATIC }),
+  entry('fx.flame', 'fx', 'B', [0.1, 0.1], B(-2, -4, 16, 8), ['a', 'b'], (c, _v, f) => drawFlame(c, f)),
+  entry('fx.coin', 'fx', 'B', [0.1, 0.1], B(-8, -8, 16, 16), one, (c) => drawCoin(c)),
   // --- marks and plates ------------------------------------------------------------------------------
   entry('mark.ring', 'mark', 'B', [RING_R * 2, RING_R * 2], B(-32, -23, 64, 46), Array.from({ length: RING_STEPS + 1 }, (_, k) => `k${k}`), (c, v, f) => drawWorkRing(c, v, f, RING_STEPS), { k: STATIC }),
   entry('mark.pickup', 'mark', 'B', [0.5, 0.4], B(-10, -7, 20, 14), one, (c, v) => drawPickupShadow(c, v)),

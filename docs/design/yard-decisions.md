@@ -8,7 +8,7 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E27).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E29).
 - Part 3: the first yard after its review (S1 to S24).
 
 ---
@@ -379,6 +379,39 @@ day is refused: it would move the first hour's passes for everyone who starts la
 
 The boss may feed any hopper (specification 2.1); "the boss no longer feeds the bench" is a habit
 of the prototype's player, not a rule.
+
+### After the third pass (15:45)
+
+The third pass (`proto/REPORT3.txt`, `content3.json`, `yard3.py`; result in `proto3-result.json`)
+fixed the windfalls, the loads, the levels and the three days. Its own hour table shows what is
+still wrong: the normal player's income by five-minute window runs §242, 229, 272, 310, 579, 1,069,
+1,213, 1,356, 1,384, 1,514, 1,494, 1,498: flat for twenty minutes through ten purchases, one jump
+when the torch arrives at minute 24, flat again from minute 35. Prices are flat with it (§230 to
+§750 for 24 minutes), which is why the pass needed a waiting rule (refused, E25) to keep the
+opening from being a burst.
+
+**E28. The hour climbs in steps the player feels.** Aim for the normal player's income by
+five-minute window: about §120, 250, 450, 800, 1,300, 1,800, then rising by about a tenth each
+window to about §3,500 at the hour; no window under the one before it (after minute 5); every goal
+purchase before the torch raises the next five minutes' income by at least a fifth over leaving it
+out (leave-one-out, the pass's own measure), or it leaves the first hour's goal order. Prices rise
+along the list with the income, each about one to two and a half minutes of the income at its
+moment, so that the list cannot be bought in a burst and a later item is always dearer than an
+earlier one. Mechanisms the lead expects, in the trade's true proportions: each tool, carrier and
+hire shortens the boss's own cycle on stock that is worth his minute (zone 2 clearly richer by the
+kilogram than zone 1; the farm's loads richer by the minute than the heaps, S18); the torch comes
+right after the truck's first loads, at rung 2 (about minute 13), dear enough to be saved for; the
+powered stripper, the bench and the crucible come after it, when cable, motors and brass arrive in
+loads, each priced on the margin it adds to what then flows; the first pour stays in its band.
+
+**E29. Small rulings.** The driver's and the advice line's reserve covers a load that is full now
+or within 60 s. Rung 3's tonnes are set for the buy-when-affordable habit; the other habit may
+reach it up to three minutes earlier. E24's same-seed comparison of the slow player applies to
+beats after minute 2 (before that the slow profile's own reactions decide). The farm load's margin
+from work reaches three fifths by k 0.88 or by the as-found shares, whichever keeps prices true.
+Trial loads at fixed prices (R17), whole things sold whole (R19), the advice line's binding rule
+(R16) and levels to 20 (R15, opening at rung 2 by E25) are accepted. R13 is refused (E25); R18 is a
+habit, not a rule.
 
 ---
 

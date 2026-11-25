@@ -6,7 +6,7 @@
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
 import { LINE_W, YARD, shade } from './palette';
-import { box, boxShadow, builder, faceFill, fill, freckles, groundShadow, hash01, hazard, oval, poly, proj, rrect, segment, stroke, subQuad, type View3q } from './pen';
+import { box, boxShadow, builder, faceFill, fill, freckles, groundShadow, hash01, hazard, oval, poly, proj, rrect, segment, stroke, subQuad, type V3, type View3q } from './pen';
 import { padlock } from './ui.draw';
 
 const INK = YARD.ink;
@@ -199,4 +199,38 @@ export function drawHoardingLeafOpen(c: SkCanvas, v: View3q): void {
   const H = 2.2;
   boxShadow(c, v, 0.1, L, 0, L / 2, H);
   box(c, v, { len: 0.05, wid: L, h: H, oy: L / 2, color: '#3F5A4B', line: 1 });
+}
+
+/**
+ * The demolition contractor's excavator behind its hoarding (seen over it from the lane): tracks, the
+ * upper house in hi-vis with its cab, a long boom and a demolition grab. frame 0 parked (boom folded,
+ * grab on the ground), 1 working (boom up, grab raised). Footprint 3.2 x 2.4 m; anchor its centre.
+ */
+export function drawExcavator(c: SkCanvas, v: View3q, frame = 0): void {
+  groundShadow(c, v, 1.7, 1.2, 0, 0, frame ? 3.4 : 2.4);
+  // the tracks
+  for (const y of [-0.9, 0.9])
+    box(c, v, { len: 3.2, wid: 0.6, h: 0.7, oy: y, color: '#3A3E44', line: 1, onFace: (q, n) => { if (n[1] > 0.9) for (let i = 1; i < 10; i++) faceFill(c, v, subQuad(q, i / 10 - 0.01, i / 10 + 0.01, 0.1, 0.9), '#2A2D31'); } });
+  // the house, the counterweight and the cab
+  box(c, v, { len: 2.4, wid: 2.0, h: 1.0, ox: -0.3, z: 0.8, color: YARD.hivis, line: 1, bevel: true, onFace: (q, n) => n[1] > 0.9 && faceFill(c, v, subQuad(q, 0.05, 0.4, 0.2, 0.5), YARD.machineDark, 0.6) });
+  box(c, v, { len: 0.5, wid: 1.9, h: 0.7, ox: -1.45, z: 0.8, color: YARD.machineDark, line: 1 });
+  box(c, v, { len: 0.9, wid: 0.8, h: 1.1, ox: 0.55, oy: 0.55, z: 1.8, color: YARD.hivis, line: 1, onFace: (q) => faceFill(c, v, subQuad(q, 0.12, 0.88, 0.35, 0.9), YARD.glassDark, 0.8) });
+  // the boom and stick: thick hi-vis members, then the grab
+  const base: V3 = [0.6, -0.3, 1.6];
+  const knee: V3 = frame ? [2.2, -0.3, 4.2] : [2.0, -0.3, 2.6];
+  const tip: V3 = frame ? [3.4, -0.3, 2.6] : [2.9, -0.3, 0.5];
+  const arm = (a: V3, b: V3, w: number) => {
+    const [ax, ay] = proj(v, ...a);
+    const [bx, by] = proj(v, ...b);
+    c.drawPath(segment(ax, ay, bx, by), stroke(INK, w + 2));
+    c.drawPath(segment(ax, ay, bx, by), stroke(YARD.hivisDark, w));
+  };
+  arm(base, knee, 7);
+  arm(knee, tip, 5);
+  const [gx, gy] = proj(v, ...tip);
+  for (const sgn of [-1, 1]) {
+    const jaw = poly([gx, gy, gx + sgn * 9, gy + 6, gx + sgn * 6, gy + 15, gx + sgn * 2, gy + 9]);
+    c.drawPath(jaw, fill(YARD.steelDark));
+    c.drawPath(jaw, stroke(INK, 1));
+  }
 }

@@ -23,7 +23,7 @@ export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = yardEvents.on(['loadFull', 'refused'], (e) => {
-      const t = toastText(e, cfg.salvage, useSalvageUi.getState().cards.length > 0);
+      const t = toastText(e, cfg.salvage, useSalvageUi.getState().stack.length > 0);
       if (!t) return;
       clearTimeout(timer);
       setToast({ id: ++n.current, ...t });

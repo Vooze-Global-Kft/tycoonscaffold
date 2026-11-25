@@ -151,3 +151,22 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
+
+/** Milliseconds between two presence samples (at most ten a second, yard-stage1.md 2.1). */
+export const SAMPLE_MS = 100;
+
+/**
+ * The presence clock of the frame loop (a worklet; the tests drive it under node): `p[0]` the seconds the
+ * stick has been released (0 while steering: walking past a thing is never standing beside it), `p[1]` the
+ * time of the last sample (ms). Returns true when a sample is due this frame.
+ */
+export function presenceStep(p: Float64Array | number[], dt: number, steering: boolean, nowMs: number): boolean {
+  'worklet';
+  if (steering) p[0] = 0;
+  else p[0] += dt;
+  if (nowMs - p[1] >= SAMPLE_MS) {
+    p[1] = nowMs;
+    return true;
+  }
+  return false;
+}

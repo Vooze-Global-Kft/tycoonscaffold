@@ -1363,3 +1363,212 @@ export function drawCabinDoorOpen(c: SkCanvas, v: View3q): void {
   faceFill(c, v, [[x1, y, z0], [x0, y, z0], [x0, y, z1], [x1, y, z1]], '#3A3F45', LINE_W);
   faceFill(c, v, [[x1, y, z0], [x1 + 0.12, y + 0.55, z0], [x1 + 0.12, y + 0.55, z1], [x1, y, z1]], YARD.machine, LINE_W);
 }
+
+// ---------------------------------------------------------------------------
+// The first yard's extras (yard-stage1.md 6.1): sample pallet, portal, ID desk, notice board, PVC bin,
+// rung sign, the machine's crate (the machine flatbed's load and its set-down). No words: slots.
+// ---------------------------------------------------------------------------
+
+/** A wooden pallet (1.2 x 0.8 m, 0.14 m) at (ox, oy): three runners and a slatted deck. */
+export function drawPallet(c: SkCanvas, v: View3q, ox = 0, oy = 0): void {
+  for (const y of [-0.32, 0, 0.32]) box(c, v, { len: 1.2, wid: 0.1, h: 0.1, ox, oy: oy + y, color: shade(YARD.wood, -0.15), line: 0.8 });
+  box(c, v, {
+    len: 1.2,
+    wid: 0.8,
+    h: 0.04,
+    ox,
+    oy,
+    z: 0.1,
+    color: YARD.wood,
+    line: 0.9,
+    onTop: (q) => {
+      for (const t of [0.2, 0.4, 0.6, 0.8]) faceFill(c, v, subQuad(q, 0.01, 0.99, t - 0.012, t + 0.012), shade(YARD.wood, -0.3));
+    },
+  });
+}
+
+/**
+ * The sample pallet by a locked machine's pad (what the machine would make): frame 0 brass ingots
+ * strapped flat (the crucible), 1 bare bright bundles (the power stripper), 2 clean windings and end caps
+ * (the motor bench).
+ */
+export function drawSamplePallet(c: SkCanvas, v: View3q, frame = 0): void {
+  boxShadow(c, v, 1.2, 0.8, 0, 0, 0.4);
+  drawPallet(c, v);
+  if (frame === 0) {
+    for (let k = 0; k < 2; k++) for (let r = 0; r < 3; r++) for (let i = 0; i < 2; i++) drawIngot(c, v, 'brass', 99, { ox: (i - 0.5) * 0.5, oy: (r - 1) * 0.22, z: 0.14 + k * 0.1, shadow: false });
+    for (const sx of [-0.25, 0.25]) {
+      const a = proj(v, sx, -0.34, 0.34);
+      const b = proj(v, sx, 0.34, 0.34);
+      const d = proj(v, sx, 0.34, 0.14);
+      const p = builder().moveTo(a[0], a[1]).lineTo(b[0], b[1]).lineTo(d[0], d[1]).build();
+      c.drawPath(p, stroke(INK, 2.4));
+      c.drawPath(p, stroke(YARD.galvanisedLight, 1.1));
+    }
+    return;
+  }
+  const metals = frame === 1 ? ['copper', 'copper', 'copper', 'copper', 'copper'] : ['copper', 'aluminium', 'copper', 'aluminium', 'copper'];
+  metals.forEach((m, i) => {
+    const [x, y] = proj(v, -0.36 + (i % 3) * 0.36, -0.15 + Math.floor(i / 3) * 0.3, 0.2 + (i > 2 ? 0.06 : 0));
+    pieceGlyph(c, m, x, y, 16, (hash01(i, frame) - 0.5) * 30, i + frame * 5);
+  });
+}
+
+/**
+ * The radiation detection portal at the weighbridge (a yard checks every load for sealed sources): two
+ * grey detector pillars 3.4 m apart with a lamp on each; frame 0 idle (lamps dark), 1 checking (green).
+ * Anchor between the pillars.
+ */
+export function drawPortal(c: SkCanvas, v: View3q, frame = 0): void {
+  for (const y of [-1.7, 1.7]) {
+    groundShadow(c, v, 0.3, 0.2, 0, y, 2.4);
+    box(c, v, { len: 0.4, wid: 0.3, h: 0.1, oy: y, color: BLOCK, line: 0.8 });
+    box(c, v, {
+      len: 0.3,
+      wid: 0.22,
+      h: 2.2,
+      oy: y,
+      z: 0.1,
+      color: '#C9CDD0',
+      bevel: true,
+      line: 1,
+      onFace: (q, n) => {
+        if (n[1] > 0.9) {
+          faceFill(c, v, subQuad(q, 0.15, 0.85, 0.3, 0.8), shade('#C9CDD0', -0.12), 0.7);
+          faceFill(c, v, subQuad(q, 0, 1, 0.08, 0.14), YARD.hivis, 0.6);
+        }
+      },
+    });
+    const [lx, ly] = proj(v, 0, y, 2.42);
+    c.drawPath(oval(lx, ly, 3.4, 2.8), fill(frame ? YARD.led : shade(YARD.led, -0.6)));
+    c.drawPath(oval(lx, ly, 3.4, 2.8), stroke(INK, 0.9));
+  }
+}
+
+/**
+ * The ID desk inside the scale house's hatch: a counter shelf under a sliding window, an ID card reader
+ * and a tray of slips (blank). Drawn round the hatch's foot; the world places it at the scale house's
+ * front (slots: screen, the reader's little display).
+ */
+export function drawIdDesk(c: SkCanvas, v: View3q): void {
+  boxShadow(c, v, 1.2, 0.5, 0, 0, 1.0);
+  box(c, v, { len: 1.2, wid: 0.5, h: 0.95, color: YARD.machine, line: 1, bevel: true });
+  box(c, v, { len: 1.3, wid: 0.6, h: 0.05, z: 0.95, color: YARD.galvanisedLight, line: 1 });
+  // the reader and the slip tray on the shelf
+  box(c, v, { len: 0.2, wid: 0.16, h: 0.07, ox: 0.3, oy: 0.05, z: 1.0, color: YARD.machineDark, line: 0.8 });
+  const [rx, ry] = proj(v, 0.3, 0.13, 1.06);
+  c.drawPath(rrect(rx - 3, ry - 2, 6, 2.5, 0.6), fill(YARD.led));
+  box(c, v, { len: 0.3, wid: 0.22, h: 0.04, ox: -0.25, z: 1.0, color: YARD.paperShade, line: 0.8 });
+  const [tx, ty] = proj(v, -0.25, 0, 1.05);
+  c.drawPath(rrect(tx - 4, ty - 3, 8, 5, 0.6), fill(YARD.paper));
+  // the window frame over it
+  for (const x of [-0.6, 0.6]) box(c, v, { len: 0.06, wid: 0.06, h: 0.8, ox: x, oy: -0.2, z: 1.0, color: YARD.steelDark, line: 0.8 });
+  box(c, v, { len: 1.26, wid: 0.08, h: 0.06, oy: -0.2, z: 1.8, color: YARD.steelDark, line: 0.8 });
+  faceFill(c, v, [[-0.57, -0.2, 1.05], [0.0, -0.2, 1.05], [0.0, -0.2, 1.78], [-0.57, -0.2, 1.78]], YARD.glass, 0.8, 0.55);
+}
+
+/** The notice board by the office: a blank board on two posts under a little roof (slots: words). */
+export function drawNoticeBoard(c: SkCanvas, v: View3q): void {
+  groundShadow(c, v, 0.6, 0.15, 0, 0, 1.8);
+  for (const x of [-0.6, 0.6]) box(c, v, { len: 0.08, wid: 0.08, h: 1.9, ox: x, color: YARD.wood, line: 0.9 });
+  box(c, v, { len: 1.3, wid: 0.06, h: 0.85, z: 0.85, color: shade(YARD.wood, -0.1), line: 1, onFace: (q, n) => n[1] > 0.9 && blankFace(c, v, subQuad(q, 0.05, 0.95, 0.07, 0.93), '#C8B48C', false) });
+  // three blank sheets pinned up
+  for (const [s0, t0, w, h] of [[0.08, 0.2, 0.26, 0.6], [0.38, 0.14, 0.24, 0.42], [0.66, 0.24, 0.26, 0.56]] as const) {
+    const q: V3[] = [[-0.65 + 1.3 * s0, 0.035, 0.85 + 0.85 * (1 - t0 - h)], [-0.65 + 1.3 * (s0 + w), 0.035, 0.85 + 0.85 * (1 - t0 - h)], [-0.65 + 1.3 * (s0 + w), 0.035, 0.85 + 0.85 * (1 - t0)], [-0.65 + 1.3 * s0, 0.035, 0.85 + 0.85 * (1 - t0)]];
+    faceFill(c, v, q, YARD.paper, 0.7);
+    const [px, py] = proj(v, ...subQuad(q, 0.5, 0.5, 0.9, 0.9)[0]);
+    c.drawCircle(px, py, 1.2, fill(YARD.skip));
+  }
+  box(c, v, { len: 1.45, wid: 0.3, h: 0.06, oy: -0.05, z: 1.9, color: YARD.galvanised, line: 1 });
+}
+
+/** The notice board's face in points round its anchor (where the world writes). */
+export function noticeSlot(v: View3q): [number, number, number, number] {
+  const [ax, ay] = proj(v, -0.6, 0.035, 1.65);
+  const [bx, by] = proj(v, 0.6, 0.035, 0.9);
+  return [ax, ay, bx - ax, by - ay];
+}
+
+/**
+ * The PVC bin by the strippers: a white bulk bag on a pallet that the stripped insulation goes into,
+ * its four lifting loops up; frame 0 empty (slack), 1 part, 2 full (grey and black chips heaped).
+ */
+export function drawPvcBin(c: SkCanvas, v: View3q, frame = 0): void {
+  boxShadow(c, v, 1.0, 1.0, 0, 0, 1.0);
+  box(c, v, { len: 1.0, wid: 1.0, h: 0.12, color: YARD.wood, line: 0.9 });
+  const h = frame === 0 ? 0.55 : 0.9;
+  box(c, v, {
+    len: 0.92,
+    wid: 0.92,
+    h,
+    z: 0.12,
+    color: '#ECEDE8',
+    line: 1,
+    top: shade('#ECEDE8', -0.5),
+    onFace: (q, n) => {
+      if (n[1] > 0.9) for (const s of [0.25, 0.75]) faceFill(c, v, subQuad(q, s - 0.02, s + 0.02, 0, 1), '#C9CBC4');
+    },
+    onTop: (q) => {
+      if (frame === 0) return;
+      const n = frame === 1 ? 6 : 14;
+      for (let i = 0; i < n; i++) {
+        const [px, py] = proj(v, ...subQuad(q, 0.15 + 0.7 * hash01(i, 71), 0, 0.15 + 0.7 * hash01(i, 72), 0)[0]);
+        c.drawPath(rrect(px - 2.4, py - (frame === 2 ? 3 : 0) - 1, 4.8, 2.2, 1), fill(i % 3 ? YARD.pvcGrey : YARD.pvc));
+      }
+    },
+  });
+  for (const [x, y] of [[-0.44, -0.44], [0.44, -0.44], [-0.44, 0.44], [0.44, 0.44]] as const) {
+    const [lx, ly] = proj(v, x, y, 0.12 + h);
+    c.drawPath(builder().moveTo(lx - 3, ly).quadTo(lx, ly - 8, lx + 3, ly).build(), stroke(INK, 2.4));
+    c.drawPath(builder().moveTo(lx - 3, ly).quadTo(lx, ly - 8, lx + 3, ly).build(), stroke('#ECEDE8', 1.2));
+  }
+}
+
+/** A rung sign: a small blank enamel plate with a ladder glyph on a post (slots: words). */
+export function drawRungSign(c: SkCanvas, v: View3q): void {
+  groundShadow(c, v, 0.12, 0.1, 0, 0, 1.4);
+  box(c, v, { len: 0.06, wid: 0.06, h: 1.45, color: YARD.galvanised, line: 0.9 });
+  box(c, v, { len: 0.7, wid: 0.04, h: 0.4, z: 1.1, oy: 0.04, color: YARD.paper, line: 1, onFace: (q, n) => n[1] > 0.9 && faceFill(c, v, subQuad(q, 0.04, 0.22, 0.12, 0.88), YARD.hivis, 0.7) });
+  const [gx, gy] = proj(v, -0.26, 0.07, 1.3);
+  c.drawPath(segment(gx - 2, gy - 4, gx - 2, gy + 4), stroke(INK, 0.9));
+  c.drawPath(segment(gx + 2, gy - 4, gx + 2, gy + 4), stroke(INK, 0.9));
+  for (const d of [-2, 0.5, 3]) c.drawPath(segment(gx - 2, gy + d, gx + 2, gy + d), stroke(INK, 0.7));
+}
+
+/** The rung sign's words box in points round its anchor. */
+export function rungSlot(v: View3q): [number, number, number, number] {
+  const [ax, ay] = proj(v, -0.18, 0.06, 1.48);
+  const [bx, by] = proj(v, 0.33, 0.06, 1.12);
+  return [ax, ay, bx - ax, by - ay];
+}
+
+/**
+ * A bought machine in its shipping crate (the machine flatbed's load): an open slatted crate on skids,
+ * the machine's blue enamel showing through, four lifting straps to a ring. frame 0 on the deck (straps
+ * slack), 1 slung (straps taut to the ring above: the world hangs it under the crane's hook), 2 set down on
+ * its pad (the straps off, a shadow). Footprint 1.4 x 1.0 m.
+ */
+export function drawMachineCrate(c: SkCanvas, v: View3q, frame = 0): void {
+  if (frame === 2) boxShadow(c, v, 1.4, 1.0, 0, 0, 1.0);
+  const L = 1.4;
+  const W = 1.0;
+  const H = 0.95;
+  for (const y of [-0.38, 0.38]) box(c, v, { len: L + 0.06, wid: 0.12, h: 0.1, oy: y, color: shade(YARD.wood, -0.15), line: 0.8 });
+  // the machine inside (a box of machine enamel with a hi-vis guard), then the slats over it
+  box(c, v, { len: L - 0.2, wid: W - 0.2, h: H - 0.15, z: 0.1, color: YARD.machine, line: 1, bevel: true, onFace: (q, n) => n[1] > 0.9 && faceFill(c, v, subQuad(q, 0.6, 0.85, 0.5, 0.8), YARD.hivis, 0.7) });
+  const slat = (pts: V3[]) => faceFill(c, v, pts, YARD.wood, 0.8);
+  for (const z of [0.18, 0.5, 0.82]) slat([[-L / 2, W / 2, z], [L / 2, W / 2, z], [L / 2, W / 2, z + 0.1], [-L / 2, W / 2, z + 0.1]]);
+  for (const x of [-L / 2, L / 2 - 0.1]) slat([[x, W / 2, 0.1], [x + 0.1, W / 2, 0.1], [x + 0.1, W / 2, H + 0.05], [x, W / 2, H + 0.05]]);
+  for (const y of [-W / 2 + 0.05, W / 2 - 0.05]) slat([[-L / 2, y - 0.05, H], [L / 2, y - 0.05, H], [L / 2, y + 0.05, H], [-L / 2, y + 0.05, H]]);
+  if (frame === 2) return;
+  const ring: V3 = frame === 1 ? [0, 0, H + 1.1] : [0, 0, H + 0.12];
+  const [rx, ry] = proj(v, ...ring);
+  for (const [x, y] of [[-L / 2, -W / 2], [L / 2, -W / 2], [-L / 2, W / 2], [L / 2, W / 2]] as const) {
+    const [sx, sy] = proj(v, x, y, H);
+    const p = frame === 1 ? segment(sx, sy, rx, ry) : builder().moveTo(sx, sy).quadTo((sx + rx) / 2, sy + 4, rx, ry).build();
+    c.drawPath(p, stroke(INK, 2.2));
+    c.drawPath(p, stroke(YARD.hivis, 1.1));
+  }
+  c.drawPath(oval(rx, ry, 3, 2.2), stroke(INK, 2));
+  c.drawPath(oval(rx, ry, 3, 2.2), stroke(YARD.galvanisedLight, 1));
+}

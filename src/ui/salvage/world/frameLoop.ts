@@ -36,10 +36,11 @@ import { salvageActions } from '../../../modes/salvage/actions';
 import { YARD } from '../art/palette';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ITEM, L_DECAL, NO_SCENE, POSE_FRAMES, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, heading4, heading8, makeResolver, staticItems, type ActorTable, type RulesScene } from './actors';
+import { ITEM, L_DECAL, NO_SCENE, POSE_FRAMES, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, sortList, staticItems, type DrawList, type RulesScene } from './actors';
 import { EDGE_ROOM_M, cameraBounds } from './camera';
+import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
-import { DEAD, STICK_R, stick } from './stick';
+import { DEAD, STICK_R, presenceStep, stick } from './stick';
 import { useYardArt, type YardArt } from './useYard';
 import type { SpriteSheet } from './atlas';
 import type { YardLayout } from './yard';
@@ -97,6 +98,8 @@ export interface YardAnim {
   ground: SharedValue<any[]>;
   /** camX, camY in points before the zoom, and the zoom (1 on foot). */
   camera: SharedValue<{ x: number; y: number; zoom: number }>;
+  /** The boss's place in metres each frame (driving: the truck's). */
+  body: SharedValue<{ x: number; y: number; driving: number }>;
   /** The interactable the body stands next to (index into yard.acts), -1 none. */
   near: SharedValue<number>;
   stats: SharedValue<FrameStats>;
@@ -111,22 +114,6 @@ export interface YardSoundFacts {
   truck: (share: number | null) => void;
 }
 
-/** One list of sprites of a frame: decals, shadows or the depth-sorted list. */
-interface DrawList {
-  key: Float64Array;
-  cell: Float64Array;
-  sx: Float64Array;
-  sy: Float64Array;
-  k: Float64Array;
-  tint: Float64Array;
-  al: Float64Array;
-  order: Int32Array;
-  n: number;
-  cap: number;
-  /** Offset of this list in the shared host-object pools. */
-  base: number;
-}
-
 const ST = 40;
 const CAP_DECAL = 420;
 const CAP_SHADOW = 140;
@@ -134,118 +121,11 @@ const CAP_SORT = 1000;
 const CAP = CAP_DECAL + CAP_SHADOW + CAP_SORT;
 const CELL_BASE = 2_000_000;
 
-/** View numbers for addTo: camX, camY, ppm, tilt, lift, SW, SH, zoom. */
-function addTo(L: DrawList, V: Float64Array, key: number, cell: number, wx: number, wy: number, dx: number, dy: number, scale: number, tint: number, alpha: number): void {
-  'worklet';
-  if (cell < 0 || L.n >= L.cap) return;
-  const z = V[7];
-  const k40 = V[2] / 40;
-  const cx = V[5] / 2;
-  const cy = V[6] / 2;
-  const sx = (wx * V[2] - V[0] - cx) * z + cx + dx * k40 * z;
-  const sy = (wy * V[2] * V[3] - V[1] - cy) * z + cy + dy * k40 * z;
-  const m = 420 * z;
-  if (sx < -m || sx > V[5] + m || sy < -m || sy > V[6] + m) return;
-  const i = L.n;
-  L.key[i] = key;
-  L.cell[i] = cell;
-  L.sx[i] = sx;
-  L.sy[i] = sy;
-  L.k[i] = scale * k40 * z;
-  L.tint[i] = tint;
-  L.al[i] = alpha;
-  L.n = i + 1;
-}
-
-/** A person and what they carry or push, in the people artist's layer order (art/manifest/people.ts personLayers). */
-export function personInto(L: DrawList, V: Float64Array, T: ActorTable, who: number, pose: number, frame: number, h: number, hand: number, cKind: number, cFrame: number, tint: number, wx: number, wy: number, key: number): number {
-  'worklet';
-  const north = h === 2;
-  const f = Math.min(frame, POSE_FRAMES[pose] - 1);
-  let pc = T.person[((who * 9 + pose) * 4 + f) * 4 + h];
-  if (pc < 0) pc = T.person[((who * 9 + P_STAND) * 4) * 4 + h];
-  const hc = who === 0 && hand >= 0 ? T.hand[hand * 4 + h] : -1;
-  let cc = -1;
-  let cdx = 0;
-  let cdy = 0;
-  if (cKind >= 0 && pose === P_PUSH) {
-    cc = T.carrier[(cKind * 4 + cFrame) * 4 + h];
-    const m = T.ahead[cKind];
-    cdx = h === 1 ? m * 40 : h === 3 ? -m * 40 : 0;
-    cdy = h === 0 ? m * 28 : h === 2 ? -m * 28 : 0;
-  }
-  let k = key;
-  let n = 0;
-  if (hc >= 0 && !north) addTo(L, V, (k += 1e-4), hc, wx, wy, 0, 0, 1, -1, 1);
-  if (cc >= 0 && north) addTo(L, V, (k += 1e-4), cc, wx, wy, cdx, cdy, T.carrierScale, -1, 1);
-  addTo(L, V, (k += 1e-4), pc, wx, wy, 0, 0, 1, -1, 1);
-  n++;
-  if (who === 1) {
-    let vc = T.vest[(pose * 4 + f) * 4 + h];
-    if (vc < 0) vc = T.vest[(P_STAND * 4) * 4 + h];
-    addTo(L, V, (k += 1e-4), vc, wx, wy, 0, 0, 1, tint, 1);
-  }
-  if (hc >= 0 && north) addTo(L, V, (k += 1e-4), hc, wx, wy, 0, 0, 1, -1, 1);
-  if (cc >= 0 && !north) addTo(L, V, (k += 1e-4), cc, wx, wy, cdx, cdy, T.carrierScale, -1, 1);
-  return n;
-}
-
-/** The point at share u (0..1) along a polyline of `np` points in `pts`; writes x, y, dx, dy into out. */
-export function along(out: number[], pts: number[], np: number, u: number): void {
-  'worklet';
-  let total = 0;
-  for (let i = 1; i < np; i++) total += Math.hypot(pts[i * 2] - pts[i * 2 - 2], pts[i * 2 + 1] - pts[i * 2 - 1]);
-  let rem = Math.max(0, Math.min(1, u)) * total;
-  out[0] = pts[0];
-  out[1] = pts[1];
-  out[2] = np > 1 ? pts[2] - pts[0] : 0;
-  out[3] = np > 1 ? pts[3] - pts[1] : 1;
-  for (let i = 1; i < np; i++) {
-    const sx = pts[i * 2] - pts[i * 2 - 2];
-    const sy = pts[i * 2 + 1] - pts[i * 2 - 1];
-    const sl = Math.hypot(sx, sy);
-    out[2] = sx;
-    out[3] = sy;
-    if (rem <= sl || i === np - 1) {
-      const f = sl > 0 ? Math.min(1, rem / sl) : 0;
-      out[0] = pts[i * 2 - 2] + sx * f;
-      out[1] = pts[i * 2 - 1] + sy * f;
-      return;
-    }
-    rem -= sl;
-  }
-}
-
-/** Length of a polyline of np points. */
-function pathLen(pts: number[], np: number): number {
-  'worklet';
-  let total = 0;
-  for (let i = 1; i < np; i++) total += Math.hypot(pts[i * 2] - pts[i * 2 - 2], pts[i * 2 + 1] - pts[i * 2 - 1]);
-  return total;
-}
-
 /** A vehicle sprite and its shadow. */
 function vehicleInto(L: DrawList, SH: DrawList, V: Float64Array, cell: number, shadow: number, scale: number, wx: number, wy: number, key: number): void {
   'worklet';
   addTo(SH, V, 0, shadow, wx, wy, 0, 0, 1, -1, 1);
   addTo(L, V, key, cell, wx, wy, 0, 0, scale, -1, 1);
-}
-
-/** Insertion sort of a list's order by key (nearly sorted from frame to frame). */
-function sortList(L: DrawList): void {
-  'worklet';
-  const o = L.order;
-  for (let i = 0; i < L.n; i++) o[i] = i;
-  for (let i = 1; i < L.n; i++) {
-    const v = o[i];
-    const kv = L.key[v];
-    let j = i - 1;
-    while (j >= 0 && L.key[o[j]] > kv) {
-      o[j + 1] = o[j];
-      j--;
-    }
-    o[j + 1] = v;
-  }
 }
 
 /**
@@ -386,6 +266,7 @@ export function useYardLoop(opts: {
   const pic = useSharedValue<SkPicture>(pools.empty);
   const ground = useSharedValue<any[]>([{ translateX: 0 }, { translateY: 0 }]);
   const camera = useSharedValue({ x: 0, y: 0, zoom: 1 });
+  const body = useSharedValue({ x: 0, y: 0, driving: 0 });
   const near = useSharedValue(-1);
   const stats = useSharedValue<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0, runs: 0 });
   const exit = useSharedValue(0);
@@ -430,7 +311,7 @@ export function useYardLoop(opts: {
         st[24] = 1;
         st[31] = NaN;
         st[32] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [] };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2) };
         scratch.value = S;
       }
       const st = S.st;
@@ -551,8 +432,7 @@ export function useYardLoop(opts: {
       const bx = st[5] === 1 ? st[2] : st[0];
       const by = st[5] === 1 ? st[3] : st[1];
       // Standing still (the rules decide what that does; walking past a thing never works it).
-      if (steering) st[21] = 0;
-      else st[21] += dt;
+      const sampleDue = presenceStep(S.pres, dt, steering, info.timestamp);
 
       // --- the camera: after the body with a lead, eased; wider while driving; a nudge at the first pour ----
       const B = Rv.boss;
@@ -578,19 +458,23 @@ export function useYardLoop(opts: {
       cameraBounds(cam, pxW, pxH, SW, SH, inL, inT, inR, inB, room, topPx);
       st[9] = Math.max(cam[0], Math.min(cam[1], st[9]));
       st[10] = Math.max(cam[2], Math.min(cam[3], st[10]));
+      // The hero frame's camera (world-b's ?view=hero): held there, unclamped, while on.
+      const hc = heroCam.value;
+      if (hc.on === 1) {
+        st[9] = hc.x;
+        st[10] = hc.y;
+      }
       const camX = st[9];
       const camY = st[10];
       ground.value = [{ translateX: SW / 2 }, { translateY: SH / 2 }, { scale: zoom }, { translateX: -camX - SW / 2 }, { translateY: -camY - SH / 2 }];
       camera.value = { x: camX, y: camY, zoom };
+      body.value = { x: bx, y: by, driving: st[5] };
 
       // --- the presence sample: at most ten times a second --------------------------------------------------
-      const body = st[5] === 1 ? motion.truckR : motion.workerR;
-      const ni = nearestAct(acts, bx, by, body + motion.reach);
+      const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
+      const ni = nearestAct(acts, bx, by, bodyR + motion.reach);
       if (near.value !== ni) near.value = ni;
-      if (info.timestamp - st[11] >= 100) {
-        st[11] = info.timestamp;
-        runOnJS(onSample)(ni, bx, by, st[5], steering ? 1 : 0, st[21]);
-      }
+      if (sampleDue) runOnJS(onSample)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
 
       // --- the sprites of this frame ----------------------------------------------------------------------
       const V = S.view;
@@ -876,18 +760,13 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [statics, T, images, rects, dens, motion, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxW, pxH, SW, SH, measure, onSample, onDriving, inL, inT, inR, inB, topPx, room, steer, lane, drawW, pts, soundStep, soundTruck, stepOutRules],
+    [statics, T, images, rects, dens, motion, body, camera, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxW, pxH, SW, SH, measure, onSample, onDriving, inL, inT, inR, inB, topPx, room, steer, lane, drawW, pts, soundStep, soundTruck, stepOutRules],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {
     cb.setActive(run);
     return () => cb.setActive(false);
   }, [run, cb]);
-  return useMemo(() => ({ pic, ground, camera, near, stats, exit, capacity: opts.capacity ?? 0 }), [pic, ground, camera, near, stats, exit, opts.capacity]);
+  return useMemo(() => ({ pic, ground, camera, body, near, stats, exit, capacity: opts.capacity ?? 0 }), [pic, ground, camera, body, near, stats, exit, opts.capacity]);
 }
 
-/** makeList for the UI thread. */
-function makeListW(cap: number, base: number): DrawList {
-  'worklet';
-  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), n: 0, cap, base };
-}

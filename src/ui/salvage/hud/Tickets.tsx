@@ -20,7 +20,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
-import { useSalvageUi } from '../uiState';
+import { openCard } from '../overlays/cardStack';
 import type { YardLayout } from '../world/yard';
 import { hudAnchors } from './anchors';
 import { lineH, placeTicket, textW, TICKET_PT, type HudLayout } from './metrics';
@@ -134,7 +134,7 @@ function Anchored({ slot, at, z, L, ground, yard, c }: { slot: Slot; at: { x: nu
   });
   return (
     <Animated.View style={[styles.abs, { width: w }, style]}>
-      <Pressable accessibilityRole="button" onPress={() => useSalvageUi.getState().openCard({ kind: 'clipboard' })}>
+      <Pressable accessibilityRole="button" onPress={() => openCard({ kind: 'clipboard' })}>
         {slot.view && plan ? <TicketPaper v={slot.view} plan={plan} s={s} /> : <ChipPaper text={slot.chip ?? ''} s={s} />}
       </Pressable>
     </Animated.View>
