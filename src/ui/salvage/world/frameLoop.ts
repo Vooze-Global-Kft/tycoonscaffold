@@ -375,9 +375,13 @@ export function useYardLoop(opts: {
     }, 0);
   }, []);
   // Getting in is never dropped: the rules hear one exact sample AT THE TRUCK'S PLACE with the cab flag (they seat
-  // by the flag only at the door: engine actions.ts setPresence), ahead of whatever older sample was still waiting.
+  // by the flag only at the door: engine actions.ts setPresence). An older sample still waiting goes FIRST, now
+  // (owner2: after Step out it is the on-foot sample that tells the rules he left the wheel; dropped, the entering
+  // sample could equal the presence Step out left and be taken for the same sample), never after it.
   const enterRules = useCallback((x: number, y: number, moving: number, heading: number) => {
+    const q = pending.current.s;
     pending.current.s = null;
+    if (q) sampleTo.current(q[0], q[1], q[2], q[3], q[4], q[5], q[6]);
     sampleTo.current(0, x, y, 1, moving, 0, heading);
   }, []);
   const drivingJS = useCallback((on: boolean) => drivingTo.current(on), []);

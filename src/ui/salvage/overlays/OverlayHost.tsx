@@ -36,6 +36,8 @@ import { withSample } from './sample';
 import { ToolRack, isPadlockRow } from './ToolRack';
 import { WideCard } from './WideCard';
 import { AwayCard } from './AwayCard';
+import { CountingCard } from './CountingCard';
+import { useCounting } from './counting';
 import { Clipboard } from './Clipboard';
 import { Help } from './Help';
 import { IndustryTable } from './IndustryTable';
@@ -166,8 +168,18 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
     return () => clearTimeout(t);
   }, []);
 
+  // owner2-hud (item 2): the counting card while an absence waits for its pass; the away card takes its place.
+  const counting = useCounting();
   const g = useLiveGame(!!ref && !!salvage);
-  useOverlay(!!ref);
+  useOverlay(!!ref || counting);
+  if (counting && !ref && salvage && ctx) {
+    return (
+      <FrameProvider value={ctx}>
+        <View pointerEvents="auto" style={[styles.scrim, { top: ctx.layout.band.top }]} />
+        <CountingCard />
+      </FrameProvider>
+    );
+  }
   if (!ref || !salvage || !g || !ctx) return null;
   const close = () => useCards.getState().close();
   return (

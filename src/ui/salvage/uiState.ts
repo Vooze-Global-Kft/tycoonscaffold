@@ -11,6 +11,9 @@
  * - `goalOpen`: the goal card shows its three lines.
  * - `goalLesson`: a ticket's lesson shown as the goal card's second line for six seconds (above font
  *   scale 1.15 the ticket has no room for it: the lead's ruling, 15:55).
+ * - `counting` (owner2-hud, item 2): the counting card shows while an absence waits for its away pass
+ *   (src/modes/salvage/returning.ts owns the waiting; ../overlays/counting.ts sets this). It counts as an open
+ *   overlay: the stick and the one button are off while it counts.
  */
 import { create } from 'zustand';
 
@@ -30,6 +33,8 @@ interface SalvageUi {
   setGoalOpen(on: boolean): void;
   goalLesson: { text: string; id: number } | null;
   showGoalLesson(text: string | null): void;
+  counting: boolean;
+  setCounting(on: boolean): void;
 }
 
 export const useSalvageUi = create<SalvageUi>((set, get) => ({
@@ -59,9 +64,13 @@ export const useSalvageUi = create<SalvageUi>((set, get) => ({
   setGoalOpen: (goalOpen) => {
     if (get().goalOpen !== goalOpen) set({ goalOpen });
   },
+  counting: false,
+  setCounting: (counting) => {
+    if (get().counting !== counting) set({ counting });
+  },
 }));
 
-/** How many overlays are open: the yard's stick and the one button stop under any. */
-export function overlaysOpen(s: Pick<SalvageUi, 'stack'>): number {
-  return s.stack.length;
+/** How many overlays are open: the yard's stick and the one button stop under any (the counting card included). */
+export function overlaysOpen(s: Pick<SalvageUi, 'stack'> & { counting?: boolean }): number {
+  return s.stack.length + (s.counting ? 1 : 0);
 }

@@ -700,6 +700,8 @@ export const TEXT = {
   'away.lotOne': 'An oversize piece waits for you',
   // owner1-hud (the owner's review, point 6): the away card as a weighbridge docket; labels, cells and rows
   'away.labelAway': 'Away',
+  // owner2-hud (the second update, item 2): the counting card painted before the away pass runs (no numbers, no button)
+  'away.counting': 'Counting what the yard did while you were away…',
   'away.labelRan': 'The yard ran',
   'away.labelSold': 'Sold',
   'away.labelBought': 'Bought',

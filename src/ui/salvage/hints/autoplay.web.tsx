@@ -20,6 +20,7 @@
  */
 import { useEffect, useRef } from 'react';
 import * as R from '../../../engine/salvage';
+import { siteRect } from '../../../engine/salvage/positions';
 import { useGame } from '../../../state/store';
 import { targets } from '../../hints/targets';
 import { closeCard, openCard, useCards } from '../overlays/cardStack';
@@ -51,8 +52,10 @@ export interface Leg {
   buy?: string;
   /** Before walking, wait (at most this many seconds) until nothing is on its way to the yard. */
   waitArrivals?: number;
-  /** Tap the one button on arrival and nothing more (Step out at the wheel). */
+  /** Tap the one button on arrival and nothing more (Step out at the wheel; "Get in" beside the truck). */
   press?: boolean;
+  /** Do not walk: the leg is only its press, where he stands (owner2: Get in at once after Step out). */
+  stay?: boolean;
 }
 
 /** The storyboard's two openings (1.2, S10) as places; positions come from the content's map. */
@@ -68,6 +71,9 @@ export const ROUTES: Record<string, Leg[]> = {
   // The cab (who sits in it, the owner's point 5): buy the truck, drive to the gate, step out, walk to the
   // weighbridge and back into the truck, drive out, hook the farm's skip, weigh, tip.
   cab: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'gate', press: true }, { to: 'weighbridge' }, { to: 'truck' }, { to: 'gate' }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
+  // The one button gets in (owner2, ruling 18.4): drive to the gate, Step out, and at once press the disc again
+  // ("Get in", beside the truck with the door disarmed: no walking), then out to the farm, hook, weigh, tip.
+  getin: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'gate', press: true }, { to: 'gate', press: true, stay: true }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
   '2': [{ to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'dropoff' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
 };
 
@@ -204,16 +210,23 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         const zone = zoneRef.current;
         const home = ghostHome(zone);
         // Walk: thumb down in the stick zone, drag towards the place, steer as the boss moves.
-        send('mousedown', home.x, home.y);
+        if (!leg.stay) send('mousedown', home.x, home.y);
         const legStart = Date.now();
         let best = Infinity;
         let bestAt = Date.now();
         let side = 0;
-        while (!stop) {
+        // owner2 item 4: a partner's skip is fetched from anywhere on its SITE (the rules hook there: positions.ts
+        // siteRect), so the thumb aims at the site's middle on the lane (the gate's line) and lets go once inside it,
+        // instead of weaving at the skip's own zone beside the lane (up to a minute).
+        const sitePid = leg.to.startsWith('skip:') ? (leg.to.slice(5) as R.PartnerId) : null;
+        const site = sitePid ? siteRect(cfg.salvage, sitePid, Math.max(1, game().salvage?.partners?.[sitePid]?.skips.length ?? 1)) : null;
+        const laneY = cfg.salvage.map.points.gate?.[1] ?? NaN;
+        while (!stop && !leg.stay) {
           const g = game();
           const p = boss();
-          const spot = leg.to.startsWith('skip:') ? (() => { const z = R.skipZone(cfg, leg.to.slice(5) as R.PartnerId, 0); return { x: z.x, y: z.y, id: leg.to }; })() : standSpot(cfg, leg.to, p) ?? spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
+          const spot = site && laneY === laneY ? { x: (site.x0 + site.x1) / 2, y: laneY, id: leg.to } : leg.to.startsWith('skip:') ? (() => { const z = R.skipZone(cfg, leg.to.slice(5) as R.PartnerId, 0); return { x: z.x, y: z.y, id: leg.to }; })() : standSpot(cfg, leg.to, p) ?? spotOf(cfg, g, R.frame(cfg, g), leg.to, Date.now());
           if (!p || !spot) break;
+          if (site && p.x >= site.x0 + 1 && p.x <= site.x1 - 1 && p.y >= site.y0 && p.y <= site.y1) break;
           const dist = Math.hypot(spot.x - p.x, spot.y - p.y);
           // join2 (seam g): a card place's walk ENDS where the rules name it (R.placeNear), as a person stops at its door.
           if (isCardPlace(cfg, leg.to) ? R.placeNear(cfg, p.x, p.y) === leg.to && dist <= 1.2 : dist <= cfg.salvage.reach.place * 0.8) break;
@@ -235,7 +248,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
           send('mousemove', home.x + d.dx * STICK_R * 0.95 * k, home.y + d.dy * STICK_R * 0.95 * k);
           await sleep(100);
         }
-        send('mouseup', home.x, home.y);
+        if (!leg.stay) send('mouseup', home.x, home.y);
         log(`at ${leg.to} after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
         if (leg.press) {
           await sleep(teach.autoplayReactS * 1000);

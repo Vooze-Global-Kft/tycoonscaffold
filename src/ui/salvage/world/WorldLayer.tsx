@@ -476,6 +476,9 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     box.value = [f.x0, f.y0, f.x1, f.y1];
   }, [width, height, insets, box]);
 
+  // owner2 item 3: what the effects' frame callback used to make every frame (a paint, the bounds, six small
+  // arrays), made once on the UI thread and kept here; the size it was made for is checked.
+  const fxScratch = useSharedValue<any>(null);
   const frameCb = useFrameCallback((info) => {
     'worklet';
     const now = info.timestamp / 1000;
@@ -486,9 +489,15 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     const lift = yard.lift;
     const W = width;
     const H = height;
+    let X = fxScratch.value;
+    if (X === null || X.W !== W || X.H !== H) {
+      X = { W, H, bounds: Skia.XYWHRect(0, 0, W, H), paint: Skia.Paint(), p3: [0, 0, 0], s2: [0, 0], out: [0, 0, 0, 0], tip: [0, 0], foot: [0, 0], coins: [] };
+      fxScratch.value = X;
+    }
     const rec = Skia.PictureRecorder();
-    const cv = rec.beginRecording(Skia.XYWHRect(0, 0, W, H));
-    const paint = Skia.Paint();
+    const cv = rec.beginRecording(X.bounds);
+    const paint = X.paint;
+    paint.setAlphaf(1);
     let alive = 0;
     // World-space drawing: in the world's pixels under the camera and its zoom (c is then 0, 0).
     cv.save();
@@ -530,20 +539,25 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     }
     // Effects.
     const L = live.value;
-    const keep: Live[] = [];
-    const coins: Live[] = [];
-    const p3 = [0, 0, 0];
+    // The survivors' list is made only on a frame that drops one (most frames drop none).
+    let keep: Live[] | null = null;
+    const coins: Live[] = X.coins;
+    coins.length = 0;
+    const p3 = X.p3;
     for (let i = 0; i < L.length; i++) {
       const e = L[i];
       if (e.t0 < 0) e.t0 = now + e.delay;
       if (now < e.t0) {
-        keep.push(e);
+        if (keep !== null) keep.push(e);
         continue;
       }
       const dur = FX_S[e.kind as 0];
       if (e.kind === FX.work) {
         if (e.stop === 1 && e.end < 0) e.end = now;
-        if (e.end >= 0 && now - e.end > dur) continue;
+        if (e.end >= 0 && now - e.end > dur) {
+          if (keep === null) keep = L.slice(0, i);
+          continue;
+        }
         const fade = e.end >= 0 ? 1 - (now - e.end) / dur : 1;
         const sx = e.ax * ppm;
         const sy = e.ay * ppm * tilt - e.az * ppm * lift;
@@ -577,13 +591,16 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
           cv.restore();
         }
         cv.restore();
-        keep.push(e);
+        if (keep !== null) keep.push(e);
         alive++;
         continue;
       }
       const u = (now - e.t0) / dur;
-      if (u >= 1) continue;
-      keep.push(e);
+      if (u >= 1) {
+        if (keep === null) keep = L.slice(0, i);
+        continue;
+      }
+      if (keep !== null) keep.push(e);
       alive++;
       if (e.kind === FX.arc) {
         const bd = body.value;
@@ -619,10 +636,10 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         cv.restore();
       }
     }
-    if (keep.length !== L.length) live.value = keep;
+    if (keep !== null) live.value = keep;
     cv.restore();
     // Screen-space drawing: the coins (from the cab to the cash counter), the chevron.
-    const s2 = [0, 0];
+    const s2 = X.s2;
     const ca = cashAnchor.value;
     const cp = ca.x > 0 || ca.y > 0 ? ca : cashFallback.value;
     for (let i = 0; i < coins.length; i++) {
@@ -639,9 +656,9 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
     }
     // The chevron over the goal's target, or its edge arrow.
     const ch = chev.value;
-    const out = [0, 0, 0, 0];
-    const tip = [0, 0];
-    const foot = [0, 0];
+    const out = X.out;
+    const tip = X.tip;
+    const foot = X.foot;
     toScreen(tip, ch.x, ch.y, ch.z, cm, ppm, tilt, lift, W, H);
     toScreen(foot, ch.x, ch.y, 0, cm, ppm, tilt, lift, W, H);
     chevronPlace(out, ch.on * (chevronGate.value > 0 ? 1 : 0), tip[0], tip[1], foot[1], box.value);

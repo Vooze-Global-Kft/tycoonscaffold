@@ -11,6 +11,9 @@
  * owner1-fix (the player's findings 4, 7, 11): the form comes from the rules' frame (boss.button) as well as the
  * world's flag (words.ts buttonMode): at the wheel always "Step out"; "Open" only where the place's card shows
  * something; getting in closes an open card.
+ * owner2-hud (ruling 18.4): "Get in" on foot within reach of the free truck, when the RULES say so (the frame's
+ * boss.button 'getIn': the reach, the truck free, no away card waiting, nearer the truck than the point of a place
+ * whose card would open); a press calls onGetIn (the world seats him: anim.enter), ignored while the stick is held.
  */
 import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +30,7 @@ import { useSalvageUi } from '../uiState';
 import { stickHeld } from '../world/stick';
 import { DISC_EDGE, TAG_GAP, discFit, refusalTag, type HudLayout } from './metrics';
 
-export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L: HudLayout; hidden: boolean; onStepOut: () => void }) {
+export function OneButton({ cfg, L, hidden, onStepOut, onGetIn }: { cfg: SalvageConfig; L: HudLayout; hidden: boolean; onStepOut: () => void; onGetIn?: () => void }) {
   const place = useSalvageUi((s) => s.place);
   const driving = useSalvageUi((s) => s.driving);
   const c = cfg.salvage;
@@ -49,7 +52,7 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   const target = useTarget(hidden ? null : 'salvage:oneButton');
   const held = useGame((s) => heldRefusal(cfg, s.game as SalvageGame | undefined));
   if (hidden) return null;
-  const label = mode === 'stepOut' ? say({ key: 'stepOut' }, c) : mode === 'open' ? say({ key: 'open' }, c) : '';
+  const label = mode === 'stepOut' ? say({ key: 'stepOut' }, c) : mode === 'getIn' ? say({ key: 'getIn' }, c) : mode === 'open' ? say({ key: 'open' }, c) : '';
   const size = L.button.size;
   // Point 4 of the owner's review: the label is fitted inside the round disc, measured as the text
   // check measures, on one line or two broken between words ("Step / out"), never cut.
@@ -63,6 +66,10 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
       // own step-out puts the two back in agreement.
       if (useSalvageUi.getState().driving) onStepOut();
       else salvageActions.stepOut();
+    } else if (mode === 'getIn') {
+      // owner2-hud (ruling 18.4): the world seats him in the cab on its next frame and sends the rules its exact
+      // entering sample (the cab flag at the truck's place); no toast, no card: the disc then reads "Step out".
+      onGetIn?.();
     } else if (mode === 'open' && place) openCard({ kind: 'place', place });
   };
   return (

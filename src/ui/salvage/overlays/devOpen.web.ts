@@ -5,6 +5,9 @@
  *   (a place's card, or the office at a tab); `card=skip | rung | settings | help | bay:<grade>` (the market's
  *   cards: the farm's skip, the rung-2 sign, settings, help, a bay's card = the board at that grade's row);
  * - `cardAt=<ms>`: open it that long after load instead of 600 ms (e.g. after the away card has been closed).
+ * - `counting=hold | run` (owner2-hud, item 2): once the curtain has parted, a return after `countingH` hours
+ *   (default 3; a state in which something was done: ?preset=m15 or later): `hold` keeps the counting card on
+ *   screen (the pass never runs), `run` runs it two frames later and the away card takes its place.
  */
 import type { CardRef } from '../../../engine/salvage';
 import type { OfficeTab } from './cardStack';
@@ -40,4 +43,15 @@ export function devCard(): { ref: CardRef; tab?: OfficeTab } | null {
   if (v === 'help') return { ref: { kind: 'help' } };
   if (v.startsWith('bay:')) return { ref: { kind: 'bay', grade: v.slice(4) } };
   return { ref: { kind: 'place', place: v } };
+}
+
+let counting: { mode: 'hold' | 'run'; hours: number } | null | undefined;
+
+export function devCounting(): { mode: 'hold' | 'run'; hours: number } | null {
+  if (counting !== undefined) return counting;
+  const q = query();
+  const v = q?.get('counting');
+  const h = Number(q?.get('countingH') ?? 3);
+  counting = v === 'hold' || v === 'run' ? { mode: v, hours: Number.isFinite(h) && h > 0 ? h : 3 } : null;
+  return counting;
 }

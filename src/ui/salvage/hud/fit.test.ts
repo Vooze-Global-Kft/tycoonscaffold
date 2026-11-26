@@ -30,8 +30,8 @@ describe('the width table is the text check\'s', () => {
 });
 
 // Every label the one button shows: "Open" at a place, "Step out" in the truck (stage 1, 2.1) and in the
-// forklift (stage 2, 4.7: "the one button reads Step out"). Nothing else in stage 2 section 4 gives it a word.
-const BUTTON_KEYS = ['open', 'stepOut'] as const;
+// forklift (stage 2, 4.7: "the one button reads Step out"), "Get in" beside the free truck (owner2-hud, ruling 18.4).
+const BUTTON_KEYS = ['open', 'stepOut', 'getIn'] as const;
 
 describe('point 4: the one button\'s label is whole inside its disc', () => {
   for (const p of PHONES)

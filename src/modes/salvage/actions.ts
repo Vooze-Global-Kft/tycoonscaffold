@@ -17,6 +17,7 @@ import type { GameState } from '../../engine/types';
 import { crash } from '../../services/firebase';
 import { modeEvents } from '../../state/modeEvents';
 import { useGame } from '../../state/store';
+import { heldForCount } from './returning';
 
 /** The current salvage config and game, or null outside a salvage game. */
 export function salvageNow(): { cfg: R.SalvageConfig; g: R.SalvageGame } | null {
@@ -40,6 +41,8 @@ type Step = (cfg: R.SalvageConfig, g: R.SalvageGame, clock: number, events: R.Sa
 function act(where: string, fn: Step): Refusal | null {
   const now = salvageNow();
   if (!now) return NOT_SALVAGE;
+  // owner2-hud: while an absence waits for its pass (./returning.ts) nothing is applied to the old state.
+  if (heldForCount()) return null;
   const events: R.SalvageEvent[] = [];
   let next: R.SalvageGame;
   try {
@@ -64,7 +67,7 @@ export const salvageActions = {
    */
   presence(p: R.Presence): boolean {
     const now = salvageNow();
-    if (!now) return false;
+    if (!now || heldForCount()) return false;
     const events: R.SalvageEvent[] = [];
     let next: R.SalvageGame;
     try {
