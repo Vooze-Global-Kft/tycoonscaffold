@@ -15,8 +15,9 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { GameState } from '../types';
 import { freshSalvage } from './create';
+import { RUN_MAX } from './group';
 import { pointOf } from './positions';
-import type { BayState, CrewMember, CrewRole, MachineId, PartnerState, SalvageConfig, SalvageGame, SalvageState } from './types';
+import type { BayState, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
 
 const num = (x: unknown, d = 0): number => (typeof x === 'number' && Number.isFinite(x) ? x : d);
 const grams = (x: unknown): number => Math.max(0, Math.round(num(x)));
@@ -36,6 +37,47 @@ function bayOf(c: SalvageContent, b: Partial<BayState>): BayState {
     .filter((a) => a.g > 0);
   void c;
   return { g, n: Math.max(0, Math.floor(num(b.n))), held: !!b.held, aside, forCrucible_g: Math.min(g, grams(b.forCrucible_g)), forDeal_g: Math.min(g, grams(b.forDeal_g)) };
+}
+
+const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isSpot = (v: unknown): boolean => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * engine2-group (stage 2, 2.1): a grouped run saved mid-way is kept when it is well formed and bounded
+ * (at most RUN_MAX loads or things, finite instants in order, string claims); its end is never before the
+ * save's clock (it lands at the first instant). A stage-1 save has no run: nothing to migrate.
+ */
+function runOf(raw: unknown, t: number): CrewRun | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Partial<CrewRun>;
+  if (!fin(r.t0) || !fin(r.end) || !Array.isArray(r.start) || r.start.length !== 2 || !r.start.every(fin) || r.end < r.t0) return null;
+  const loads = r.loads;
+  const cuts = r.cuts;
+  if ((loads === undefined) === (cuts === undefined)) return null;
+  if (loads !== undefined) {
+    if (!Array.isArray(loads) || !loads.length || loads.length > RUN_MAX) return null;
+    for (const L of loads) {
+      if (!L || !Array.isArray(L.claims) || L.claims.length > RUN_MAX * 4 || !L.claims.every((c) => typeof c === 'string')) return null;
+      if (!fin(L.pickAt) || !fin(L.dropAt) || L.dropAt < L.pickAt || !isSpot(L.spot)) return null;
+    }
+    if (typeof r.dest !== 'string') return null;
+  }
+  if (cuts !== undefined) {
+    if (!Array.isArray(cuts) || !cuts.length || cuts.length > RUN_MAX) return null;
+    for (const C of cuts) if (!C || typeof C.thing !== 'string' || !fin(C.walkEnd) || !fin(C.cutEnd) || C.cutEnd < C.walkEnd) return null;
+  }
+  const n = (loads ?? cuts)!.length;
+  return { ...(r as CrewRun), end: Math.max(r.end, t), k: n, legS: fin(r.legS) ? r.legS : 0 };
+}
+
+function planOf(raw: unknown, t: number): TripPlan | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Partial<TripPlan>;
+  if (!fin(p.t0) || !fin(p.x) || !fin(p.y) || !Array.isArray(p.ends) || p.ends.length !== 7 || !p.ends.every(fin)) return null;
+  for (let i = 1; i < 7; i++) if (p.ends[i] < p.ends[i - 1]) return null;
+  const ends = [...p.ends];
+  if (ends[6] < t) ends[6] = t;
+  return { t0: p.t0, x: p.x, y: p.y, ends };
 }
 
 /** Repair a layout-2 salvage state against the content. */
@@ -92,6 +134,23 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   s.crew = arr<CrewMember>(raw.crew)
     .filter((m) => roles.has(m.role))
     .map((m) => ({ ...m, level: Math.max(1, Math.min(c.crew[m.role as CrewRole].maxlev, Math.floor(num(m.level, 1)))), load: arr(m.load), claims: arr(m.claims) }));
+  // A grouped run (2.1): kept when well formed; a broken one is dropped, its member idle where it began,
+  // what it claimed released (pieces and things it held go back to their piles; nothing is invented).
+  for (const m of s.crew) {
+    if (m.run === undefined) continue;
+    const run = runOf(m.run, t);
+    if (run) {
+      m.run = run;
+      continue;
+    }
+    const st = Array.isArray((m.run as Partial<CrewRun> | null)?.start) ? (m.run as CrewRun).start : null;
+    delete m.run;
+    delete m.dest;
+    for (const p of s.pieces) if (p.claim === m.id) p.claim = null;
+    for (const th of s.things) if (th.by === m.id) th.by = null;
+    const at: [number, number] = st && st.every(fin) ? [st[0], st[1]] : [0, 0];
+    Object.assign(m, { job: 'idle', phase: 'wait', from: { xy: at }, to: { xy: at }, t0: t, t1: t, carries: null, load: [], claims: [], cut: null });
+  }
 
   // Partners: every partner of content (a new one starts as a fresh yard has it).
   const rawP = obj<Record<string, PartnerState>>(raw.partners);
@@ -106,6 +165,16 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   if (!inYard(c, tk.x, tk.y)) {
     const park = pointOf(c, 'park');
     s.truck = { ...fresh.truck, ...tk, x: park.x, y: park.y } as SalvageState['truck'];
+  }
+  // A planned trip (2.1): kept when well formed; else the trip starts again from its walk at the save's clock.
+  if (s.truck?.trip && (s.truck.trip as { plan?: unknown }).plan !== undefined) {
+    const plan = planOf(s.truck.trip.plan, t);
+    if (plan) s.truck = { ...s.truck, trip: { ...s.truck.trip, plan } };
+    else {
+      const { plan: _drop, ...trip } = s.truck.trip;
+      void _drop;
+      s.truck = { ...s.truck, trip: { ...trip, phase: 'walk', t0: t, endsAt: t } };
+    }
   }
 
   // Lifetime counters (goals.ts) survive as they are; a save without them gets none.

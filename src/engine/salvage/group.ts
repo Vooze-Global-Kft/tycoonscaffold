@@ -5,7 +5,8 @@
  * the boss comes within sight (hand.ts bossStep). Owner: engine2 (rules-sim's files).
  *
  * The numbers live in content `group` (requests.md asks the content's owner for the schema entry); until
- * the schema carries them a content without `group` uses the first values below.
+ * the schema carries them a content without `group` uses the first values below (tests set `group` on
+ * the parsed content to switch grouping on at any rung, or off with a fromRung beyond the ladder).
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { bossFresh, type Ctx } from './clock';
@@ -14,33 +15,37 @@ import { atPlace } from './machines';
 export interface GroupCfg {
   /** The first rung on which runs are grouped (below it every leg is its own event, as in stage 1). */
   fromRung: number;
-  /** The longest planned run, seconds (the first trip always goes, however long). */
-  maxRun_s: number;
+  /** A yard hand's longest planned run, seconds (his first trip always goes, however long). */
+  handRun_s: number;
+  /** A cutter's longest planned run, seconds (his first thing always goes). */
+  cutRun_s: number;
   /** A merchant's round that leaves with no boss within sight of his stand is away at least this long. */
   roundAway_s: number;
-  /** Experiment knobs: per-role run lengths (default maxRun_s). */
-  handRun_s: number;
-  cutRun_s: number;
 }
 
-/** First values (part-a 2.1.2): grouping from rung 3, runs of at most 300 s, the merchant away 120 s. */
-export const GROUP_DEFAULT = { fromRung: 3, maxRun_s: 300, roundAway_s: 120 };
+/**
+ * First values (engine2-group, measured: notes/engine2-group.md section 4). The draft's one `maxRun_s`
+ * of 300 s cost a tenth of six hours' sales on five played minute-60 yards (the floor's room binds; a
+ * hand's long run holds his pieces and his trips' order); a yard hand's run of 30 s and a cutter's of
+ * 120 s kept the five yards' sales within 1 % on average. A content `maxRun_s` (the draft's key) caps both.
+ */
+export const GROUP_DEFAULT: GroupCfg = { fromRung: 3, handRun_s: 30, cutRun_s: 120, roundAway_s: 120 };
 
 const CACHE = new WeakMap<SalvageContent, GroupCfg>();
+
+const num = (v: unknown, d: number, min = 0): number => (typeof v === 'number' && Number.isFinite(v) && v >= min ? v : d);
 
 export function groupCfg(c: SalvageContent): GroupCfg {
   let g = CACHE.get(c);
   if (!g) {
-    const raw = (c as unknown as { group?: Partial<GroupCfg> }).group ?? {};
+    const raw = ((c as unknown as { group?: Record<string, unknown> }).group ?? {}) as Record<string, unknown>;
+    const cap = num(raw.maxRun_s, Infinity);
     g = {
-      fromRung: Number.isFinite(raw.fromRung) ? (raw.fromRung as number) : GROUP_DEFAULT.fromRung,
-      maxRun_s: Number.isFinite(raw.maxRun_s) && (raw.maxRun_s as number) > 0 ? (raw.maxRun_s as number) : GROUP_DEFAULT.maxRun_s,
-      roundAway_s: Number.isFinite(raw.roundAway_s) && (raw.roundAway_s as number) >= 0 ? (raw.roundAway_s as number) : GROUP_DEFAULT.roundAway_s,
-      handRun_s: 0,
-      cutRun_s: 0,
+      fromRung: num(raw.fromRung, GROUP_DEFAULT.fromRung, -Infinity),
+      handRun_s: Math.min(cap, num(raw.handRun_s, GROUP_DEFAULT.handRun_s)),
+      cutRun_s: Math.min(cap, num(raw.cutRun_s, GROUP_DEFAULT.cutRun_s)),
+      roundAway_s: num(raw.roundAway_s, GROUP_DEFAULT.roundAway_s),
     };
-    g.handRun_s = Number.isFinite(raw.handRun_s) ? (raw.handRun_s as number) : g.maxRun_s;
-    g.cutRun_s = Number.isFinite(raw.cutRun_s) ? (raw.cutRun_s as number) : g.maxRun_s;
     CACHE.set(c, g);
   }
   return g;
