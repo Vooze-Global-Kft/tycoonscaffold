@@ -14,6 +14,8 @@
  * --only list     beats,hand,away,days,nohand,gate (default all with --report)
  * --json file     write every run's summary there too
  * --handFirst     a what-if: after the fixed goals the bots level the yard hands when pieces wait (bot.ts)
+ * --only income   stage 2 2.3.3's gate (engine2-income): rated income I against the away income an hour G at
+ *                 usual prices (board.a 0), at rung 3's entry, the hour's end, day 1 and day 3 (normal hand)
  * Every run checks the hard promises of 8.3 (shown equals applied, cash never below zero, supplied never
  * falling, no stock negative; tick equals jump minute by minute on the normal hand's runs); a broken
  * promise prints in the report's first section and makes the exit code 2.
@@ -45,7 +47,7 @@ function loadCfg(file: string): R.SalvageConfig {
 // ============================================================================================ one run
 
 interface Spec extends BotOptions {
-  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder';
+  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income';
   minutes: number;
   gate?: boolean;
 }
@@ -92,8 +94,26 @@ function summary(b: Bot, spec: Spec, R_: number[], gate: string[], extra: Record
   };
 }
 
+/**
+ * Stage 2 2.3.3 (I5; engine2-income): the gate's G from a state: a capped absence with usual prices, (net
+ * cash gained + the value at usual prices of the stock it left − at its start) ÷ the hours the yard ran.
+ * Stage 2's bank does not exist yet: nothing a bank took to add.
+ */
+function incomeRow(cfg: R.SalvageConfig, g: R.SalvageGame, spec: Spec, at: string) {
+  const ab = newBot(cfg, g, NOW + g.salvage.t * 1000, spec);
+  ab.now = NOW + Math.round(g.salvage.clock.highMs - NOW);
+  const v0 = R.stockValue(cfg, g);
+  away(ab, 24 * 3600);
+  const card = ab.g.salvage.away!;
+  const h = card.seconds / 3600;
+  const G = (ab.g.cash - g.cash + R.stockValue(cfg, ab.g) - v0) / Math.max(1e-9, h);
+  const T = R.ratedTerms(cfg, g);
+  return { at, t: g.salvage.t, rung: g.salvage.ladder.rung, ran_h: h, G, I: T.I, bind: T.bind, Isales: T.sales, Ispent: T.spent, sales: card.money / h, spent: (card.spent ?? 0) / h, stock: (R.stockValue(cfg, ab.g) - v0) / h };
+}
+
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
   const t0 = performance.now();
+  if (spec.kind === 'income') base = { ...base, salvage: { ...base.salvage, board: { ...base.salvage.board, a: 0 } } };
   const cfg = seededCfg(base, spec.seed);
   const b = newBot(cfg, startGame(cfg, NOW), NOW, spec);
   const Rs: number[] = [];
@@ -173,6 +193,24 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
       extra.burst = burst;
       extra.night = night;
     }
+    return summary(b, spec, Rs, gate, extra, t0);
+  }
+  if (spec.kind === 'income') {
+    let r3: R.SalvageGame | null = null;
+    playTo(b, 3600, (bb, m) => {
+      onMinute(bb, m);
+      if (!r3 && bb.g.salvage.ladder.rung >= 3) r3 = bb.g;
+    });
+    const rows = [];
+    if (r3) rows.push(incomeRow(cfg, r3, spec, 'rung3'));
+    rows.push(incomeRow(cfg, b.g, spec, 'hour'));
+    for (let k = 0; k < 6; k++) {
+      away(b, 11.75 * 3600);
+      playTo(b, b.g.salvage.t + 15 * 60);
+      if (k === 1) rows.push(incomeRow(cfg, b.g, spec, 'day1'));
+    }
+    rows.push(incomeRow(cfg, b.g, spec, 'day3'));
+    extra.income = rows;
     return summary(b, spec, Rs, gate, extra, t0);
   }
   if (spec.kind === 'days' || spec.kind === 'holder') {
@@ -501,6 +539,22 @@ function report(all: Summary[], seeds: number[]): string {
       L.push(`   seed ${r.spec.seed}: reached on ${withHire.filter((x) => x.reachedAfter_s !== null).length}/${withHire.length} states from the first hire; ${rows.map((x) => `m${x.m} ${x.next ?? '-'}:${x.reachedAfter_s === null ? (x.price === null ? 'n/a' : 'NO') : mmss(x.reachedAfter_s)}`).join(' ')}`);
     }
   }
+  const inc = pick((s) => s.kind === 'income');
+  if (inc.length) {
+    type Row = { at: string; t: number; rung: number; ran_h: number; G: number; I: number; bind: string; Isales: number; Ispent: number; sales: number; spent: number; stock: number };
+    L.push('');
+    L.push('8. RATED INCOME I AGAINST THE AWAY INCOME G (stage 2 2.3.3, I5; usual prices: board.a 0; normal hand, goal habit, route A; G = (net cash + stock left at p̄ − at the start) / hours the yard ran, a capped absence)');
+    for (const at of ['rung3', 'hour', 'day1', 'day3']) {
+      const rows = inc.map((r) => (r.extra.income as Row[]).find((x) => x.at === at)).filter((x): x is Row => !!x);
+      if (!rows.length) continue;
+      const q = rows.map((x) => x.I / x.G);
+      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds (aim 13 of 15 at rung3 and day3); I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
+      for (let i = 0; i < rows.length; i++) {
+        const x = rows[i];
+        L.push(`      s${pad(inc[i].spec.seed, 2)} t ${mmss(x.t)} rung ${x.rung} ran ${x.ran_h.toFixed(1)} h: G §${pad(Math.round(x.G), 6)} (sales ${Math.round(x.sales)} − loads ${Math.round(x.spent)} + stock ${Math.round(x.stock)})  I §${pad(Math.round(x.I), 6)} (sales ${Math.round(x.Isales)} − loads ${Math.round(x.Ispent)}, binds ${x.bind})  I/G ${(x.I / x.G).toFixed(3)}`);
+      }
+    }
+  }
   L.push('');
   L.push(`run time: ${Math.round(all.reduce((a, r) => a + r.ms, 0) / 1000)} s of CPU over ${all.length} runs`);
   return L.join('\n');
@@ -522,7 +576,7 @@ async function main(): Promise<void> {
   const first = Number(arg('first', '1'));
   const seeds = unseen ? [101, 102, 103, 104, 105] : Array.from({ length: nSeeds }, (_, i) => i + first);
   const routes = Number(arg('routes', '2')) >= 2 ? ['A', 'B'] : ['A'];
-  const only = (arg('only', 'beats,hand,away,days,nohand,gate') ?? '').split(',');
+  const only = (arg('only', 'beats,hand,away,days,nohand,gate,income') ?? '').split(',');
   const jobs = Number(arg('jobs', '2'));
   const specs: Spec[] = [];
   const base = { kind: 'hour' as const, minutes: 60 };
@@ -535,6 +589,7 @@ async function main(): Promise<void> {
       specs.push({ ...base, hand: 'slow', habit: 'goal', route: 'A', seed, minutes: 100 });
     }
     if (only.includes('hand')) specs.push({ ...base, kind: 'manager', hand: 'normal', habit: 'goal', route: 'A', seed, manager: true });
+    if (only.includes('income')) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed });
   }
   const few = seeds.slice(0, Math.min(3, seeds.length));
   for (const seed of few) {

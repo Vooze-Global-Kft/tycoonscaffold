@@ -98,6 +98,7 @@
     { "term": "Gross, tare, net", "line": "Loaded weight, empty weight, and the load: gross less tare." },
     { "term": "Heel", "line": "The molten metal left in the crucible between heats." },
     { "term": "HMS 80:20", "line": "Heavy melting steel, grades 1 and 2 mixed 80 to 20." },
+    { "term": "Hold", "line": "Keeps a bay from the merchant. Away, it sells if the yard cannot pay for a load." },
     { "term": "Ingot", "line": "A cast block of metal, made to be melted again." },
     { "term": "Licensed waste carrier", "line": "A firm allowed by law to take the yard's waste away." },
     { "term": "Light iron", "line": "Thin steel, such as the panels of a washing machine." },

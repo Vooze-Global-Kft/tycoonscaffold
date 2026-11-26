@@ -239,7 +239,7 @@ export const TEXT = {
   'away.net': 'Net +{x} (already in your account)',
   'away.netLoss': 'Net −{x} (taken from your account)', // x positive, when spent > sales
   'away.unsold': 'In the bays, not yet sold: {x}', // join3: x money, the stock the time away left unsold (today's price)
-  'away.heldSold': 'Sold from hold to keep the yard running: {grade}', // engine2-income (E40): grade: { grade }, one line a bay that left Hold while away
+  'away.heldSold': 'Sold from hold to keep the yard going: {grade|short}', // engine2-income (E40): grade: { grade }, one line a bay that left Hold while away
   'away.next': 'Next: {goal}', // goal: { text: goal.* }
   'away.longerRung': 'From the next rung it runs up to {c}', // c: { secs }
   'away.longerNight': 'With the night watch it runs up to {c}', // c: { secs }

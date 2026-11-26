@@ -1,0 +1,782 @@
+[
+ {
+  "id": "B1",
+  "lens": "builder",
+  "severity": "blocking",
+  "where": "9.1 and 9.2 (Owns columns); 2.19 'Racking, opening a lot, clearing the crate, commissioning and entering the forklift go through presence'",
+  "problem": "Phase-B rules must edit files that Phase B gives to nobody: engine2's loop files (crew.ts, tick.ts, round.ts, truck.ts, hand.ts, away.ts, rate.ts), plus deal.ts and clock.ts, which have no owner at all. fixtures/salvage.ts is engine2's but receives r4, rackFull, lots4, r3fin and l2save from rules-works and rules-money.",
+  "evidence": "Crate diversion and reusable batches happen at the tip (truck.ts). Yard hands feeding the baler and racking away are crew.ts. Presence acts are hand.ts. Every new dated event needs tick.ts eventsOf, firstEvent, apply and ORDER (tick.ts:28-90). The bank split sits at the lot payments in round.ts:105 and deal.ts:80, and earn is clock.ts:128.",
+  "change": "engine2 stays owner of the loop files and also takes clock.ts and deal.ts through Phase B. In Phase A it writes ONE call site per feature against stubs in files the feature's package owns (works.ts worksDated/worksApply/worksDepart, reuse.ts rackChoice, lots.ts, crate.ts tipDivert, bank.ts payLot). Split the fixtures into fixtures/salvage.ts (engine2), fixtures/salvage2works.ts and fixtures/salvage2money.ts.",
+  "ruling": "do: engine2 stays the owner of the loop files (crew, tick, round, truck, hand, away, rate, clock, deal) through Phase B and writes ONE call site per feature against stubs in files the feature's package owns; the fixtures split into three files."
+ },
+ {
+  "id": "B2",
+  "lens": "builder",
+  "severity": "blocking",
+  "where": "2.14.4 'the player is paid x \u2212 y through the one earn'; 9.2 rules-money 'money.ts (bankSplit inside earn)'; 10 hook 1; 2.3.3 'AwayCard.net'",
+  "problem": "earn is not in money.ts. It is called after the ticket is printed, so the ticket cannot print y. A split inside earn would also split ad rewards and granted scrip unless they bypass earn, and if they bypass it they also miss the income buckets (the advice budget) and the away card's money: the spec says neither. AwayCard.net (the I gate's measure) is not defined once a bank share exists.",
+  "evidence": "clock.ts:128 earn(x, amount, t); round.ts:104-106 printTicket then earn; deal.ts:80-82 earn then printTicket; advice.ts:216 budget = cash + minutes \u00d7 incomeRate.",
+  "change": "Add bank.ts payLot(x, gross, t): {y, z}, called at the five sites of 2.14.4 BEFORE printTicket (the ticket carries bank.y); it then calls earn(x, z, t). Add clock.ts credit(x, a, t, kind: 'ad' | 'grant'), which adds to cash and x.earned only, not to the income buckets or away.money. AwayCard gains bank; net stays money \u2212 spent (gross of the bank) and is the I gate's measure; the away bonus's base is money \u2212 bank.",
+  "ruling": "do: bank.ts payLot(x, gross, t) is called at the lot payments BEFORE the ticket prints and then calls earn with the player's part; a separate credit() for ad rewards and granted scrip (cash and earned only: never the income buckets, never a payment the bank shares in); the away card gains the bank's take; the away bonus is half of what reached the player."
+ },
+ {
+  "id": "B3",
+  "lens": "builder",
+  "severity": "blocking",
+  "where": "2.1.1 'live play out of sight equals time away, by construction'; 2.1.4 'a live advance with a fresh boss standing out of sight of every station equals the away pass'",
+  "problem": "Present-out-of-sight differs from away in the code and in this document, so the test cannot pass.",
+  "evidence": "clock.ts boostOn returns false when !x.live (the foreman boost is live only); machines.ts:24 (the hand stripper is idle away); 2.2 (E40 only 'when the boss is not fresh'); 2.12 (yard hands rack only away; 'while he is in the yard a tagged thing is his'). Smallest example: r3, one tagged radiator on the floor, the boss fresh at the gate and out of sight. Live, nobody touches it; away, a yard hand racks it and a visitor pays \u00a7162.88.",
+  "change": "List these four differences in 2.1.2's 'not exact, and is the rule' paragraph. Write 2.1.4's test on a named state r3plain (no boost, no hand-stripper work, no tagged thing, no E40 condition). Alternatively make reuse ownership sight-based (finding 15); E40 stays as ruled.",
+  "ruling": "do, by the lead's G1 (notes/engine2-LEAD.md): the promise is a tick equals a jump for the SAME presence state; 'present out of sight equals away' is withdrawn (the rules make them differ on purpose) and its test goes; list the differences where 2.1 describes them. With E4: a tagged thing's owner is decided by sight."
+ },
+ {
+  "id": "B4",
+  "lens": "builder",
+  "severity": "blocking",
+  "where": "2.9 'Plasma cutter (tool, tier 3, P 60): the boss's and every cutter's power on steel'",
+  "problem": "Tool power is the highest P among content tools with tier \u2264 s.tier, not among owned tools. A yard that owns the torch (tier 3) would cut at P 60 without buying the plasma. No rule anywhere gives power per material ('on steel').",
+  "evidence": "ladder.ts:200, content.ts:64, cards.ts:104 and frame.ts:142 all filter c.tools by t.tier <= s.tier. Content: torch {tier 3, P 30}. save.ts:52 clamps tier to at most 3.",
+  "change": "Plasma becomes {tier: 4, P: 60}, power on every material; no object needs tier 4. save.ts clamps tier to the content's highest tool tier.",
+  "ruling": "do, with T8: the plasma cutter is tier 4, P 60, on every material; it cuts stainless and non-ferrous metal, which the torch cannot; oversize pieces of stainless and non-ferrous metal need it; the save clamps the tool tier to the content's highest; nothing the rung-4 range needs depends on a tool the player cannot own by then (a content check)."
+ },
+ {
+  "id": "B5",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.15.1 to 2.15.7; 5.1 'iap.products[]'; 11.1 decision 6; 2.18 'iap {owned, ...}'; 9.1 store-shared",
+  "problem": "Products placed in the salvage content are invisible to the shared purchase code: no price, no restore, no re-grant at boot. The kinds the spec needs already exist. A salvage-side iap.owned would duplicate the shared entitlements. iap.purchase returns no transaction id. meta.ts must learn the new kind but is not in store-shared's list.",
+  "evidence": "iap.ts:70 loadProducts reads baseGame.monetization.iap.products; store.ts:423-426 (boot re-grant) and 1035-1045 (restore) look up cfg.monetization.iap.products. meta.ts:121-160 has the kinds cosmetic (recorded in entitlements.products) and skipAds (entitlements.skipRewarded). iap.ts:129 purchase(): Promise<boolean>.",
+  "change": "The sixteen products go in game.json monetization.iap.products: looks as cosmetic, No ad videos as skipAds, packs as hoursOfIncome with value H. Salvage content iap keeps packsFromRung, packsOff and the product-id-to-look-slot map. State iap drops owned and reads entitlements; the ad rules read entitlements.skipRewarded. store-shared also owns src/engine/meta.ts (one case handing hoursOfIncome to the mode) and changes iap.purchase to resolve {ok, txId, purchasedMs}.",
+  "ruling": "do: products sit in the shared list (monetization.iap.products) with the existing kinds for looks and No ad videos and ONE new shared kind for hours of income; the mode reads what is owned from the shared entitlements (no second record in the mode's state); the mode's hook grants a pack with its transaction id and quote (ruling 10.9)."
+ },
+ {
+  "id": "B6",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.15.4 'stores pending {product, S, I, at} (one per product)'; 2.15.5; grantProduct(id, txId, quote)",
+  "problem": "One pending quote per product can grant an amount other than the one shown, and a kill at the wrong moment loses a paid pack.",
+  "evidence": "(a) Quote pack5 at I \u00a720k (S \u00a7100k); Ask to Buy waits. Next day quote pack5 at I \u00a740k and buy. Both approve: the first is granted \u00a7200k, not the \u00a7100k it showed. (b) quotePack, then the store sheet; the app is killed before the store's periodic save. The pending is gone, and the reconcile ('one without a quote ... is not granted') never grants a paid pack.",
+  "change": "Make pending a list {product, S, I, atMs}[]; a grant takes the oldest pending of its product. The store flushes the save after quotePack and before opening the store sheet. The hook becomes grantProduct(cfg, g, productId, txId, purchasedMs) as an EngineMode member in src/engine/mode.ts beside entitle; drop the quote argument (the save holds it). Correct 2.15.7 and design 9, which put the hook in src/modes/contract.ts.",
+  "ruling": "do."
+ },
+ {
+  "id": "B7",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.7 'fed by yard hands ... and their trays are carried to the platform scale by yard hands, as the first yard's machines'; 2.18 'every new machine is in works'",
+  "problem": "No rule says how crew and machine code address a plate in works, where plates stand in S12's order, or how a plate is levelled.",
+  "evidence": "schema.salvage.ts:346 MachineId = keyof MachinesDef. crew.ts:17, 178, 192, 224 and 351 hard-code ['stripper','hand_stripper','bench','crucible']. machines.ts RATE_MACHINES. The events feed, machineState and machineOut, LevelTarget {kind:'machine'}, and tick.ts's machine loop all take MachineId.",
+  "change": "Add StationId = MachineId | PlateId and one accessor station(s, id): MachineState over both records, used by machines.ts and crew.ts. Add LevelTarget {kind:'plate', plate}. feed, machineState, machineOut and the 'machine' queued kind take StationId. Write S12's order with the plates in it, e.g. trays of every station fullest first, then feeds in works.plates.*.slot order after the bench.",
+  "ruling": "do."
+ },
+ {
+  "id": "B8",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.8.1 'A rate plate draws from every bay whose route names it, by the cumulative rule'; 'a hall is charged by Take from bays ... as the crucible is'",
+  "problem": "Two engineers would build different draws. Not said: whether a bay's g is debited eagerly or lazily; in what order a plate draws from several bays (the shredder takes cbody, appl and li); who gets a grade two stations both take.",
+  "evidence": "The rotary hall's alu recipe (alw, alcast) and the first yard's crucible alu both draw alw and alcast; the induction hall's brass and the crucible both draw brs. BayState has one forCrucible_g (types.ts:198-209; bays.ts freeOf).",
+  "change": "Debit eagerly: credit a bay-fed plate's draw at every instant that reads or writes the bay, as machines.credit does. Draw in the plate's `in` order. Replace forCrucible_g with BayState.reserved: Record<StationId, g> (the migration maps it to 'crucible'). A grade is reserved by one station at a time: the crucible's fromBays and a hall's recipe refuse a grade routed elsewhere ('routed').",
+  "ruling": "do."
+ },
+ {
+  "id": "B9",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.18 'Not in the state: a queue (derived: nextEvent adds ...)'; 2.10.1 'with four waiting, the next comes the instant one is opened'; 2.12 'when an empty rack gets a thing at t, nextAt = t + period'",
+  "problem": "The new queued kinds and their order within one instant are not named, and that order decides tick = jump. Two dated fields have no value for their idle case.",
+  "evidence": "types.ts:459 QueuedKind and tick.ts:28 ORDER, with two parallel enumerations (eventsOf, firstEvent). With four lots waiting, a nextAt left in the past fires forever (or is dropped). JSON cannot store Infinity for an empty rack's nextAt.",
+  "change": "Add kinds plate, hall, commission, crane, lot, visitor, van and crateHold, ordered after machine and before round in that order. lots.nextAt: number | null, null while four wait, and opening a lot sets nextAt = t. reuse.nextAt and reuse.vanAt are null when idle.",
+  "ruling": "do."
+ },
+ {
+  "id": "B10",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.18 'Added:' list; 2.7 magnet crane; 2.9 forklift; 2.10.1 'Its mass is fixed on arrival'; 2.1.2 rate machines",
+  "problem": "Rules refer to state that does not exist.",
+  "evidence": "WorksState has no field for the crane's dated move or run. presence.driving is a boolean for the truck, so the forklift has nowhere to live. ThingState (types.ts:137) has no mass, yet lots vary by \u03bc \u00d7 I. MachineWork.piece is one piece, yet grouped rate machines take 'every hopper piece'. act.kind (types.ts:562) has no commission, rack, lot or crate. tick.ts keys driverLeg on s.truck.trip only, so truck2 has no queue entry.",
+  "change": "List in 2.18: WorksState.move {items, from, to, t0, end} | null for the crane; presence.vehicle 'truck' | 'forklift' | null, plus the forklift's parked x/y and load; ThingState.g? for lots; MachineWork.pieces; act kinds commission, rack, lot and crate; driverLeg ref 'truck' | 'truck2'.",
+  "ruling": "do."
+ },
+ {
+  "id": "B11",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.3.2 'read I when their card opens ... and keep it'; 2.14.3 'computed when the card opens, I frozen there'; 4.3 'I frozen at opening'",
+  "problem": "Freezing at the moment a card opens cannot be built in the rules: card data is a pure selector, and no state records which card is open or when it opened.",
+  "evidence": "4 (and stage 1): every card is CardData from cardOf, re-read every 500 ms and after every press. The actions noteSeen and ackAway exist, but no stored card state.",
+  "change": "Card numbers are computed from state at each read (I moves only when assets do). signFinance(shown) refuses with bankTerms the way buy refuses with priceUpdated. The letter's 'first time a card opens' becomes noteSeen({card:'works'}) setting bank.letterSeen. Freezing stays only where a value is stored: the pending quote, a lot's mass, Agreement.I.",
+  "ruling": "do."
+ },
+ {
+  "id": "B12",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.3.1 step 3 'R_bind = min over steps of capacity \u00f7 that share'",
+  "problem": "Step 1 defines the sources, but step 3 never uses them. A yard whose hands and plates outrun the drop-off and the partners' skips gets an I above what it is actually fed, and the 0.9 to 1.1 gate fails.",
+  "evidence": "Steps 1 to 5 of 2.3.1: sources are in kg/s, but R_bind takes the minimum over steps only.",
+  "change": "R_bind = min(\u03a3 source kg/s, min over steps of capacity \u00f7 share).",
+  "ruling": "do."
+ },
+ {
+  "id": "B13",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.1.4 Tests; 2.1.3 bench",
+  "problem": "No test bounds what grouping changes against the legs it replaces. 2.1.2 says the two are not exact, and no tolerance is set, so a run that loses trips passes every listed test.",
+  "evidence": "engine2-group.md 2.3 'NOT EXACT ... no tolerance is claimed'. 2.1.4 lists only tick = jump, present = away, opening, maxRun, single delivery and rung 2 unchanged.",
+  "change": "grouping.test.ts runs r3 for six hours away twice, with group.fromRung 3 and with 99. It requires sales, supplied and loads within 3 % and every gram conserved; the bench prints both runs.",
+  "ruling": "do."
+ },
+ {
+  "id": "B14",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.20 'reconcileSalvage accepts layouts 2 and 3 ... lots.nextAt = now + period ... At rung 3 the works layer opens with the bath at the first tick'",
+  "problem": "The migration misses things that save.ts does or must now do.",
+  "evidence": "save.ts:118 refuses v !== 2 (covered by 2.20) and :50 writes v: 2. Not covered: :52 clamps tier to 3; layout-3 ThingAt kinds and CrewRun claims are not validated; 'now' is epoch ms while lots.nextAt is in yard seconds; a save already at rung 3 never sees the rung event again.",
+  "change": "v: 3. Clamp tier to the content's highest tier. Drop a CrewRun whose claims name missing things or pieces, releasing the claims. lots.nextAt = s.t + period. The works layer and the bath are derived from rung \u2265 3 plus an absent counts.bathSet, not from the rung event. forCrucible_g maps to reserved.crucible. Test: a layout-2 rung-3 save gets the bath at its first tick.",
+  "ruling": "do."
+ },
+ {
+  "id": "B15",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.12 'While he is in the yard a tagged thing is his: he racks it or cuts it'",
+  "problem": "While the player plays, crews leave tagged floor things alone, so the tipping floor can fill until the driver's floor check refuses loads.",
+  "evidence": "reuse.share 0.25 tags a quarter of the gates in a demolition skip. Cutters skip them while bossFresh is true. E35's floor check then stalls the driver in live play.",
+  "change": "A tagged thing is the boss's only while he is within reach.sight of it; otherwise crews treat it as they would away. This also removes one of finding 3's live/away differences.",
+  "ruling": "do."
+ },
+ {
+  "id": "B16",
+  "lens": "builder",
+  "severity": "important",
+  "where": "2.8 eddy current; 2.5.3 'tonnes supplied are product mass capped at the input's scrap mass'; 2.10.2 crateToCrew; 2.5.2",
+  "problem": "Two engineers would build these differently.",
+  "evidence": "The eddy current has no rate or level, though it has a plate and a card. A cap 'at the input's scrap mass' cannot be computed at a sale (supply() in round.ts:16 sees only the grade and grams). 2.10.2 does not say where crate things go when the floor is full at crateToCrew. 2.5.2 does not say whether pieces already on the ground get their assay grade once an analyser is commissioned.",
+  "change": "The eddy current runs at the shredder's stream with no level of its own. Replace the runtime cap with a content check that sellable out \u2264 1 per plate. At crateToCrew, things take free floor slots and wait in the crate for the rest. Assay applies at weigh-in to any piece whatever its age.",
+  "ruling": "do."
+ },
+ {
+  "id": "B17",
+  "lens": "builder",
+  "severity": "minor",
+  "where": "2.18; types.ts header; money.ts commitCash",
+  "problem": "The contract's comments and literals still forbid a debt.",
+  "evidence": "types.ts: 'NOTHING IS BOUGHT ON ACCOUNT (E11): no field holds a debt'; money.ts:176 throws 'nothing on account'; SalvageState.v: 2.",
+  "change": "contract2 amends both comments with E37/E41 (the only debt is bank.agreement, repaid out of payments), and v becomes 3.",
+  "ruling": "do."
+ },
+ {
+  "id": "B18",
+  "lens": "builder",
+  "severity": "minor",
+  "where": "5.1 ceilings and \u03c4",
+  "problem": "The content schema does not accept the new key shapes.",
+  "evidence": "schema.salvage.ts:600 ceilings_t_h .length(3); LadderSchema has one flat theta; tau_h is written as '[\u2014, \u2014, 9, 22, 45]'.",
+  "change": "ceilings_t_h has length topRung; add ladder.thetaShare; tau_h is (number | null)[] of length topRung, null for rungs 1 and 2. All in content2's schema change.",
+  "ruling": "do."
+ },
+ {
+  "id": "B19",
+  "lens": "builder",
+  "severity": "minor",
+  "where": "4.2 and 4.4",
+  "problem": "The process board's data types are not in 4.2's list of contract changes.",
+  "evidence": "types.ts:1010 rows id 'cable' | 'motors' | 'melt' | 'greyed'; PlateState has no 'arriving' or 'installed' and no ring.",
+  "change": "Add to 4.2: ProcessBoardRows.page 'first' | 'yard' | 'melt'; row ids yard, shredder, lead; PlateState adds 'arriving' | 'installed'; Plate.ring?: number (taken \u00f7 T).",
+  "ruling": "do."
+ },
+ {
+  "id": "E1",
+  "lens": "economy",
+  "severity": "blocking",
+  "where": "2.3.1 step 1 (\"each open partner's L skips over max(fill_s, the trip time \u00f7 the trucks that serve it)\") and step 2 (\"the trucks\")",
+  "problem": "I gives the whole truck to every partner, as the built ratedOf does, and its trip time leaves out the hook, weigh and tip phases. I, and every number priced in hours of I, comes out about twice too high, so the 0.9-1.1 gate cannot pass.",
+  "evidence": "rate.ts 41-47 sums each partner's supply on its own. REPORT6 F3 gives R 82.1 t/h at minute 60, while the bench's six hours moved 232 loads (about 93 s a load, 27-46 t/h by skip mass) plus the drop-off. The formula's trip is 43 s to the farm and 66 s to the demolition site. With four partners at rung 3 the overcount grows.",
+  "change": "Write the trucks as a time budget: loads an hour = min(\u03a3_p 3600\u00b7L_p/fill_p, 3600\u00b7trucks/t\u0304_trip). t\u0304_trip is the mix-weighted planned trip of 2.1.2, the same seven-phase function the driver's run plans. Allocate loads to partners highest net margin a load first. ratedOf keeps its form for the ceilings only.",
+  "ruling": "do, as the lead's I2 and I3 (notes/engine2-LEAD.md)."
+ },
+ {
+  "id": "E2",
+  "lens": "economy",
+  "severity": "blocking",
+  "where": "2.3.1 step 4 (\"at its LOWEST margin\"), 2.7.1 (\"I counts the lower-margin route\"; \"default the plate bought last\"), 2.8 induction hall (\"For I: the lower-margin recipe\"); ruling 10.6",
+  "problem": "The lowest-margin rule cannot coexist with the gate in 2.3.3 or with the payback prices in 2.6.4. I runs far below away income whenever the yard runs the better route or recipe, and plates that share an input are priced on the worse margin. If 'bay' counts as a route, every routed plate's \u0394I is 0.",
+  "evidence": "Light iron at 8 t/h with the baler and shredder plus eddy current owned: I counts the baler, 8,000 \u00d7 0.12 = \u00a7960/h, while the yard on the shredder earns 8,000 \u00d7 (1.43 \u2212 0.50) = \u00a77,440/h, a shortfall of \u00a76,480/h. Induction hall on bronze at 500 kg/h: brass margin \u00a73.83/kg against bronze \u00a711.79/kg, a shortfall of \u00a73,980/h. Either alone uses up most of a \u00b110 % band.",
+  "change": "I never reads routes or recipes as set. It assigns each source flow to the owned plates' capacity, highest margin per kg first (one greedy pass), and uses 'bay' only for what no plate takes. Switching then cannot raise I because I does not read the switch, which keeps the purpose of ruling 10.6. A bay's default route is the same allocation, not 'the plate bought last'.",
+  "ruling": "do, as the lead's I4."
+ },
+ {
+  "id": "E3",
+  "lens": "economy",
+  "severity": "blocking",
+  "where": "2.3.3 gate (\"AwayCard.net \u00f7 the hours the yard ran\"), 2.22 row I, 8.2; also 2.3.1 step 5",
+  "problem": "The thing the gate compares against swings by more than its band for reasons that have nothing to do with I. Separately, I double-counts the Yard sale and the van and ignores reagents.",
+  "evidence": "AwayCard.net = money \u2212 spent (types.ts 1064) is taken at the posted step, with x up to \u00b10.06. Net is a difference of gross: 1,757 against 700 a minute played, gross/net about 2 to 4 on the bench, so a \u00b13 % step moves net 8-12 %. It is also after the bank's share: 0.2 \u00d7 gross is a half to nine tenths of net while an agreement is open. It is not corrected for stock change (held bays, `unsold`). In I, the rack's whole gate value is added although its scrap value (40 %, \u00a7977/h at the \u00a72,443/h ceiling) is already in m\u0304. Reagents (0.015 and 0.02 a kg) are not subtracted.",
+  "change": "Gate value = (net + bank taken + unsold_end \u2212 unsold_start) \u00f7 seconds \u00d7 3600, measured in the bots' gate runs with `board.a` 0 (usual prices every day). In I, add only the Yard sale's premium (0.6 of what it pays) and the van's (1/3), and subtract reagents a kg from m\u0304.",
+  "ruling": "do, as the lead's I5."
+ },
+ {
+  "id": "E4",
+  "lens": "economy",
+  "severity": "blocking",
+  "where": "2.12 \"The boss\" (\"While he is in the yard a tagged thing is his: he racks it or cuts it\") and \"What\" (the tag a pure hash of the uid); ruling 10.10",
+  "problem": "Ruling 10.10 cannot work. While the boss is in the yard, crews may not touch tagged things, and far more arrive than the rack can sell, so the floor fills and loads cannot tip: the yard stalls while the boss is in it and earns less than when he is away. Separately, a tag that is a pure hash of the uid would also tag things below rung 3 and change the measured first hour.",
+  "evidence": "Farm skips carry 7 things of reuse kinds, demolition skips 4. At share 0.25 and about 39 loads an hour that is about 53 tagged things an hour, plus 7.6 from the drop-off. The rack sells at most refPrice \u00f7 period = 15 radiators an hour. About 45 an hour (2-3 t) stay on a 4,000 kg floor (floorRoom_kg) that no crew may touch, so it is full inside two hours.",
+  "change": "One rule, present and away: a tagged thing is the boss's only while he is within reach.sight of it and a slot is free. Otherwise yard hands rack it within their load while a slot is free, and crews cut it when no slot is free. Tags exist only from rung 3. Write L2's 'the ceiling follows I' into 2.12: next visitor at t + 3600 \u00d7 q \u00f7 (reuse.shareI \u00d7 I), with reuse.shareI by rung (first value 0.025, tuned with the van to the 2-5 % band). I is a pure function of assets, so a tick still equals a jump.",
+  "ruling": "do: one rule, present and away: a tagged thing is the boss's only while he is within sight of it and a slot is free; otherwise yard hands rack it within their load while a slot is free, and crews cut it when no slot is free; tags exist only from rung 3. (It replaces ruling 10.10's 'while he is in the yard a tagged thing is his'.)"
+ },
+ {
+  "id": "E5",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.5.1 (no asFound column), 2.9 the bridge partners' loads, 5.2 check (8), 2.14.7 aim",
+  "problem": "The bridge partners' loads go against E20 (three fifths of the margin from the yard's work, nothing that needs a tool the player cannot own when the partner opens), and while a loan is open they net a loss. Check (8) cannot see it because it values a whole skip at its best prepared value and at p\u0304.",
+  "evidence": "partners.ts defaults asFound to 1. A whole battery from the garage at rung 3, before the lead line: label 0.85 \u00d7 15 \u00d7 1.80 = \u00a722.95, sold whole \u00a727.00. None of the margin comes from the yard's work, and with an agreement open it nets 27 \u00d7 0.8 \u2212 22.95 = \u2212\u00a71.35. The same applies to bushings (bzs before the induction hall), sinks (ssu before the analyser), and clean pipe and fittings. Brass at asFound 0.9 loses after a one-day fall: 0.8 \u00d7 0.943 < 0.765.",
+  "change": "Add `asFound` to 2.5.1. Make the bridge partners' loads from what rung-3 tools improve, or gate `truckBridge` on the analyser and add batteries and bushings to the garage's loads only once the lead line and the induction hall exist. Run check (8) per load, at the plates the partner's gate guarantees, after a one-day fall (prices move at most 5.7 % a day): prepared \u00d7 (1 \u2212 s) \u00d7 0.943 \u2265 price. The farm passes: 1.378 \u2265 1.326.",
+  "ruling": "do."
+ },
+ {
+  "id": "E6",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.10.1 (\"with four waiting, the next comes the instant one is opened\"; \"lots.nextAt\"), 2.20 (\"lots.nextAt = now + period\")",
+  "problem": "The text does not say whether lots are dated in yard seconds or market time, and catch-up after four are waiting has no limit. Lots then pay for absence far beyond the away cap. The migration's nextAt gives a save below rung 3 a backlog when it reaches rung 3. The same question is open for reuse.nextAt, vanAt and the crate's hold date.",
+  "evidence": "Away 30 h at rung 3 in market time: four lots wait from h12. Each opening brings another while nextAt \u2264 now (h12, 15, \u2026 30), so ten lots arrive, about 2.5 h of I, from an absence whose yard ran 6 h.",
+  "change": "Date lots in yard seconds, so they ride the away cap. At every arrival, nextAt = max(nextAt, t) + period. An opening that leaves three with nextAt \u2264 t brings one lot at t and sets nextAt = t + period. nextAt is first set at `backFieldOpen`, not at creation or migration. Say the same for reuse.nextAt, vanAt and crate.since. At the twice-a-day habit this halves the design's '8 lots a day': measure the D4 aim with it.",
+  "ruling": "do."
+ },
+ {
+  "id": "E7",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.5.3 `out: [GradeId, share][]` (one output list per plate), 2.8 battery breaker and shredder, 5.2 checks",
+  "problem": "Some plates make output worth less than their input, and the shredder applies the same output shares to every input, so it makes non-ferrous out of light iron. No check refuses either.",
+  "evidence": "Battery breaker alone: 1.80 \u2192 0.06 \u00d7 0.90 + 0.64 \u00d7 2.20 \u2212 0.05 \u00d7 0.40 = \u00a71.44/kg (\u221220 %). Routed by default as 'the plate bought last', every battery goes there until the smelter is bought, I falls when the breaker is bought, and its payback price is negative (so the floor). Shredder: light iron yields 8 % zorba and, through the sorter, 1.2 % No.2 copper, \u00a70.41/kg of copper out of a grade worth \u00a70.50 (light iron becomes \u00a71.77/kg through the line).",
+  "change": "Set pbp p\u0304 \u2265 2.90 (inference: +5 % on the breaker, the smelter still +71 %), or sell breaker and smelter as one plate, 'Lead line'. Give `out` per input (li \u2192 shred 0.95 and residue 0.05; appl and cbody as written). New check (11): every plate and recipe nets at least +5 % at p\u0304 after reagents, and every plate's \u0394I > 0 at its planned moment.",
+  "ruling": "do."
+ },
+ {
+  "id": "E8",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.14.5 the lender's letter (\"P > cash in hand and cash \u2212 reserve \u2265 d\"), LEAD L1 aim, 2.14.7 \"finance is the better choice on a quarter to a half of the offers\"",
+  "problem": "For the twice-a-day habit there is no moment at the start of a sitting when the letter can show. It shows only mid-sitting, after other purchases, so L1's 12-of-15 aim depends on the order in which the bots buy, and the 'quarter to a half of offers' band may rest on one or two offers a seed.",
+  "evidence": "REPORT6 F6: a sitting starts with \u00a7162k to \u00a7185k in hand, about 6 h of a net I near \u00a725k. A rung-3 plate costs 9 \u0394I, so P > cash needs \u0394I > 2/3 I. The letter needs 0.2 P + reserve \u2264 cash < P at the moment a card opens.",
+  "change": "Specify that the bots open cards in the goal card's order. Define an offer as a financeable card opening with P > cash after the letter has been seen. Print offers per seed. The band needs at least 3 offers on 13 of 15 seeds; otherwise report it as not measured rather than met.",
+  "ruling": "do."
+ },
+ {
+  "id": "E9",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.14.5 and 4.3 \"Save up (about x)\", x = (P \u2212 cash) \u00f7 I",
+  "problem": "While a loan is open the shown save-up time is about half the real one, because the bank's fifth is taken from gross sales and I is net.",
+  "evidence": "At the played ratio (sales \u00a71,757 against net \u00a7700 a minute), 0.2 \u00d7 gross is half of net. A card that says 'about 2 h' takes about 4 h until T is repaid.",
+  "change": "While an agreement is open, x = (P \u2212 cash) \u00f7 (I \u2212 bank.share \u00d7 G), where G is the rated gross an hour (sales before feed) from the same closed form as I.",
+  "ruling": "do."
+ },
+ {
+  "id": "E10",
+  "lens": "economy",
+  "severity": "important",
+  "where": "2.15.4 (\"stores pending {product, S, I, at} (one per product)\") and 2.15.5 the grant",
+  "problem": "A late approval can be granted at a later, larger quote, so more scrip is credited than was shown or paid for. Headroom also leaves out packs still awaiting approval.",
+  "evidence": "pack20 is quoted at rung 4 (20 \u00d7 I4) and a parent's approval is pending. At rung 5 the player taps Buy on pack20 again and cancels at the store's sheet. The first approval then lands and is granted at 20 \u00d7 I5.",
+  "change": "Refuse Buy of a product while its pending quote stands ('Waiting for approval'), or key the pending quote by a per-purchase token passed to the store. Headroom becomes cash + \u03a3 pending S + S \u2264 U.",
+  "ruling": "do."
+ },
+ {
+  "id": "E11",
+  "lens": "economy",
+  "severity": "minor",
+  "where": "2.11 and 2.22 (`tau_h` \u00b1 30 %), 5.2 check (7), content `levels.tau.cap` 540",
+  "problem": "Two tuning ranges contradict fixed values: \u03c4_4 cannot fall below 20 h, and the crew and partner levels' 9 h cap makes them far cheaper than plates from rung 4.",
+  "evidence": "H 20 is fixed by ruling 9.1, so check (7) refuses \u03c4_4 \u2264 20 h, inside the stated 15.4-28.6 h range. With the 540-minute cap left as it is, levels pay back in 9 h beside plates at 22-45 h, and the bots buy only levels.",
+  "change": "State \u03c4_4 > 20 h as a fixed lower bound. From rung 4, the cap for crew, partner and first-yard machine levels becomes 60 \u00d7 \u03c4_r minutes.",
+  "ruling": "do."
+ },
+ {
+  "id": "E12",
+  "lens": "economy",
+  "severity": "minor",
+  "where": "9.1 engine2 (owns rate.ts) and 9.2 rules-works / content2; 2.3",
+  "problem": "No package is named as the one that writes I's terms for the plates, and the gate at rungs 4 and 5 cannot be measured within Phase A.",
+  "evidence": "ratedIncome over plates needs 2.5.3's plate data (rules-works, Phase B), while 2.1-2.4 are 'built, benched and measured' in Phase A by engine2.",
+  "change": "Name rules-works as the writer of the plate terms (through a request to engine2 for rate.ts). State that I is gated at rung 3's entry in Phase A, and at the other five moments after Phase B.",
+  "ruling": "do."
+ },
+ {
+  "id": "E13",
+  "lens": "economy",
+  "severity": "minor",
+  "where": "2.22 \"The numbers the bots set first\"",
+  "problem": "Numbers the bots will need and fight over are missing.",
+  "evidence": "Missing: the bridge partners' skip contents, masses, fill_s, trial loads and asFound; the three-axle truck's skip and trip; the new bays' capacities; lots.kinds masses; reuseBatch n; plate rates against their feed (the baler at 72 t/h against about 8 t/h of light iron, so its ten levels add nothing yet are priced at full feed); how sources grow to reach 10,000 t at day 4-6 (about 2,000 t a production day against about 40 t/h measured); tonnes lost to waste when processing (a battery sold whole counts 1 t, smelted about 0.66 t).",
+  "change": "Add these as rows with first values and aims. Tie plate rates to the feed at each plate's planned moment, so that levels add capacity that binds.",
+  "ruling": "do."
+ },
+ {
+  "id": "P1",
+  "lens": "player and store",
+  "severity": "blocking",
+  "where": "2.16 (no gate on ads) and 2.15.2 'Both rows appear from the second session (after the first away card is closed)'",
+  "problem": "Rewarded ads have no session or rung gate. 'The second session' begins after a 60-second absence, so the shop row and ads can appear in a new player's first hour and change the hour REPORT6 measured.",
+  "evidence": "A new player locks the phone for 2 minutes at minute 8. away.ts:140 shows an away card (cardS 60). When they close it, the Shop row appears on Rota and in Settings. At minute 20 they Hold and Sell a bay, and 'Video \u00b7 +\u00a7x' shows beside it. A 35-minute absence at rung 1 brings the away bonus card. Design 9 'The next build' item (5): 'from the second session the shop (...; rewarded ads live, ...)'.",
+  "change": "Add a stored `sessions2At`: it is set when the first away card from an absence of at least `ads.awayMinAbsence_min` (30) is closed. Gate the shop rows, the Settings rows (Shop and the packs switch), the spot buyer and the away bonus on it. Test: a first-hour frozen state with a 2-minute absence shows no Shop row and no ad button.",
+  "ruling": "do (blocking): the shop's rows, the Settings rows for it, the spot buyer and the away bonus are all gated on one stored moment: the first away card from an absence of at least thirty minutes has been closed. 'The second session' means that everywhere."
+ },
+ {
+  "id": "P2",
+  "lens": "player and store",
+  "severity": "blocking",
+  "where": "2.10.2 'Not cleared within crate.hold_s (43,200 s) of its oldest thing, it goes to the floor's crews ... nothing is lost'; 4.7 'goes to the crews in {t}'; 2.17 away line",
+  "problem": "The crate is a reward that expires behind a countdown. 'Nothing is lost' is false: the u \u2212 1 = 0.6 premium is lost. This is PEGI's 'punished by losing rewards ... when they do not return in time' (PEGI 12) and breaks ruling 2.9's expected 3 to 7 with 'nothing timed'.",
+  "evidence": "Worked example 2.10.2: a farm load puts \u00a7198 in the crate, which pays \u00a7317 when cleared. If the player returns after 12 h (the habit is every 11.75 h, so one late sitting or a once-a-day player), the crews take it and the \u00a7119 is lost. The plate shows the countdown, and the away card says 'The crate went to the crews'. yard-policy2.md 1.5 [R1].",
+  "change": "Remove `crate.hold_s`, `crateToCrew`, the countdown line, the away line and the `crateToCrew` event. When the crate holds `crate.max` (12) things, the next things go to the floor as usual. The crate waits for the boss for ever (as lots do).",
+  "ruling": "do (blocking): nothing in the crate expires: no hold time, no countdown, no hand-over to the crews; when the crate is full the next things go to the floor as usual; the crate waits for the boss for ever."
+ },
+ {
+  "id": "P3",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "1.2 'A first-yard save (the owner's phone) ... with everything it owns'; 2.14.5 the letter 'with P > cash in hand'; 2.15.6 'Start at rung 4'",
+  "problem": "The owner tests on a three-day first-yard save that may hold a large cash pile. The letter needs a plate dearer than the cash in hand, so the person who asked for bank loans may never see one at rung 3. The development row offers only a rung-4 jump, and nothing says whether it keeps his real save.",
+  "evidence": "REPORT6, after three days: cash \u00a7115k to \u00a7355k. Plates are estimated at about \u00a79,000 (the baler) up to the ruling's \u00a780,000. With \u00a7355k the letter never fires on any rung-3 plate.",
+  "change": "Add a development row 'Start at rung 3 (entry)': the r3 preset with REPORT6's entry cash (\u00a73,001) and the bath standing. 'Start at rung 3' and 'Start at rung 4' each write a second save slot, and 'Back to my yard' returns to the real one. Tell the owner in one line which row shows the bank.",
+  "ruling": "do: development rows 'Start at rung 3' (the measured entry cash, the bath standing) and 'Start at rung 4', each in its own save slot, and 'Back to my yard'; one line for the owner says which row shows the bank loan."
+ },
+ {
+  "id": "P4",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "2.5.1 (sixteen grades) and section 4 (no subsection for the price board); 4.9 'on a held bay's Sell on the price board'",
+  "problem": "The price board grows from about 14 grade rows to about 30, and the spec gives it no layout. Today's board has no scroll (a stand-in). The spot buyer and Hold, the stage's market decisions, live in what becomes a long list.",
+  "evidence": "src/ui/salvage/overlays/PriceBoard.tsx:37: 'the focused row first, marked (STAND-IN for a scroll offset)'. 30 rows \u00d7 56 pt = 1,680 pt against the panel's roughly 300 pt at 667 \u00d7 375.",
+  "change": "Add a 4.x 'The price board in stage 2' owned by overlays-b. Tabs by family (Ferrous \u00b7 Non-ferrous \u00b7 Works products \u00b7 Intermediates), in the manner of the process board's pages. Only rows with stock, a Hold or a set-aside are shown. It opens on the tab of the bay that opened it. Test at 667 and 1.3.",
+  "ruling": "do."
+ },
+ {
+  "id": "P5",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "9.4 wiring2 'ruling 9.6's store sentence'; scripts/content/yard-store.json description",
+  "problem": "With packs on, the listing's last sentence is false, and the ruled store sentence describes boards that stage 2 does not have.",
+  "evidence": "yard-store.json: 'No real money goes into or comes out of anything in the game.' Ruling 9.6: '... and shared boards count no more than play can reach'. Stage 2 has only simulated rivals (stage 5 has the boards). Apple 2.3.1: no misleading marketing.",
+  "change": "9.4 wiring2: replace that sentence with 'Scrip can never be paid out.' In stage 2, ship 9.6's sentence without its last clause: 'Purchases change how your yard looks or remove ad videos; in some countries they can also add scrip worth some hours of your own yard's income in the game. Nothing sold adds tonnes directly.' On the store page loans may be called only 'simulated bank loans' (yard-policy2.md 3).",
+  "ruling": "do."
+ },
+ {
+  "id": "P6",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "2.16 'offered on its own small card after the away card is closed'; 4.9 the away bonus card",
+  "problem": "An ad offer opens right after a card that showed a debt, so the ad is offered on the heels of a debt statement, which ruling 9.9 aims to prevent.",
+  "evidence": "With an agreement open, the away card prints 'To [bank]: \u00a712,400' (it showsDebt). The player taps OK and the centred 'For your time away \u00b7 +\u00a7x \u00b7 Watch a video' opens at once.",
+  "change": "If the away card that was just closed had `showsDebt`, no centred bonus card opens. The offer goes straight to the deferred bottom-bar button (4.9), which already hides while any debt shows. Test it in hud.test.ts.",
+  "ruling": "do."
+ },
+ {
+  "id": "P7",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "4.1.3 'A card or ticket SHOWS A DEBT when it prints ... the tag and ring'; 'the hud reads frame.debtOnScreen, set by the rules from the open card and the tickets up'",
+  "problem": "The world tag and ring are called a debt display, but the flag that hides ads ignores world plates. The hud test cannot tell whether the bottom-bar ad button must hide whenever the financed plate is in view.",
+  "evidence": "The financed plates stand by the tipping floor (L9), where the boss spends most of his time. 4.3 'financed: the [bank] tag ... and an 18 pt ink ring'. So the ad button either never shows in the south yard or breaks 4.1.3.",
+  "change": "The world ring prints no amount and is not a debt display. Remove 'the tag and ring' from 4.1.3's list. The works card's `bankLeft` row (which prints \u00a7left of \u00a7T) stays `showsDebt`.",
+  "ruling": "do."
+ },
+ {
+  "id": "P8",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "2.15.3 the age band (it gates packs only); research/policy.md checklist 8",
+  "problem": "A known under-13 band still sees the looks and No ad videos shop and gets ordinary ad requests. The project's standing policy says a child gets no real-money shop and child-treated, non-personalised ads.",
+  "evidence": "policy.md 8: 'Child: ageRestrictedTreatment: CHILD, G-rated non-personalised ads, no tracking prompt, no real-money shop (own). Teen: TEEN.' Stage 2 stores 'u13' and hides only packs.",
+  "change": "With ageBand 'u13': no Shop row (Rota and Settings), and rewarded ads requested as child-directed (G, non-personalised, no ATT). With 't13': teen treatment. store-shared adds the request-configuration hook in ads.ts, with nothing changed for the four games. Test: from a u13 state, no CardData has a shop entry.",
+  "ruling": "do: a player who gave an age under 13 gets no shop row at all and child-treated ad requests; 13 to 17: no packs, teen treatment; the hook in the shared ad service changes nothing for the four other games."
+ },
+ {
+  "id": "P9",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "2.16 'Rewarded videos only, through the shared ad service'; src/state/store.ts:448 ads.init() at boot",
+  "problem": "Ads go live in this stage, and the shared service asks for consent and then 'Allow tracking' (ATT) at every first launch. In a store build that prompt lands in the first minute of the first hour, long before any ad exists in this game.",
+  "evidence": "ads.ts:124 'Call once at startup. Order matters: consent, then ATT, then SDK init.' store.ts:448 calls it on every boot, for every game.",
+  "change": "Add a game.json switch `monetization.ads.initOn: 'boot' | 'firstOffer'`, read by the shared service, with 'boot' as the default so the four games do not change. This game sets 'firstOffer': consent and ATT are asked the first time an ad button would show (after finding 1's gate). Owner: store-shared.",
+  "ruling": "do: this game asks for ad consent and tracking only the first time an ad button would show (a game-data switch read by the shared service, default as today for the four games)."
+ },
+ {
+  "id": "P10",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "1.3 beat 1 and the goal list ('Walk into the back field' first); 2.12 'the next visitor ... nextAt = t + period' (240 s)",
+  "problem": "Rung 3's first moment sends the player away from it. The first goal leads west into a field where every plot says 'Opens at 1,000 t', while the bath stands at the gate in the east. The first sale then comes 4 minutes after racking, when the player's first hour has already ended.",
+  "evidence": "Rung 3 at 0:57 (REPORT6). The gateway is at x 0, the bath at (51.6, 38.6). The back field's plots are rung-4 plates (2.8). The bath is racked about 0:59 and its visitor comes about 1:03.",
+  "change": "Goals: 'Put the bath on the Yard sale' is the first goal of the stage2 list, and 'Walk into the back field' moves to just before 'Buy the shredder' (rung 4). Add `reuse.firstVisitor_s` 30 (tune), used only for the first thing ever racked. 2.12's rate cap is unaffected, because the next visitor is dated by value as before.",
+  "ruling": "do."
+ },
+ {
+  "id": "P11",
+  "lens": "player and store",
+  "severity": "important",
+  "where": "2.10.2 'The boss standing crate.clear_s 45 s at the pad clears it'",
+  "problem": "45 seconds of standing still while a ring fills is a chore. It is the longest wait in the game and has nothing to watch.",
+  "evidence": "A lot opens in 4 to 10 s and commissioning takes 5 s. The first yard's cuts last seconds. 8.4 asks people to note 'where they did not know what to do'.",
+  "change": "Sort one thing at a time at `crate.sort_s` 3 s each (at most 36 s for 12). Each thing goes to its bin or bay, and the ticket line grows as it goes. If the cost is too high, set `clear_s` to 15 instead.",
+  "ruling": "do."
+ },
+ {
+  "id": "P12",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "2.14.5 'every financeable works card carries \"Bank loan\"'; 4.3 foot",
+  "problem": "The loan is offered when the player can buy outright, and the button is not greyed when the deposit is not in hand, which breaks 'every amount asked for is possible'.",
+  "evidence": "With cash \u00a790,000 and a plate at \u00a780,000, the card shows Buy \u00a780,000 and Bank loan. With cash \u00a710,000 and d = \u00a716,000, Bank loan opens a card that refuses `cash`.",
+  "change": "Show Bank loan only when P > cash \u2212 reserve. Grey it with 'You pay now \u00a7{d} \u00b7 \u00a7{x} more' when cash \u2212 reserve < d.",
+  "ruling": "do."
+ },
+ {
+  "id": "P13",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "5.3 help.* ('scrip packs, the code'); 2.15.3 'the shop has no row, header or word of packs'",
+  "problem": "Help would describe packs and the code to players in countries where packs cannot exist. Settings' read of the country is not specified.",
+  "evidence": "4.8 Settings: 'absent where packs cannot exist, so a player there never reads of them'; help.* has no condition.",
+  "change": "Show Help's pack and code pages only where the country's switch is on. Settings reads storefrontCountry() at its opening, as the shop does, and unknown means absent.",
+  "ruling": "do."
+ },
+ {
+  "id": "P14",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "1.3 goal 'Pour aluminium alloy ingot'",
+  "problem": "The first yard's crucible already pours aluminium alloy ingot, so the goal can be met before the rotary furnace exists, or reads as already done.",
+  "evidence": "salvage.content.ts:825: crucible recipes include alu \u2192 ali.",
+  "change": "Rename the goal 'First pour in the rotary hall' with done grammar `poured:rotary`.",
+  "ruling": "do."
+ },
+ {
+  "id": "P15",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "5.4 product titles 'Scrip pack: 2 hours'",
+  "problem": "In the store's purchase sheet the title reads as selling time.",
+  "evidence": "Apple's purchase sheet shows the product's display name alone.",
+  "change": "'Scrip: 2 hours' earnings' (and 5, 10, 20), with the description 'Scrip worth about 2 hours of your yard's earnings in the game.'",
+  "ruling": "do."
+ },
+ {
+  "id": "P16",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "stage 1's 'Start the yard again'; 4.8 code pad Help 'clears only when the game is installed again'",
+  "problem": "Both lose bought scrip and any pending approval (the reconcile grants only after iap.createdMs), and nothing says so.",
+  "evidence": "2.15.5: 'one without a quote belongs to another save and is not granted'.",
+  "change": "The confirming card and Help say: 'Bought scrip, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.'",
+  "ruling": "do."
+ },
+ {
+  "id": "P17",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "4.8 Settings 'Scrip packs: shown / hidden ... whatever the rung'",
+  "problem": "With an under-18 band the switch can be set to 'shown' and does nothing, so the screen contradicts what happens.",
+  "evidence": "2.15.3 needs ageBand a18 as well as the switch.",
+  "change": "Hide the row once ageBand is u13 or t13.",
+  "ruling": "do."
+ },
+ {
+  "id": "P18",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "2.6.5 and 2.8 'to the licensed contractor'; 4.3 'Fluids drained \u00b7 to licensed contractor'",
+  "problem": "The player words contradict stage 1's term.",
+  "evidence": "text.json has 'Licensed waste carrier' (stage1 5.6: 'licensed waste carrier' is the word).",
+  "change": "Use 'to licensed waste carrier' in every new key.",
+  "ruling": "do."
+ },
+ {
+  "id": "P19",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "Header line 11 'sections 3 (positions only), 4, 6 and 7 wait for the stop of 9.3'; 9.3 'the rules and numbers of Phase B stand'",
+  "problem": "The header contradicts 9.2: positions are built in Phase B, because they set walks, grouped runs and I. An answer from the owner on the FEEL (the boss's speed, the camera) would also move Phase B's measured numbers.",
+  "evidence": "9.2 rules-works owns positions.ts mapAt, and content2 owns yard_map.py and map.works.",
+  "change": "Header: '3's positions are built in Phase B; only their drawing waits.' 9.3: 'if the answer moves a position or the hand's pace, Phase B's bots run again before 9.4'.",
+  "ruling": "do."
+ },
+ {
+  "id": "P20",
+  "lens": "player and store",
+  "severity": "minor",
+  "where": "1.3 beat 8 'a plain \"Next build\" sign at the key board's place'",
+  "problem": "The sign promises later builds, against the voice rule (5.3: 'no promises of later builds').",
+  "evidence": "5.3 'The voice ... no promises of later builds'.",
+  "change": "No sign. At the top, the repeating goal 'Level up: {item}' is the whole message.",
+  "ruling": "do."
+ },
+ {
+  "id": "T1",
+  "lens": "trade and words",
+  "severity": "blocking",
+  "where": "2.7 Depollution bay ('one elv at a time on its apron (by the forklift, the magnet crane, or tipped within the crane's reach)'); 2.7 Magnet crane ('...and the depollution bay's apron ... and onto the apron'); 2.9 {partner.garage} ('batteries (pbb whole, 15 kg each) ... elv cars' carried as skips 'in rotation', so tipped at the tipping floor); 3.3 note 'Batteries reach the pbb bay as whole things weighed at the platform scale'",
+  "problem": "An end-of-life car that has not been depolluted still holds fuel, oil, brake fluid, coolant, air-conditioning gas, live airbags and its battery. It is never tipped out of a skip, and a magnet never lifts it before it is drained. That is how fluids spill onto an open floor, which is exactly what a permit forbids. Loose lead-acid batteries tipped with wheels and looms onto a floor crack and leak acid. Batteries travel upright in a closed acid-proof box and are stored on a bunded floor. The document itself says pbb is 'never a heap', yet its tip makes a heap first.",
+  "evidence": "yard-metals.md 1 (ELV: battery, converter, fluids); 2 ('Car depollution rig ... a legal requirement in many places'); 9 ('Batteries, ... ELV fluids and airbags are hazardous waste, handled only on permitted sites'). The first yard's glossary entry 'Depolluted: a car with its fluids, battery, tyres and airbags taken out'. Smallest example: the garage's first skip after the depollution bay holds an elv and six batteries. At the tip the car falls onto the tipping floor, the magnet crane lifts it onto the apron, and six batteries lie loose on the floor until a yard hand carries them.",
+  "change": "(1) 2.7 Depollution bay: 'one elv at a time on its apron, set there by the forklift (car forks) from the ELV pad; an elv is never tipped and never lifted by the magnet'. (2) 2.7 Magnet crane: delete 'and the depollution bay's apron' and 'and onto the apron'; add 'it lifts a car only as a drained shell (cbody)'. (3) 2.9 and 2.10.2 (the tip): 'an elv in a load arrives on the hook-lift's flat body and is set down on an ELV pad (new place, impermeable concrete with a drain, beside the apron, 3 x 5 m) instead of being tipped; the batteries in a load ride in a closed acid-proof box, set down unopened, weighed as one weigh-in and put whole into the battery box; neither goes to the crate'. (4) 3.6 adds: the ELV pad touches the apron, and is within the forklift's reach and outside the crane's tip zone. (5) 8.1 2.9 adds: no elv is ever tipped or moved by the crane before depollution; no pbb is ever on the floor or in the crate.",
+  "ruling": "do (blocking): an end-of-life car is never tipped from a skip and never lifted by the magnet; it comes on its wheels or on a car transporter to its own pad, is set on the depollution bay's apron by the forklift, and only a depolluted shell goes on; whole batteries come in a closed battery box, never loose in a skip; map, content, art and the partner's loads follow."
+ },
+ {
+  "id": "T2",
+  "lens": "trade and words",
+  "severity": "blocking",
+  "where": "2.5.1 pbp p\u0304 2.20 (inference); 2.8 Battery breaker ('pbb ... \u2192 pp 0.06, paste and grids pbp 0.64 ...; soda ash 0.05 kg a kg at \u00a70.40')",
+  "problem": "The breaker destroys value on its own. One kg of whole battery (\u00a71.80) becomes 0.64 x 2.20 + 0.06 x 0.90 \u2212 0.05 x 0.40 = \u00a71.44: minus 20 %. Its payback price (2.6.4, \u03c4_r x \u0394I) is negative and falls to the floor; it is marked financeable (2.5.3) with a loss-making output; under ruling 12's 'best margin first' I never feeds it; and a player who buys it before the smelter loses money on every battery. The price is also inconsistent with the smelter's own yield: pbi 0.92 of pbp means paste and grids are about 92 % lead, worth far more than 2.20. In the trade, broken paste and grids pay well above whole batteries, because the acid and the case are gone.",
+  "evidence": "Arithmetic from the document's own numbers above. yard-metals.md 4 chain 2 (breaker \u2192 smelter \u2192 kettle, '+ polypropylene, + sodium sulphate'); whole battery at 1/3 of ingot (1.80/5.40), which the design's table 5 row 5 also has.",
+  "change": "pbp p\u0304 2.20 \u2192 3.10 (inference: about 0.6 of the lead it holds at the ingot price). Check: breaker 0.64 x 3.10 + 0.054 \u2212 0.02 = \u00a72.02, +12 %; smelter 0.92 x 5.40 = \u00a74.97 from \u00a73.10. Add a check to 5.2 (2): 'every plate and every recipe has a positive margin at p\u0304 on its own (out + waste less reagents above its input)', naming the plate that fails.",
+  "ruling": "do (blocking), with E7: every plate and every recipe nets at least +5 % at usual prices after reagents (a content check); the battery paste's price rises as the critic computes, or breaker and smelter are sold as one plate, whichever the check passes with the truer trade."
+ },
+ {
+  "id": "T3",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.8 rotary hall (out ... 'dust 0.015'), lead smelter ('dust 0.02'), induction ('dust 0.015'); 2.5.1 dust 'Filter dust, zinc-rich' 0.40, bay 'works bunker'; 3.3 works bunkers (the eleventh bunker 'dust', lock-block, 1.4 m high, open)",
+  "problem": "One sellable 'zinc-rich' dust is pooled from every filter. Only the brass and bronze filter dust is zinc-rich: it is zinc oxide, sold to zinc recyclers. Bag-house dust from a salt-flux rotary aluminium furnace is a hazardous waste (salts, aluminium oxide), sent off by a licensed carrier and never sold. Bag-house dust from a lead smelter is lead oxide: it goes back into the smelter's next charge and is never sold to a third party as 'zinc-rich'. Filter dust of any kind is a fine powder kept in closed bags under cover, never in an open bunker.",
+  "evidence": "yard-metals.md 4 ('Bag-house filters catch dust (zinc and lead oxides, which are sold)'; 'salt slag / dross (recycled)'); 9 ('Melting releases lead, zinc and cadmium fumes'). Smallest example: one heat of the lead smelter puts 20 kg of lead dust into an open bunker labelled 'zinc-rich' beside the shred.",
+  "change": "Rotary: 'dust 0.015' becomes waste ('filter dust 0.015 to a licensed waste carrier'); the mass balance holds (0.88 + 0.055 + 0.10 + 0.015 = 1.05). Lead smelter: out 'pbi 0.94, slag 0.06'; the filter's dust is returned to the next heat (drawn as a hopper back to the hall, no grade). Induction: keeps `dust`, renamed 'Zinc filter dust'. `bays.dust.kind` becomes 'bags': big bags on a pallet in the stillage row, under a roof; dust is removed from the bunker list of 3.3, which becomes eleven bunkers. 6.1 adds the big bags.",
+  "ruling": "do."
+ },
+ {
+  "id": "T4",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.5.1 zorba 6.50, twitch 4.40, znh 'Zinc-rich heavies' 1.50; 2.8 Sensor sorter (out 'twitch 0.60, no2 0.15, brs 0.12, znh 0.08, ss 0.05')",
+  "problem": "A trader reads the order as backwards: mixed shredded non-ferrous (zorba) is priced above the clean aluminium sorted out of it (twitch) and above clean alloy wheels (alw 5.6). Its copper share of 0.15 is far above what zorba carries (a few per cent, in wire ends). The sorter lifts value from \u00a76.50 to \u00a710.83 (+67 %), where sensor sorting earns a margin of tens of per cent. 'Zinc-rich heavies' is not a grade name the trade uses.",
+  "evidence": "yard-metals.md 1 table (Twitch: aluminium recovered from car shredders; Zorba: the non-magnetic mix); 2 ('Sensor sorters ... turns Zorba into pure grades'). In the trade, alloy wheels > twitch > zorba per kg (memory; mark as inference). The document's own arithmetic: 0.60 x 4.40 + 0.15 x 34.3 + 0.12 x 22.4 + 0.08 x 1.5 + 0.05 x 4.8 = 10.83.",
+  "change": "(inference, for the bots to tune) twitch p\u0304 4.70; zorba p\u0304 4.10; sorter out 'twitch 0.70, no2 0.03, brs 0.04, znh 0.08, ss 0.05', waste 'residue 0.10 to a licensed waste carrier' (shares sum to 1); znh renamed 'Mixed heavies'. Sorted value 5.58, which is +36 % on zorba; wheels > twitch > zorba holds. Add to 5.2: 'twitch below alw; zorba below twitch; a sorter's sorted value at most 1.5 x its input'.",
+  "ruling": "do."
+ },
+ {
+  "id": "T5",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.8 ('a hall ... refills itself from the bays after each pour'); 3.3 works bunkers ('twelve lock-block bunkers ... open', holding twitch, bzs, ss, which feed the halls); 6.1 'Never drawn'",
+  "problem": "Charging wet scrap into molten metal is the classic way a melt shop kills people: trapped water turns to steam under the metal and throws it out of the furnace. Shredder twitch in open outdoor bunkers is wet. A furnace man would ask where the dry store is. The design already has 'moulds on dry sand' (yard-design.md line 267), but stage 2 feeds its halls from open bunkers.",
+  "evidence": "yard-metals.md 9 ('Fumes and acids ... Plants use extraction hoods, bag filters, protective equipment'); yard-design.md 267 ('moulds on dry sand'). Smallest example: the rotary hall refills itself with 2 t of twitch from an open bunker after a pour.",
+  "change": "3.3: the bunkers and stillages that feed a hall (twitch, bzs, ss and the first yard's alw, alcast, brs stillages, as drawn in the works) stand under a roof, drawn as a lean-to over x \u221238 to \u221220. 2.8 adds one sentence: 'a hall is charged only from covered bays'. 6.1 'Never drawn' adds: 'a hose, puddle or rain near a furnace charge; a wet charge'. No rule number changes.",
+  "ruling": "do."
+ },
+ {
+  "id": "T6",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.8 last paragraph ('every pour is under a hood with a person in face shield and aluminised apron'); 6.1 'Never drawn'; 3.3 Battery breaker, Lead smelter hall",
+  "problem": "For the lead line the hazard a regulator and the trade care about first is breathing lead fume and dust, not splash. Breaker and smelter workers wear a respirator (a half mask with P3 filters), and the line is a separate area kept apart from the rest of the yard. Showing lead pours with a face shield only makes light of lead, which the brief (L3) asks the game not to do. The hand-held analyser is an X-ray device: drawn, it is never pointed at a person.",
+  "evidence": "yard-metals.md 9 ('Melting releases lead, zinc and cadmium fumes ... protective equipment ... air monitoring'); BRIEF L3; yard-style.md line 69 ('At every pour: shield and aluminised apron', with no line for lead).",
+  "change": "2.8: 'every pour is under a hood ... face shield and aluminised apron; in the breaker and the lead smelter hall also a respirator (half mask)'. yard-style.md and 6.1 gain the respirator layer on the people sheet for those two places, and a painted line with a sign 'Lead area \u00b7 masks on' at the breaker's door. 6.1 'Never drawn' adds: 'anyone in the lead line without a mask; the analyser pointed at a person'.",
+  "ruling": "do."
+ },
+ {
+  "id": "T7",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "3.3.2 visitorPath (wicket (64.6, 37.4) \u2192 rack (56, 37.0) \u2192 'between gatehouse and truck park (58.6, 33)' \u2192 the window (58.3, 29.35) \u2192 wicket); 3.3 'Gatehouse window ... on the office's east face'",
+  "problem": "Members of the public walk inside a working yard, 1.4 m from the truck park (yard-ground.md: x 60 to 64, y 27.6 to 34.6, where the hook-lift reverses) and 1.75 m from the drive line at the window. Being struck by a moving vehicle is the leading cause of deaths in waste and recycling. A yard that lets the public in keeps them in a fenced area away from vehicles. 3.6(6) only stops the path crossing rects; it does not stop it running beside them.",
+  "evidence": "yard-ground.md row 'truck park | 62, 31.1 | 4 x 7 | on the drive line'; 3.3.2 path points; the forklift bay (43.75, 38.35) and the oversize pad's crane lorry are also near the canopy.",
+  "change": "The visitor pays at the rack: a card reader on the canopy post ('Pay here'), and the chip rises there. visitorPath becomes wicket \u2192 before the rack \u2192 wicket, inside a railed public bay (railing from x 52.6 to 64 at y 36.5, drawn with a sign 'Visitors: keep to this area'). Drop `window` from the path. 3.6(6) adds: visitorPath and vanPath at least 3 m from every drive-line rect, the truck park and the forklift's zone. 4.6's chip 'at the window' becomes 'at the rack'.",
+  "ruling": "do: the public never walks in the working yard: a railed public bay at the rack by the gate with its own wicket, a card reader on the canopy post ('Pay here'), the visitors' path inside the rail only; the map checker enforces a gap to the drive line and the truck's park."
+ },
+ {
+  "id": "T8",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.9 Plasma cutter ('tool, tier 3, P 60: the boss's and every cutter's power on steel'); 5.3 effect.plasma; 2.10.1 lot kinds (a stainless catering table, an aluminium engine casing, a bronze bell)",
+  "problem": "This is the wrong way round for the trade. An oxy-fuel torch cuts carbon steel and cannot cut stainless, aluminium, copper, brass or bronze. The plasma cutter's whole point is that it cuts stainless and non-ferrous metals. Stage 2 brings exactly those materials (sinks, the catering table, castings, bells), and as written only the boss's torch-class power cuts them. (The builder critic's finding 4 already gives plasma power on everything at tier 4; this is the reason in trade terms, and the words that go with it.)",
+  "evidence": "yard-metals.md 2 ('Oxy-fuel torch, plasma cutter: Large steel'); trade practice (memory): oxy-fuel needs iron to burn, so stainless and non-ferrous need plasma, shears or saws.",
+  "change": "2.9: 'Plasma cutter (tool, P 60, on every material): cuts stainless and non-ferrous metal, which the torch cannot'. effect.plasma reads 'Cuts stainless and aluminium too' (32 characters, within the 38 effect box). The lesson for ss (finding 12) says nothing about the torch.",
+  "ruling": "do."
+ },
+ {
+  "id": "T9",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "5.3 chip.bridgeLimit 'Axle limit 7.5 t' (11.2 point L13); check.ts NUMBER_ALLOWED /Weight limit 7\\.5 t/",
+  "problem": "L13 asks the trade desk to confirm the sign, and 'Axle limit 7.5 t' cannot work. A loaded three-axle rigid hook-lift (about 26 t gross) puts about 7 to 8 t on its front axle and about 9 to 9.5 t on each rear axle. A two-axle rigid (about 18 t) puts about 11.5 t on its rear axle. A 7.5 t axle limit stops both trucks, so the reason the three-axle truck may cross disappears. 'Weight limit 7.5 t' (the first yard's sign) stops both too.",
+  "evidence": "Typical UK and EU rigid lorry axle loads (memory: single rear axle about 11.5 t; tandem about 19 t, so about 9.5 t each). The design's own reason (11.2 L13: 'only an axle limit explains why').",
+  "change": "chip.bridgeLimit 'Axle limit 10 t'. The bridge's sign face in 6.1 shows the axle-weight pictogram with '10 t'. check.ts NUMBER_ALLOWED replaces /Weight limit 7\\.5 t/ with /Axle limit 10 t/. item.truckBridge's effect may say 'Three axles: crosses the bridge' (30).",
+  "ruling": "do: 'Axle limit 10 t' (this answers the writers' point L13)."
+ },
+ {
+  "id": "T10",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.5.1 grade names; 5.3 (no short names given); check.ts gradeName maxChars 18 and gradeShort 15",
+  "problem": "Seven of the sixteen new names fail the strings check the stage must pass: 'Stainless 304 solids' (20), 'Stainless, unsorted' (19), 'Lead batteries, whole' (21), 'Lead paste and grids' (20), 'Polypropylene chips' (19), 'Zorba (shredded non-ferrous)' (28), 'Twitch (shredded aluminium)' (27), 'Filter dust, zinc-rich' (22). None has a short name (15 characters). The first yard keeps the explanation in `long`.",
+  "evidence": "scripts/content/yard/check.ts lines 179 and 180; text.json grades (for example hms {name 'HMS 80:20', short 'HMS 80:20', long 'Heavy melting steel, grades 1 and 2 mixed 80:20'}).",
+  "change": "name / short / long: ss 'Stainless 304' / '304 solids' / '304 stainless solids (18 % chromium, 8 % nickel), sorted by analyser'; ssu 'Mixed stainless' / 'Mixed stainless' / 'Stainless not yet sorted by grade'; pbb 'Lead batteries' / 'Batteries' / 'Whole lead-acid batteries, in a closed box'; pbp 'Paste and grids' / 'Paste, grids' / 'Lead paste and grids from broken batteries'; pp 'Plastic chips' / 'PP chips' / 'Polypropylene chips from battery cases'; zorba 'Zorba' / 'Zorba' / 'Shredded mixed non-ferrous metal'; twitch 'Twitch' / 'Twitch' / 'Shredded aluminium from the sorter'; dust 'Zinc filter dust' / 'Zinc dust' / 'Zinc oxide dust from the brass filter'; znh 'Mixed heavies' / 'Heavies'; lib 'Baled light iron' / 'Iron bales'; shred 'Shredded steel' / 'Shred'; cug 'Copper granules' / 'Granules'. Each fits 18 and 15.",
+  "ruling": "do."
+ },
+ {
+  "id": "T11",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.10 and 4.7 (player texts plate.lot, the lot card, away 'lots wait for you', goal 'Open a delivered lot'); 2.10.2 and 4.7 (plate.crate 'Crate \u00b7 {n} things', ticket 'Sorted by hand', away 'The crate went to the crews')",
+  "problem": "'Lot' already has one meaning for the player. The first yard's glossary has 'Lot: The weight of one grade that the merchant collects and pays for', with chip.lotSold 'Lot sold \u00b7 {x}' and ticket.lotSoldTo. Stage 2 adds a second: one big object to cut up. '{n} lots wait for you' also reads as 'many wait for you' to a reader of English as a second language. 'Crate' then has three meanings: the content object 'Crate of brass taps', the lot kind 'a crate of bronze bushings', and the boss's hand-sorting place. The trade's word for hand-sorting is a picking table. 'Open' a ship's bell or an engine casing is not what a yard does: it cuts them up.",
+  "evidence": "text.json glossary entry 20; strings.ts lines 77 and 260; text.json objects.taps.long 'Crate of brass taps'; 2.10.1 lot kinds.",
+  "change": "In player text, a delivered lot becomes an 'oversize piece'; the ids stay `lot`. plate.lot '{partner|short} \u00b7 {thing}' / '{kg} kg \u00b7 about \u00a7{x} once cut'; lot card 'Only you can cut this \u00b7 {s} s'; away.lots '{n} oversize pieces wait for you'; goal 'Cut an oversize piece' (21); place 'Oversize pad' stays. The crate becomes the 'Picking table': plate.crate 'Picking table \u00b7 {n} things' / 'Stand here 45 s \u00b7 to the crews in {t}'; away.crateToCrew 'The crews cleared the picking table' (35). Glossary adds 'Picking table: where a person sorts by hand what a machine would sort less well.'",
+  "ruling": "do: in player text a delivered lot is an 'oversize piece'; the ids stay."
+ },
+ {
+  "id": "T12",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "1.3 goal list 'Pour aluminium alloy ingot' (with the done grammar `poured:`); 1.3 'Buy the rotary furnace' before it",
+  "problem": "The first yard's crucible already pours `ali` (text.json ali 'Alu alloy ingot, cast in the yard'). If `poured:` names the grade, this goal is done by the old crucible at its next pour, without the rotary hall: a goal met by doing nothing new (BRIEF lesson 2). Its name also differs from the grade's name ('Alu alloy ingot').",
+  "evidence": "text.json grades.ali; lessons.ali 'Cast aluminium ... melts in the crucible and is cast as aluminium alloy ingot'; 2.19 'pour gain a plate field'.",
+  "change": "The goal reads 'Pour at the rotary furnace' (26), with done grammar `poured:rotary` (by plate, not grade). 'Pour a lead ingot' becomes `poured:smelter` as well. For the same plain wording, 'Supply 1,000 t (8 materials)' and 'Supply 10,000 t (9 materials)' become 'Supply 1,000 t (8 metals)' and 'Supply 10,000 t (9 metals)', as the first yard's 'Supply 2 t (3 metals)' (yard-stage1.md line 193).",
+  "ruling": "do."
+ },
+ {
+  "id": "T13",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "2.7 Granulator ('waste 0.65 plastic fluff to the licensed contractor'), Depollution bay ('Fluids drained \u00b7 to licensed contractor'), 2.8 shredder, breaker, smelter, rotary ('to the licensed contractor'); 4.3 depollution row",
+  "problem": "The first yard fixed the yard's word for this, and its glossary teaches it: 'licensed waste carrier' (yard-stage1.md line 431: '\"licensed waste carrier\" are the words'; glossary 'Licensed waste carrier: A firm allowed by law to take the yard's waste away'; lesson.cab). Stage 2 switches the player text to 'licensed contractor'. The depollution row also leaves out the two things a treatment permit checks besides fluids: air-conditioning gas recovered and airbags made safe. It also never shows the certificate of destruction, which a yard that depollutes a car issues itself (the design's first-yard car arrives with 'certificate of destruction attached').",
+  "evidence": "yard-stage1.md lines 113 and 431; text.json glossary entries 9 and 18; yard-design.md line 171; yard-metals.md 2 ('battery, catalyst, tyres, airbags removed').",
+  "change": "Every player text: 'to a licensed waste carrier'. The card row becomes 'Fluids and gas out \u00b7 airbags made safe' (38); ticket.note.drained 'Depolluted' (10, the glossary's word); on the car's completion a chip 'Certificate of destruction issued' (33) and the line on the car's ticket. The rules may keep `contractor` as an internal id.",
+  "ruling": "do."
+ },
+ {
+  "id": "T14",
+  "lens": "trade and words",
+  "severity": "important",
+  "where": "5.3 lesson lines; 5.3 (no glossary entries listed)",
+  "problem": "Three of the five lessons are wrong or mislead a reader of English as a second language. 'Stainless: an analyser tells it from steel.': a magnet does that (304 is barely magnetic); an analyser names the alloy. 'Zorba: what the eddy current throws out.': 'throws out' reads as 'discards', the opposite of what is meant. 'A battery's lead is melted, its acid treated.': the battery is broken first, and paste is smelted, not just melted. Stage 2 also adds trade words that the player reads but the Help glossary (first yard, 31 entries) never explains.",
+  "evidence": "yard-metals.md 1 (Stainless 18-8), 11 glossary 18 ('flicks non-ferrous metal out of a stream'); 4 chain 2; text.json glossary.",
+  "change": "lesson.ss 'A magnet hardly holds 304 stainless.' (36); a new lesson.bzs 'An analyser tells bronze from brass.' (36); lesson.zorba 'Zorba: mixed metals from the eddy current.' (42); lesson.pb 'A battery is broken first, then its lead smelted.' (48). Glossary adds (one plain line each): Bale, Commissioning, Depollution bay, Eddy current, Shred, Sensor sorter, Twitch, Zorba, Analyser, Bag-house filter, Salt flux, Picking table.",
+  "ruling": "do."
+ },
+ {
+  "id": "T15",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.12 reuse.kinds (bath, radiator, bicycle, crate of brass taps, stove, gate) and the drop-off as a source; 2.10.1 'a bronze ship's bell'",
+  "problem": "Ruling 5.1 lists the bicycle, so it stays, but the trade will notice two things. Bicycles are the item a yard is most often offered stolen, and council reuse shops safety-check a bike before selling it. Here a bicycle from the anonymous public drop-off is sold on unchecked. A ship's bell is a heritage item, often from a protected wreck. A yard either keeps it whole or refuses it; it does not cut it up.",
+  "evidence": "yard-finance.md 4 (row 'Reuse shop ... bikes safety-checked'; reclamation dealers' 'theft alerts'); yard-metals.md 9 (stolen metal); 1 (ship breaking: 'bronze propellers').",
+  "change": "A bicycle is tagged reusable only when its thing came from a named partner's load (`reuse.kinds.bicycle.fromPartnerOnly`), and its tag adds 'Checked' (7). Lot kind 'a bronze ship's bell' becomes 'a bronze propeller' from a named boatyard partner.",
+  "ruling": "do: a bicycle is tagged reusable only from a named partner's load and its tag says 'Checked'; the ship's bell becomes a bronze propeller from a named boatyard partner."
+ },
+ {
+  "id": "T16",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "4.5 the lender's letter title '[bank] \u00b7 plant finance'; 2.14 headings",
+  "problem": "'Plant' first means a flower to a reader of English as a second language; 'plant finance' is British trade jargon. The letter is the one screen where the player must understand at once what is offered.",
+  "evidence": "BRIEF (short plain sentences a reader of English as a second language reads right the first time); the ruled words in 5.3 are 'Bank loan', which the letter's title does not use.",
+  "change": "title.letter '[bank] \u00b7 loans for machines'. Keep 'plant finance' only in the rules and the Help body.",
+  "ruling": "do: the letter's title is '[bank] \u00b7 loans for machines'; 'plant finance' stays in the rules and Help's body."
+ },
+ {
+  "id": "T17",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "4.7 refusal routed 'This feeds the {plate}. Send it to the bay to sell it.'; 4.7 'Goes to: Baler \u00b7 Shredder \u00b7 Sell from the bay'",
+  "problem": "The refusal names an action that does not exist ('send it to the bay'; the grade is already in its bay). The route row's real choice is 'Sell from the bay'.",
+  "evidence": "4.7 route row; 2.7.1 setRoute(grade, 'bay').",
+  "change": "refusal.routed 'This feeds the {plate}. Choose Sell from the bay first.' (about 50 characters; a toast takes two lines).",
+  "ruling": "do."
+ },
+ {
+  "id": "T18",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "4.7 lot plate '{kg} kg \u00b7 about \u00a7{x} prepared'; 4.8 'Yard dressing'",
+  "problem": "'Prepared' (the trade's 'prepared scrap') reads as 'about \u00a7x ready' to a reader of English as a second language. 'Dressing' reads as salad or a bandage.",
+  "evidence": "5.3 voice rule (short plain sentences).",
+  "change": "'about \u00a7{x} once cut'; 'Yard dressing' becomes 'Yard decorations' (16), and the product title 'Yard decorations: [set 1]'.",
+  "ruling": "do."
+ },
+ {
+  "id": "T19",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "4.3 world plate lines ('Opens at 1,000 t supplied' 25; 'Stand here to start \u00b7 5 s' 25; 'Starts by itself in {t}' up to 29; 'Ready to pour \u00b7 it waits for you' 32); 4.11 text limits",
+  "problem": "Only plate NAMES get a limit (18). These second lines have no box, so check.ts cannot test them, and 'Opens at 1,000 t supplied' would fail the only world-plate box that exists (placeLabel, 18).",
+  "evidence": "check.ts line 152 placeLabel maxChars 18.",
+  "change": "Add a box `worksPlateLine` (11 pt, one line, at most 31 characters, as the tag's second line) for plate.works.*, and make the padlock line 'Opens at 1,000 t' (16), as on the process board.",
+  "ruling": "do."
+ },
+ {
+  "id": "T20",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.8 Lead smelter ('1,000 kg of pbp ... pbi 0.92, dust 0.02, slag 0.06'); Battery breaker (electrolyte 'to the licensed contractor')",
+  "problem": "These are honestly simplified, but two lines would make them right. Smelting lead sulphate paste needs a reductant and flux (coke, iron, soda), and its sulphur leaves as gas that is scrubbed. The neutralised acid becomes sodium sulphate, which the research lists as a by-product that is sold.",
+  "evidence": "yard-metals.md 4 chain 2 ('+ polypropylene, + sodium sulphate').",
+  "change": "Optional: the smelter gets reagents '[\"coke and iron\", 0.06, 0.30]' with slag 0.12 (the mass balance holds: 0.94 + 0.12 = 1.06); the help text for the breaker says 'The acid is neutralised and leaves as a salt solution.' No card shows the chemistry (L3).",
+  "ruling": "do."
+ },
+ {
+  "id": "T21",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "4.5 / first yard rota 'Site licence \u00b7 metal dealer' (yard-stage1.md line 349; strings card.siteLicence); 2.7 depollution bay, 2.8 lead line",
+  "problem": "The first yard shows its licence from the first second. Stage 2 adds the two activities that need their own permits in the trade (treating cars, and lead smelting), and nothing on screen shows the yard holds them. A person from the trade looks for that line.",
+  "evidence": "yard-stage1.md line 99 ('The site licence hangs on the portacabin wall from the first second'); yard-metals.md 9.",
+  "change": "The rota's licence row gains, with no price and no step, 'Treatment permit \u00b7 end-of-life cars' when the depollution bay is commissioned and 'Permit \u00b7 lead smelting' when the breaker is. Both come with the plate (never a purchase or a goal), so a locked thing promises nothing.",
+  "ruling": "do."
+ },
+ {
+  "id": "T22",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.6.5 'Each hall is bought with its filter ... so no furnace runs without one'; the first yard's crucible",
+  "problem": "The first yard's crucible, which pours brass, sits under an extraction hood with no filter drawn. Brass gives off zinc oxide fume, so the stage's own rule ('a bag-house filter on every hall') is broken by the one melt that already exists.",
+  "evidence": "text.json glossary 'Crucible: A pot in which metal is melted, under an extraction hood'; the design's 'a bag-house filter on every hall'.",
+  "change": "6.1: the crucible's hood is drawn ducted to a small filter housing (art only, no rule, no price).",
+  "ruling": "do."
+ },
+ {
+  "id": "T23",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.7 shear ('whole things of the torch's tier made of steel (beams, tanks)'); 2.12 reuse.never and content check 5.2 (5)",
+  "problem": "Tanks are correct only because the first yard's tank is 'certified empty'. The check should keep it that way for every new vessel. The reuse shops' list of things never sold second-hand includes petrol-powered items and child safety goods, which 5.2 (5) does not cover.",
+  "evidence": "text.json objects.tank.long 'Steel tank, certified empty'; yard-finance.md 4 ('some goods never sold second-hand (car seats, helmets, cot mattresses, petrol-powered items)').",
+  "change": "5.2 (2) adds: 'a shear or shredder input object with a closed vessel lacks certifiedEmpty'. 5.2 (5) adds the tags `fuel` and `childSafety` to the never-tagged list.",
+  "ruling": "do."
+ },
+ {
+  "id": "T24",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.7 Magnet crane art (6.1: 'the magnet never lifts copper, brass or aluminium')",
+  "problem": "Stainless 304 is not lifted by a magnet either (the washer's drum and the sinks are 304). Drawing the crane carrying a sink or a catering table would show a trade error.",
+  "evidence": "yard-metals.md 1 (Stainless 18-8 304); the glossary entry 'Ferrous: holding iron, so a magnet picks it up'.",
+  "change": "6.1: 'the magnet never lifts copper, brass, bronze, aluminium, lead or 304 stainless'. 2.7: the crane's moves exclude grades of material stainless.",
+  "ruling": "do."
+ },
+ {
+  "id": "T25",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "1.3 goal 'Commission the baler'; chip 'Commissioned \u00b7 {plate}'",
+  "problem": "'Commission' is the trade's word, and it should stay on the chip. But in a stage that adds a bank, a reader of English as a second language can read a goal 'Commission the baler' as a fee. The plate already says 'Stand here to start'.",
+  "evidence": "4.3 plate.works.commission 'Stand here to start \u00b7 5 s'.",
+  "change": "The goal reads 'Start up the baler' (18). The chip keeps 'Commissioned \u00b7 Baler', and the glossary entry 'Commissioning: starting a new machine for the first time' explains it.",
+  "ruling": "do."
+ },
+ {
+  "id": "T26",
+  "lens": "trade and words",
+  "severity": "minor",
+  "where": "2.3.1(4) ('at its LOWEST margin, ruling 10.6'); 2.7.1 ('I counts the lower-margin route'); 2.8 induction ('For I: the lower-margin recipe')",
+  "problem": "Outside my lens, but it outranks the text. RULING2 section 12 (03:20, written after this document) says rated income 'assigns material to machines by margin, best first; this replaces 10.6's \"lowest margin\"'.",
+  "evidence": "RULING2.md section 12.",
+  "change": "The three sentences read 'best margin first (ruling 12)'. Also see notes/engine2-LEAD.md I1 to I6 for the rest of the I rules.",
+  "ruling": "do: as ruling 12 and notes/engine2-LEAD.md."
+ }
+]
