@@ -15,6 +15,14 @@
  * buys everything affordable at once (goal order, then the cheapest level). The card manager plays the
  * normal hand to the second hire, then only presses cards (the boss stands at the office). The day-word
  * holder holds a bay on a low day and releases it on the next day that is not.
+ *
+ * Stage 2 (yard-stage2.md 8.2; content2-bots): once the works open (layer.ts worksOpened) every read goes through the
+ * content at the state (contentAt) and the merged map's path graph, and `decide2` comes first: a hall's first pour, a
+ * plate waiting to be started up (every side of its plot), a carried whole thing to the Yard sale, the sitting's money
+ * habits (`ads`, `packs`), stage 2's own goals (the bath, an oversize piece, the picking table, the back field, a
+ * "visited:" goal), the racker's lift, the finance habit (`finance` 'always': every Bank loan its goal's card offers).
+ * Steel-max buys ferrous plates only. The money's actions are the rules' own (signFinance, quotePack and grantProduct as
+ * Expo Go's simulated store does, adPaid), each checked shown = applied. Before the works open nothing of this runs.
  */
 import { hash01 } from './board';
 import { hashString } from '../rng';
