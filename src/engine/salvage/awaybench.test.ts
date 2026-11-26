@@ -54,6 +54,10 @@ describe('the away bench on the real content', () => {
     // The lead, 26 Nov 03:45: grouping brought the six hours from about 727 ms to about 175 ms on a quiet machine
     // (195 in the full suite). What remains is work per whole item (pick-ups, pieces, weigh-ins), which grouping
     // does not remove. The gate is 250 ms; 150 and the aim of 50 wait for whole-cycle aggregation of that work.
+    // engine2-fixA, 26 Nov 06:01 (RULING2.md 14.1 to 14.3: the run is the rule in sight and out of it, no long
+    // round, no grouped machine segment): 213.8 ms best of 5 at load average 9.0 (other engineers' runs; the
+    // same state with every run made trip by trip, group.ahead false: 278.8 ms; with no runs at all: 292.5 ms);
+    // 254 ms in the full suite at load 12. Not measured on a quiet machine: the lead measures it alone.
     expect(best).toBeLessThanOrEqual(250);
   }, 600_000);
 });
