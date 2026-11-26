@@ -67,6 +67,16 @@ export function repairMoney(raw: Partial<SalvageState>, fresh: Stage2Fields, t: 
     ageBand: i.ageBand === 'u13' || i.ageBand === 't13' || i.ageBand === 'a18' ? i.ageBand : null,
     createdMs: fin(i.createdMs) ? i.createdMs : fresh.iap.createdMs,
     sessions2At: dateOrNull(i.sessions2At),
+    // rules-money wave 2: the expired quotes' line (bounded; absent stays absent).
+    ...(Array.isArray(i.expired)
+      ? {
+          expired: arr(i.expired)
+            .map(obj)
+            .filter((e) => str(e.product) && fin(e.atMs))
+            .slice(-8)
+            .map((e) => ({ product: e.product as string, atMs: e.atMs as number })),
+        }
+      : {}),
   };
 
   const a = obj(raw.ads);
@@ -75,7 +85,7 @@ export function repairMoney(raw: Partial<SalvageState>, fresh: Stage2Fields, t: 
     day: Math.floor(num(a.day, fresh.ads.day)),
     awayUsed: whole(a.awayUsed),
     spotUsed: whole(a.spotUsed),
-    awayOffer: fin(offer.amount) && fin(offer.I) ? { amount: money(offer.amount), I: money(offer.I) } : null,
+    awayOffer: fin(offer.amount) && fin(offer.I) ? { amount: money(offer.amount), I: money(offer.I), ...(typeof offer.centred === 'boolean' ? { centred: offer.centred } : {}) } : null,
   };
 
   return { bank, iap, ads };

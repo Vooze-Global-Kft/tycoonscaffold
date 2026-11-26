@@ -105,10 +105,10 @@ describe("the driver's ranking (RULING2.md 16.1)", () => {
 
 describe("the yard hands' order (RULING2.md 17.2)", () => {
   /** m15 with the hand free, the bench's tray holding 30 kg of light iron and `floorKg` of pieces on the floor. */
-  function trayAndFloor(floorKg: number): SalvageGame {
+  function trayAndFloor(floorKg: number, trayKg = 30): SalvageGame {
     const g = fixtureGame('m15', base, FIXTURE_NOW);
     const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
-    s.machines.bench.tray_g = { li: 30_000 };
+    s.machines.bench.tray_g = { li: trayKg * 1000 };
     s.machines.bench.trayClaim_g = {};
     s.machines.bench.status = 'working';
     s.pieces = [...s.pieces.filter((p) => p.pile !== 'floor'), ...floorPieces(floorKg, 'hms', 'test.floor')];
@@ -129,6 +129,10 @@ describe("the yard hands' order (RULING2.md 17.2)", () => {
     expect(firstJob(SALVAGE_TEST, g)).toBe('tray');
     expect(firstJob(keyed(SALVAGE_TEST, undefined, 3), g)).toBe('tray');
     expect(firstJob(keyed(SALVAGE_TEST, undefined, 1), g)).toBe('floor');
+  });
+
+  it('a full tray keeps its first-yard place over a full floor (nothing piles up behind the floor)', () => {
+    expect(firstJob(keyed(SALVAGE_TEST, undefined, 1), trayAndFloor(1200, SALVAGE_TEST.machines.bench.tray))).toBe('tray');
   });
 
   it('a floor at most half full: the first yard\'s order from the rung too', () => {

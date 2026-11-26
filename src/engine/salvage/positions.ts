@@ -226,12 +226,45 @@ export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number
 
 /** The place of map.works each stage-2 thing stands at (ThingAt v3; s2a-fix widened the union). */
 const STAGE2_PLACE = { rack: 'reuseRack', corner: 'corner', crate: 'crate', lot: 'oversize', elvPad: 'elvPad' } as const;
+/** 3.3: the first bath 1.55 m off the rack's west end, a metre north of its line (51.6, 38.6 against the rack at 56). */
+const CANOPY_GAP_M = 1.55;
+const CANOPY_DY_M = -1;
+/** The rack's places drawn apart along its length (more share a place, drawn overlapping). */
+const RACK_DRAWN = 12;
 /**
  * A stage-2 thing's position (s2a-fix): the centre of its place on the merged map (map.works.points). PHASE A
  * STAND-IN, rules-works' (Phase B: `rackSlot`, the corner's pallets, the crate's places, the pad's squares,
  * the apron); nothing stands there before the works open.
  */
 function stage2ThingPos(c: SalvageContent, at: Exclude<ThingAt, { at: 'zone' | 'dropoff' | 'floor' }>): { x: number; y: number } {
+  if (at.at === 'canopy') {
+    // rules-works wave 2 (3.3): the first bath stands beside the canopy, CANOPY_GAP_M west of the rack's west end and
+    // CANOPY_DY_M north of its line, outside the public bay.
+    const r = c.map.works?.points?.reuseRack;
+    const w = c.map.works?.places?.reuseRack?.w ?? 0;
+    if (r) return { x: r[0] - w / 2 - CANOPY_GAP_M - 0.85 - at.k * 1.8, y: r[1] + CANOPY_DY_M };
+    return floorSlotPos(c, 0);
+  }
+  if (at.at === 'rack') {
+    // The rack's places along its length, slot 0 at the west (`reuse.slots` + level slots; at most 12 drawn apart).
+    const r = c.map.works?.points?.reuseRack;
+    const w = c.map.works?.places?.reuseRack?.w ?? 4;
+    if (r) return { x: r[0] - w / 2 + (w / RACK_DRAWN) * ((at.slot % RACK_DRAWN) + 0.5), y: r[1] };
+  }
+  if (at.at === 'crate' || at.at === 'lot' || at.at === 'corner') {
+    // Places across the footprint, k from the north-west (the picking table's twelve, the pad's four squares, the corner's pallets).
+    const id = STAGE2_PLACE[at.at];
+    const p = c.map.works?.points?.[id];
+    const pl = c.map.works?.places?.[id];
+    if (p && pl) {
+      const n = at.at === 'lot' ? 4 : at.at === 'crate' ? 12 : 4;
+      const cols = at.at === 'lot' ? 4 : at.at === 'crate' ? 4 : 2;
+      const rows = Math.ceil(n / cols);
+      const col = at.k % cols;
+      const row = Math.floor((at.k % n) / cols);
+      return { x: p[0] - pl.w / 2 + (pl.w / cols) * (col + 0.5), y: p[1] - pl.d / 2 + (pl.d / rows) * (row + 0.5) };
+    }
+  }
   const id = at.at === 'apron' ? `${at.plate}.apron` : STAGE2_PLACE[at.at];
   const p = c.map.works?.points?.[id] ?? c.map.points[id];
   return p ? { x: p[0], y: p[1] } : floorSlotPos(c, 0);

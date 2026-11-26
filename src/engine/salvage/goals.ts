@@ -218,18 +218,28 @@ export function goalMet(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): boolea
   return conditionMet(cfg, g, d.done);
 }
 
+const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
+
 /**
  * The goals in the order the card offers them: the hour's, then stage 2's from the works' rung (requests.md
- * [goals2] 26 Nov: after the hour's and before the day-one goals still open), then day-1 (each once its
- * `after` holds).
+ * [goals2] 26 Nov: after the hour's), then day-1 (each once its `after` holds). THE LEAD'S RULE (requests.md,
+ * 26 Nov 11:10): whenever stage 2's current goal (its first open one under `gs`) is one of its REPEATING goals
+ * (the waits before a supply goal and at the stage's top), the day-one goals still open come first, in the
+ * day-one order; when none is open, the repeating goal shows. Below the works' rung: the first yard's order.
  */
-function ordered(cfg: SalvageConfig, g: SalvageGame): GoalSpec[] {
-  const { goals, dayOne, stage2 } = goalSpecs(cfg.salvage);
-  const s2 = stage2.length && stage2Offered(cfg.salvage, g) ? stage2 : [];
-  return [...goals, ...s2, ...dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null))];
+function ordered(cfg: SalvageConfig, g: SalvageGame, gs: GoalState = g.salvage.goals): GoalSpec[] {
+  return orderedLead(cfg, g, gs).list;
 }
 
-const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
+/** `ordered` and the ids of the day-one goals put before stage 2's repeating goal (empty when none were). */
+function orderedLead(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): { list: GoalSpec[]; lead: Set<string> } {
+  const { goals, dayOne, stage2 } = goalSpecs(cfg.salvage);
+  const s2 = stage2.length && stage2Offered(cfg.salvage, g) ? stage2 : [];
+  const d1 = dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null));
+  const i = s2.findIndex((d) => isOpen(gs, d));
+  if (i >= 0 && (s2[i].repeat || s2[i].done === 'repeat') && d1.some((d) => isOpen(gs, d))) return { list: [...goals, ...s2.slice(0, i), ...d1, ...s2.slice(i)], lead: new Set(d1.map((d) => d.id)) };
+  return { list: [...goals, ...s2, ...d1], lead: new Set() };
+}
 
 /**
  * The rules' goal check (2.12 step 6): ticks every goal met in order from the current one, passes a
@@ -243,11 +253,16 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
   const done: string[] = [];
   const before = currentSpec(cfg, g, gs);
   for (let guard = 0; guard < 200; guard++) {
-    const list = ordered(cfg, g).filter((d) => isOpen(gs, d));
-    const cur = list[0];
+    const o = orderedLead(cfg, g, gs);
+    const list = o.list.filter((d) => isOpen(gs, d));
+    // A day-one goal put before stage 2's repeating goal (the lead's rule) is offered first but never holds the
+    // stage's list back: it ticks when met, and the goals after it go on ticking as before (the list never stalls).
+    let k = 0;
+    while (k < list.length && o.lead.has(list[k].id) && !goalMet(cfg, g, list[k])) k++;
+    const cur = list[k];
     if (!cur) break;
-    if (cur.repeat || cur.done === 'repeat') {
-      const after = list[1];
+    if (!o.lead.has(cur.id) && (cur.repeat || cur.done === 'repeat')) {
+      const after = list[k + 1];
       if (after && goalMet(cfg, g, after)) {
         gs = { ...gs, done: [...gs.done, cur.id] };
         done.push(cur.id);
@@ -266,7 +281,7 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
 }
 
 function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpec | null {
-  return ordered(cfg, g).find((d) => isOpen(gs, d)) ?? null;
+  return ordered(cfg, g, gs).find((d) => isOpen(gs, d)) ?? null;
 }
 
 // ============================================================================ what the card prints

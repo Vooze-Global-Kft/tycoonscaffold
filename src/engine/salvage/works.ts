@@ -33,10 +33,11 @@ import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock'
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
-import { lotsOpen } from './lots';
 import { roundMoney } from './money';
 import { nearPlace, placeGap, spotPos } from './positions';
-import { reuseOpen } from './reuse';
+import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
+import { crateAct, crateActEnd, crateActHolds } from './crate';
+import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
 import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, WorksState } from './types';
@@ -488,7 +489,7 @@ function handV(x: Ctx, m: CrewMember): number {
 }
 
 /** A yard hand's leg (as crew.ts's own: the same speed, handling and event). */
-function handLeg(x: Ctx, m: CrewMember, job: CrewMember['job'], phase: CrewMember['phase'], to: Spot, t: number, fromXY?: { x: number; y: number }): void {
+export function handLeg(x: Ctx, m: CrewMember, job: CrewMember['job'], phase: CrewMember['phase'], to: Spot, t: number, fromXY?: { x: number; y: number }): void {
   const from = fromXY ?? spotPos(x.c, m.to, x.s.things, x.s.truck);
   const dest = spotPos(x.c, to, x.s.things, x.s.truck);
   const dur = legM(x.c, from, dest) / handV(x, m) + x.c.crew.hand.handle_s;
@@ -501,7 +502,7 @@ function handLeg(x: Ctx, m: CrewMember, job: CrewMember['job'], phase: CrewMembe
   x.ev.push({ type: 'crewLeg', id: m.id, job, from: m.from, to, t0: m.t0, t1: m.t1 });
 }
 
-function handIdle(m: CrewMember, t: number, at: { x: number; y: number }): void {
+export function handIdle(m: CrewMember, t: number, at: { x: number; y: number }): void {
   m.job = 'idle';
   m.phase = 'wait';
   m.from = { xy: [at.x, at.y] };
@@ -629,6 +630,9 @@ export function orderPlate(x: Ctx, plate: string, t: number): void {
  * Racking, an oversize piece and the picking table are wave 2's (reuse.ts, lots.ts, crate.ts).
  */
 export function worksAct(x: Ctx, t: number): boolean {
+  if (x.s.counts!.bathSet === undefined) return false;
+  // Wave 2: the picking table and an oversize piece (crate.ts, lots.ts), before the plates.
+  if (crateAct(x, t) || lotAct(x, t)) return true;
   const ws = x.s.works;
   let any = false;
   for (const _ in ws) {
@@ -653,8 +657,9 @@ export function worksAct(x: Ctx, t: number): boolean {
 
 /** A stage-2 act IN PROGRESS still holds at t (hand.ts bossStep: false cancels it): commissioning while he stands still at the installed plate. */
 export function worksActHolds(x: Ctx, kind: WorksActKind, t: number): boolean {
-  void t;
-  if (kind !== 'commission') return true;
+  if (kind === 'rack') return rackActHolds(x, t);
+  if (kind === 'lot') return lotActHolds(x, t);
+  if (kind === 'crate') return crateActHolds(x, t);
   const id = x.s.act.target;
   const w = id ? x.s.works[id] : undefined;
   const d = id ? plateDef(x.c, id) : undefined;
@@ -665,6 +670,9 @@ export function worksActHolds(x: Ctx, kind: WorksActKind, t: number): boolean {
 
 /** A stage-2 act ENDS at t (hand.ts bossActEnd): commissioning starts the plate up, by the boss. */
 export function worksActEnd(x: Ctx, kind: WorksActKind, t: number): void {
+  if (kind === 'rack') return rackActEnd(x, t);
+  if (kind === 'lot') return lotActEnd(x, t);
+  if (kind === 'crate') return crateActEnd(x, t);
   if (kind !== 'commission') return;
   const id = x.s.act.target;
   if (id) commission(x, id, 'boss', t);
@@ -679,6 +687,11 @@ export function worksActEnd(x: Ctx, kind: WorksActKind, t: number): void {
  */
 export function worksLegEnd(x: Ctx, m: CrewMember, t: number): boolean {
   if (m.role !== 'hand') return false;
+  // Wave 2 (2.12): a yard hand's trip to the Yard sale (reuse.ts rackChoice set him off).
+  if (m.job === 'rack') {
+    rackLegEnd(x, m, t);
+    return true;
+  }
   const dest = m.dest;
   const toPlate = !!dest && dest !== 'scale' && !(dest in x.s.machines) && !!x.s.works[dest];
   const trayPlate = m.phase === 'walkTo' ? plateTrayOf(x, m.claims[0]) : null;

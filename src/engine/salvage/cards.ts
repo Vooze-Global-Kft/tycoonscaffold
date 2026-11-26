@@ -5,7 +5,7 @@
  * the rules-sim's action applies, ladder.ts), every number as a typed argument, so a screen formats
  * nothing but numbers (through the facade's formatters) and computes nothing.
  */
-import { cardOfMoney, MONEY_CARD_KINDS } from './cardsMoney';
+import { cardOfMoney, moneyOver, MONEY_CARD_KINDS } from './cardsMoney';
 import { cardOfWorks, WORKS_CARD_KINDS } from './cardsWorks';
 import { contentAt } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
@@ -551,6 +551,11 @@ const MACHINE_TITLE: Record<MachineId, TextKey> = { hand_stripper: 'item.handStr
  * (rules-works) and cardsMoney.ts (rules-money); this function is closed to both.
  */
 export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext = { country: null }): CardData {
+  // rules-money wave 2 (dispatcher edit, requests.md 26 Nov): the money's part of EVERY card (cardsMoney.ts moneyOver: showsDebt on all, the Shop row, Settings' packs switch, Help's pack pages, the spot buyer).
+  return moneyOver(cfg, g, cardOfBase(cfg, g, ref, now, ctx), now, ctx);
+}
+
+function cardOfBase(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext): CardData {
   if ((WORKS_CARD_KINDS as readonly string[]).includes(ref.kind)) return cardOfWorks(cfg, g, ref, now, ctx);
   if ((MONEY_CARD_KINDS as readonly string[]).includes(ref.kind) || (ref.kind === 'office' && ref.tab === 'agreements')) return cardOfMoney(cfg, g, ref, now, ctx);
   const c = cfg.salvage;

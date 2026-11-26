@@ -8,7 +8,7 @@ import { boostFactor, bossFresh, heard, type Ctx } from './clock';
 import { cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
-import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
+import { accepts, atPlace, defOf, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { rackChoice } from './reuse';
 import { stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
@@ -208,7 +208,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   // RULING2.md 17.2 (from rung crew.orderFromRung): while the floor is over half full, which machines' feeds and trays wait for it.
   const plan = orderPlan(x);
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
-  if (feedStep(x, m, t, cap, free, plan ? plan.first : null)) return true;
+  if (feedStep(x, m, t, cap, free, plan ? (id) => plan.first(id, 'feed') : null)) return true;
   // (2) chalk circles.
   if (circles.length) {
     const pile = circles[0].pile;
@@ -223,7 +223,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   // (3) out trays (mass, up to his load). Stage 2 (2.5.3, S12; s2a-fix): the stations' order is works.ts
   // stationTrays' (the first yard's list itself while no plate exists); a plate's tray is worksTrayTrip's.
-  if (trayStep(x, m, t, cap, plan ? plan.first : null)) return true;
+  if (trayStep(x, m, t, cap, plan ? (id) => plan.first(id, 'tray') : null)) return true;
   // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
   // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
   // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
@@ -232,16 +232,16 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   if (floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
   // RULING2.md 17.2: what waited for the floor goes now, before the drop-off (the feeds, then the trays).
   if (plan) {
-    if (feedStep(x, m, t, cap, free, plan.later)) return true;
-    if (trayStep(x, m, t, cap, plan.later)) return true;
+    if (feedStep(x, m, t, cap, free, (id) => plan.later(id, 'feed'))) return true;
+    if (trayStep(x, m, t, cap, (id) => plan.later(id, 'tray'), false)) return true;
   }
   return handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop);
 }
 
 /** RULING2.md 17.2's order (orderPlan): the machines whose feed and tray keep their first-yard place, and those that wait for the floor. */
 interface OrderPlan {
-  first: (id: MachineId) => boolean;
-  later: (id: MachineId) => boolean;
+  first: (id: MachineId, kind: 'feed' | 'tray') => boolean;
+  later: (id: MachineId, kind: 'feed' | 'tray') => boolean;
 }
 
 /**
@@ -275,15 +275,19 @@ export function machineWorth(c: Ctx['c'], id: MachineId): number {
  * RULING2.md 17.2, from rung `crew.orderFromRung` (engine2-dispatch, measured against a second candidate: the account
  * notes/dispatch-engine2.md): WHILE THE TIPPING FLOOR IS MORE THAN HALF FULL, a yard hand clears the floor BEFORE he
  * feeds a machine or empties its tray, except a machine whose work at least doubles the worth of what it takes
- * (machineWorth, from the content at usual prices); what waited goes after the floor, before the drop-off. One rule in
- * every presence state; it chooses the first trip of a run only (14.1: the run then goes on as built). Below the rung,
- * or with the floor at most half full: null (S12 as in the first yard).
+ * (machineWorth, from the content at usual prices), and a tray that is full; what waited goes after the floor, before
+ * the drop-off. One rule in every presence state; it chooses the first trip of a run only (14.1: the run then goes on
+ * as built). Below the rung, or with the floor at most half full: null (S12 as in the first yard). Stage 2's plates
+ * keep their places (their feed and tray are not yet in this order: rules-works' request of 11:10 stands).
  */
 function orderPlan(x: Ctx): OrderPlan | null {
   if (x.s.ladder.rung < orderFromRung(x.c)) return null;
   if (!(floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000)) return null;
-  const waits = (id: MachineId) => machineWorth(x.c, id) < 2;
-  return { first: (id) => !waits(id), later: (id) => waits(id) };
+  // A FULL tray keeps its first-yard place (measured: the crucible, which a full tray does not stop, piled 3.4 t of
+  // ingots in four hours behind a floor that never fell to half; a full tray is also a machine stopped).
+  const full = (id: MachineId) => trayFree(x, id) >= defOf(x, id).tray * 1000 - 1e-9;
+  const waits = (id: MachineId, kind: 'feed' | 'tray') => machineWorth(x.c, id) < 2 && !(kind === 'tray' && full(id));
+  return { first: (id, kind) => !waits(id, kind), later: (id, kind) => waits(id, kind) };
 }
 
 /** handDepart's (1): feed a machine with room for its input (`only`: the machines asked now; null: all). */
@@ -321,12 +325,16 @@ function feedStep(x: Ctx, m: CrewMember, t: number, cap: number, free: GroundPie
   return false;
 }
 
-/** handDepart's (3): an out tray (`only`: the first yard's machines asked now, a plate's tray only when null). */
-function trayStep(x: Ctx, m: CrewMember, t: number, cap: number, only: ((id: MachineId) => boolean) | null): boolean {
+/**
+ * handDepart's (3): an out tray (`only`: the first yard's machines asked now, null: all). A plate's tray (stage 2,
+ * worksTrayTrip) keeps its place in the stations' order whatever `only` says, and is not offered again by the pass
+ * after the floor (`plates` false).
+ */
+function trayStep(x: Ctx, m: CrewMember, t: number, cap: number, only: ((id: MachineId) => boolean) | null, plates = true): boolean {
   const s = x.s;
   for (const sid of stationTrays(x, OUT_TRAYS)) {
     if (!(sid in s.machines)) {
-      if (!only && worksTrayTrip(x, m, t, sid)) return true;
+      if (plates && worksTrayTrip(x, m, t, sid)) return true;
       continue;
     }
     const id = sid as MachineId;

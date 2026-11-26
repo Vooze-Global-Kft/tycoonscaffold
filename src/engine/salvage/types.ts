@@ -173,7 +173,9 @@ export type ThingAt =
   /** An end-of-life car on the car pad (k 0: one car at a time), set down from the hook-lift's flatrack. */
   | { at: 'elvPad'; k: number }
   /** An end-of-life car on a station's apron (the depollution bay's), set there by the forklift only. */
-  | { at: 'apron'; plate: PlateId };
+  | { at: 'apron'; plate: PlateId }
+  /** rules-works wave 2 (ADD, requests.md): `reuse.firstThing` (the first bath) beside the Yard sale's canopy, not on the floor (2.12, 3.3); it waits for the boss. */
+  | { at: 'canopy'; k: number };
 
 /** One whole thing in the yard (old stock, a drop-off arrival, a tipped skip's thing). */
 export interface ThingState {

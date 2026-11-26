@@ -62,4 +62,11 @@ export const salvageEngineMode: EngineMode = {
   canPrestige: () => false,
   paysOnCompute: true,
   catchUpSeconds: 0,
+  // rules-money wave 2 (2.15.5, 2.15.4, 2.16; RULING2 15): a paid pack reaches its quote (the ledger by id; the
+  // sheet's own result to its own quote; a later arrival to the oldest standing quote whose known ids lack it);
+  // the 72 hours on the store's clock after a fresh listing; the age band's treatment of ad requests. Pure; the
+  // SAME object when nothing changes (a game of another mode is handed back as it is).
+  grantProduct: (cfg, state, arrival) => (R.isSalvage(cfg) ? R.grantProduct(cfg, state as R.SalvageGame, arrival) : state),
+  afterListing: (cfg, state, listing, now) => (R.isSalvage(cfg) ? R.afterListing(cfg, state as R.SalvageGame, listing, now) : state),
+  adAudience: (cfg, state) => (R.isSalvage(cfg) && (state as Partial<R.SalvageGame>).salvage ? R.adAudience(state as R.SalvageGame) : null),
 };

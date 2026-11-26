@@ -47,6 +47,14 @@ export { ratedCapacity } from './salvage/rate';
 export { ratedIncomeCfg as ratedIncome, ratedTermsCfg as ratedTerms, stockValueCfg as stockValue, type RatedTerms } from './salvage/rate';
 export { ackAway, buy, declineDeal, hire, level, noteSeen, sell, setFromBays, setHold, setPresence, setRecipe, signDeal, skipGoal, stepOut } from './salvage/actions';
 export { signFinance } from './salvage/actionsMoney';
+// rules-money, stage 2 wave 2 (add only): the shop (2.15), ads (2.16), looks, the money's cards and frame (4.1, 4.8, 4.9).
+export { adPaid, chooseLook, quotePack, setAgeBand, setPacksHidden, settleQuote } from './salvage/actionsMoney';
+export { adAudience, afterListing, ageBandOf, ageDue, countryOn, grantProduct, headroomU, packsHelpShown, packsShown, packsSwitchShown, quoteFn, secondSession, settle as settlePack, shopReachable } from './salvage/shop';
+export { adOffer, adsAllowed, bonusCard, deferredBonus, spotButton } from './salvage/ads';
+export { awayMoneyView, earnedLooks, restartPackLost, shopOf, type AwayMoneyView } from './salvage/cardsMoney';
+export { debtOnScreen } from './salvage/frameMoney';
+// rules-works asked (requests.md 11:10): the works' checks and actions for the cards and the screens.
+export { plateBuyCheck, plateLevelCheck, setPlateRecipe, setRoute } from './salvage/actionsWorks';
 export {
   bayPosCfg as bayPos,
   circlePosCfg as circlePos,
