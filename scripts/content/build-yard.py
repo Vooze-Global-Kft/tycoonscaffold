@@ -532,9 +532,17 @@ def main(argv):
         for e in own:
             print('  [lint] ' + e)
         return 1
+    # 5.2 (3) (content2-bots): once bots/plates.json exists, a plate's price off the payback rule is a refusal, not a warning.
+    ws = warnings(s, game)
+    priced = [w for w in ws if w.startswith('(3) ')] if os.path.exists(PLATES_TABLE) else []
+    if priced:
+        print('REFUSED: %d plate price(s) off the payback rule (5.2 (3), bots/plates.json):' % len(priced))
+        for w in priced:
+            print('  [lint] ' + w)
+        return 1
     if '--quiet' not in argv:
         print(summary(s))
-        for w in warnings(s, game):
+        for w in ws:
             print('  [warning, Phase B] ' + w)
     if '--lint' in argv:
         print('lint: clean (SalvageSchema, lintSalvage and this script\'s own checks)')

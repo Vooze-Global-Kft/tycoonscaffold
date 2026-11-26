@@ -316,7 +316,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const opts: BotOptions = { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed, ...BOTS2[which] };
   const cacheDir = arg('cache');
   const share = SHARES_NORMAL.has(which) ? 'normal' : which;
-  const snapFile = cacheDir ? path.join(cacheDir, `snap-${createHash('sha1').update(JSON.stringify({ share, seed: spec.seed, game: gameHash })).digest('hex').slice(0, 16)}.json`) : null;
+  const snapFile = cacheDir ? path.join(cacheDir, `snap-${createHash('sha1').update(JSON.stringify({ share, seed: spec.seed, game: snapHash })).digest('hex').slice(0, 16)}.json`) : null;
   let b: Bot;
   let snapMs = 0;
   if (snapFile && fs.existsSync(snapFile)) {
@@ -383,7 +383,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // normal bot bought it (else the last return at which its gate was met): I a jump of deliver + selfCommission later
   // with the plate bought and started by itself, against the same jump without it (cash enough for both).
   const plates: Record<string, { at_h: number; rung: number; I: number; dI: number; bought: boolean }> = {};
-  if (arg('plates') === 'true' && which === 'normal') {
+  if (arg('plates') && which === 'normal') {
     const W = contentAt(cfg.salvage, returns[0]?.g.salvage ?? b.g.salvage).works;
     for (const pid of Object.keys(W?.plates ?? {})) {
       let at = returns.find((x) => x.bought.includes(pid));
@@ -394,7 +394,9 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const ck = buyCheck(cfg, g, pid as never);
       if (ck.price === null || ck.refusal) continue;
       const it = contentAt(cfg.salvage, g.salvage).shop.find((i) => i.key === pid) as { deliver_s?: number } | undefined;
-      const span = (it?.deliver_s ?? 600) + (W!.selfCommission_s ?? 1200) + 60;
+      // A hall counts in I only once poured, and its first heat pours by itself selfCommission_s after it is ready: the
+      // jump runs past that (delivery, self start-up, a heat, the self pour) for every plate alike.
+      const span = (it?.deliver_s ?? 600) + 2 * (W!.selfCommission_s ?? 1200) + 3600;
       const after = R.jump(cfg, R.buy(cfg, g, pid as never, ck.price, g.salvage.t), g.salvage.t + span);
       const before = R.jump(cfg, g, g.salvage.t + span);
       const I0 = incomeAt(cfg, before);
@@ -402,7 +404,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     }
   }
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -457,7 +459,7 @@ function report2(all: Summary[], seeds: number[]): string {
     if (s2.loans.length) parts.push(`loans ${s2.loans.map((l) => `${l.plate} P${l.P} F${l.F} at ${hours(l.t)}`).join(', ')}; repaid ${s2.repaid.map((q) => `${q.plate} at ${hours(q.t)}`).join(', ') || 'none'}${r.rungs[4] !== undefined && s2.repaid[0] && s2.repaid[0].t < r.rungs[4] ? ' (before rung 4)' : ' (NOT before rung 4)'}`);
     if (s2.packs.length) parts.push(`packs ${s2.packs.length} (§${Math.round(s2.packs.reduce((a, p) => a + p.S, 0))}): ${s2.packs.map((p) => p.product).join(',')}`);
     if (s2.ads.length) parts.push(`ads ${s2.ads.length} (§${Math.round(s2.ads.reduce((a, p) => a + p.amount, 0))})`);
-    parts.push(`racked ${s2.racked}, gate sales seen live ${s2.rackSold.length} (§${Math.round(s2.rackSold.reduce((a, p) => a + p.money, 0))}), rackSold count ${(r.extra.counts as { rackSold: number }).rackSold}; lots ${s2.lots}; crate ${s2.crates}; first pours ${s2.pours.map((p) => `${p.plate} ${hours(p.t)}`).join(', ') || '-'}; started up ${s2.commissioned.map((q) => `${q.plate}${q.by === 'self' ? '(self)' : ''}`).join(',') || '-'}; put aside ${s2.skipped.map((q) => q.id).join(',') || '-'}`);
+    parts.push(`racked ${s2.racked}, gate sales seen live ${s2.rackSold.length} (§${Math.round(s2.rackSold.reduce((a, p) => a + p.money, 0))}), rackSold count ${(r.extra.counts as { rackSold: number }).rackSold}; lots ${s2.lots}; crate ${s2.crates}; first pours seen live ${s2.pours.map((p) => `${p.plate} ${hours(p.t)}`).join(', ') || '-'}, heats poured ${Object.entries(r.extra.counts as Record<string, number>).filter(([k]) => k.startsWith('poured:')).map(([k, v]) => `${k.slice(7)} ${v}`).join(', ') || '-'}; started up ${s2.commissioned.map((q) => `${q.plate}${q.by === 'self' ? '(self)' : ''}`).join(',') || '-'}; put aside ${s2.skipped.map((q) => q.id).join(',') || '-'}`);
     L.push(`   ${String(r.spec.bot).padEnd(9)} s${pad(r.spec.seed, 2)}: ${parts.join('; ')}`);
   }
   const nh = runs.filter((r) => (r.extra.nohand as unknown[] | undefined)?.length);
@@ -472,13 +474,15 @@ function report2(all: Summary[], seeds: number[]): string {
 }
 
 let gameHash = '';
+/** The first parts' key: the game file and bot.ts only (the rules' files are not hashed: empty the cache when they change). */
+let snapHash = '';
 
 /**
  * bots/plates.json (2.6.4, the payback rule): per plate the median over the normal runs of ΔI at its planned moment, its
  * rung, and the price the rule gives: max(works.floor, τ_r × ΔI), τ_r = tau_h[rung − 1] of its gate's rung. build-yard.py's
  * check (3) compares works.plates.<id>.price with it.
  */
-function writePlates(all: Summary[], gameFile: string): void {
+function writePlates(all: Summary[], gameFile: string, write: boolean): void {
   const cfg = loadCfg(gameFile);
   const c = contentAt(cfg.salvage, { counts: { bathSet: 1 } } as never);
   const W = c.works!;
@@ -491,7 +495,8 @@ function writePlates(all: Summary[], gameFile: string): void {
     const dI = med(xs.map((x) => x.dI));
     rows[pid] = { dI, I: med(xs.map((x) => x.I)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.max(W.floor, Math.round(tau * dI)), seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: xs.map((x) => x.dI) };
   }
-  const out = path.join(ROOT, 'scripts/content/bots/plates.json');
+  // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
+  const out = write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : 'plates.json');
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dI: § an hour of rated income the plate adds at its planned moment on the normal bots\' yards (median of seeds); price: max(works.floor, tau_r x dI).', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows }, null, 1)}\n`);
   process.stderr.write(`wrote ${out}\n`);
@@ -1048,7 +1053,8 @@ function incomeSection(L: string[], all: Summary[]): void {
 
 async function main(): Promise<void> {
   const gameFile = path.resolve(ROOT, arg('game', 'games/scrap-yard/game.json')!);
-  gameHash = createHash('sha1').update(fs.readFileSync(gameFile)).update(fs.readFileSync(path.join(ROOT, 'src/engine/salvage/bot.ts'))).update(String(arg('stage', '0'))).digest('hex');
+  snapHash = createHash('sha1').update(fs.readFileSync(gameFile)).update(fs.readFileSync(path.join(ROOT, 'src/engine/salvage/bot.ts'))).update(String(arg('stage', '0'))).digest('hex');
+  gameHash = createHash('sha1').update(snapHash).update(fs.readFileSync(fileURLToPath(import.meta.url))).update(String(arg('stage', '0'))).digest('hex');
   const one = arg('one');
   if (one) {
     const cfg = loadCfg(gameFile);
@@ -1067,14 +1073,14 @@ async function main(): Promise<void> {
   if (Number(arg('stage', '0')) === 2) {
     const names = (arg('bots', Object.keys(BOTS2).join(',')) ?? '').split(',') as Bot2[];
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') === 'true' ? 'p' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
       specs2 = specs2.filter((_, k) => k % n === i);
     }
     const all2 = await runAll(gameFile, specs2, Number(arg('jobs', '2')));
-    if (arg('plates') === 'true') writePlates(all2, gameFile);
+    if (arg('plates')) writePlates(all2, gameFile, arg('plates') === 'write');
     const json2 = arg('json');
     if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
     process.stdout.write(`${report2(all2, seeds)}\n`);
