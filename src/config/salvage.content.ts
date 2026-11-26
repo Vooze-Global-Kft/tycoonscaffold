@@ -349,6 +349,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
     "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
     "owner1-fix-rules (26 Nov, finding 5's first hour): ladder rung 2 2.8 -> 3.0 t and rung 3 31.5 -> 32.2 t (both `rung2`/`rung3` and `rungs`): the helper's new rule brought rung 2 about 40 s and rung 3 about 30 s to 80 s earlier on the bots (15 seeds, 2 routes; notes/owner1-fix-rules.md)",
+    "the lead (26 Nov, the second update for the phone): feel.staleS 0.6 -> 1.5 s: a late phone is not an absent boss. The screen now sends a standing boss's sample every 0.3 s (it was 0.1 s), and a tick that runs before a late sample must not find him stale and cancel his act: the rules forgive 1.2 s of stall (they forgave 0.5 s). The bots stand at min(0.3, staleS/2) = 0.3 s as before: no measured table moves",
     "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
     "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -1488,7 +1489,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     ],
   },
   reach: { work: 1.4, pickup: 1, place: 1.2, sight: 10 },
-  feel: { workDelay: 0.3, staleS: 0.6 },
+  feel: { workDelay: 0.3, staleS: 1.5 },
   scale: { platformMaxKg: 300, bridgeStepKg: 20, platformStepKg: 0.1 },
   bays: {
     li: 20000,
@@ -1611,24 +1612,26 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
   bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
   // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
-  // The sixteen products themselves are the shared list's (monetization.iap.products, B5: Phase B, with the shared schema).
+  // The sixteen products themselves are the shared list's (monetization.iap.products, B5): build-yard.py writes them from the
+  // names register with the game's prefix `yard_` (the fingerprint's rule: every product id starts with one prefix); lookOf
+  // names them by those ids (content2-bots).
   iap: {
     packsFromRung: 4,
     // RULING2.md 15.12 (b): quotes of one product that may stand at once (the lead, 08:05)
     maxStanding: 3,
     packsOff: ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "CH"],
     lookOf: {
-      colour1: { slot: "colour", value: "look.colour1" },
-      colour2: { slot: "colour", value: "look.colour2" },
-      colour3: { slot: "colour", value: "look.colour3" },
-      colour4: { slot: "colour", value: "look.colour4" },
-      colour5: { slot: "colour", value: "look.colour5" },
-      colour6: { slot: "colour", value: "look.colour6" },
-      dressing1: { slot: "dressing", value: "look.set1" },
-      dressing2: { slot: "dressing", value: "look.set2" },
-      dressing3: { slot: "dressing", value: "look.set3" },
-      dressing4: { slot: "dressing", value: "look.set4" },
-      plaque: { slot: "plaque", value: "look.plaque" },
+      yard_colour1: { slot: "colour", value: "look.colour1" },
+      yard_colour2: { slot: "colour", value: "look.colour2" },
+      yard_colour3: { slot: "colour", value: "look.colour3" },
+      yard_colour4: { slot: "colour", value: "look.colour4" },
+      yard_colour5: { slot: "colour", value: "look.colour5" },
+      yard_colour6: { slot: "colour", value: "look.colour6" },
+      yard_dressing1: { slot: "dressing", value: "look.set1" },
+      yard_dressing2: { slot: "dressing", value: "look.set2" },
+      yard_dressing3: { slot: "dressing", value: "look.set3" },
+      yard_dressing4: { slot: "dressing", value: "look.set4" },
+      yard_plaque: { slot: "plaque", value: "look.plaque" },
     },
     looks: ["colour", "dressing", "plaque", "sign"],
   },

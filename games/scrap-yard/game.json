@@ -87,6 +87,7 @@
       "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
       "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
       "owner1-fix-rules (26 Nov, finding 5's first hour): ladder rung 2 2.8 -> 3.0 t and rung 3 31.5 -> 32.2 t (both `rung2`/`rung3` and `rungs`): the helper's new rule brought rung 2 about 40 s and rung 3 about 30 s to 80 s earlier on the bots (15 seeds, 2 routes; notes/owner1-fix-rules.md)",
+      "the lead (26 Nov, the second update for the phone): feel.staleS 0.6 -> 1.5 s: a late phone is not an absent boss. The screen now sends a standing boss's sample every 0.3 s (it was 0.1 s), and a tick that runs before a late sample must not find him stale and cancel his act: the rules forgive 1.2 s of stall (they forgave 0.5 s). The bots stand at min(0.3, staleS/2) = 0.3 s as before: no measured table moves",
       "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
       "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
       "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -3562,7 +3563,7 @@
     },
     "feel": {
       "workDelay": 0.3,
-      "staleS": 0.6
+      "staleS": 1.5
     },
     "scale": {
       "platformMaxKg": 300,
@@ -4412,47 +4413,47 @@
         "CH"
       ],
       "lookOf": {
-        "colour1": {
+        "yard_colour1": {
           "slot": "colour",
           "value": "look.colour1"
         },
-        "colour2": {
+        "yard_colour2": {
           "slot": "colour",
           "value": "look.colour2"
         },
-        "colour3": {
+        "yard_colour3": {
           "slot": "colour",
           "value": "look.colour3"
         },
-        "colour4": {
+        "yard_colour4": {
           "slot": "colour",
           "value": "look.colour4"
         },
-        "colour5": {
+        "yard_colour5": {
           "slot": "colour",
           "value": "look.colour5"
         },
-        "colour6": {
+        "yard_colour6": {
           "slot": "colour",
           "value": "look.colour6"
         },
-        "dressing1": {
+        "yard_dressing1": {
           "slot": "dressing",
           "value": "look.set1"
         },
-        "dressing2": {
+        "yard_dressing2": {
           "slot": "dressing",
           "value": "look.set2"
         },
-        "dressing3": {
+        "yard_dressing3": {
           "slot": "dressing",
           "value": "look.set3"
         },
-        "dressing4": {
+        "yard_dressing4": {
           "slot": "dressing",
           "value": "look.set4"
         },
-        "plaque": {
+        "yard_plaque": {
           "slot": "plaque",
           "value": "look.plaque"
         }
@@ -6642,10 +6643,128 @@
       },
       "forceTestAds": true,
       "showBanner": false,
-      "interstitials": false
+      "interstitials": false,
+      "initOn": "firstOffer"
     },
     "iap": {
-      "products": []
+      "products": [
+        {
+          "id": "yard_colour1",
+          "kind": "cosmetic",
+          "title": "Yard colours: Cherry red",
+          "description": "Trucks, vests and skips in cherry red.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour2",
+          "kind": "cosmetic",
+          "title": "Yard colours: Indigo",
+          "description": "Trucks, vests and skips in indigo.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour3",
+          "kind": "cosmetic",
+          "title": "Yard colours: Teal",
+          "description": "Trucks, vests and skips in teal.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour4",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mint",
+          "description": "Trucks, vests and skips in mint.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour5",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mustard",
+          "description": "Trucks, vests and skips in mustard.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour6",
+          "kind": "cosmetic",
+          "title": "Yard colours: Lavender",
+          "description": "Trucks, vests and skips in lavender.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_dressing1",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tub garden",
+          "description": "Planters in old tubs around your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing2",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Open day",
+          "description": "Flags and bunting for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing3",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Bench corner",
+          "description": "Benches and a table for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing4",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tidy lines",
+          "description": "Painted kerbs and lines for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_plaque",
+          "kind": "cosmetic",
+          "title": "Founder's plaque",
+          "description": "A bronze plaque for your yard's gate.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_skipAds",
+          "kind": "skipAds",
+          "title": "No ad videos",
+          "description": "Get every ad reward without watching.",
+          "fallbackPrice": "$4.99"
+        },
+        {
+          "id": "yard_pack2",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 2 hours' earnings",
+          "description": "Scrip: about 2 hours of your yard's earnings",
+          "fallbackPrice": "$1.99",
+          "value": 2
+        },
+        {
+          "id": "yard_pack5",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 5 hours' earnings",
+          "description": "Scrip: about 5 hours of your yard's earnings",
+          "fallbackPrice": "$4.99",
+          "value": 5
+        },
+        {
+          "id": "yard_pack10",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 10 hours' earnings",
+          "description": "Scrip: about 10 hours of your yard's earnings",
+          "fallbackPrice": "$9.99",
+          "value": 10
+        },
+        {
+          "id": "yard_pack20",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 20 hours' earnings",
+          "description": "Scrip: about 20 hours of your yard's earnings",
+          "fallbackPrice": "$19.99",
+          "value": 20
+        }
+      ]
     }
   },
   "store": {

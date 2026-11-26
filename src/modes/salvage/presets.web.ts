@@ -160,8 +160,45 @@ export function playPour(cfg: R.SalvageConfig, dt = 0.25): PouredState | null {
   return out;
 }
 
+/**
+ * owner2-hud (the one button gets in, ruling 18.4): `&getin=gate | weighbridge | park | rack` on any preset puts the
+ * truck (owned, free) and the boss on foot beside it, as just after Step out: at the gate, on the weighbridge, at its
+ * park (the boss on the park's card side), or two metres off the tool rack with the boss at the rack.
+ */
+function withGetIn(cfg: R.SalvageConfig, g: GameState): GameState {
+  const at = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('getin') : null;
+  const sg = g as unknown as SalvageGame;
+  if (!at || !sg.salvage) return g;
+  const c = cfg.salvage;
+  const p = (id: string) => pointOf(c, id);
+  const spots: Record<string, { tr: { x: number; y: number }; boss: { x: number; y: number }; heading: number }> = {
+    gate: { tr: { x: p('gate').x - 0.6, y: p('gate').y }, boss: { x: p('gate').x - 0.6, y: p('gate').y + 1.9 }, heading: 2 },
+    weighbridge: { tr: p('weighbridge'), boss: { x: p('weighbridge').x, y: p('weighbridge').y + 1.9 }, heading: 2 },
+    park: { tr: p('park'), boss: { x: p('park').x - 1.6, y: p('park').y }, heading: 4 },
+    rack: { tr: { x: p('rack').x, y: p('rack').y + 2.8 }, boss: { x: p('rack').x, y: p('rack').y + 0.8 }, heading: 2 },
+  };
+  const sp = spots[at];
+  if (!sp) return g;
+  const s = sg.salvage;
+  const salvage = {
+    ...s,
+    epoch: s.epoch + 1,
+    owned: s.owned.includes('truck') ? s.owned : [...s.owned, 'truck'],
+    truck: { ...s.truck, owned: true, by: null, trip: null, x: sp.tr.x, y: sp.tr.y, heading: sp.heading },
+    arriving: s.arriving.filter((r) => r.item !== 'truck'),
+    presence: { ...s.presence, x: sp.boss.x, y: sp.boss.y, driving: false, moving: false, standingFor: 1 },
+    counts: { ...(s.counts ?? {}), 'truck:out': 1 },
+    act: { kind: 'none', target: null, since: s.t, endsAt: null },
+  };
+  return { ...g, salvage } as unknown as GameState;
+}
+
 export function salvagePreset(cfg: GameConfig, name: PresetName, now: number): GameState {
   if (!R.isSalvage(cfg)) throw new Error('salvagePreset needs a salvage config');
+  return withGetIn(cfg, presetOf(cfg, name, now));
+}
+
+function presetOf(cfg: R.SalvageConfig, name: PresetName, now: number): GameState {
   const base = E.createInitialState(cfg, now);
   if (askedPour()) {
     const poured = playPour(cfg);

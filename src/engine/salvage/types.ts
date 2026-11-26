@@ -1508,8 +1508,8 @@ export interface FrameBoss {
   refusal?: Txt | null;
   /** What he is next to (the mark round it), from the rules' nearness. */
   near: { kind: 'thing' | 'place' | 'pile'; id: string } | null;
-  /** The one button's face: Open (at a place with a card), Step out (driving), or blank. */
-  button: 'open' | 'stepOut' | null;
+  /** The one button's face: Step out (driving), Get in (on foot within reach of the free truck, owner2-hud), Open (at a place with a card), or blank. */
+  button: 'open' | 'stepOut' | 'getIn' | null;
   place: PlaceId | null;
 }
 
@@ -2186,6 +2186,8 @@ export interface PackRow {
   H: number;
   S: number;
   state: 'offer' | 'noRoom' | 'waiting' | 'unconfirmed';
+  /** join2b (the lead, 26 Nov 11:50): on an offer or no-room row, a WAITING quote of this product past its 24 hours still stands: one more line, card.shop.alsoWaiting. */
+  alsoWaiting?: true;
   updated: { a: number; b: number } | null;
   button: CardButton | null;
 }

@@ -101,6 +101,8 @@ export interface Ctx {
   dirty: boolean;
   /** Prices met in this transition (a pure function of the day: memoised here only). */
   prices: Map<string, number>;
+  /** The stored rung at the transition's start (join2b: dates the works' opening, rate.ts checks). */
+  rung0?: number;
 }
 
 /**
@@ -124,7 +126,7 @@ export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[]
   const s = clone(g.salvage);
   if (!s.counts) s.counts = {};
   // The content this state reads (./layer.ts, s2a-fix): the works layer joined once the works opened (counts.bathSet), else the base content itself.
-  return { cfg, c: contentAt(cfg.salvage, s), s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map() };
+  return { cfg, c: contentAt(cfg.salvage, s), s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map(), rung0: s.ladder.rung };
 }
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */

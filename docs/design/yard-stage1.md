@@ -687,3 +687,62 @@ section is right. Changes of BEHAVIOUR are marked so.
     tick's median at most 0.2 ms, 99 of 100 under 1 ms. Rated income I exists (`rate.ts`) and
     nothing of the first yard reads it. A first-yard save loads as it was (every new field is
     optional).
+
+## 13. After the owner's first review on the phone (26 November)
+
+The owner played the first yard on an iPhone and wrote seven points (word for word at the head of
+`yard-decisions.md` part 6, section 18, which holds the diagnosis and every ruling: 18.1 the
+behaviour points, 18.2 the review of the fixes, 18.3 who sits in the cab, 18.4 the confirm). Where
+this section and an earlier one differ, this one is right. Merged to main on 26 November.
+
+1. **The yard hand (2.6: S12's order and P11).** "Never from the heaps" is gone. What the boss cuts
+   and leaves, the yard hand carries: a cut piece in a heap's bed, and a whole loose thing at the
+   drop-off, are the boss's ONLY while all three hold: he is within `crew.hand.leaveM` (3 m) of it,
+   his load has room for it, and he moved or worked in the last `crew.hand.leaveS` (5 s). The cable
+   bundle goes to the powered stripper. "In the yard" means inside the fence (a boss on the lane is
+   away for P11 and E35). A worker with nothing to do walks to a waiting place by the scale house
+   (`map.points` wait1 to wait4), never the platform scale, and is offered work again at every event
+   and at every presence sample while anybody waits. The frame's crew entry and the rota's row carry
+   `idleWhy` ('nothing', 'uncut', 'yours', and a cutter's 'tool'); the yard view prints it over him.
+   Measured after it: between his hire and the cutter's the yard hand is idle 44 to 52 % of the time
+   (it was 70 to 86 %); most of the rest is "nothing cut yet".
+2. **The farm's trial load (2.7, 2.9, 2.10).** The trial load is free (`trialPrice` 0; its plate
+   and ticket say so). The goal carries a step that follows the load and the chevron points at it:
+   get in the truck, drive out to the load, (within 15 m of an open site but outside it) pull up to
+   the skip, keep still: hooking, drive onto the weighbridge, tip it on the floor. The whole
+   partner site is the stop (from `map.siteStop_m` before its sign to past its last skip, the
+   lane's width); the boss hooks in `truck.bossHandle_s` (4 s; the hired driver's 10 s stay). A
+   refusal at the hook stays on screen for as long as it holds.
+3. **Who sits in the truck (2.9, 2.15).** The yard view and the rules never disagree. A presence
+   sample whose cab flag is set seats the boss when the truck stands free and the sample's clamped
+   place is at its door (`truck.enter + truck.rearm`), cancelling the act that was running; the walk-in
+   stays for a sample without the flag. The view follows the rules back (seated by the rules: into
+   the cab; the truck gone with the driver: set down; a snap: the rules' word both ways). Step out
+   names the truck's place and heading (one of eight) and is answered. Time away at the wheel: with
+   nobody to take it the truck waits and he returns at its wheel; a hired driver with a skip aboard
+   takes it home and the boss rides with him.
+4. **Vehicles (2.9, 3: the drive line M4).** Every phase of a trip has its own path (out, hook,
+   back, weigh, tip, park) and the frame hands the screen that path with the yard second of each
+   point; inside the fence nothing drives faster than `truck.yardV` (4 m/s; the boss's own truck
+   `truck.bossYardV` 4.5, on the lane `truck.bossV` 11), and the lane's speed is raised so that every
+   trip's total is what it was (no measured table moved). The driver tips at the drive line's floor
+   stop. What arrives (the purchase van, the flatbeds) follows the drive line. Nobody gives way by
+   rule; on screen a person steps aside for a vehicle, and a roof over the boss or a worker is drawn
+   see-through.
+5. **The screens (4).** Every actor's place, facing and step are functions of the frame's time on
+   the drawing thread, on a clock no late tick re-anchors; the rules' frame is built once per state.
+   A carrier (trolley, sack truck, flat cart) is drawn in every pose. The one button's words are
+   fitted inside the disc (two lines when needed), read "Step out" whenever the rules have him at
+   the wheel, and open a place's card only where it has something to show. The away card (4.5) is a
+   weighbridge docket: time away and time the yard ran, sold rows with pictograms, loads by partner,
+   the net as its one big number, and under it "Sold +x · Loads −y".
+6. **Numbers.** Rung 2 at 3.0 t (it was 2.4) and rung 3 at 32.2 t (27.5), because the helper now
+   does more: on the normal hand rung 2 comes at 13:12 and rung 3 at 59:27. Still outside its aim:
+   the slow hand's rung 3 (in band on 7 of 15 seeds) and a farm level at minute 90 (-3.3 % on
+   means), both left for the tuning with stage 2.
+7. **The switch (10).** Content `release.stage` is 1: stage 2's rules are in the code and nothing
+   of them opens, shows or is saved until its screens exist (`yard-stage2.md`). A first-yard save
+   (layout 2) loads as layout 3 with everything kept (checked with saves made by the merged first
+   yard at minutes 4 to 70).
+8. **Next (not in this merge).** The one button gets in ("Get in" within reach of the free truck);
+   a "counting" card before the away pass on returning; fewer presence samples while he stands.

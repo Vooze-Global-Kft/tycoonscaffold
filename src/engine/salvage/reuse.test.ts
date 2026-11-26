@@ -11,7 +11,7 @@ import { setPresence } from './actions';
 import { awayPass } from './away';
 import { begin, dayAt, finish, priceAt, type Ctx } from './clock';
 import { thingPos } from './positions';
-import { ratedIncome } from './rate';
+import { ratedIncome, ratedIncome0 } from './rate';
 import { FIRST_UID, rackCap, rackChoice, reuseApply, tagFigures, tagged, tagUid } from './reuse';
 import { advance, advanceSalvage, jump } from './tick';
 import type { SalvageContent } from '../../config/schema.salvage';
@@ -244,7 +244,7 @@ describe('2.12 the sale', () => {
     const ev: SalvageEvent[] = [];
     const h = adv(g, t1 + 0.001, true, ev);
     const q = (ev.find((e) => e.type === 'rackSold') as Extract<SalvageEvent, { type: 'rackSold' }>).q;
-    const I0 = ratedIncome(cfg.salvage, h.salvage);
+    const I0 = ratedIncome0(cfg.salvage, h.salvage); // join2b: I₀, before the Yard sale's own premium (2.12)
     const per = TEST_REUSE.shareI[2]! * Math.max(I0, TEST_REUSE.floorI);
     expect(h.salvage.reuse.nextAt).toBeCloseTo(t1 + (3600 * q) / per, 6);
     // The hand-checkable figure: I₀ under the floor on this quiet yard (no crew: I = 0), so 3,600 × q ÷ (0.01 × 1,000) = 360 q s.

@@ -106,8 +106,8 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
   );
 }
 
-/** The hi-vis header band of the docket: the title and the close cross. */
-function TitleBand({ title, onClose }: { title: Txt; onClose: () => void }) {
+/** The hi-vis header band of the docket: the title and the close cross (none on the counting card: owner2-hud). */
+export function TitleBand({ title, onClose }: { title: Txt; onClose?: () => void }) {
   const { layout } = useFrame();
   const say = useSay();
   return (
@@ -120,11 +120,15 @@ function TitleBand({ title, onClose }: { title: Txt; onClose: () => void }) {
       <View style={{ flex: 1 }}>
         <Line t={title} size="title" bold />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' })} onPress={onClose} hitSlop={10} style={styles.close}>
-        <Text allowFontScaling={false} style={[styles.closeGlyph, { fontSize: pt(16, layout.fs) }]}>
-          {'×'}
-        </Text>
-      </Pressable>
+      {onClose ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={say({ key: 'close' })} onPress={onClose} hitSlop={10} style={styles.close}>
+          <Text allowFontScaling={false} style={[styles.closeGlyph, { fontSize: pt(16, layout.fs) }]}>
+            {'×'}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={styles.close} />
+      )}
     </View>
   );
 }

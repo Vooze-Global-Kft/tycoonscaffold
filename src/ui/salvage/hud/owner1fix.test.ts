@@ -90,11 +90,13 @@ describe('findings 4 and 11: at the wheel the one button reads "Step out", every
     expect(g.salvage.truck.by).toBe('boss');
     expect(atWheel).toBeGreaterThan(300);
     expect(checked).toBe(2 * atWheel);
-    // Stepping out ends it: on foot the button is the place's.
+    // Stepping out ends it: on foot beside the truck the button gets back in (owner2-hud, ruling 18.4: the rules say
+    // 'getIn' within reach of the free truck, a place's card or not).
     g = R.stepOut(cfg, g, null, g.salvage.t, []);
     expect(g.salvage.truck.by).toBeNull();
-    expect(buttonMode(false, rulesButton(cfg, g), 'park', true)).toBe('open');
-    expect(buttonMode(false, rulesButton(cfg, g), null, false)).toBe('blank');
+    expect(rulesButton(cfg, g)).toBe('getIn');
+    expect(buttonMode(false, rulesButton(cfg, g), 'park', true)).toBe('getIn');
+    expect(buttonMode(false, rulesButton(cfg, g), null, false)).toBe('getIn');
   });
 
   it('the forms: the world at the wheel leads the rules by a sample; on foot "Open" only where the card shows something', () => {
@@ -102,6 +104,10 @@ describe('findings 4 and 11: at the wheel the one button reads "Step out", every
     expect(buttonMode(false, 'stepOut', 'park', true)).toBe('stepOut');
     expect(buttonMode(false, 'open', 'weighbridge', false)).toBe('blank');
     expect(buttonMode(false, null, null, true)).toBe('blank');
+    // owner2-hud: the rules' "Get in" stands on foot whatever the place; the world at the wheel still says Step out.
+    expect(buttonMode(false, 'getIn', 'park', true)).toBe('getIn');
+    expect(buttonMode(false, 'getIn', null, false)).toBe('getIn');
+    expect(buttonMode(true, 'getIn', null, false)).toBe('stepOut');
   });
 });
 

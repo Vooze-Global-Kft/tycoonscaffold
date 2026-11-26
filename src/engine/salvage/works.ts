@@ -27,7 +27,7 @@
  *   tick): `backFieldOpen`, the bath, `lots.nextAt` (2.10.1) and the `stage2` goals belong here. Until it
  *   sets `counts.bathSet` it is called at every such check.
  */
-import type { PlateDef } from '../../config/schema.salvage';
+import type { PlateDef, SalvageContent } from '../../config/schema.salvage';
 import { bayOf } from './bays';
 import { partnerOf } from './create';
 import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock';
@@ -42,7 +42,7 @@ import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
 import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
-import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, WorksState } from './types';
+import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
 //
@@ -167,7 +167,7 @@ export function worksDepart(x: Ctx, t: number): void {
  * `backFieldOpen`; oversize pieces dated (lots.ts lotsOpen) and the Yard sale's first moment (reuse.ts
  * reuseOpen; the bath, wave 2).
  */
-export function worksOpen(x: Ctx, t: number): void {
+export function worksOpen(x: Ctx, t: number, since: number = t): void {
   const s = x.s;
   // A content with no works (the first yard's frozen test content) opens nothing.
   if (s.counts!.bathSet !== undefined || !x.cfg.salvage.works) return;
@@ -178,7 +178,7 @@ export function worksOpen(x: Ctx, t: number): void {
   // Wave 2 (2.9): the works layer's partners (the bridge partners) get their state now, closed until their
   // purchase (the three-axle hook-lift) opens them (partners.ts openPartners at the checks).
   for (const id of Object.keys(x.c.partners)) if (!s.partners[id]) s.partners[id] = partnerOf(x.c, id);
-  lotsOpen(x, t);
+  lotsOpen(x, t, since);
   reuseOpen(x, t);
 }
 
@@ -554,16 +554,28 @@ function chooseFit(x: Ctx, ps: GroundPiece[], room: number): GroundPiece[] {
  * pile a trip (the first by that order), best value first within his load and the hopper's room.
  */
 function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
+  return plateFeed(x, m, t, null, x.s.pieces);
+}
+
+/**
+ * join2b (2.5.3 under RULING2.md 17.2; requests.md rules-works 11:10): a hands-fed plate's feed INSIDE the yard hands'
+ * order of work (crew.ts handDepart, right after the first yard's machines' feeds): the running hands-fed plates in
+ * slot order, those `keep` admits (null: all), from the pieces his order may take (`pool`: crew.ts's free list; the
+ * whole yard's pieces for an idle hand). Its pile, picking and leg are handToPlate's own (an ordinary trip, no run).
+ */
+export function plateFeed(x: Ctx, m: CrewMember, t: number, keep: ((id: string) => boolean) | null, pool: readonly GroundPiece[]): boolean {
+  if (!x.c.works || x.s.counts?.bathSet === undefined) return false;
   const cap = x.c.crew.hand.load * 1000;
   for (const id of plateIds(x)) {
     const w = x.s.works[id];
     const d = plateDef(x.c, id)!;
     if (!running(w) || d.kind !== 'rate' || d.feedBy !== 'hands') continue;
+    if (keep && !keep(id)) continue;
     const room = plateRoom(x, id, w);
     if (room <= 0) continue;
     let pile: string | null = null;
     let order = Infinity;
-    for (const p of x.s.pieces) {
+    for (const p of pool) {
       if (p.claim || p.g > room) continue;
       const o = waitsFor(x, p);
       if (o < 0 || o >= order || !plateAccepts(x, id, p)) continue;
@@ -571,7 +583,7 @@ function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
       pile = p.pile;
     }
     if (pile === null) continue;
-    const src = x.s.pieces.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
+    const src = pool.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
     const pick = chooseFit(x, src, Math.min(cap, room));
     if (!pick.length) continue;
     for (const p of pick) p.claim = m.id;
@@ -580,6 +592,17 @@ function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
     handLeg(x, m, 'feed', 'walkTo', { pile, k: pick[0].k }, t);
     m.dest = id;
     return true;
+  }
+  return false;
+}
+
+/** RULING2.md 17.2 for a plate: does its work at least double the worth of what it takes (its best input's out at p̄ over the input's p̄)? Then its feed keeps its place before a floor over half full. */
+export function plateDoubles(x: Ctx, id: string): boolean {
+  const d = plateDef(x.c, id);
+  if (!d) return false;
+  for (const g of d.in) {
+    const pb = x.c.grades[g]?.pbar ?? 0;
+    if (pb > 0 && plateMargin(x, id, g) + pb >= 2 * pb) return true;
   }
   return false;
 }
@@ -836,6 +859,9 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
   const k = x.c.crane;
   const d = plateDef(x.c, id)!;
   if (!k || placeGap(x.c, d.plot, 'floor') > k.reach_m) return;
+  // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
+  let floorThings: { th: ThingState; o: SalvageContent['objects'][string] }[] | null = null;
+  let floorPieces: GroundPiece[] | null = null;
   for (const to of plateIds(x)) {
     const tw = x.s.works[to];
     const td = plateDef(x.c, to)!;
@@ -845,11 +871,12 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
     const items: string[] = [];
     let g = 0;
     // Whole things on the floor first (the shear's beams and tanks), then loose pieces on the floor.
-    const things = x.s.things
+    floorThings ??= x.s.things
       .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole)
       .map((th) => ({ th, o: x.c.objects[th.obj] }))
-      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj) && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }))
+      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj))
       .sort((a, b) => b.o.gross_g - a.o.gross_g || (a.th.uid < b.th.uid ? -1 : 1));
+    const things = floorThings.filter(({ th, o }) => !th.by && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }));
     for (const { th, o } of things) {
       if (o.gross_g > room) continue;
       th.by = `crane.${id}`;
@@ -857,7 +884,8 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
       g += o.gross_g;
       room -= o.gross_g;
     }
-    const ps = x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole) && plateAccepts(x, to, p));
+    floorPieces ??= x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole));
+    const ps = floorPieces.filter((p) => !p.claim && plateAccepts(x, to, p));
     for (const p of chooseFit(x, ps, room)) {
       p.claim = `crane.${id}`;
       items.push(p.uid);

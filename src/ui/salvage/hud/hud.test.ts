@@ -186,8 +186,8 @@ describe('4.4: tickets', () => {
 });
 
 describe('toasts by key', () => {
-  it('"Load full" and a refusal (none while a card is open)', () => {
-    expect(toastText({ type: 'loadFull' }, c, false)?.text).toBe('Load full');
+  it('"No room" (owner2-fix-hud P1: was "Load full") and a refusal (none while a card is open)', () => {
+    expect(toastText({ type: 'loadFull' }, c, false)?.text).toBe('No room: weigh your load at the scale');
     const r = toastText({ type: 'refused', key: 'cash', args: { x: { money: 12 } }, retry: null }, c, false);
     expect(r?.text).toContain(R.fmtMoney(12));
     expect(r?.refusal).toBe(true);

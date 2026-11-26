@@ -58,7 +58,7 @@ import { hash01 } from './board';
 import { carrierCap_g, specsOf } from './content';
 import { lineAmount, roundMoney, sumAmounts } from './money';
 import { nearPlace, spotPos, thingPos } from './positions';
-import { ratedIncome } from './rate';
+import { ratedIncome0 } from './rate';
 import { supply } from './round';
 import { floorSlot, thingGone, thingOf } from './things';
 import { hashString } from '../rng';
@@ -401,7 +401,7 @@ function visitorBuys(x: Ctx, t: number): void {
   x.ev.push({ type: 'rackSold', thing: th.uid, q, ticket });
   // The ceiling follows I (L2, E4): the next visitor by value, never sooner than q at shareI x max(I0, floorI) an hour.
   const sh = shareIAt(x);
-  const I0 = ratedIncome(x.c, x.s);
+  const I0 = ratedIncome0(x.c, x.s);
   const per = sh !== null ? sh * Math.max(I0, R.floorI) : 0;
   r.nextAt = per > 0 ? r.nextAt + (3600 * q) / per : Math.max(t, r.nextAt) + R.period_s;
   if (r.nextAt < t) r.nextAt = t;

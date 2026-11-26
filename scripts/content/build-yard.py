@@ -153,7 +153,39 @@ def build():
     game = dict(old)
     game['salvage'] = s
     game = yard_top.apply(game)
+    game = with_products(game)
     return game, manifest_ids()
+
+
+# STAGE 2 (2.15.1, B5, P9; content2-bots): the sixteen products in the shared list, their titles and descriptions from the
+# names register (product.<id>), kinds and H fixed by ruling 9.1, prices the owner's (the store's; fallbackPrice is only
+# what shows before the store answers); monetization.ads.initOn 'firstOffer' (ruling 13.7). Everything else of
+# monetization (ad unit ids, banner switches) is kept as it is.
+PRODUCTS = [('colour%d' % i, 'cosmetic', None, '$1.99') for i in range(1, 7)] + \
+    [('dressing%d' % i, 'cosmetic', None, '$2.99') for i in range(1, 5)] + \
+    [('plaque', 'cosmetic', None, '$2.99'), ('skipAds', 'skipAds', None, '$4.99'),
+     ('pack2', 'hoursOfIncome', 2, '$1.99'), ('pack5', 'hoursOfIncome', 5, '$4.99'),
+     ('pack10', 'hoursOfIncome', 10, '$9.99'), ('pack20', 'hoursOfIncome', 20, '$19.99')]
+
+
+def with_products(game):
+    reg = load(os.path.join(ROOT, 'scripts', 'content', 'yard', 'names.json'))
+    by = {e.get('productId'): e for e in reg.get('names', []) if isinstance(e, dict) and str(e.get('id', '')).startswith('product.')}
+    out = []
+    for pid, kind, h, price in PRODUCTS:
+        e = by.get(pid)
+        if not e:
+            raise SystemExit('names.json has no product.%s (2.15.1\'s sixteen products)' % pid)
+        p = {'id': 'yard_' + pid, 'kind': kind, 'title': e['title'], 'description': e.get('descriptionApple') or e['title'], 'fallbackPrice': price}
+        if h is not None:
+            p['value'] = h
+        out.append(p)
+    mon = dict(game.get('monetization') or {})
+    mon['iap'] = {**(mon.get('iap') or {}), 'products': out}
+    mon['ads'] = {**(mon.get('ads') or {}), 'initOn': 'firstOffer'}
+    game = dict(game)
+    game['monetization'] = mon
+    return game
 
 
 MANIFEST_DIR = os.path.join(ROOT, 'src', 'ui', 'salvage', 'art', 'manifest')

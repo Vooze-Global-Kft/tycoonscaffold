@@ -24,7 +24,7 @@
  * 4. A FACING THAT TURNS (`turnFacing`): a pictured vehicle whose wanted heading changes steps through the
  *    eight headings one at a time, STEP_S apart, so a turn reads as a turn and never as a flip.
  */
-import { along, heading8, pathLen } from './actors';
+import { DEPTH_BAND, along, heading8, pathLen } from './actors';
 
 /** At most this many points of a vehicle's path (./actors.ts PATH_MAX). */
 const PATH_MAX_PTS = 12;
@@ -385,6 +385,33 @@ export function bossDriveV(x: number, W: number, yardV: number, laneV: number): 
   return yardV + (laneV - yardV) * u * u * (3 - 2 * u);
 }
 
+/** Metres beyond `enter` that the one button's "Get in" still reaches (the door's re-arm ring of ./frameLoop.ts, content truck.rearm's 0.8). */
+export const GET_IN_SLACK_M = 0.8;
+
+/**
+ * owner2 item 1 (ruling 18.4, "the one button GETS IN"): a press of the disc in its "Get in" mode, on the frame
+ * the loop reads it. Seats him exactly as walking into the truck does (st[5] = 1; the door's arming st[6] is
+ * the walk-in's own business and stays) when ALL hold: he is on foot (st[5] 0), the stick may steer (`steer`:
+ * no overlay, no card), no Step out of the world waits for the rules (st[35] 0), the truck is owned and free
+ * in the rules' table (TR = RulesScene.truck: owned, nobody at its wheel, on no trip: the rules' truckFree;
+ * a truck on its way in is not owned yet), and he stands within enter + GET_IN_SLACK_M of the truck's drawn
+ * place (st[2], st[3]; synced from the rules while nobody holds it). Never while the rules have him seated
+ * (TR[5] 1: then the loop's "who sits in the cab" has put him in already). Returns true when he got in: the
+ * loop then sends the entering sample at the truck's place with the cab flag (enterRules), the rules seat by
+ * the flag at the door (engine actions.ts setPresence). Otherwise it changes nothing. A worklet (tests drive it).
+ */
+export function pressGetIn(st: Float64Array | number[], TR: number[], steer: boolean, enter: number): boolean {
+  'worklet';
+  if (st[5] !== 0 || !steer || st[35] !== 0) return false;
+  if (TR[0] !== 1 || TR[5] !== 0 || TR[6] >= 0) return false;
+  const dx = st[0] - st[2];
+  const dy = st[1] - st[3];
+  const r = enter + GET_IN_SLACK_M;
+  if (!(dx * dx + dy * dy <= r * r)) return false;
+  st[5] = 1;
+  return true;
+}
+
 // =====================================================================================================
 // 5. THE PICTURED VEHICLES' PLACES (the frame loop draws them; the tests replay them): the merchant's
 //    flatbed on its round, the public's car, a purchase arriving. Moved here unchanged from ./frameLoop.ts
@@ -498,8 +525,21 @@ export function arrivalAt(out: number[], tmp: number[], P: number[], TA: number[
 //    the nearer side, eased out and back, by at most ASIDE_MAX_M. His rules place is untouched.
 // =====================================================================================================
 
-/** Numbers per vehicle body: x, y, ux, uy (unit facing as drawn), half length, half width, vx, vy (m/s). */
-export const VB_STRIDE = 8;
+/**
+ * Numbers per vehicle body: x, y, ux, uy (unit facing as drawn), half length, half width, vx, vy (m/s); then
+ * (owner2-fix P2) the box its picture covers on the ground, relative to (x, y): west, east, north, south
+ * (metres; west = east: none), and its sort key (NaN: none).
+ */
+export const VB_STRIDE = 13;
+/**
+ * owner2-fix P2 (the lead's ruling: NOBODY IS DRAWN STANDING ON A VEHICLE). A STANDING vehicle's outline as
+ * drawn is the ground its picture covers: the sprite's box mapped back to the ground (its north edge lies as
+ * far north as the picture rises; ./actors.ts vehicleBox). A crew member whose rules place lies inside it
+ * (plus STAND_PAD_M) is drawn stepped out to its nearest edge, eased; when that edge is more than STAND_MAX_M
+ * away he is drawn BEHIND the vehicle instead (`behindStanding`), never on top of it.
+ */
+export const STAND_PAD_M = 0.3;
+export const STAND_MAX_M = 3.5;
 export const ASIDE_PAD_M = 0.4;
 export const ASIDE_AHEAD_S = 1;
 export const ASIDE_MAX_M = 1.6;
@@ -527,7 +567,7 @@ export function facing8(out: number[], h8: number): void {
  * (PV, two numbers per slot; NaN: not drawn then). Returns the new count. `back` shifts the body's centre that
  * many metres behind (x, y) along the facing (the van's trailer).
  */
-export function bodyInto(VB: number[] | Float64Array, n: number, PV: Float64Array, slot: number, x: number, y: number, ux: number, uy: number, halfL: number, halfW: number, dt: number, back: number): number {
+export function bodyInto(VB: number[] | Float64Array, n: number, PV: Float64Array, slot: number, x: number, y: number, ux: number, uy: number, halfL: number, halfW: number, dt: number, back: number, box?: number[] | Float64Array, bo = 0, key = NaN): number {
   'worklet';
   const cx = x - ux * back;
   const cy = y - uy * back;
@@ -545,6 +585,11 @@ export function bodyInto(VB: number[] | Float64Array, n: number, PV: Float64Arra
   VB[o + 5] = halfW;
   VB[o + 6] = px === px && dt > 0 ? (cx - px) / dt : 0;
   VB[o + 7] = py === py && dt > 0 ? (cy - py) / dt : 0;
+  VB[o + 8] = box !== undefined ? box[bo] : 0;
+  VB[o + 9] = box !== undefined ? box[bo + 1] : 0;
+  VB[o + 10] = box !== undefined ? box[bo + 2] : 0;
+  VB[o + 11] = box !== undefined ? box[bo + 3] : 0;
+  VB[o + 12] = key;
   return n + 1;
 }
 
@@ -572,6 +617,47 @@ export function asideTarget(out: number[], px: number, py: number, VB: number[] 
     const uy = VB[o + 3];
     const moving = vx * vx + vy * vy >= MOVING_V * MOVING_V;
     if (k === 1 && !moving) continue;
+    // owner2-fix P2: a standing vehicle with its drawn box: out of the box to its nearest edge (the edge he is
+    // drawn beyond already, if any: he never flips through it), unless that is more than STAND_MAX_M away.
+    if (!moving && VB[o + 8] < VB[o + 9]) {
+      const X0 = VB[o] + VB[o + 8] - STAND_PAD_M;
+      const X1 = VB[o] + VB[o + 9] + STAND_PAD_M;
+      const Y0 = VB[o + 1] + VB[o + 10] - STAND_PAD_M;
+      const Y1 = VB[o + 1] + VB[o + 11] + STAND_PAD_M;
+      if (!(px > X0 && px < X1 && py > Y0 && py < Y1)) continue;
+      const qx = px + ox0;
+      const qy = py + oy0;
+      const dW = qx - X0;
+      const dE = X1 - qx;
+      const dN = qy - Y0;
+      const dS = Y1 - qy;
+      let edge = 0;
+      if (dW <= 0) edge = 0;
+      else if (dE <= 0) edge = 1;
+      else if (dN <= 0) edge = 2;
+      else if (dS <= 0) edge = 3;
+      else {
+        let m = dW;
+        if (dE < m) {
+          m = dE;
+          edge = 1;
+        }
+        if (dN < m) {
+          m = dN;
+          edge = 2;
+        }
+        if (dS < m) edge = 3;
+      }
+      const tx = edge === 0 ? X0 - px : edge === 1 ? X1 - px : 0;
+      const ty = edge === 2 ? Y0 - py : edge === 3 ? Y1 - py : 0;
+      const need = Math.abs(tx) + Math.abs(ty);
+      if (need > STAND_MAX_M) continue;
+      if (need > Math.sqrt(ox * ox + oy * oy)) {
+        ox = tx;
+        oy = ty;
+      }
+      continue;
+    }
     const sp = moving && k === 0 ? Math.sqrt(vx * vx + vy * vy) : 0;
     // The frame: a along the motion (or the facing), b across it.
     const mx = sp > 0 ? vx / sp : ux;
@@ -621,6 +707,53 @@ export function asideTarget(out: number[], px: number, py: number, VB: number[] 
   }
   out[0] = ox;
   out[1] = oy;
+}
+
+/** owner2-fix P2: is (px, py) inside the ground box the picture of STANDING body o of VB covers (no pad)? False for a moving body or one without a box. Pure. */
+export function inStandingBox(VB: number[] | Float64Array, o: number, px: number, py: number): boolean {
+  'worklet';
+  const vx = VB[o + 6];
+  const vy = VB[o + 7];
+  if (vx * vx + vy * vy >= MOVING_V * MOVING_V || !(VB[o + 8] < VB[o + 9])) return false;
+  return px > VB[o] + VB[o + 8] && px < VB[o] + VB[o + 9] && py > VB[o + 1] + VB[o + 10] && py < VB[o + 1] + VB[o + 11];
+}
+
+/**
+ * owner2-fix P2: the sort key to draw a person at (px, py) with, whose own key is `key`: below the depth band of
+ * every STANDING vehicle whose drawn box his feet are inside (he is drawn behind it, never standing on it);
+ * otherwise `key` unchanged. Pure (the frame loop and the test call it).
+ */
+export function behindStanding(VB: number[] | Float64Array, n: number, px: number, py: number, key: number): number {
+  'worklet';
+  let k = key;
+  for (let q = 0; q < n; q++) {
+    const o = q * VB_STRIDE;
+    const vk = VB[o + 12];
+    if (!(vk === vk) || !inStandingBox(VB, o, px, py)) continue;
+    const band = Math.floor(vk / DEPTH_BAND) * DEPTH_BAND;
+    if (k >= band) k = band - 0.02;
+  }
+  return k;
+}
+
+/**
+ * owner2-fix P2 (A PLAYER ALWAYS SEES HIMSELF): does the picture of body o of VB (its box, any speed) cover a
+ * person standing at (px, py), sorted at `pkey`: drawn after him (a later depth band) and over at least a fifth
+ * of his drawn box (PB = actors.ts personBox(); the roofs' measure, actors.ts underRoof)? Pure.
+ */
+export function vehicleCovers(VB: number[] | Float64Array, o: number, px: number, py: number, pkey: number, tilt: number, PB: readonly number[]): boolean {
+  'worklet';
+  const vk = VB[o + 12];
+  if (!(vk === vk) || !(VB[o + 8] < VB[o + 9])) return false;
+  if (Math.floor(vk / DEPTH_BAND) <= Math.floor(pkey / DEPTH_BAND)) return false;
+  const x0 = px + PB[0];
+  const x1 = px + PB[1];
+  const y0 = py * tilt + PB[2];
+  const y1 = py * tilt + PB[3];
+  const w = Math.min(x1, VB[o] + VB[o + 9]) - Math.max(x0, VB[o] + VB[o + 8]);
+  const h = Math.min(y1, (VB[o + 1] + VB[o + 11]) * tilt) - Math.max(y0, (VB[o + 1] + VB[o + 10]) * tilt);
+  if (w <= 0 || h <= 0) return false;
+  return w * h >= 0.2 * (x1 - x0) * (y1 - y0);
 }
 
 /** Is (px, py) inside the drawn body o of VB (its footprint as drawn, no pad)? Pure (the test's measure). */

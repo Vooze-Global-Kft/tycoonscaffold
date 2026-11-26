@@ -26,7 +26,7 @@ import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
 import { openCard } from '../overlays/cardStack';
 import { say } from './words';
-import { useSalvageUi } from '../uiState';
+import { overlaysOpen, useSalvageUi } from '../uiState';
 import type { YardLayout } from '../world/yard';
 import { useGame } from '../../../state/store';
 import { loadingClock } from '../loading/clock';
@@ -99,7 +99,8 @@ export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; 
     const dropPt = R.point(cfg, 'dropoff');
     const deck = (c.map.places as Record<string, { w?: number } | undefined>).weighbridge;
     const proj = (p: WorldPoint) => project(p.x, p.y, p.z, camera.value, L.width, L.height, yard.ppm, yard.tilt, yard.lift);
-    const cardOpen = () => useSalvageUi.getState().stack.length > 0;
+    // P4 (owner2-fix-hud): the counting card counts as an open card (overlaysOpen): no ticket above its scrim.
+    const cardOpen = () => overlaysOpen(useSalvageUi.getState()) > 0;
 
     const fold = () => {
       clearTimeout(timer.current);
@@ -212,7 +213,7 @@ export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; 
     firstSlip = setTimeout(waitFirst, 600);
     // A card opening folds every world ticket away (L4).
     const offUi = useSalvageUi.subscribe((s) => {
-      if (s.stack.length > 0 && (curRef.current || queue.current.length)) {
+      if (overlaysOpen(s) > 0 && (curRef.current || queue.current.length)) {
         queue.current = [];
         fold();
       }

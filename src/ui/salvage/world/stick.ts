@@ -198,17 +198,43 @@ export function useStickResponder(zone: () => StickZone, enabled: () => boolean)
 export const SAMPLE_MS = 100;
 
 /**
- * The presence clock of the frame loop (a worklet; the tests drive it under node): `p[0]` the seconds the
- * stick has been released (0 while steering: walking past a thing is never standing beside it), `p[1]` the
- * time of the last sample (ms). Returns true when a sample is due this frame.
+ * Milliseconds between two samples while he stands still (owner2 item 2: about three a second). The loop
+ * passes min(STAND_MS, feel.staleS / 2 s): never slower than the rules' own need (engine actions.ts
+ * setPresence: "at least every staleS/2 in the foreground"; clock.ts bossFresh drops a boss whose sample
+ * is older than staleS).
  */
-export function presenceStep(p: Float64Array | number[], dt: number, steering: boolean, nowMs: number): boolean {
+export const STAND_MS = 300;
+/** The slots of the presence clock (`p` below). */
+export const PRES_SLOTS = 4;
+
+/**
+ * The presence clock of the frame loop (a worklet; the tests drive it under node). `p` (PRES_SLOTS long):
+ * `p[0]` the seconds the stick has been released (0 while steering: walking past a thing is never standing
+ * beside it), `p[1]` the time of the last sample (ms), `p[2]` 1 when the last frame steered, `p[3]` 1 once
+ * this stand's work-delay sample went. Returns true when a sample is due this frame:
+ * - at once when steering starts or stops (the first still sample: the weigh, a pick-up, the hook's stand
+ *   begins), on `force` (the loop's: he got in or out, he was moved), and on the frame his standing reaches
+ *   `delayS` (feel.workDelay: the work ring, a circle, the swap, the hook can start; the rules compute
+ *   standingFor from the sample, clock.ts standingFor, but only a sample or an event looks at it);
+ * - while steering every SAMPLE_MS (ten a second, as before);
+ * - while standing still every `standMs` (never faster than SAMPLE_MS): a still boss no longer makes a new
+ *   game state ten times a second (his standingFor grew in every sample).
+ * `standMs` defaults to SAMPLE_MS and `delayS` to none (the old ten a second).
+ */
+export function presenceStep(p: Float64Array | number[], dt: number, steering: boolean, nowMs: number, standMs: number = SAMPLE_MS, delayS: number = NaN, force: boolean = false): boolean {
   'worklet';
-  if (steering) p[0] = 0;
-  else p[0] += dt;
-  if (nowMs - p[1] >= SAMPLE_MS) {
-    p[1] = nowMs;
-    return true;
+  const was = p[2] === 1;
+  if (steering) {
+    p[0] = 0;
+    p[3] = 0;
+  } else p[0] += dt;
+  p[2] = steering ? 1 : 0;
+  let due = force || steering !== was;
+  if (!steering && p[3] !== 1 && p[0] >= delayS) {
+    p[3] = 1;
+    due = true;
   }
-  return false;
+  if (!due && nowMs - p[1] >= (steering ? SAMPLE_MS : Math.max(SAMPLE_MS, standMs))) due = true;
+  if (due) p[1] = nowMs;
+  return due;
 }

@@ -12,7 +12,7 @@ import { REFUSAL_KEYS, REFUSAL_KEYS_V3, type RefusalKey } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
-  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
+  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'getIn', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
   place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages', 'place.shredder', 'place.rotaryHall', 'place.inductionHall', 'place.leadLine', 'place.yardSale', 'place.oversizePad', 'place.pickingTable', 'place.carPad', 'place.worksBunkers', 'place.worksStillages', 'place.batteryBox', 'place.forklift', 'place.baler', 'place.crane', 'place.depollution', 'place.granulator', 'place.shear', 'place.eddy', 'place.sorter', 'place.smelter'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
@@ -156,7 +156,7 @@ export const TEXT_KEYS = {
   /** Package 4: the industry table and the rung sign (2.11). */
   table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpened', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare', 'table.rungN', 'opens.works', 'opens.backfield', 'opens.yardSale', 'opens.shredder', 'opens.halls', 'opens.lead', 'opens.levelsOn'],
   /** Package 4: the away card (4.4). */
-  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.heldSold', 'away.next', 'away.longerRung', 'away.longerNight', 'away.bank', 'away.repaid', 'away.rack', 'away.van', 'away.lots', 'away.lotOne', 'away.labelAway', 'away.labelRan', 'away.labelSold', 'away.labelBought', 'away.labelNet', 'away.time', 'away.grade', 'away.kg', 'away.amount', 'away.cost', 'away.netUp', 'away.netDown', 'away.inAccount', 'away.fromAccount', 'away.salesTotal', 'away.partner', 'away.loadsN', 'away.loadOne', 'away.dealName', 'away.rackName', 'away.vanName', 'away.thingsN', 'away.thingOne', 'away.bankName', 'away.sumBoth', 'away.sumBank', 'away.sumSoldBank'],
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.heldSold', 'away.next', 'away.longerRung', 'away.longerNight', 'away.bank', 'away.repaid', 'away.rack', 'away.van', 'away.lots', 'away.lotOne', 'away.labelAway', 'away.labelRan', 'away.labelSold', 'away.labelBought', 'away.labelNet', 'away.time', 'away.grade', 'away.kg', 'away.amount', 'away.cost', 'away.netUp', 'away.netDown', 'away.inAccount', 'away.fromAccount', 'away.salesTotal', 'away.partner', 'away.loadsN', 'away.loadOne', 'away.dealName', 'away.rackName', 'away.vanName', 'away.thingsN', 'away.thingOne', 'away.bankName', 'away.sumBoth', 'away.sumBank', 'away.sumSoldBank', 'away.counting'],
   /** Packages 3 and 4: tickets and slips (2.2). */
   ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.dropOffHeld', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.freeTrial', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date', 'ticket.bankSplit', 'ticket.rackHead', 'ticket.rackSale', 'ticket.vanCollection', 'ticket.vanLine', 'ticket.crateLot', 'ticket.note.analysed', 'ticket.note.drained', 'ticket.cod'],
   /** Package 4: lines of 5.2. */
@@ -344,6 +344,7 @@ export const TEXT_KEYS = {
     'card.shop.noRoom',
     'card.shop.waiting',
     'card.shop.unconfirmed',
+    'card.shop.alsoWaiting',
     'card.shop.nothingCharged',
     'card.shop.unreachable',
     'card.shop.expired',

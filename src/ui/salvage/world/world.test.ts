@@ -295,7 +295,7 @@ describe('the hand: presence samples (D12, the two binding tests)', async () => 
   const reach = content.reach.work;
   // A thing at x 10; the boss walks past it at walking speed, then stops beside it. Samples at the UI thread's pace.
   const simulate = (stopAt: number | null) => {
-    const p = new Float64Array([0, -1e9]);
+    const p = new Float64Array([0, -1e9, 0, 0]);
     const samples: { t: number; x: number; moving: boolean; standingFor: number }[] = [];
     let x = 5;
     for (let f = 0; f < 60 * 6; f++) {

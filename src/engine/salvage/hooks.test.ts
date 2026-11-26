@@ -60,6 +60,9 @@ vi.mock('./works', () => ({
   stationTrays: (_x: unknown, base: readonly string[]) => base,
   worksTrayTrip: () => false,
   landBody: () => false,
+  // join2b: the plates' feeds inside the yard hands' order (crew.ts handDepart): as no plate.
+  plateFeed: () => false,
+  plateDoubles: () => false,
 }));
 vi.mock('./lots', () => ({
   lotsDated: () => H.dated.find((d) => d.kind === 'lot')?.at ?? null,

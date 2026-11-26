@@ -78,7 +78,25 @@ describe('2.9 the bridge partners', () => {
     expect(x.c.crane!.neverObjects).toEqual(expect.arrayContaining(['elv', 'pbb']));
   });
 
-  it.todo('the stage\'s vehicles and tools are bought through actions.buy at the card\'s price (waits on ladder.ts buyCheck reading contentAt: requests.md 11:35)');
+  it('the stage\'s vehicles and tools are bought through actions.buy at the card\'s price (join2b: ladder.ts buyCheck reads the content the state reads)', async () => {
+    const { buy } = await import('./actions');
+    const { buyCheck } = await import('./ladder');
+    let g: SalvageGame = { ...r3Works(), cash: 100_000 };
+    for (const item of ['truckBridge', 'pallet', 'forklift', 'plasma']) {
+      const ch = buyCheck(cfg, g, item);
+      expect(ch.refusal, item).toBeNull();
+      const ev: SalvageEvent[] = [];
+      const h = buy(cfg, g, item, ch.price!, g.salvage.t, ev);
+      expect(ev.find((e) => e.type === 'refused'), item).toBeUndefined();
+      expect(g.cash - h.cash, item).toBeCloseTo(ch.price!, 6);
+      expect(h.salvage.arriving.some((r) => r.item === item) || h.salvage.owned.includes(item), item).toBe(true);
+      g = h;
+    }
+    g = jump(cfg, g, g.salvage.t + 60);
+    for (const item of ['truckBridge', 'pallet', 'forklift', 'plasma']) expect(g.salvage.owned, item).toContain(item);
+    expect(g.salvage.tier).toBe(4);
+    expect(g.salvage.forklift).not.toBeNull();
+  });
 });
 
 describe('2.9 the forklift and the depollution bay', () => {

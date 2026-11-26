@@ -10,7 +10,7 @@ import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, defOf, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { rackChoice } from './reuse';
-import { stationTrays, worksLegEnd, worksTrayTrip } from './works';
+import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
@@ -278,6 +278,8 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const plan = orderPlan(x);
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
   if (feedStep(x, m, t, cap, free, plan ? (id) => plan.first(id, 'feed') : null)) return true;
+  // Stage 2 (2.5.3, join2b): then the hands-fed plates' feeds in slot order (17.2: a plate whose work doubles the worth keeps its place).
+  if (plateFeed(x, m, t, plan ? (id) => plateDoubles(x, id) : null, free)) return true;
   // (2) chalk circles.
   if (circles.length) {
     const pile = circles[0].pile;
@@ -302,6 +304,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   // RULING2.md 17.2: what waited for the floor goes now, before the drop-off (the feeds, then the trays).
   if (plan) {
     if (feedStep(x, m, t, cap, free, (id) => plan.later(id, 'feed'))) return true;
+    if (plateFeed(x, m, t, (id) => !plateDoubles(x, id), free)) return true;
     if (trayStep(x, m, t, cap, (id) => plan.later(id, 'tray'), false)) return true;
   }
   if (handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop)) return true;

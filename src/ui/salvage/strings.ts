@@ -29,9 +29,11 @@ export const TEXT = {
   rankChipToNext: '{rank} · {t} to next',
   rankChipTop: '{rank} of {n}',
   carry: '{a} / {b} kg',
-  loadFull: 'Load full',
+  // P1 (owner2-fix-hud): what happened and where the load goes (it showed while the chip still had room).
+  loadFull: 'No room: weigh your load at the scale',
   open: 'Open',
   stepOut: 'Step out',
+  getIn: 'Get in', // hud: the one button beside the free truck (owner2-hud, ruling 18.4); the disc box as stepOut
   carryDriving: '{kg}', // hud: the carry chip while driving, after the skip pictogram (the lead's ruling 2, 15:55); kg = { mass_g, step: 'bridge' }
   goalProgress: '{a} / {b}',
   turnSideways: 'Turn your phone sideways',
@@ -648,6 +650,7 @@ export const TEXT = {
   'card.shop.noRoom': 'Nothing to spend it on yet',
   'card.shop.waiting': 'Waiting for approval', // pending (15.4); also the row for as long as it waits (15.11 c)
   'card.shop.unconfirmed': 'The store has not confirmed this purchase yet. If you were charged, your {currency} arrives when it does.', // 15.4, word for word
+  'card.shop.alsoWaiting': 'One purchase still awaits approval.', // the lead 11:50 (his words "One purchase is still waiting for approval." need 2 lines at 1.3 in a row's second line: shortened): an offer row while a waiting quote of it, past its 24 hours, still stands
   'card.shop.nothingCharged': 'Nothing was charged.', // only when the store refused (15.11 d); a cancel shows nothing
   'card.shop.unreachable': 'The store cannot be reached. Nothing was charged.', // 15.3, 15.12 e
   'card.shop.expired': 'A purchase that was waiting never arrived. Nothing was added.', // 15.11 f, until the card is closed
@@ -698,6 +701,8 @@ export const TEXT = {
   'away.lotOne': 'An oversize piece waits for you',
   // owner1-hud (the owner's review, point 6): the away card as a weighbridge docket; labels, cells and rows
   'away.labelAway': 'Away',
+  // owner2-hud (the second update, item 2): the counting card painted before the away pass runs (no numbers, no button)
+  'away.counting': 'Counting what the yard did while you were away…',
   'away.labelRan': 'The yard ran',
   'away.labelSold': 'Sold',
   'away.labelBought': 'Bought',

@@ -326,7 +326,15 @@ describe('the salvage entry (the scrapyard, docs/design/yard-ground.md, yard-sta
     expect(salvage.id).toBe('salvage');
     expect(nameOf(salvage.Shell)).toBe('SalvageShell');
     expect(nameOf(salvage.Loading)).toBe('SalvageLoading');
-    expect(salvage.engine).toBe(salvageEngineMode);
+    // The rules behind the mode's return deferral (src/modes/salvage/returning.ts: a counting card first, the away
+    // pass two frames later): the three time-away seams are the wrapper's, everything else is the rules' own.
+    const { salvageReturningEngine } = await import('./salvage/returning');
+    expect(salvage.engine).toBe(salvageReturningEngine);
+    const seams = new Set(['reconcile', 'offline', 'tick']);
+    for (const k of Object.keys(salvageEngineMode) as (keyof typeof salvageEngineMode)[]) {
+      if (seams.has(k)) expect(salvage.engine?.[k], `the deferred seam ${k}`).not.toBe(salvageEngineMode[k]);
+      else expect(salvage.engine?.[k], `the rules' own ${k}`).toBe(salvageEngineMode[k]);
+    }
     expect(salvage.engine?.id).toBe('salvage');
     expect(salvage.engine?.saveTag, 'the first yard\'s layout (yard-stage1.md 2.13)').toBe('salvage1');
     expect(salvage.engine?.paysOnCompute, 'paid when computed (BRIEF lesson 5)').toBe(true);

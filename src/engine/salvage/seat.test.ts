@@ -181,6 +181,15 @@ describe('Step out as the screen sends it', () => {
     expect(beside.salvage.truck.by).toBeNull();
   });
 
+  it('he is on foot from that instant: the presence says so, and the very same sample at the wheel seats him again', () => {
+    let g = sample(yard(1.5), park.x, park.y, true, true);
+    g = sample(g, park.x, park.y, true, false, undefined, 0.02);
+    const out = stepOut(cfg, g, { x: park.x, y: park.y, heading: 0 }, g.salvage.t + 0.01);
+    expect(out.salvage.presence.driving).toBe(false);
+    const again = setPresence(cfg, out, { x: park.x, y: park.y, driving: true, moving: false, standingFor: 1, heading: 0 }, out.salvage.t + 0.02);
+    expect(again.salvage.truck.by).toBe('boss');
+  });
+
   it('the truck is never set down somewhere else: a place far from where he sat is not taken (its heading is)', () => {
     let g = sample(yard(1.5), park.x, park.y, true, true);
     g = sample(g, park.x, park.y, true, false, undefined, 0.02);

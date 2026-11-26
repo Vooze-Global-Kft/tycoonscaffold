@@ -140,8 +140,10 @@ export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: C
       const w = blockingWait(g, product, now);
       return { product, H, S, state: w?.wait === 'unconfirmed' ? 'unconfirmed' : 'waiting', updated: null, button: null };
     }
-    if (ch.refusal) return { product, H, S, state: 'noRoom', updated: null, button: null };
-    return { product, H, S, state: 'offer', updated: null, button: btn({ key: 'card.shop.buy' }, { act: 'buyPack', product, S }) };
+    // join2b (the lead, 11:50): past its 24 hours a waiting quote no longer blocks Buy; while it stands the row says so.
+    const also = standingOf(g, product).some((q) => q.state === 'waiting') ? { alsoWaiting: true as const } : {};
+    if (ch.refusal) return { product, H, S, state: 'noRoom', ...also, updated: null, button: null };
+    return { product, H, S, state: 'offer', ...also, updated: null, button: btn({ key: 'card.shop.buy' }, { act: 'buyPack', product, S }) };
   });
 }
 

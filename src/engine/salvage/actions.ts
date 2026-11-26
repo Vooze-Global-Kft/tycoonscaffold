@@ -22,6 +22,7 @@ import { resolveGrams } from './money';
 import { own, checks } from './rate';
 import { setSkipDown } from './partners';
 import { leaveTruck } from './truck';
+import { mapAt } from './positions';
 import { marketDay } from './board';
 import type { CardAction, CardKind, CrewRole, DealTerms, GradeId, Heading, LevelTarget, MachineId, PlaceId, Presence, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, SellShown, ShopKey, TxtArgs } from './types';
 
@@ -46,7 +47,9 @@ const PRESENCE_SLACK_M = 3;
 export function clampPresence(cfg: SalvageConfig, s: SalvageGame['salvage'], px: number, py: number, clock: number): { x: number; y: number } {
   const c = cfg.salvage;
   const lane = Math.max(0, ...Object.values(c.map.lane).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
-  let x = Math.min(c.yard.width + lane + 40, Math.max(0, px));
+  // join2b: once the works opened, the back field west of the old fence is the boss's too (the merged map's x0; 3.1).
+  const west = s.counts?.bathSet !== undefined ? mapAt(c, true).x0 : 0;
+  let x = Math.min(c.yard.width + lane + 40, Math.max(west, px));
   let y = Math.min(c.yard.depth, Math.max(0, py));
   const q = s.presence;
   const dt = clock - s.presenceAt;
@@ -186,7 +189,8 @@ export function level(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, s
 /** Keep a bay off the merchant's round, or release it (free). */
 export function setHold(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, on: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
-  if (!cfg.salvage.grades[grade]) return refuse(g, events, 'nothing');
+  // join2b: a works-layer grade (its bay is on the price board once the works opened) is read from the content the state reads.
+  if (!contentAt(cfg.salvage, g.salvage).grades[grade]) return refuse(g, events, 'nothing');
   const b = g.salvage.bays[grade];
   if ((b?.held ?? false) === on) return g;
   const x = begin(cfg, g, events, true);
@@ -206,8 +210,10 @@ export function sell(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, shown: 
   if (!b || !b.held) return refuse(g, events, 'nothing');
   const grams = Math.floor(freeOf(b) / 100) * 100;
   if (grams <= 0) return refuse(g, events, 'nothing');
-  const day = marketDay(cfg.salvage, Math.max(now, s.clock.highMs));
-  const price = priceOf(cfg.salvage, grade, day);
+  // join2b: a works-layer grade's price is the merged content's (layer.ts contentAt), as the price board shows it.
+  const cs = contentAt(cfg.salvage, s);
+  const day = marketDay(cs, Math.max(now, s.clock.highMs));
+  const price = priceOf(cs, grade, day);
   if (shown.day !== day || !same(shown.price, price) || shown.grams !== grams) {
     return refuse(g, events, 'priceUpdated', { a: { price: shown.price }, b: { price } }, { act: 'sell', grade, shown: { day, price, grams } });
   }
@@ -316,6 +322,8 @@ export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: 
   const near = !!at && Number.isFinite(at.x) && Number.isFinite(at.y) && Math.hypot(at.x - here.x, at.y - here.y) <= PRESENCE_SLACK_M;
   const h = at && Number.isFinite(at.heading) ? ((Math.floor(at.heading) % 8) + 8) % 8 : here.heading;
   leaveTruck(x, near ? { x: at!.x, y: at!.y, heading: h } : { ...here, heading: h }, Math.max(clock, x.s.t));
+  // He is on foot from this instant (not only from the next sample): a sample at the wheel right after is a new one.
+  x.s.presence = { ...x.s.presence, driving: false };
   return finish(g, x);
 }
 
