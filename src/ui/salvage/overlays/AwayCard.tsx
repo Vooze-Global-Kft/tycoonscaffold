@@ -242,18 +242,27 @@ function NetFoot({ d, ok }: { d: Docket; ok: ReactNode }) {
   const { layout } = useFrame();
   const big = pt(24, layout.fs);
   return (
-    <View style={styles.foot}>
-      {d.net ? (
-        <View style={styles.net}>
-          <Line t={{ key: 'away.labelNet' }} size="line" bold colour={INK.soft} style={styles.caps} />
-          <Line t={d.net.big} size="title" bold colour={d.net.up ? INK.good : INK.refuse} style={{ fontSize: big, lineHeight: Math.ceil(big * 1.15), fontWeight: '900' }} />
+    <View style={styles.footWrap}>
+      {/* owner1-fix finding 8: the net's parts from CardData's totals, on their own line across the foot, above NET, so the
+          first view adds up without scrolling ("Sold +§106,000.00 · Loads −§41,971.00"). */}
+      {d.sum ? (
+        <View style={styles.sum}>
+          <Line t={d.sum} size="name" bold colour={INK.ink} lines={2} />
         </View>
       ) : null}
-      <View style={styles.netSub}>
-        {d.net ? <Line t={d.net.sub} size="line" bold colour={INK.ink} lines={2} /> : null}
-        {d.unsold ? <Line t={d.unsold} size="line" colour={INK.soft} lines={2} /> : null}
+      <View style={[styles.foot, styles.footRow]}>
+        {d.net ? (
+          <View style={styles.net}>
+            <Line t={{ key: 'away.labelNet' }} size="line" bold colour={INK.soft} style={styles.caps} />
+            <Line t={d.net.big} size="title" bold colour={d.net.up ? INK.good : INK.refuse} style={{ fontSize: big, lineHeight: Math.ceil(big * 1.15), fontWeight: '900' }} />
+          </View>
+        ) : null}
+        <View style={styles.netSub}>
+          {d.net ? <Line t={d.net.sub} size="line" bold colour={INK.ink} lines={2} /> : null}
+          {d.unsold ? <Line t={d.unsold} size="line" colour={INK.soft} lines={2} /> : null}
+        </View>
+        {ok}
       </View>
-      {ok}
     </View>
   );
 }
@@ -291,6 +300,9 @@ const styles = StyleSheet.create({
   adviceEdge: { width: 5, backgroundColor: INK.hivis, borderRightWidth: 1, borderRightColor: INK.ink },
   adviceText: { flex: 1, paddingHorizontal: 10, paddingVertical: 6 },
   footPad: {},
+  footWrap: { borderTopWidth: 1.3, borderTopColor: INK.ink, backgroundColor: INK.paper },
+  footRow: { borderTopWidth: 0 },
+  sum: { paddingHorizontal: PAD, paddingTop: 6 },
   foot: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: PAD, paddingTop: 8, paddingBottom: 10, borderTopWidth: 1.3, borderTopColor: INK.ink, backgroundColor: INK.paper },
   net: { justifyContent: 'center' },
   netSub: { flex: 1, minWidth: 0, justifyContent: 'center', gap: 1 },

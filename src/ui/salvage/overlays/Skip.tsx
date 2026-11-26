@@ -54,7 +54,8 @@ export function Skip({ data, onClose }: CardViewProps) {
           {/* While it fills its contents and price are not fixed yet: the refusal line says when it is full. */}
           {filling ? null : <Line t={skipHead(s)} size="name" bold lines={2} />}
           {filling ? null : <Line t={{ key: 'card.skipNet', args: { kg: { mass_g: s.net_g, step: 'bridge' } } }} size="name" />}
-          {filling ? null : <Line t={{ key: 'card.skipPrice', args: { x: { money: s.price } } }} size="title" bold />}
+          {/* owner1-fix finding 10: a free trial load says "Free trial load", never §0.00. */}
+          {filling ? null : <Line t={s.free ? { key: 'card.skipFree' } : { key: 'card.skipPrice', args: { x: { money: s.price } } }} size="title" bold />}
           {filling && !s.refusal ? <Line t={skipHead(s)} size="name" bold lines={2} /> : null}
         </View>
       </View>

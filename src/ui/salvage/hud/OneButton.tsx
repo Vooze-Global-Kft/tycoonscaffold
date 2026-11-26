@@ -8,15 +8,21 @@
  * owner1 T4 (screens1 n7): while the boss's act holds a refusal (FrameBoss.refusal: "Needs §x more for this load",
  * "Weigh it in first") a paper tag hangs left of the disc on a short cord with its words, for as long as it
  * holds (metrics.ts refusalTag: in the button's row, right of the stick's half, clear of tickets and toasts).
+ * owner1-fix (the player's findings 4, 7, 11): the form comes from the rules' frame (boss.button) as well as the
+ * world's flag (words.ts buttonMode): at the wheel always "Step out"; "Open" only where the place's card shows
+ * something; getting in closes an open card.
  */
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useGame } from '../../../state/store';
 import type { SalvageConfig, SalvageGame } from '../../../engine/salvage';
 import { useTarget } from '../../hints/targets';
 import { EDGE_W, PAL } from '../palette';
-import { heldRefusal, say } from './words';
-import { openCard } from '../overlays/cardStack';
+import { buttonMode, heldRefusal, rulesButton, say } from './words';
+import { closeCard, openCard } from '../overlays/cardStack';
+import { placeCardShows } from '../overlays/sample';
+import { salvageActions } from '../../../modes/salvage/actions';
 import { useSalvageUi } from '../uiState';
 import { stickHeld } from '../world/stick';
 import { DISC_EDGE, TAG_GAP, discFit, refusalTag, type HudLayout } from './metrics';
@@ -25,7 +31,20 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   const place = useSalvageUi((s) => s.place);
   const driving = useSalvageUi((s) => s.driving);
   const c = cfg.salvage;
-  const mode: 'open' | 'stepOut' | 'blank' = driving ? 'stepOut' : place ? 'open' : 'blank';
+  // owner1-fix findings 4 and 11: the rules say who is at the wheel (the frame's boss.button); the world's own flag
+  // only leads them by a sample. At the wheel the disc reads "Step out" everywhere (never blank, never "Open").
+  const rules = useGame((s) => rulesButton(cfg, s.game as SalvageGame | undefined));
+  // Finding 7: "Open" only where the place's card has something to show (asked when the place changes).
+  const opens = useMemo(() => {
+    const g = useGame.getState().game as SalvageGame | undefined;
+    return !!place && !!g?.salvage && placeCardShows(cfg, g, place, Date.now());
+  }, [cfg, place]);
+  const mode = buttonMode(driving, rules, place, opens);
+  const atWheel = mode === 'stepOut';
+  // Finding 11: getting into the truck closes an open card first (the rules can seat him while the park's card shows).
+  useEffect(() => {
+    if (atWheel) closeCard();
+  }, [atWheel]);
   const target = useTarget(hidden ? null : 'salvage:oneButton');
   const held = useGame((s) => heldRefusal(cfg, s.game as SalvageGame | undefined));
   if (hidden) return null;
@@ -37,8 +56,13 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   const press = () => {
     // H7: a JS-side question, never a read of the stick's shared value on the JS thread.
     if (stickHeld()) return;
-    if (mode === 'stepOut') onStepOut();
-    else if (mode === 'open' && place) openCard({ kind: 'place', place });
+    if (mode === 'stepOut') {
+      // The world steps him out of the cab it drives (and tells the rules). When only the rules have him at the
+      // wheel (seated by the rules at the park while the world still has him on foot beside the truck), the rules'
+      // own step-out puts the two back in agreement.
+      if (useSalvageUi.getState().driving) onStepOut();
+      else salvageActions.stepOut();
+    } else if (mode === 'open' && place) openCard({ kind: 'place', place });
   };
   return (
     <>

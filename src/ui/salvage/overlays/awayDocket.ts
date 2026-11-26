@@ -15,7 +15,8 @@
  *   (stage 2);
  * - notes: sold from hold, repaid in full, oversize pieces waiting, rivals passed;
  * - the advice: the one thing to do next (the goal, else the rules' hint);
- * - the foot (fixed): the net, the card's one big number, "already in your account", and what the absence
+ * - the foot (fixed): the net, the card's one big number, what it is made of ("Sold +§x · Loads −§y", owner1-fix
+ *   finding 8), "already in your account", and what the absence
  *   left in the bays not yet sold.
  */
 import type { Txt } from '../../../engine/salvage';
@@ -53,6 +54,11 @@ export interface Docket {
   next: Txt | null;
   /** The card's one big number, or null when no money moved. */
   net: { big: Txt; sub: Txt; up: boolean } | null;
+  /**
+   * owner1-fix finding 8: beside NET, what it is made of from CardData's own totals ("Sold +§x · Loads −§y", and the
+   * bank's share when there is one), so that the first view adds up without scrolling; null when nothing went out.
+   */
+  sum: Txt | null;
   unsold: Txt | null;
   /** "Nothing was weighed out." when the card holds nothing else. */
   nothing: Txt | null;
@@ -108,6 +114,17 @@ export function awayDocket(a: AwayData): Docket {
     notes.push({ t, kind: t.key === 'away.passed' || t.key === 'away.passedN' ? 'passed' : 'news' });
   }
   const net = L.net ? { up: L.net.key === 'away.net', big: { key: L.net.key === 'away.net' ? 'away.netUp' : 'away.netDown', args: L.net.args } as Txt, sub: { key: L.net.key === 'away.net' ? 'away.inAccount' : 'away.fromAccount' } as Txt } : null;
+  const spent = a.spent ?? 0;
+  const bank = a.bank ?? 0;
+  const sum: Txt | null = !net
+    ? null
+    : spent > 0 && bank > 0
+      ? { key: 'away.sumBank', args: { x: { money: a.money }, y: { money: spent }, z: { money: bank } } }
+      : spent > 0
+        ? { key: 'away.sumBoth', args: { x: { money: a.money }, y: { money: spent } } }
+        : bank > 0
+          ? { key: 'away.sumSoldBank', args: { x: { money: a.money }, z: { money: bank } } }
+          : null;
   const empty = !sold.length && !bought.length && !notes.length && !net;
   return {
     away: { key: 'away.time', args: { t: { secs: absent } } },
@@ -120,6 +137,7 @@ export function awayDocket(a: AwayData): Docket {
     notes,
     next: L.next && L.next.key !== 'away.nothing' ? L.next : null,
     net,
+    sum,
     unsold: L.unsold,
     nothing: empty ? { key: 'away.nothing' } : null,
   };

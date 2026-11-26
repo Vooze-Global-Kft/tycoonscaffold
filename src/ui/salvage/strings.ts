@@ -227,6 +227,7 @@ export const TEXT = {
   'table.range': '{n} materials',
   'table.you': '{homeYard}',
   'table.rungSign': '{homeYard} · {t} supplied',
+  'table.rungOpened': '{homeYard} · Opened at {t}', // owner1-fix finding 14: the rung sign's own line (t: the rung's tonnage)
   'table.rungOpens': '{what}',
 
   // --- package 4: the away card (4.4) ---
@@ -258,6 +259,7 @@ export const TEXT = {
   'ticket.todaysValue': 'today’s value {x}',
   'ticket.weighInLegal': 'Weighed into bays · not yet sold',
   'ticket.dropOffSlip': '{thing} · signed in · gate drop-off',
+  'ticket.dropOffHeld': '{n} things signed in at the gate', // owner1-fix finding 12: the slips held while the boss was beyond the gate, on his return
   'ticket.skipHead': '{partner} · {load}',
   'ticket.trial': 'trial load',
   'ticket.grossTareNet': 'Gross {a} · Tare {b} · Net {c}',
@@ -719,6 +721,9 @@ export const TEXT = {
   'away.thingsN': '{n} things',
   'away.thingOne': '{n} thing', // n: 1
   'away.bankName': 'To {bank}',
+  'away.sumBoth': 'Sold +{x} · Loads −{y}', // owner1-fix finding 8: beside NET, CardData's own totals (x: money, y: spent)
+  'away.sumBank': 'Sold +{x} · Loads −{y} · Bank −{z}', // z: the bank's share
+  'away.sumSoldBank': 'Sold +{x} · Bank −{z}',
 
   // --- tickets (2.19, 4.5 to 4.7) ---
   'ticket.bankSplit': 'to the bank {y} · to you {z}', // under "Paid {x}" (ticket.paid, bold); ≤ 38 at five figures

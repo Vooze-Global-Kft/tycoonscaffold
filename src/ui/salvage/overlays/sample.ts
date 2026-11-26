@@ -194,7 +194,10 @@ export function machineCard(cfg: SalvageConfig, g: SalvageGame, id: R.MachineId)
 
 /** The rules' card, or its stand-in rows where the rules give none yet. */
 export function withSample(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, data: CardData): CardData {
-  if (data.kind === 'rack' && !data.rows.length) return { ...data, rows: rackRows(cfg, g) };
+  // owner1-fix finding 7: the rack's rows only on the RACK's card. The rules' cardOf gives a place with no card kind
+  // of its own (the weighbridge, the platform scale) an empty 'rack' panel titled by that place; filling it here
+  // printed the tool rack's list under "Weighbridge" when the boss stood between the two.
+  if (data.kind === 'rack' && !data.rows.length && isRackRef(ref)) return { ...data, rows: rackRows(cfg, g) };
   if (data.kind === 'rota' && !data.rows.length) return { ...data, lead: data.lead.length ? data.lead : [{ key: 'card.siteLicence' }], rows: rotaRows(cfg, g) };
   if (data.kind === 'partners' && !data.rows.length) return { ...data, rows: partnerRows(cfg, g) };
   if (data.kind === 'processBoard' && data.processBoard) return { ...data, processBoard: boardWithButtons(cfg, g, data.processBoard) };
@@ -207,6 +210,21 @@ export function withSample(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, dat
     }
   }
   return data;
+}
+
+/** Whether a card ref is the tool rack's own (a place ref names the rack; any other ref that the rules gave kind 'rack'). */
+function isRackRef(ref: CardRef): boolean {
+  return ref.kind !== 'place' || ref.place === 'rack';
+}
+
+/**
+ * owner1-fix finding 7: whether a place's card has anything to show: false for the rules' empty fallback (a place
+ * with no card kind of its own: an empty panel titled by the place), so the one button does not offer "Open" on it.
+ */
+export function placeCardShows(cfg: SalvageConfig, g: SalvageGame, place: string, now: number): boolean {
+  const ref: CardRef = { kind: 'place', place };
+  const d = withSample(cfg, g, ref, R.cardOf(cfg, g, ref, now));
+  return !(d.kind === 'rack' && place !== 'rack' && !d.rows.length && !d.lead.length);
 }
 
 /** A machine's name and its one-line purpose (5.2). */

@@ -214,7 +214,8 @@ export function ticketSummary(t: Ticket, conv: Txt | null = null): { head: Txt; 
     case 'skipWeighIn':
       return {
         head: t.trial ? { key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } } : { key: 'card.skipState', args: { partner: { name: t.partner } } },
-        total: { key: 'ticket.paid', args: { x: { money: t.paid } } },
+        // owner1-fix finding 10: money OUT says "Bought for" (a free trial load "Free: the farm's trial"), never "Paid".
+        total: t.free ? { key: 'ticket.freeTrial' } : { key: 'ticket.boughtFor', args: { x: { money: t.paid } } },
         lines: [{ key: 'ticket.grossTareNet', args: { a: { mass_g: t.gross_g, step: 'bridge' }, b: { mass_g: t.tare_g, step: 'bridge' }, c: { mass_g: t.net_g, step: 'bridge' } } }, { key: 'ticket.partnerLegal' }, date],
       };
     case 'dropOffSlip':
@@ -249,7 +250,9 @@ export const planLoad = (s: SkipLabel): 'empty' | 'trial' | 'full' => (s.state =
 
 /** What the rung sign says and what the rung opens (rung 2: torch, portal, deal; rung 3: the capacity). */
 export function rungLines(n: number, tonnes: number, capacity: number | null): { sign: Txt; opens: Txt | null } {
-  const sign: Txt = { key: 'table.rungSign', args: { t: { tonnes_g: tonnes * 1e6 } } };
+  // owner1-fix finding 14: the sign names the rung's own tonnage as when it OPENED ("Opened at 2.8 t"), so that it does
+  // not read against "You: 9.01 t supplied" under it.
+  const sign: Txt = { key: 'table.rungOpened', args: { t: { tonnes_g: tonnes * 1e6 } } };
   const key = `opens.rung${n}` as TextKey;
   if (n === 2) return { sign, opens: { key } };
   if (n === 3) return { sign, opens: { key, args: { c: { n: capacity ?? 0 } } } };

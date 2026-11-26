@@ -115,8 +115,9 @@ export function ticketView(t: Ticket, c: Content, lesson?: R.Txt | null): Ticket
       head: t.trial ? say({ key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } }, c) : say({ key: 'title.skip', args: { partner: { name: t.partner } } }, c),
       rows: things,
       // Money OUT (S3, P12): "Bought for {x}" in the cost colour; "Paid {x}" only where the yard is paid.
-      total: say({ key: 'ticket.boughtFor', args: { x: exact(t.paid) } }, c),
-      cost: true,
+      // owner1-fix finding 10: a trial load that cost nothing says so ("Free: the farm's trial"), in ink, not as §0.00.
+      total: t.free ? say({ key: 'ticket.freeTrial' }, c) : say({ key: 'ticket.boughtFor', args: { x: exact(t.paid) } }, c),
+      cost: !t.free,
       lesson: null,
       legal: [say({ key: 'ticket.grossTareNet', args: { a: bridge(t.gross_g), b: bridge(t.tare_g), c: bridge(t.net_g) } }, c), say({ key: 'ticket.partnerLegal' }, c)],
     };
@@ -190,6 +191,22 @@ export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH
 export function slipChip(t: Ticket, c: Content): string | null {
   if (t.kind !== 'dropOffSlip') return null;
   return slipText(t.thing, c);
+}
+
+/**
+ * owner1-fix finding 12: drop-off slips are held while the boss is beyond the gate (x past the fence, yard.width)
+ * and said as ONE line when he is back inside: the slip itself for one thing, "{n} things signed in at the gate" for
+ * more. Pure: `held` the slips' words in order; null when there is nothing to say.
+ */
+export function heldSlipsChip(held: readonly string[], c: Content): string | null {
+  if (!held.length) return null;
+  if (held.length === 1) return held[0];
+  return say({ key: 'ticket.dropOffHeld', args: { n: { n: held.length } } }, c);
+}
+
+/** Whether the boss stands beyond the gate (out on the lane): past the fence's x, the yard's width. */
+export function beyondGate(c: Pick<SalvageContent, 'yard'>, x: number): boolean {
+  return x > c.yard.width;
 }
 
 /** The slip's words for a thing (also the first washer's, signed in before the player came). */
