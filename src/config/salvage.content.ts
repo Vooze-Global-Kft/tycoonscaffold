@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
     "engine2-income (26 Nov, stage 2 2.4, E31/E36a): crew.driver.lev 0.15 -> 0.25 TRIED and put back to 0.15: on the bots (15 seeds) sales at minutes 55-60 were a median §1,698 a minute against §1,720 before (the aim §2,000), and with the truck nearly free (lev 3.0) §1,750: the truck does not bind the late hour, cutting and carrying do (notes/engine2-engine2-income.md)",
     "measure (the bots on the new map, REPORT6.txt): ladder.rungs n 2 2.2 -> 2.4 t (E31d's 2.4 was written to rung2 only and the engine reads ladder.rungs: build-yard.py now refuses the two disagreeing); rung 3 21.5 -> 27.5 t (the nearer stock and join3's advice line brought rung 3 to minute 52; 29.4 t are supplied by minute 60); ceilings_t_h rung 2 90 -> 110 t/h (E30: 1.3 x the 82 t/h the normal hand now reaches on rung 2 with join3's advice line; 90 refused a partner level on 10 of 75 runs near minute 55); the Night watch §2,800 -> §36,000 (E33 with E13: it adds two hours to every long absence, worth a median §61k on one twelve-hour absence from minute 60 (min §56k) and §30k from minute 30, so it pays back in its first night and stays a thing saved for); levels.floor 1500 -> 1100 (E31c: more levels bought in the last half hour); partners fill_s 120 -> 100 and 180 -> 150 again (bots5's values, measured in REPORT5, had not reached this file)",
@@ -1131,7 +1132,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   walk: 4,
   pick_s: 0.15,
   weigh_s: 0.5,
-  truck: { v: 12, bossV: 9, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640 },
+  // pickFromRung (RULING2.md 16, engine2-dispatch): the hired driver ranks partners by their rated net a load from rung 1.
+  truck: { v: 12, bossV: 9, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 1 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
@@ -1152,6 +1154,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     hand: { load: 80, v: 3, lev: 0.25, handle_s: 2, maxlev: 20 },
     cutter: { share: 0.4, lev: 0.25, cap: 0.95, maxlev: 20 },
     driver: { lev: 0.15, maxlev: 20 },
+    // RULING2.md 17 (engine2-dispatch): the hands clear a floor over half full before a machine's feed or tray, from rung 1.
+    orderFromRung: 1,
   },
   dropoff: {
     period: 50,
@@ -1404,12 +1408,12 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   },
   ladder: {
     rung2: { t: 2.4, range: 3 },
-    rung3: { t: 27.5, range: 5 },
+    rung3: { t: 28.5, range: 5 },
     theta: 300,
     rungs: [
       { n: 1, t: 0, range: 0 },
       { n: 2, t: 2.4, range: 3 },
-      { n: 3, t: 27.5, range: 5 },
+      { n: 3, t: 28.5, range: 5 },
       // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
       // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
       { n: 4, t: 1000, range: 8 },
