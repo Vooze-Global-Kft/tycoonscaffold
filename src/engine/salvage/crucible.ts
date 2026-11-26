@@ -11,6 +11,28 @@ import { bossFresh, count, type Ctx } from './clock';
 import { machineInputs } from './content';
 import { pointOf } from './positions';
 import type { CrucibleState, Piece } from './types';
+import { routeOf } from './works';
+
+/**
+ * Stage 2 (2.8.1, B8; rules-works): a grade whose route names another station, or 'bay', is not the crucible's
+ * to take from its bay (a grade is reserved by one station at a time). With no plate and no route set (the
+ * first yard) nothing is ever routed away, and the crucible behaves exactly as before.
+ */
+function routedAway(x: Ctx, grade: string): boolean {
+  const s = x.s;
+  let any = false;
+  for (const _ in s.works) {
+    any = true;
+    break;
+  }
+  if (!any) for (const _ in s.routes) {
+    any = true;
+    break;
+  }
+  if (!any) return false;
+  const r = routeOf(x, grade);
+  return r !== null && r !== 'crucible';
+}
 
 type Recipe = readonly [string | readonly string[], string, number, string];
 
@@ -44,7 +66,7 @@ export function crucibleFromBays(x: Ctx, t: number): void {
     let room = Math.max(0, cap - cr.heel_g);
     for (const g of Object.keys(x.s.bays)) {
       const b = x.s.bays[g];
-      if (!inputs.includes(g) || !cr.fromBays) {
+      if (!inputs.includes(g) || !cr.fromBays || routedAway(x, g)) {
         b.forCrucible_g = 0;
         continue;
       }
@@ -58,7 +80,7 @@ export function crucibleFromBays(x: Ctx, t: number): void {
     let room = Math.max(0, cap - cr.charge_g - cr.heel_g);
     for (const g of inputs) {
       const b = x.s.bays[g];
-      if (!b || room <= 0) continue;
+      if (!b || room <= 0 || routedAway(x, g)) continue;
       const free = Math.max(0, b.g - asideOf(b) - b.forDeal_g);
       const take = Math.min(free, room);
       if (take <= 0) continue;

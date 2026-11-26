@@ -17,6 +17,7 @@ import { frameLayout } from '../overlays/layout';
 import { CARD_VIEWS } from '../overlays/OverlayHost';
 import { FrameProvider } from '../overlays/parts';
 import { MARKET_VIEWS } from './marketViews';
+import { AWAY_SAMPLES, type AwaySampleName } from '../overlays/awaySample';
 import { yardSwitches } from './switches';
 
 /** The card `?cardB=` names, or null. */
@@ -66,6 +67,26 @@ export function CardStandIn() {
   const ins = yardSwitches.insets;
   const insets = useMemo(() => ({ top: 0, left: ins?.left ?? 0, right: ins?.right ?? 0, bottom: ins?.bottom ?? 0 }), [ins]);
   const layout = useMemo(() => frameLayout(width, height, insets, fontScale), [width, height, insets, fontScale]);
+  useEffect(() => {
+    // owner1-hud: `?awaySample=two|twelve|every` lays a sample away card (../overlays/awaySample.ts) on the
+    // game on screen and opens it, so the docket can be looked at with two rows, twelve, and every row.
+    const name = query()?.get('awaySample') as AwaySampleName | null;
+    if (!name || !AWAY_SAMPLES[name]) return;
+    // (on with `?dev=cards`: this stand-in mounts with the dev panel) Waits for the preset's game to be in.
+    let t: ReturnType<typeof setTimeout>;
+    const lay = () => {
+      const st = useGame.getState();
+      const g0 = st.game as SalvageGame;
+      if (!g0?.salvage) {
+        t = setTimeout(lay, 500);
+        return;
+      }
+      useGame.setState({ game: { ...g0, salvage: { ...g0.salvage, away: AWAY_SAMPLES[name] } } as typeof st.game });
+      openCard({ kind: 'away' });
+    };
+    t = setTimeout(lay, Number(query()?.get('cardBAt') ?? 900));
+    return () => clearTimeout(t);
+  }, []);
   useEffect(() => {
     const q = query();
     const at = cardFromQuery(q?.get('cardB') ?? null);

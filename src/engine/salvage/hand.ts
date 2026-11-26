@@ -9,11 +9,15 @@
 import { bossFresh, count, standingFor, type Ctx } from './clock';
 import { byValue, carrierCap_g, cutTime, pieceSpec, tierOf, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
+import { openCrewInSight } from './crew';
+import { forkliftStep } from './forklift';
+import { rackChoice } from './reuse';
+import { WORKS_ACTS, worksAct, worksActEnd, worksActHolds, type WorksActKind } from './works';
 import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
 import { weighIn } from './scales';
 import { cutOff, dropOnPile, nextPiece, takeFromPile, thingOf } from './things';
-import { truckBossStep, truckBossActEnd } from './truck';
+import { openTripInSight, truckBossStep, truckBossActEnd } from './truck';
 import type { MachineId, Piece, ThingState } from './types';
 
 const load_g = (x: Ctx): number => x.s.load.reduce((a, p) => a + p.g, 0);
@@ -109,6 +113,28 @@ function feedable(x: Ctx, place: string): { piece: Piece; machine: MachineId } |
   return null;
 }
 
+/** The truck stands free for the boss to take: owned, nobody at its wheel, on no trip, not still on its way in. */
+export function truckFree(s: Ctx['s']): boolean {
+  const tr = s.truck;
+  return tr.owned && tr.by === null && !tr.trip && !s.arriving.some((r) => r.item === 'truck');
+}
+
+/**
+ * The lead, 26 November (the owner's review, point 5; the player's finding 11): the screen's cab flag IS the
+ * player's getting in. A presence sample that says he is at the wheel while the truck stands free seats him
+ * now: the act that was running is cancelled (a pick-up's ring used to keep him "on foot" while the screen
+ * drove away: a truck that hooked nothing), and the door needs no re-arming. The walk-in below stays for a
+ * sample without the flag (the truck arriving beside him) and for the bots, which never send the flag unseated.
+ */
+export function seatByFlag(x: Ctx, t: number): void {
+  const s = x.s;
+  if (s.act.kind !== 'none' && s.act.kind !== 'drive') cancelAct(x, t);
+  delete s.counts!['truck:out'];
+  s.truck.by = 'boss';
+  setAct(x, 'drive', null, t, null);
+  x.ev.push({ type: 'enterTruck' });
+}
+
 /**
  * Decide or continue the boss's act at yard second t from the last presence sample (2.1). Called by the
  * presence action and by the tick after every instant (live play only).
@@ -121,6 +147,9 @@ export function bossStep(x: Ctx, t: number): void {
     rerate(x, 'hand_stripper', t);
     return;
   }
+  // 2.1: a planned run (crew, the truck's trip) the boss can now see is opened.
+  openCrewInSight(x, t);
+  openTripInSight(x, t);
   const p = s.presence;
   for (const id of Object.keys(c.map.points)) {
     const key = `visited:${id}`;
@@ -133,6 +162,8 @@ export function bossStep(x: Ctx, t: number): void {
     truckBossStep(x, t);
     return;
   }
+  // Stage 2 (2.9; s2a-fix): the boss in the forklift is the forklift's, as at the wheel he is the truck's (stub: never).
+  if (forkliftStep(x, t)) return;
   rerate(x, 'hand_stripper', t);
   crucibleCheckReady(x, t);
   const still = !p.moving;
@@ -150,6 +181,8 @@ export function bossStep(x: Ctx, t: number): void {
     } else if (a.kind === 'weigh') ok = still && atPlace(x, 'scale', p.x, p.y);
     else if (a.kind === 'feed') ok = still && !!a.target && atPlace(x, a.target, p.x, p.y);
     else if (a.kind === 'circle') ok = still && circleAt(x, p.x, p.y) >= 0;
+    // Stage 2's acts (commission, rack, lot, crate; s2a-fix): the works decide whether one holds (stub: it does).
+    else if (WORKS_ACTS.has(a.kind)) ok = worksActHolds(x, a.kind as WorksActKind, t);
     if (ok) return;
     cancelAct(x, t);
   }
@@ -196,6 +229,12 @@ export function bossStep(x: Ctx, t: number): void {
     if (loaded && stood >= c.feel.workDelay) setAct(x, 'circle', `circle.${ci}`, t, t + c.pick_s);
     return;
   }
+  // Stage 2 (2.12, ruling 13.1): a tagged thing within his sight is his for the Yard sale while a place is
+  // free: he lifts it whole, or sets it on the rack in its chalk zone (reuse.ts rackChoice; the stub never acts).
+  if (rackChoice(x, 'boss', t, null)) return;
+  // Stage 2 (s2a-fix): the boss's other acts of the works start here (standing at an installed plate, the
+  // picking table, an oversize piece: works.ts worksAct; the stub never acts).
+  if (worksAct(x, t)) return;
   // Pickup (moving or still) and the swap (still).
   const room = room_g(x);
   const cands = pickables(x, p.x, p.y);
@@ -348,7 +387,7 @@ export function bossActEnd(x: Ctx, t: number): void {
     s.load = [];
     for (const p of pieces) dropOnPile(x, p, `circle.${n}`);
     x.ev.push({ type: 'circleDrop', circle: n, pieces: pieces.map((p) => p.uid), g: pieces.reduce((q, p) => q + p.g, 0) });
-  }
+  } else if (WORKS_ACTS.has(a.kind)) worksActEnd(x, a.kind as WorksActKind, t); // stage 2 (s2a-fix): the act's effect (stub: none)
   s.act = { kind: 'none', target: null, since: t, endsAt: null };
   count(x, 'bossActs');
   bossStep(x, t);

@@ -52,7 +52,7 @@ describe('desk2: the Night watch row (E33)', () => {
       expect(args.b.n).toBeCloseTo(withNight, 9);
       expect(args.b.n - args.a.n).toBeCloseTo(cfg.salvage.nightWatch_h, 9);
       expect(args.a.n).toBe(cfg.salvage.awayCapByRung_h[Math.min(rung, cfg.salvage.awayCapByRung_h.length) - 1]);
-    });
+    }, 20_000); // the lead, 26 Nov: the default 5 s was missed on a loaded machine (two capped absences on the real content); a time limit, not a rule
   }
   it('content written before E33 (awayCap_h [a, b]) reads as one rung at a, the Night watch adding b - a', () => {
     const { awayCapByRung_h: _r, nightWatch_h: _n, ...old } = (gameJson as { salvage: Record<string, unknown> }).salvage;

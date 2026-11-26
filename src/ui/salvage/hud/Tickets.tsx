@@ -35,7 +35,7 @@ import { lessonOnTicket, lineH, onScreen, overlaps, placeFromSlot, placeTicket, 
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
 import { printerSlot, type WorldPoint } from './slots';
-import { crewWeighInChip, dealChip, lotSoldChip, planTicket, slipChip, slipText, ticketView, type TicketPlan, type TicketView } from './ticketView';
+import { beyondGate, crewWeighInChip, dealChip, heldSlipsChip, lotSoldChip, planTicket, slipChip, slipText, ticketView, type TicketPlan, type TicketView } from './ticketView';
 
 /** How long each shows (ms) before it folds. */
 export const TICKET_MS = { weighIn: 4200, collection: 4200, chip: 2600, slip: 3000 } as const;
@@ -176,8 +176,21 @@ export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; 
       if (view) push({ view, chip: null }, { kind: 'slot', slot: bridgeSlot, keep }, TICKET_MS.collection);
     });
     // The drop-off slip (W14): "Washing machine · signed in · gate drop-off" over the drop-off.
+    // owner1-fix finding 12: while the boss is beyond the gate the slips are held, and said as one line on his return.
+    const held: string[] = [];
+    const bossOut = () => {
+      const p = (useGame.getState().game as R.SalvageGame)?.salvage?.presence;
+      return !!p && beyondGate(c, p.x);
+    };
     const offSlip = yardEvents.on('dropOffSlip', (e) => {
       const chip = slipChip(e.ticket, c);
+      if (!chip) return;
+      if (bossOut()) held.push(chip);
+      else push({ view: null, chip }, { kind: 'point', at: { x: dropPt.x, y: dropPt.y, z: CHIP_Z } }, TICKET_MS.slip);
+    });
+    const offBack = useGame.subscribe(() => {
+      if (!held.length || bossOut()) return;
+      const chip = heldSlipsChip(held.splice(0), c);
       if (chip) push({ view: null, chip }, { kind: 'point', at: { x: dropPt.x, y: dropPt.y, z: CHIP_Z } }, TICKET_MS.slip);
     });
     // A supply deal's delivery (W14): the foundry is away from the yard, so the chip stands under the cash counter.
@@ -209,6 +222,7 @@ export function Tickets({ cfg, L, camera, yard, body }: { cfg: R.SalvageConfig; 
       offOut();
       offBridge();
       offSlip();
+      offBack();
       offDeal();
       offUi();
       clearTimeout(firstSlip);

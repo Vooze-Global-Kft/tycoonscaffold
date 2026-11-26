@@ -93,6 +93,33 @@ describe('world labels on the frozen states', () => {
     expect(plateFits(p, labelSize(1.3))).toBe(true);
   });
 
+  it('owner1 finding 10: a free trial load\'s plate says "Free trial load", never a price of 0.00', () => {
+    const lab: R.SkipLabel = { partner: 'partnerFarm', state: 'trial', net_g: 540_000, things: [{ obj: 'washer', n: 2, grade: 'li', g: 40_000 }], price: 0, refusal: null, fullInS: null, slot: 0, fullAt: 0, free: true };
+    const p = skipPlate(cfg.salvage, lab);
+    expect(p.lines.some((l) => l.text.includes('Free trial load'))).toBe(true);
+    expect(p.lines.some((l) => l.text.includes(R.fmtMoney(0)))).toBe(false);
+    expect(plateFits(p, labelSize(1.3))).toBe(true);
+  });
+
+  it('owner1 T4: while the boss stands refused at a skip, its plate carries the frame\'s refusal with its figure, in the warning ink', () => {
+    const g = game('m30');
+    const f = R.frame(cfg, g);
+    const sk = f.skips[0];
+    expect(sk).toBeDefined();
+    const refusal: R.Txt = { key: 'refusal.loadCash', args: { x: { money: 1234 } } };
+    const held = { ...f, boss: { ...f.boss, target: `refused.${sk.partner}`, refusal } } as R.FrameTable;
+    const words = R.fmtMoney(1234);
+    const plate = labelItems(cfg, g, held, day).find((it) => it.id.startsWith(`skip.${sk.partner}.`));
+    expect(plate).toBeDefined();
+    const last = plate!.lines[plate!.lines.length - 1];
+    expect(last.tone).toBe('warn');
+    expect(last.text).toContain(words);
+    expect(plateFits(plate!, labelSize(1.3))).toBe(true);
+    // Not held: the plate does not carry it.
+    const free = labelItems(cfg, g, { ...f, boss: { ...f.boss, refusal: null } } as R.FrameTable, day).find((it) => it.id === plate!.id);
+    expect(free!.lines.some((l) => l.text.includes(words))).toBe(false);
+  });
+
   it('limits are those of 4.6', () => {
     expect(LIMITS.place).toBe(18);
     expect(LIMITS.padlock).toBeLessThanOrEqual(38);

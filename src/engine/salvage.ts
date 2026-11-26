@@ -32,13 +32,29 @@ export { awayView, inOutTxt, levelFact, nightWatchLine, type AwayView } from './
 export { rungProgress, rungTiles, type RungProgress, type RungTile } from './salvage/ladder';
 export { converterLineCfg as converterLine, printedNo } from './salvage/tickets';
 export { reconcileSalvage } from './salvage/save';
+// rules-money, stage 2 wave 1 (add only): plant finance (2.14), the stage's ladder (2.11), the goals' list.
+export { bankRow, financeTerms, letterDue, loanFoot, loanOffered, platePrice, saveUpSeconds, type Terms as FinanceTermsNow } from './salvage/bank';
+export { plateLevelPrice, thetaOf, topRungOf } from './salvage/ladder';
+export { ticketView, type TicketView } from './salvage/tickets';
 
 // ---- rules-sim (changes)
 export { createSalvage, freshSalvageCfg as freshSalvage, isSalvage, stockThings, withSalvageFields } from './salvage/create';
 export { activeIncomeRate, advanceSalvage, incomeRate, jump, nextEvent, steadyIncomeRate, tick } from './salvage/tick';
 export { awayCapS, salvageOffline } from './salvage/away';
 export { ratedCapacity } from './salvage/rate';
+// engine2-income (stage 2 2.3, add only): rated income I (§ an hour, net, from assets) and its terms; the
+// value of unsold stock at usual prices (the gate's G). The built incomeRate stays for what reads it today.
+export { ratedIncomeCfg as ratedIncome, ratedTermsCfg as ratedTerms, stockValueCfg as stockValue, type RatedTerms } from './salvage/rate';
 export { ackAway, buy, declineDeal, hire, level, noteSeen, sell, setFromBays, setHold, setPresence, setRecipe, signDeal, skipGoal, stepOut } from './salvage/actions';
+export { signFinance } from './salvage/actionsMoney';
+// rules-money, stage 2 wave 2 (add only): the shop (2.15), ads (2.16), looks, the money's cards and frame (4.1, 4.8, 4.9).
+export { adPaid, chooseLook, quotePack, setAgeBand, setPacksHidden, settleQuote } from './salvage/actionsMoney';
+export { adAudience, afterListing, ageBandOf, ageDue, countryOn, grantProduct, headroomU, packsHelpShown, packsShown, packsSwitchShown, quoteFn, secondSession, settle as settlePack, shopReachable } from './salvage/shop';
+export { adOffer, adsAllowed, bonusCard, deferredBonus, spotButton } from './salvage/ads';
+export { awayMoneyView, earnedLooks, restartPackLost, shopOf, type AwayMoneyView } from './salvage/cardsMoney';
+export { debtOnScreen } from './salvage/frameMoney';
+// rules-works asked (requests.md 11:10): the works' checks and actions for the cards and the screens.
+export { plateBuyCheck, plateLevelCheck, setPlateRecipe, setRoute } from './salvage/actionsWorks';
 export {
   bayPosCfg as bayPos,
   circlePosCfg as circlePos,

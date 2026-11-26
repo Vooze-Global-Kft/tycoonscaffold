@@ -31,6 +31,14 @@
  *   built yet print as "todo" lines, not findings: --todo lists them); TEXT_PENDING holds no key that
  *   TEXT already has.
  *
+ * Stage 2 (strings2, 26 November; yard-stage2.md 5.3, 4, 8.1's words row): the boxes of section 4
+ * (worksPlateLine ≤ 31 for every plate.works.*, the tag, the oversize piece and the picking table;
+ * gradeName ≤ 18 and gradeShort ≤ 15 for every grade, the works layer's too; a plate name ≤ 18 and in two
+ * lines of 12 on the process board; finance labels ≤ 14; the bank's ticket line ≤ 38; tabs; the shop's
+ * notes); 5.3's banned money words; "waste": every waste line says "licensed waste carrier"; the number
+ * rule allows "Axle limit 10 t" (the bridge's one number) and the alloy's name 304; holes may carry
+ * `|short` (a register id's short form) and `|cap` (a capital first letter).
+ *
  * Widths: the house's glyph-width table (scripts/content/office/fit.ts `advance`: San Francisco Pro
  * Text advances as fractions of the font size, the same table Proudly Adequate's check uses), × 1.1
  * safety margin, × 1.06 for bold, greedy word wrap that may break after a hyphen. Exit code 1 on any
@@ -178,6 +186,17 @@ export const BOXES: Record<string, Box> = {
   portrait: { pt: 17, bold: true, w: 375 - 32, lines: 2, assumed: 'the turn-sideways card in a portrait window 375 wide', what: 'the turn-sideways card' },
   gradeName: { pt: 11, w: 300, lines: 1, maxChars: 18, what: 'a grade name (≤ 18, 4.6)' },
   gradeShort: { pt: 11, w: 120, lines: 1, maxChars: 15, assumed: 'the grade column of a ticket row: 120 pt of the 240 (kg and price take the rest)', what: 'a grade short name on a ticket row: at most 15 characters' },
+  // ---- stage 2 (strings2; yard-stage2.md 4.3 to 4.11, 5.3)
+  worksPlateLine: { pt: 11, w: 300, lines: 1, maxChars: 31, assumed: 'a works plate in the world: 300 pt as a world chip (4.3 gives 11 pt, one line, 31 characters)', what: 'a works plate line, the tag\'s second line, an oversize piece\'s and the picking table\'s plate: 11 pt, one line, at most 31 characters (4.3, T19)' },
+  pageTab: { pt: 13, bold: true, w: 150, lines: 1, shrinkTo: 11, assumed: 'a process board page tab: a third of the wide card\'s title row, 150 pt', what: 'a process board page tab (4.4)' },
+  boardTab: { pt: 13, bold: true, w: Math.floor((PANEL_W - 24 - 3 * 4) / 4), lines: 1, shrinkTo: 11, what: 'a price board family tab: a quarter of the 389 pt tab row less 4 pt gaps, 13 pt bold, shrinking to 11 (4.11: the tab row 32 pt)' },
+  smallTitle: { pt: 15, bold: true, w: 360 - 32, lines: 1, what: 'the away bonus card\'s title: 360 pt less 16 a side, 15 pt bold (4.9)' },
+  centredTwo: { pt: 13, w: 520 - 32, lines: 2, what: 'a centred card line of at most two lines: 488 pt, 13 pt (4.5: the finance card\'s rule, the letter\'s lines)' },
+  financeLabel: { pt: 13, w: 200, lines: 1, maxChars: 14, assumed: 'the finance card\'s label column: 200 pt (4.5 gives 14 characters)', what: 'a finance card label, left of its amount: at most 14 characters (4.5, 4.11)' },
+  shopNote: { pt: 11, w: ROW_TEXT_W, lines: 3, what: 'a pack row\'s state line and the shop card\'s one-line notices: 285 pt, 11 pt, the row growing to three lines at 1.3 (4.8)' },
+  rowNote2: { pt: 11, w: PANEL_W - 24, lines: 2, what: 'a refusal note of two lines under a foot or row: 389 pt, 11 pt (4.5, T17)' },
+  shopName: { pt: 13, bold: true, w: ROW_TEXT_W, lines: 2, what: 'a shop row\'s name: 285 pt, 13 pt, the row growing to two lines at 1.3 (4.8: 64 pt)' },
+  ticketSplit: { pt: 11, w: TICKET_INNER, lines: 2, maxChars: 38, what: 'the bank\'s line under "Paid" on a lot ticket: at most 38 characters at five-figure amounts, on two lines of 235 pt at 1.3 (4.5: above 1.15 the ticket then shows one grade row)' },
 };
 
 /** Which box each key is checked in (the first pattern that matches). */
@@ -196,7 +215,47 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^(menu|close|ok)$/, 'footButton'],
   [/^place\./, 'placeLabel'],
   [/^chip\./, 'worldChip'],
-  [/^title\.(away|rung|deal)$/, 'centredTitle'],
+  [/^title\.(away|rung|deal|finance|letter|packSheet|ageQuestion|packCode)$/, 'centredTitle'],
+  [/^title\.awayBonus$/, 'smallTitle'],
+  // stage 2 (strings2): before the first yard's families below
+  [/^tab\.(first|yard|melt)$/, 'pageTab'],
+  [/^tab\./, 'boardTab'],
+  [/^plate\.(works\.|reuse\.|lot|crate|opens$)/, 'worksPlateLine'],
+  [/^plate\.filter$/, 'plateState'],
+  [/^card\.works\.(loan)$/, 'button'],
+  [/^card\.works\.(saveUp|loanShort)$/, 'rowNote'],
+  [/^card\.works\.(inOut|inOut2|gain)$/, 'panelLead'],
+  [/^card\.works\.(depollution)$/, 'effect'],
+  [/^card\.works\.(levelGain|installed)$/, 'rowLevel'],
+  [/^card\.finance\.rule$/, 'centredTwo'],
+  [/^card\.finance\./, 'financeLabel'],
+  [/^card\.letter\./, 'centredTwo'],
+  [/^card\.agreements\./, 'panelLead'],
+  [/^card\.works\.takesFrom/, 'panelLead'],
+  [/^skip\.reuseBatch$/, 'panelLead'],
+  [/^card\.shop\.(look|foundryPlate)$/, 'shopName'],
+  [/^card\.yardSale\.level$/, 'rowLevel'],
+  [/^card\.(lot|crate)\./, 'panelLead'],
+  [/^card\.shop\.(use|inUse|buy|unavailable|restore)$/, 'button'],
+  [/^card\.shop\.(row|looks|earned|packs|colours|decorations|look|noAds|foundryPlate|signStyle|packName)$/, 'rowName'],
+  [/^card\.shop\.(packLine|noRoom|waiting|coloursLine|plaqueLine|noAdsLine|reachRung)$/, 'effect'],
+  [/^card\.shop\.(unconfirmed|nothingCharged|unreachable|expired|restoreLine)$/, 'shopNote'],
+  [/^card\.packSheet\.amount$/, 'centredLine'],
+  [/^card\.(packSheet\.save|restart\.packLost)$/, 'centredPara'],
+  [/^card\.code\./, 'centredLine'],
+  [/^card\.ad\.(spot|bonus|video|take|notReady)$/, 'button'],
+  [/^card\.ad\.amount$/, 'centredLine'],
+  [/^card\.rung\.useIt$/, 'footButton'],
+  [/^card\.rung\./, 'centredLine'],
+  [/^card\.bay\.sellFromBay$/, 'rowLine'],
+  [/^recipe\./, 'rowName'],
+  [/^table\.rungN$/, 'centredLine'],
+  [/^ticket\.bankSplit$/, 'ticketSplit'],
+  [/^ticket\.rackHead$/, 'ticketHead'],
+  [/^ticket\.(rackSale|vanCollection|vanLine|crateLot|cod)$/, 'ticketLegal'],
+  [/^clip\.(shop|packsShown|packsHidden)$/, 'rowName'],
+  [/^help\.(\w+Body|packLost)$/, 'helpPara'],
+  [/^refusal\.(bankOne|bankTerms|routed)$/, 'rowNote2'],
   [/^title\./, 'panelTitle'],
   [/^card\.(buy|hire|level|sell|hold|on|off|use|start|stop)$/, 'button'],
   [/^card\.(fromBays|anotherSkip)$/, 'rowName'],
@@ -333,7 +392,7 @@ export function sampleArgs(inp: Inputs): Record<string, string> {
     grade: longest(grades),
     gradeShort: longest(Object.values(inp.text.grades).map((g) => g.short)),
     thing: longest(things),
-    partner: longest([inp.names.partnerFarm ?? '', inp.names.partnerDemolition ?? '']),
+    partner: longest(['partnerFarm', 'partnerDemolition', 'partner.garage', 'partner.plumbing', 'partner.boatyard'].map((id) => inp.names[id] ?? '')),
     contact: longest([inp.names.farmContact ?? '', inp.names.demolitionContact ?? '']),
     rival: longest(chips),
     item: longest(items),
@@ -353,6 +412,19 @@ export function sampleArgs(inp: Inputs): Record<string, string> {
     pct: '100 %',
     foundry: inp.names.foundry ?? 'foundry',
     goal: longest(Object.entries(TEXT).filter(([k]) => k.startsWith('goal.') && !/\{/.test(TEXT[k as keyof typeof TEXT])).map(([, v]) => v as string)),
+    // stage 2 (strings2): a plate's name ({ text: title.works.<id> }), money holes of the bank and the Yard sale, the share in words
+    plate: longest(Object.entries(TEXT).filter(([k]) => k.startsWith('title.works.')).map(([, v]) => v as string)),
+    d: '§99,999',
+    y: '§99,999',
+    z: '§99,999',
+    q: '§9,999',
+    left: '§99,999',
+    total: '§99,999',
+    taken: '§99,999',
+    share: longest(['share.fifth', 'share.fifthIn'].map((k) => (TEXT as Record<string, string>)[k]).concat(['100 %'])),
+    to: longest(Object.entries(TEXT).filter(([k]) => k.startsWith('title.works.') || k === 'card.bay.sellFromBay').map(([, v]) => v as string)),
+    // An oversize piece's senders (content lots.kinds[].from)
+    partnerShort: longest(['partner.garage', 'partner.plumbing', 'partner.boatyard'].map((id) => inp.names[`${id}.short`] ?? inp.names[id] ?? '')),
   };
 }
 
@@ -417,9 +489,50 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.crewRow': { n: '10' },
   'card.levelN': { n: '10' },
   'opens.rung3': { c: '160' },
+  // stage 2 (strings2): durations where {t} is usually tonnes, counts where {a}/{b} are usually masses
+  'plate.works.selfStart': { t: '19 m 59 s' },
+  'card.works.selfStart': { t: '19 m 59 s' },
+  'card.works.carIn': { t: '9 m 59 s' },
+  'card.works.saveUp': { t: '99 h 59 m' },
+  'card.yardSale.next': { t: '23 h 59 m' },
+  'card.yardSale.corner': { t: '29 m 59 s' },
+  'card.yardSale.level': { a: '10', b: '12' },
+  'card.works.installed': { n: '5' },
+  'plate.works.commission': { n: '5' },
+  'card.lot.cut': { n: '10' },
+  'plate.crateStand': { n: '3' },
+  'card.crate.stand': { n: '3' },
+  'card.rung.styleNew': { n: '5' },
+  'card.shop.signStyle': { n: '5' },
+  'card.shop.reachRung': { n: '5' },
+  'table.rungN': { n: '5', t: '10,000 t' },
+  'plate.opens': { t: '10,000 t' },
+  'goal.supplyRung4': { t: '1,000 t', r: '8' },
+  'goal.supplyRung5': { t: '10,000 t', r: '9' },
+  'card.shop.packLine': { n: '20' },
+  'plate.crate': { n: '12' },
+  'card.crate.count': { n: '12' },
+  'plate.lotValue': { kg: '9,999 kg', x: '§99,999' },
+  'plate.lot': { thing: 'Crate of bushings' },
+  'card.lot.from': { partner: 'Tap Street Plumbing' },
+  'card.works.gain': { pct: '999 %' },
+  'card.works.levelGain': { pct: '15 %' },
+  'plate.reuse.prices': { q: '§9,999', v: '§9,999' },
+  'plate.reuse.heavy': { kg: '999.9 kg' },
+  'chip.forPlate': { a: '2,000 kg', b: '2,000 kg' },
+  'card.agreements.history': { date: '28 Nov' },
+  'card.bay.route': { to: 'Induction furnace' },
+  'skip.reuseBatch': { n: '9', kg: '999.9 kg', thing: 'Cast-iron radiator' },
+  'ticket.vanLine': { n: '9', kg: '999.9 kg' },
+  'card.works.takesFrom': { a: 'Bare bright copper' },
+  'card.works.takesFrom2': { a: 'Bare bright copper', b: 'Cast aluminium' },
+  'card.works.takesFrom3': { a: 'Light iron', b: 'Car body', c: 'Cast aluminium' },
+  'card.works.inOut2': { a: 'Bare bright copper', b: 'Cast aluminium' },
+  'card.agreements.left': { share: 'a fifth' },
+  'card.shop.look': { name: 'Yard decorations: Bench corner' },
 };
 
-const HOLE = /\{([A-Za-z0-9_.]+)(?:\|short)?\}/g;
+const HOLE = /\{([A-Za-z0-9_.]+)(?:\|(?:short|cap))?\}/g;
 
 function fillNames(text: string, names: Record<string, string>): string {
   return text.replace(HOLE, (w, h: string) => names[h] ?? w);
@@ -431,7 +544,11 @@ export function widest(key: string, text: string, inp: Inputs, args: Record<stri
   const over = ARG_OVERRIDE[key] ?? {};
   const out = text.replace(HOLE, (w, h: string) => {
     if (w.endsWith('|short}') && h === 'grade') return over.gradeShort ?? args.gradeShort;
+    if (w.endsWith('|short}') && h === 'partner') return over.partnerShort ?? args.partnerShort;
     if (over[h] !== undefined) return over[h];
+    // strings2: a register id with |short prints its short form where the register has one (strings.ts fill); |cap capitalises.
+    if (w.endsWith('|short}') && inp.names[h] !== undefined) return inp.names[`${h}.short`] ?? inp.names[h];
+    if (w.endsWith('|cap}') && inp.names[h] !== undefined) return inp.names[h].charAt(0).toUpperCase() + inp.names[h].slice(1);
     if (inp.names[h] !== undefined) return inp.names[h];
     if (args[h] !== undefined) return args[h];
     unknown.push(h);
@@ -443,13 +560,17 @@ export function widest(key: string, text: string, inp: Inputs, args: Record<stri
 // ================================================================================================ word rules
 
 /** 5.6 and S21, whole words in any case. */
-export const BANNED = ['bet', 'bets', 'betting', 'stake', 'stakes', 'odds', 'invest', 'investing', 'investment', 'tips', 'returns', 'jackpot', 'win', 'wins', 'winning', 'prize', 'prizes', 'ticker', 'share price', 'order book', 'order', 'orders', 'shift', 'shifts', 'freight', 'cargo', 'contract', 'contracts', 'salvage', 'haul', 'hauls', 'hauling', 'ore', 'ores', 'fleet', 'logistics', 'eco', 'green', 'save the planet', 'learn to trade', 'district'];
+export const BANNED = ['bet', 'bets', 'betting', 'stake', 'stakes', 'odds', 'invest', 'investing', 'investment', 'tips', 'returns', 'jackpot', 'win', 'wins', 'winning', 'prize', 'prizes', 'ticker', 'share price', 'order book', 'order', 'orders', 'shift', 'shifts', 'freight', 'cargo', 'contract', 'contracts', 'salvage', 'haul', 'hauls', 'hauling', 'ore', 'ores', 'fleet', 'logistics', 'eco', 'green', 'save the planet', 'learn to trade', 'district',
+  // stage 2 (yard-stage2.md 5.3): money words that may never be said ("Bank loan", "You repay", "left" instead of a debt's words)
+  'invest', 'invests', 'invested', 'shares', 'dividend', 'dividends', 'cash out', 'get rich', 'best value', 'buy now', 'cosmetic only', 'daily', 'missed', 'calm week', 'credited', 'ahead', 'loan shark', 'interest', 'APR', 'overdue', 'due date', 'late fee', 'debt', 'debts', 'lucky', 'chance', 'chances'];
 /** A text that promises an update, a date or a future feature. */
 export const PROMISE = /\b(coming soon|soon|coming|in the future|future|an update|updates|next version|later stage|will be (added|available|built|here)|stay tuned|not yet available|in a later)\b/i;
 /** A fixed price multiple written as a number (a computed {n} is fine). */
 export const MULTIPLE = /(\b\d+(\.\d+)?\s*(×|x|times)\b)|(×\s*\d)|\b(twice|double|triple|half|ten times|a hundred times)\b/i;
 /** Literal numbers that are the trade's own names, not tuned values. */
-const NUMBER_ALLOWED = [/No\.2/g, /HMS 80:20/g, /80:20/g, /80 to 20/g, /grades? 1 and (grade )?2/g, /Weight limit 7\.5 t/g, /\/ 100\b/g, /ref\. \{ref\}/g];
+const NUMBER_ALLOWED = [/No\.2/g, /HMS 80:20/g, /80:20/g, /80 to 20/g, /grades? 1 and (grade )?2/g, /Axle limit 10 t/g, /\/ 100\b/g, /ref\. \{ref\}/g,
+  // stage 2: the alloy's own name and its definition (T10), not tuned values
+  /\b304(?= (stainless|solids)\b)/g, /\bStainless 304\b/g, /18 % chromium, 8 % nickel/g];
 
 export function wordFindings(where: string, text: string, opts: { names: Record<string, string>; withdrawn: string[]; deny: (t: string) => { term: string; game: string; from: string }[] }): Finding[] {
   const out: Finding[] = [];
@@ -459,6 +580,8 @@ export function wordFindings(where: string, text: string, opts: { names: Record<
     if (re.test(plain)) out.push({ rule: 'banned', where, text, reason: `"${w}" is a banned word (5.6, S21)` });
   }
   if (plain.includes('!')) out.push({ rule: 'banned', where, text, reason: 'an exclamation mark (5.6)' });
+  // stage 2 (5.3, T13, P18): waste leaves the yard with a licensed waste carrier, in those words.
+  if (/\bwaste\b/i.test(plain) && !/licensed waste carrier/i.test(plain)) out.push({ rule: 'waste', where, text, reason: 'a waste line that does not say "licensed waste carrier" (5.3, T13, P18)' });
   if (PROMISE.test(plain)) out.push({ rule: 'promise', where, text, reason: `promises an update or a date ("${PROMISE.exec(plain)![0]}"; 4.6, S20)` });
   if (MULTIPLE.test(plain)) out.push({ rule: 'multiple', where, text, reason: `a fixed price multiple ("${MULTIPLE.exec(plain)![0]}"; S5); compute it from the day's board as a {n}` });
   let numbers = text;
@@ -552,9 +675,12 @@ export function ticketHeights(inp: Inputs, args: Record<string, string>): { kind
   };
   const w = build(fillKey('ticket.weighInHead'), fillKey('ticket.gradeToday'), `${fillKey('ticket.more')}  ${fillKey('ticket.todaysValue')}`, [fillKey('ticket.weighInLegal')]);
   const c = build(fillKey('ticket.collectionHead'), '§99,999', `${fillKey('ticket.more')}  ${fillKey('ticket.paid')}`, [fillKey('ticket.lotSoldTo'), fillKey('ticket.weighedOut')], 12);
+  // stage 2 (4.5): while an agreement is open the collection prints the bank's line under "Paid" (two lines at 1.3).
+  const cb = build(fillKey('ticket.collectionHead'), '§99,999', `${fillKey('ticket.more')}  ${fillKey('ticket.paid')}`, [fillKey('ticket.bankSplit'), fillKey('ticket.lotSoldTo'), fillKey('ticket.weighedOut')], 12);
   return [
     { kind: 'weigh-in', ...w },
     { kind: 'collection', ...c },
+    { kind: 'collection with the bank\'s line', ...cb },
   ];
 }
 
@@ -586,12 +712,13 @@ export function usedKeys(): { literal: Set<string>; families: Set<string>; unkno
   const families0 = new Set(Object.keys(TEXT).filter((k) => k.includes('.')).map((k) => k.split('.')[0]));
   for (const f of codeFiles()) {
     const src = fs.readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/['"`]([a-zA-Z][a-zA-Z0-9]*(?:\.[a-zA-Z][a-zA-Z0-9]*)?)['"`]/g)) {
+    for (const m of src.matchAll(/['"`]([a-zA-Z][a-zA-Z0-9]*(?:\.[a-zA-Z][a-zA-Z0-9]*)*)['"`]/g)) {
       const k = m[1];
       if (all.has(k)) literal.add(k);
       else if (k.includes('.') && families0.has(k.split('.')[0]) && /\bkey\s*:\s*['"`]/.test(src.slice(Math.max(0, m.index! - 12), m.index! + 1))) unknown.push({ file: rel(f), key: k });
     }
-    for (const m of src.matchAll(/`([a-z]+)\.\$\{/g)) if (families0.has(m[1])) families.add(m[1]);
+    // A built key family: `place.${id}`, and stage 2's nested ones (`title.works.${id}`, `tab.${tab}`).
+    for (const m of src.matchAll(/`([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)*)\.\$\{/g)) if (families0.has(m[1].split('.')[0])) families.add(m[1]);
   }
   // Content names keys: goals' text keys and the lesson table (game.json, goals.json, text.json).
   const content: string[] = [];
@@ -620,6 +747,11 @@ export function usedKeys(): { literal: Set<string>; families: Set<string>; unkno
  * BUILD.md's table). The first pattern that matches names the owner and the screen.
  */
 export const TODO_OWNER: [RegExp, string][] = [
+  // stage 2 (strings2): every new key waits for Phase B's cards and Phase C's screens
+  [/^(goal\.(rackBath|buyBaler|startBaler|buyAnalyser|buyShear|buyTruckBridge|fetchGarage|fetchPlumbing|cutLot|sortCrate|buyDepollution|supplyRung4|buyCrane|walkBackfield|buyShredder|buyRotary|pourRotary|buyInduction|buyBreaker|buySmelter|pourLead|supplyRung5)|advice\.loanHint|lesson\.(ss|bzs|bzi|pb|zorba|lib))$/, 'stage 2: goals2 (goals.json stage2), rules-money (advice.ts), content2 (lessons)'],
+  [/^(card\.(works|finance|letter|agreements|bay|rota)\.|share\.|title\.(works\.|finance|letter|agreements)|tab\.(first|yard|melt)|recipe\.|plate\.(works\.|opens|filter))/, 'stage 2: rules-works / rules-money cards.ts, then overlays-a (Works, Finance, Letter, Agreements, ProcessBoard, Rota) and world-b (plates)'],
+  [/^(card\.(yardSale|lot|crate|shop|packSheet|code|ad|restart|rung)\.|title\.(shop|yardSale|lot|crate|packSheet|ageQuestion|packCode|awayBonus)|tab\.|board\.tabEmpty|plate\.(reuse|lot|crate)|skip\.reuseBatch|clip\.(shop|packs\w+)|help\.\w+|opens\.\w+|table\.rungN)/, 'stage 2: rules-works / rules-money cards.ts, then overlays-b (YardSale, Lot, Shop, PackSheet, AgeQuestion, CodePad, AwayBonus, PriceBoard, RungSign, Settings, Help) and world-b'],
+  [/^(away\.(bank|repaid|rack|van|lots|lotOne)|ticket\.(bankSplit|rackHead|rackSale|vanCollection|vanLine|crateLot|note\.\w+|cod)|chip\.(works\.bankTag|commissioned|weighedAtWorks|cod|lotSoldBank|rackSold|van|forPlate|leadArea|visitorsKeep|payHere)|place\.\w+|item\.(truckBridge|pallet|forklift|plasma)|effect\.(truckBridge|pallet|forklift|plasma)|refusal\.\w+)$/, 'stage 2: rules-money (away.ts card, tickets.ts), hud (tickets, chips), world-b (places, signs), overlays-a (the tool rack and the vehicles)'],
   [/^(menu|carryDriving)$/, 'hud: the top bar (clipboard button label; the carry chip while driving)'],
   [/^ticket\.(dropOffSlip|skipHead|trial|grossTareNet|partnerLegal|dealDelivery|date)$/, 'hud: the other tickets of 2.2 (drop-off slip, skip weigh-in, deal delivery) and the date on the weigh-in'],
   [/^line\.crewAway$/, 'hud: the toast when the first cutter is hired (1.3 item 2)'],
@@ -671,6 +803,14 @@ export function runAll(): Report {
   // strings.ts
   for (const [k, v] of Object.entries(TEXT)) check(`strings.ts TEXT['${k}']`, k, v, boxOf(k));
   for (const [k, v] of Object.entries(TEXT)) if (k.startsWith('lesson.')) findings.push(...fitFindings(`strings.ts TEXT['${k}'] (goal card, above 1.15)`, widest(k, v, inp, args).out, BOXES.lessonGoal));
+  // stage 2: a plate's name is also its process-board plate (4.4: two lines of 12) and its world plate's name (≤ 18); "Opens at" also a board plate's padlock line.
+  for (const [k, v] of Object.entries(TEXT)) {
+    if (k.startsWith('title.works.')) {
+      findings.push(...fitFindings(`strings.ts TEXT['${k}'] (process board plate)`, v, BOXES.plate));
+      findings.push(...fitFindings(`strings.ts TEXT['${k}'] (a plate name, ≤ 18)`, v, BOXES.gradeName));
+    }
+    if (k === 'plate.opens') findings.push(...fitFindings(`strings.ts TEXT['${k}'] (process board plate)`, widest(k, v, inp, args).out, BOXES.plateLocked));
+  }
   for (const [k, v] of Object.entries(TEXT_PENDING)) {
     if (k in TEXT) findings.push({ rule: 'keys', where: `strings.ts TEXT_PENDING['${k}']`, text: v, reason: 'already in TEXT: move it and delete it here' });
     check(`strings.ts TEXT_PENDING['${k}']`, k, v, boxOf(k));
@@ -710,7 +850,9 @@ export function runAll(): Report {
   // tickets at their fullest (4.4: at most 150 pt tall at 1.3)
   const tickets = ticketHeights(inp, args);
   for (const t of tickets) {
-    if (t.height > 150) findings.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `${t.height.toFixed(1)} pt tall at font scale 1.3 with one grade row; 4.4 allows 150` });
+    // The bank's line is ruling 11.4's words (two lines at 1.3 whatever the amounts): a miss there is the hud's layout to solve (planTicket), not a word finding.
+    if (t.height > 150 && t.kind.includes('bank')) layout.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `${t.height.toFixed(1)} pt tall at font scale 1.3 with one grade row and the bank's line on two lines; 4.4 allows 150: above 1.15 the hud must save a line (e.g. the bank's line in place of "weighed out · paid by transfer", which the collection head already implies), stage 2 4.5` });
+    else if (t.height > 150) findings.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `${t.height.toFixed(1)} pt tall at font scale 1.3 with one grade row; 4.4 allows 150` });
     else if (t.gradeRows < TICKET_ROWS_AT_13) layout.push({ rule: 'ticket', where: `the ${t.kind} ticket`, text: t.rows.join(' / '), reason: `at its widest (longest short name, 1,020 kg, §99,999) a grade row takes two lines at 1.3, so only ${t.gradeRows} row fits 150 pt and the rest go to "+ n more" (planTicket does this)` });
   }
 
@@ -719,8 +861,7 @@ export function runAll(): Report {
   for (const u of used.unknown) findings.push({ rule: 'keys', where: u.file, text: u.key, reason: 'a key the code or content uses that TEXT does not define' });
   const todo: string[] = [];
   for (const k of Object.keys(TEXT)) {
-    const fam = k.includes('.') ? k.split('.')[0] : '';
-    if (used.literal.has(k) || (fam && used.families.has(fam))) continue;
+    if (used.literal.has(k) || [...used.families].some((f) => k.startsWith(`${f}.`))) continue;
     todo.push(k);
   }
   const keyList = new Set(Object.values(TEXT_KEYS).flat() as string[]);

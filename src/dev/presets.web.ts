@@ -17,9 +17,11 @@ export type PresetName = (typeof PRESETS)[number];
 /**
  * Other names of the four presets in the address (`?preset=m5`): the salvage mode's frozen states are
  * named by the minute (fresh, m5, m15, m30, back) and its entry maps early, mid, late onto m5, m30, back
- * (m15 has no shared name: it arrives as `mid` and the salvage entry reads the address; web only).
+ * (m15 has no shared name: it arrives as `mid` and the salvage entry reads the address; web only). The
+ * stage-2 frozen states r3, r3plain and held14 (src/engine/fixtures/salvage.ts) arrive as `late` and are told
+ * apart by the address in the same way (the lead, 26 Nov: to look at rung 3 before the stage's own presets exist).
  */
-export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = { m5: 'early', m15: 'mid', m30: 'mid', pour: 'mid', back: 'late' };
+export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = { m5: 'early', m15: 'mid', m30: 'mid', pour: 'mid', back: 'late', r3: 'late', r3plain: 'late', held14: 'late' };
 
 /** A mode with its own engine builds its own presets (its entry hands them over, src/modes/contract.ts). */
 let modePresets: ((cfg: GameConfig, name: PresetName, now: number) => GameState) | null = null;

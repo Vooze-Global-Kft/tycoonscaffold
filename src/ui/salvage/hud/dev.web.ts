@@ -11,6 +11,7 @@
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { pumpControl } from './pump';
+import { useSalvageUi } from '../uiState';
 
 function mode(): string | null {
   try {
@@ -32,6 +33,54 @@ function lines(cfg: R.SalvageConfig, g: R.SalvageGame, day: number): R.TicketLin
 export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | null {
   const m = mode();
   if (!m) return null;
+  // owner1-hud: `?hudDemo=stepOut` shows the one button as it reads in the truck ("Step out"), for its
+  // pictures at every size and font scale; the frame loop sets it back when the boss's state changes.
+  if (m === 'stepOut') {
+    const t = setTimeout(() => useSalvageUi.getState().setDriving(true), 600);
+    return () => clearTimeout(t);
+  }
+  // owner1-fix-hud: `?hudDemo=refusal` (or `refusal=cash`) holds the boss's act at a refusal (`refused.floor`:
+  // "Weigh it in first"; `cash`: the first partner's skip, its figure from the rules) and the button in its truck
+  // form, re-applied every second, so the tag by the one button can be looked at. A SAMPLE of the state, never saved.
+  if (m === 'refusal' || m === 'refusal=cash') {
+    const target = m === 'refusal' ? 'refused.floor' : `refused.${Object.keys(cfg.salvage.partners ?? {})[0] ?? 'floor'}`;
+    const hold = () => {
+      useSalvageUi.getState().setDriving(true);
+      useGame.setState((st) => {
+        const gg = st.game as R.SalvageGame;
+        if (!gg?.salvage || gg.salvage.act.target === target) return {};
+        const cash = m === 'refusal' ? gg.cash : 0;
+        return { game: { ...gg, cash, salvage: { ...gg.salvage, act: { kind: 'drive', target, since: gg.salvage.t, endsAt: null } } } as unknown as typeof st.game };
+      });
+    };
+    const t = setTimeout(hold, 600);
+    const every = setInterval(hold, 1000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(every);
+    };
+  }
+  // `?hudDemo=step` (or `step=weighed`): a skip aboard the boss's truck, not yet weighed (or weighed), so the goal
+  // card's load step (goals.ts loadStep: "Drive onto the weighbridge", "Tip it on the floor") can be looked at.
+  // A SAMPLE of the state (re-applied every second), never saved.
+  if (m === 'step' || m === 'step=weighed') {
+    const partner = Object.keys(cfg.salvage.partners ?? {})[0] ?? 'farm';
+    const hold = () =>
+      useGame.setState((st) => {
+        const gg = st.game as R.SalvageGame;
+        const tr = gg?.salvage?.truck;
+        if (!tr?.owned || (tr.skip && tr.by !== 'driver')) return {};
+        const skip = { partner, slot: 0, contents: {}, mass_g: 1_020_000, price: 0, trial: true, weighed: m === 'step=weighed' };
+        // The step is the boss's: a truck out with the hired driver is handed to nobody for the sample.
+        return { game: { ...gg, salvage: { ...gg.salvage, truck: { ...tr, skip, by: tr.by === 'driver' ? null : tr.by } } } as unknown as typeof st.game };
+      });
+    const t = setTimeout(hold, 600);
+    const every = setInterval(hold, 1000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(every);
+    };
+  }
   let n = 900;
   const fire = () => {
     const now = Date.now();

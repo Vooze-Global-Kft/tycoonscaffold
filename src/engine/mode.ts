@@ -14,6 +14,34 @@
 import type { GameConfig, StoryBeat } from '../config/schema';
 import type { GameState } from './types';
 
+/** The age treatment of ad requests (EngineMode.adAudience; src/services/ads.ts setAudience). */
+export type AdAudience = 'child' | 'teen' | null;
+
+/** One store transaction handed to a mode's grantProduct (RULING2 15.2: known by the id the store's listing gives it). */
+export interface ProductArrival {
+  productId: string;
+  txId: string;
+  /** The store's date of the transaction (ms), information only; null when it could not be read. */
+  purchasedMs: number | null;
+  /** This sheet's own result for the quote made at `atMs` (RULING2 15.5); null for every later arrival. */
+  own: { atMs: number } | null;
+}
+
+/** A listing of the store account's transactions (EngineMode.afterListing). */
+export interface ProductListing {
+  txs: readonly Omit<ProductArrival, 'own'>[];
+  /** Read from the network just now (the store's cache invalidated first); false for the listener's reports. */
+  fresh: boolean;
+  /**
+   * The store's own time of this answer (ms; RevenueCat: customer info's requestDate), null when it
+   * could not be read. Never the device's clock (RULING2 15.12 a): a quote's 72 hours run from its
+   * `askedMs` to the requestMs of a FRESH listing. In the simulated store (Expo Go) the simulation's
+   * own clock. The shared layer passes it on and decides nothing with it. The shared store always sets
+   * it; absent (a listing built by hand) it reads as null.
+   */
+  requestMs?: number | null;
+}
+
 /** What the shared engine asks of a mode with its own rules. Every function is pure. */
 export interface EngineMode {
   /** The cfg.mode this engine runs. The shared functions use it only for configs of that mode. */
@@ -77,6 +105,39 @@ export interface EngineMode {
    * the product changes nothing now.
    */
   entitle?(cfg: GameConfig, state: GameState, productId: string): GameState;
+  /**
+   * A transaction of a consumable of the shared kind `hoursOfIncome` arrived (RULING2 section 15,
+   * yard-stage2.md 2.15.5 as amended): the mode grants it by its own money rules, at the amount it
+   * quoted and saved before the store's sheet opened (src/state/store.ts `buyQuoted`; the quote is
+   * read from the save, never passed). `arrival.own` names the quote (by the `atMs` its quote function
+   * was given) when this is that quote's own sheet's result: the id is new against that quote's
+   * `known`, and it goes to THAT quote. `own` null: a later arrival (the listener, the check at start,
+   * a listing read at Buy): an id not in the ledger goes to the OLDEST standing quote of the product
+   * whose `known` lacks it (oldest: the order in which quotes were made, the list's order, never
+   * `atMs`; 15.12 d), and with no such quote it belongs to another save and is not granted.
+   * Never granted: an id in the ledger, or in the chosen quote's `known`. No clock decides a grant
+   * (15.1): `purchasedMs` is the store's date, kept as information only (null when the store's
+   * date could not be read). Called only through meta.grantPurchase, possibly several times with the
+   * same `txId`: the SAME object when nothing is granted. Pure, never throws. Without it a game's
+   * `hoursOfIncome` product is never sold (the store refuses it before any sheet opens).
+   */
+  grantProduct?(cfg: GameConfig, state: GameState, arrival: ProductArrival): GameState;
+  /**
+   * After every listing of the store account's transactions has been handed over (each arrival
+   * through grantProduct first): the mode may withdraw the quotes that still stand (15.6, 15.11 b,
+   * 15.12 a: only on a `fresh` listing, and only when its `requestMs`, the store's own time, is at least
+   * 72 hours after the quote's `askedMs`; never by `now`, the device's clock, which decides no grant
+   * and no withdrawal; a listing whose requestMs is null withdraws nothing). Called only with the grant route
+   * (a `hoursOfIncome` product and grantProduct). The SAME object when nothing changes. Pure.
+   */
+  afterListing?(cfg: GameConfig, state: GameState, listing: ProductListing, now: number): GameState;
+  /**
+   * How the ad network must treat this player's requests, from the mode's own record of the
+   * player's age band: 'child' (under 13: child-directed, non-personalised, no tracking prompt),
+   * 'teen' (13 to 17), or null (no signal: requests as before). The store hands it to the ad
+   * service on every change (src/services/ads.ts `setAudience`). Without it: null, as before.
+   */
+  adAudience?(cfg: GameConfig, state: GameState): AdAudience;
   /**
    * Whether an absence's report is worth showing although it earned nothing (haul: "Hold full.
    * Nothing shipped." when the freighter waited for a swipe the whole time). Without it, an

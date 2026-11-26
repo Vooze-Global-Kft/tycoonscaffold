@@ -2,9 +2,10 @@
  * The platform scale's weigh-in (yard-stage1.md 2.2, E17's one rounding rule; 4.4 item 5's lesson
  * pacing). Owner: rules-sim. The weighbridge's skip weigh-in is truck.ts's.
  */
+import { assayGrade } from './assay';
 import { priceOf } from './board';
 import { bayOf, reserveOnWeighIn } from './bays';
-import { count, printTicket, ticketBase, dayAt, priceAt, type Ctx, numberBays } from './clock';
+import { count, heard, printTicket, ticketBase, dayAt, priceAt, type Ctx, numberBays } from './clock';
 import { crucibleFromBays } from './crucible';
 import { resolveGrams, roundMoney } from './money';
 import type { Piece, TicketLine, Txt, TxtArgs } from './types';
@@ -84,10 +85,35 @@ function lessonFor(x: Ctx, lines: readonly TicketLine[], t: number): { grade: st
  * up to the platform step (the bay gets exactly the rounded grams; the difference kept in scaleRound_g),
  * a weigh-in ticket with no payment, at most one paced lesson. `by` 'boss' or a crew id.
  */
-export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number): void {
+export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number, at = t): void {
   if (!pieces.length) return;
-  const day = dayAt(x, t);
-  const { lines, trueByGrade } = linesOf(x, pieces, day);
+  // `at`: the ticket's own instant (a grouped run's load, 2.1, lands at the run's end with the ticket and
+  // the day's prices of its own drop, as its leg would have printed them); everything else happens at t.
+  const day = dayAt(x, at);
+  // Stage 2 (2.5.2; s2a-fix, the critic's finding 3 (e)): the analyser's grade of each piece (assay.ts assayGrade;
+  // the stub answers the piece's own grade, so the same array goes on and nothing is allocated).
+  let graded: readonly Piece[] = pieces;
+  for (let i = 0; i < pieces.length; i++) {
+    const gr = assayGrade(x, pieces[i]);
+    if (gr !== pieces[i].grade) {
+      if (graded === pieces) graded = pieces.slice();
+      (graded as Piece[])[i] = { ...pieces[i], grade: gr };
+    }
+  }
+  const { lines, trueByGrade } = linesOf(x, graded, day);
+  // Stage 2 (2.5.2; rules-works): a line of an analysed grade carries the note "Analysed" (unless it has one),
+  // and each analysed grade is counted (`analysed:<grade>`) and reported once a weigh-in (`analysed`).
+  if (graded !== pieces) {
+    const from: Record<string, string> = {};
+    for (let i = 0; i < pieces.length; i++) if (graded[i].grade !== pieces[i].grade) from[graded[i].grade] ??= pieces[i].grade;
+    for (const l of lines) {
+      const f = from[l.grade];
+      if (f === undefined) continue;
+      if (!l.note) l.note = { kind: 'analysed' };
+      count(x, `analysed:${l.grade}`);
+      if (heard(x)) x.ev.push({ type: 'analysed', grade: l.grade, from: f });
+    }
+  }
   for (const l of lines) {
     const b = bayOf(x, l.grade);
     b.g += l.g;
@@ -99,8 +125,8 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number)
   numberBays(x);
   const lesson = by === 'boss' ? lessonFor(x, lines, t) : null;
   if (lesson) x.s.lessonsSeen.push(lesson.grade);
-  const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });
-  x.ev.push({ type: 'weighIn', ticket, pieces: pieces.map((p) => p.uid), by });
+  const ticket = printTicket(x, { ...ticketBase(x, at), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });
+  if (heard(x)) x.ev.push({ type: 'weighIn', ticket, pieces: pieces.map((p) => p.uid), by });
   if (lesson) x.ev.push({ type: 'lesson', grade: lesson.grade, text: lesson.text });
   if (by === 'boss') {
     count(x, 'weighIns');

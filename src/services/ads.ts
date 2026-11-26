@@ -5,9 +5,16 @@
  * Revenue for idle games comes mostly from opt-in rewarded ads, so they are
  * offered generously (boosts, double offline earnings). Interstitials are
  * kept rare and only shown at natural breaks, because they cut retention.
+ *
+ * When consent, tracking and the SDK start is the game's choice (game.json `monetization.ads.initOn`):
+ * 'boot' (the default, every game before stage 2 of the scrapyard) at the game's start; 'firstOffer'
+ * only when the mode's screen first shows an ad button (`firstOffer()`). How requests treat the
+ * player's age comes from the mode (src/engine/mode.ts `adAudience`, handed over by the store through
+ * `setAudience`): child-directed and non-personalised for 'child', teen treatment for 'teen'.
  */
 import { Platform } from 'react-native';
 import { baseGame } from '../config/game';
+import type { AdAudience } from '../engine/mode';
 import { overlays } from '../state/overlays';
 import { analytics, crash } from './firebase';
 import { fx } from './fx';
@@ -18,6 +25,35 @@ type GMA = typeof import('react-native-google-mobile-ads');
 type Interstitial = import('react-native-google-mobile-ads').InterstitialAd;
 type Rewarded = import('react-native-google-mobile-ads').RewardedAd;
 type Rating = 'G' | 'PG' | 'T' | 'MA';
+type RequestConfiguration = import('react-native-google-mobile-ads').RequestConfiguration;
+
+const RATING_ORDER: readonly Rating[] = ['G', 'PG', 'T', 'MA'];
+/** The stricter of two ratings. */
+const stricter = (a: Rating, b: Rating): Rating => (RATING_ORDER.indexOf(a) <= RATING_ORDER.indexOf(b) ? a : b);
+
+/**
+ * The SDK's request configuration for an age treatment (yard-stage2.md 2.16, P8): with no signal
+ * exactly the rating, as before; 'child': child-directed, under the age of consent, child treatment,
+ * general-audience ads only; 'teen': teen treatment, under the age of consent, ads rated T at most.
+ */
+export function requestConfigurationFor(audience: AdAudience, rating: Rating, gmaModule: Pick<GMA, 'MaxAdContentRating'>): RequestConfiguration {
+  if (audience === 'child') {
+    return {
+      maxAdContentRating: gmaModule.MaxAdContentRating.G,
+      tagForChildDirectedTreatment: true,
+      tagForUnderAgeOfConsent: true,
+      ageRestrictedTreatment: 'child' as RequestConfiguration['ageRestrictedTreatment'],
+    };
+  }
+  if (audience === 'teen') {
+    return {
+      maxAdContentRating: gmaModule.MaxAdContentRating[stricter(rating, 'T')],
+      tagForUnderAgeOfConsent: true,
+      ageRestrictedTreatment: 'teen' as RequestConfiguration['ageRestrictedTreatment'],
+    };
+  }
+  return { maxAdContentRating: gmaModule.MaxAdContentRating[rating] };
+}
 
 /** No interstitial this soon after any full-screen ad closed (a rewarded ad chest, then the chest closes...). */
 const QUIET_AFTER_FULLSCREEN_MS = 30_000;
@@ -87,6 +123,12 @@ class AdsService {
   interstitials = baseGame.monetization.ads.interstitials !== false;
   /** Highest ad content rating to request (policy.md item 9); must be set before init(). */
   maxAdContentRating: Rating = baseGame.monetization.ads.maxAdContentRating;
+  /** When consent, tracking and the SDK start: at boot (the store calls init) or at the first ad offer (firstOffer). */
+  initOn: 'boot' | 'firstOffer' = baseGame.monetization.ads.initOn ?? 'boot';
+  /** The age treatment of every request (setAudience); null: none, as before. */
+  private audience: AdAudience = null;
+  /** The one start of consent, tracking and the SDK in this run of the app (init and firstOffer share it). */
+  private starting: Promise<void> | null = null;
   /** A full-screen ad is on screen (or opening): never start a second one. */
   private fullScreen = false;
   private lastFullScreenClosed = 0;
@@ -121,12 +163,53 @@ class AdsService {
     this.listeners.forEach((fn) => fn());
   }
 
-  /** Call once at startup. Order matters: consent, then ATT, then SDK init. */
-  async init() {
-    if (!gma || this.ready) return;
+  /**
+   * Starts consent, then ATT, then the SDK (order matters). The store calls it at startup when the
+   * game's `initOn` is 'boot'; with 'firstOffer' the mode's screen calls firstOffer() instead. A call
+   * while a start runs (or firstOffer after init) returns that start; after a start that ended without
+   * the SDK running, a later call starts again (asks for consent again), as before.
+   */
+  init(): Promise<void> {
+    if (!gma || this.ready) return Promise.resolve();
+    if (!this.starting) this.starting = this.start(gma);
+    return this.starting;
+  }
+
+  /**
+   * The first time an ad button would show (a game whose `initOn` is 'firstOffer'): asks for consent
+   * and tracking and starts the SDK, once. Call it whenever an ad button is about to show; after the
+   * first call it does nothing. Without the SDK (Expo Go, web) it does nothing.
+   */
+  firstOffer(): Promise<void> {
+    return this.init();
+  }
+
+  /**
+   * The age treatment of every request from now on (the store hands over the mode's adAudience on
+   * every change). Once the SDK runs, the configuration is set again and the loaded ads are
+   * requested again with it, so no ad loaded under the old treatment is shown.
+   */
+  setAudience(audience: AdAudience) {
+    if (audience === this.audience) return;
+    this.audience = audience;
+    if (!gma || !this.ready) return;
+    gma
+      .default()
+      .setRequestConfiguration(requestConfigurationFor(this.audience, this.maxAdContentRating, gma))
+      .then(() => {
+        this.loadRewarded();
+        this.loadInterstitial();
+        this.emit();
+      })
+      .catch((e) => crash.record(e, 'ads.setAudience'));
+  }
+
+  private async start(gma: GMA) {
     try {
-      const consent = await gma.AdsConsent.gatherConsent().catch(() => null);
-      if (Platform.OS === 'ios') {
+      // Under 13 or 13 to 17: the consent form is told the player is under the age of consent.
+      const consent = await (this.audience ? gma.AdsConsent.gatherConsent({ tagForUnderAgeOfConsent: true }) : gma.AdsConsent.gatherConsent()).catch(() => null);
+      // A child is never asked to allow tracking (P8).
+      if (Platform.OS === 'ios' && this.audience !== 'child') {
         const att = loadTracking();
         await att?.requestTrackingPermissionsAsync().catch(() => null);
       }
@@ -136,7 +219,7 @@ class AdsService {
 
       // The content rating must be in place before the SDK initialises and loads its first ads
       // (policy.md item 9: ads must fit the app's age rating).
-      await gma.default().setRequestConfiguration({ maxAdContentRating: gma.MaxAdContentRating[this.maxAdContentRating] });
+      await gma.default().setRequestConfiguration(requestConfigurationFor(this.audience, this.maxAdContentRating, gma));
       await gma.default().initialize();
       this.ready = true;
       this.emit();
@@ -144,6 +227,10 @@ class AdsService {
       this.loadInterstitial();
     } catch (e) {
       crash.record(e, 'ads.init');
+    } finally {
+      // A start that ended without the SDK running (it failed, or consent said ads may not be requested) may
+      // be asked again by a later init() or firstOffer(), as before the start was shared.
+      if (!this.ready) this.starting = null;
     }
   }
 
@@ -161,7 +248,8 @@ class AdsService {
   }
 
   private request() {
-    return { requestNonPersonalizedAdsOnly: !this.personalized };
+    // A player in an age band (child or teen) gets non-personalised requests whatever the consent says.
+    return { requestNonPersonalizedAdsOnly: !this.personalized || this.audience !== null };
   }
 
   private loadRewarded() {

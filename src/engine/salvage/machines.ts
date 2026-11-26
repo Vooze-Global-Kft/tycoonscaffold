@@ -6,7 +6,7 @@
  * exact remainder (the rest is waste), so ticking and jumping credit the same grams. A full tray stops
  * it, nothing lost. Owner: rules-sim. The crucible is crucible.ts's.
  */
-import { boostFactor, boostOn, bossFresh, count, type Ctx } from './clock';
+import { boostFactor, boostOn, bossFresh, count, heard, type Ctx } from './clock';
 import { machineInputs, machinePlace, machineShares, sumStock } from './content';
 import { pointOf } from './positions';
 import type { MachineId, MachineState, Piece } from './types';
@@ -75,18 +75,42 @@ export function hopperRoom(x: Ctx, id: MachineId): number {
   return defOf(x, id).inbuf * 1000 - hopper_g(m) - (m.work ? m.work.piece.g - (m.work.base_g ?? 0) : 0);
 }
 
+/**
+ * A rate machine's input grades as a set (content.ts machineInputs, memoised per content: the strippers'
+ * and the bench's inputs depend on the content only; a yard hand's departure asks this per piece).
+ */
+const INPUTS = new WeakMap<object, Map<MachineId, Set<string>>>();
+export function inputSet(x: Ctx, id: Exclude<MachineId, 'crucible'>): Set<string> {
+  let byId = INPUTS.get(x.c);
+  if (!byId) INPUTS.set(x.c, (byId = new Map()));
+  let set = byId.get(id);
+  if (!set) byId.set(id, (set = new Set(machineInputs(x.c, x.s, id))));
+  return set;
+}
+
 /** May this piece go into the machine's hopper now (its input, owned, room for it whole)? */
 export function accepts(x: Ctx, id: MachineId, p: Piece): boolean {
   if (id === 'crucible') return false;
   const m = x.s.machines[id];
   if (!m.owned) return false;
-  return machineInputs(x.c, x.s, id).includes(p.grade) && hopperRoom(x, id) >= p.g;
+  return inputSet(x, id).has(p.grade) && hopperRoom(x, id) >= p.g;
 }
 
 /** Which rate machine a piece goes to (the powered stripper fed first, 2.5), or null. */
 export function machineFor(x: Ctx, p: Piece): MachineId | null {
   for (const id of ['stripper', 'hand_stripper', 'bench'] as MachineId[]) if (accepts(x, id, p)) return id;
   return null;
+}
+
+/** content.ts machineShares, memoised per content, machine and input grade (a pure function of the content; read only). */
+const SHARES = new WeakMap<object, Map<string, [string, number][]>>();
+function sharesOf(x: Ctx, id: MachineId, input: string): [string, number][] {
+  let m = SHARES.get(x.c);
+  if (!m) SHARES.set(x.c, (m = new Map()));
+  const k = `${id}|${input}`;
+  let v = m.get(k);
+  if (!v) m.set(k, (v = machineShares(x.c, id, input)));
+  return v;
 }
 
 /** Processed grams of the piece in work at yard second t. */
@@ -101,7 +125,7 @@ export function credit(x: Ctx, id: MachineId, t: number): void {
   const w = m.work;
   if (!w) return;
   const done = processed(m, t);
-  for (const [g, share] of machineShares(x.c, id, w.piece.grade)) {
+  for (const [g, share] of sharesOf(x, id, w.piece.grade)) {
     const target = Math.floor(share * done + 1e-6);
     const add = target - (w.credited[g] ?? 0);
     if (add > 0) {
@@ -151,6 +175,9 @@ export function start(x: Ctx, id: MachineId, t: number): void {
     else {
       const piece = m.hopper.shift()!;
       const r = rateOf(x, id, t);
+      // engine2-fixA (RULING2.md 14.1): a machine takes one hopper piece at a time in every presence state
+      // (the engine step's grouped segment, by sight, is gone: it saved nothing on the bench and made the
+      // hopper's room differ with the boss's sight). A saved segment (`work.n`) still finishes as it was.
       m.work = { piece, startAt: t, rate_kg_s: r, credited: {}, base_g: 0 };
       status = r > 0 ? 'working' : 'waiting';
     }
@@ -168,19 +195,19 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
   const w = m.work;
   if (!w) return;
   let outSum = 0;
-  for (const [g, share] of machineShares(x.c, id, w.piece.grade)) {
+  for (const [g, share] of sharesOf(x, id, w.piece.grade)) {
     const total = Math.floor(share * w.piece.g + 1e-6);
     const add = total - (w.credited[g] ?? 0);
     if (add > 0) m.tray_g[g] = (m.tray_g[g] ?? 0) + add;
     outSum += total;
     if (total > 0) {
-      x.ev.push({ type: 'machineOut', machine: id, grade: g, g: total });
+      if (heard(x)) x.ev.push({ type: 'machineOut', machine: id, grade: g, g: total });
       count(x, `made:${g}`);
     }
   }
   x.s.waste_g += w.piece.g - outSum;
   m.work = null;
-  count(x, `worked:${id}`);
+  count(x, `worked:${id}`, w.n ?? 1);
   start(x, id, t);
 }
 
@@ -188,7 +215,7 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
 export function feedPiece(x: Ctx, id: MachineId, p: Piece, by: string, t: number): void {
   const m = x.s.machines[id];
   m.hopper.push(p);
-  x.ev.push({ type: 'feed', machine: id, piece: p.uid, grade: p.grade, g: p.g, by });
+  if (heard(x)) x.ev.push({ type: 'feed', machine: id, piece: p.uid, grade: p.grade, g: p.g, by });
   if (!m.work) start(x, id, t);
 }
 
@@ -222,4 +249,17 @@ export function trayFree(x: Ctx, id: MachineId): number {
 /** Machine positions for legs. */
 export function machinePoint(x: Ctx, id: MachineId): { x: number; y: number } {
   return pointOf(x.c, machinePlace(id));
+}
+
+// ============================================================================================ stage 2: stations (B7; rules-works)
+
+/**
+ * B7 (yard-stage2.md 2.5.3): ONE accessor for crew and machine code over the first yard's machines and the
+ * works plates: a first-yard machine id reads `machines`, any other id `works` (undefined when no such plate
+ * has been ordered). The first yard's machines keep their own code paths (this file's functions above, the
+ * crucible's file); the plates' rules are works.ts's and read their state through this accessor too.
+ */
+export function station(s: Pick<import('./types').SalvageState, 'machines' | 'works'>, id: string): MachineState | undefined {
+  if (id in s.machines) return s.machines[id as MachineId];
+  return s.works[id];
 }

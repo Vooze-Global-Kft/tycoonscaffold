@@ -45,15 +45,25 @@
  *
  * CHANGING THIS FILE: one line in the shared requests.md to `contract` (the rules lead); every package
  * that reads the changed part is told there.
+ *
+ * VERSION 3 (stage 2, docs/design/yard-stage2.md 2.18, 2.19, 4.2 to 4.11; RULING2.md sections 14 and 15;
+ * label contract2, 26 November; FROZEN: changed only on a request in requests.md to `contract2`). ADDITIVE:
+ * nothing of version 2 is removed or renamed; what Phase B removes is listed in notes/s2a-contract2.md and
+ * marked "Phase B" here. The new parts are the section "STAGE 2" at the end of this file, plus additions
+ * in place, each marked "v3". The empty stage-2 part of a state is ./state2.ts (`freshStage2`, used by
+ * create and by the migration); hand-written sample cards for the screens are ./samples2.ts (SAMPLES).
+ * E11 AS AMENDED BY E37 AND E41 (B17): the ONLY debt is `bank.agreement`, repaid out of lot payments
+ * (`bank.ts payLot`), never out of cash; nothing else holds a debt and cash never goes below zero.
  */
 import type { GameConfig } from '../../config/schema';
-import type { CardKind, CrewRole, MachineId, SalvageContent } from '../../config/schema.salvage';
+import type { BAY_KINDS, BOARD_TABS, CardKind as SchemaCardKind, CrewRole, LOOK_SLOTS, MachineId, SalvageContent } from '../../config/schema.salvage';
+import type { ProductArrival as SharedProductArrival, ProductListing as SharedProductListing } from '../mode';
 import type { GameState } from '../types';
 import type { RefusalKey } from './refusals';
 import type { TextKey } from './textKeys';
 
 export type * from '../../config/schema.salvage';
-export { REFUSAL_KEYS } from './refusals';
+export { REFUSAL_KEYS, REFUSAL_KEYS_V3 } from './refusals';
 export type { RefusalKey } from './refusals';
 export { TEXT_KEYS } from './textKeys';
 export type { TextKey } from './textKeys';
@@ -100,7 +110,15 @@ export type Stock = Record<GradeId, number>;
 /** The heading index of the art (on foot 0 s, 1 e, 2 n, 3 w; driving 0 s, 1 se, 2 e, 3 ne, 4 n, 5 nw, 6 w, 7 sw). */
 export type Heading = number;
 
-export type { CardKind, CrewRole, MachineId };
+export type { CrewRole, MachineId };
+/**
+ * v3: the card kinds of stage 2 (yard-stage2.md 4.2). Content's `CARD_KINDS` (schema.salvage.ts, content2's)
+ * takes them too (requests.md), so that `map.places.<id>.card` can name `works`, `yardSale`, `lot`, `crate`;
+ * until then this union holds them. Phase B: once CARD_KINDS has them, `CardKind` is the schema's again.
+ */
+// `agreements` is the office's fourth tab (4.5), whose CardData needs a kind as rota, partners and processBoard have (4.2 forgot it).
+export const CARD_KINDS_V3 = ['works', 'finance', 'letter', 'yardSale', 'lot', 'crate', 'shop', 'packSheet', 'ageQuestion', 'packCode', 'awayBonus', 'agreements'] as const;
+export type CardKind = SchemaCardKind | (typeof CARD_KINDS_V3)[number];
 
 // ================================================================================================ presence
 
@@ -126,12 +144,38 @@ export interface Presence {
   standingFor: number;
   /** The art's heading index (see `Heading`); the truck's while driving. Optional only until the shell sends it. */
   heading?: Heading;
+  /**
+   * v3 (2.18 `presence.vehicle`, 2.9): what the boss is in, as the world drives it: the truck, the
+   * forklift, or neither. As with `driving`, the RULES decide who is in what (`truck.by`, `forklift.by`:
+   * walking into the forklift enters it); the world sets this from the frame (`frame.forklift.by ===
+   * 'boss'`). Absent = `driving ? 'truck' : null` (a stage-1 shell).
+   */
+  vehicle?: 'truck' | 'forklift' | null;
 }
 
 // ================================================================================================ the state
 
 /** Where a whole thing stands. `k` is its index at that place (thingPos is a pure function of it). */
-export type ThingAt = { at: 'zone'; zone: ZoneId; k: number } | { at: 'dropoff'; slot: number } | { at: 'floor'; slot: number };
+export type ThingAt =
+  | { at: 'zone'; zone: ZoneId; k: number }
+  | { at: 'dropoff'; slot: number }
+  | { at: 'floor'; slot: number }
+  // v3 (2.18; s2a-fix: one union, the parallel ThingAtV3 merged): where a stage-2 thing stands.
+  // v3 (2.18): `since` (yard second it was set there) orders "the oldest thing" (a visitor takes, the boss sorts); ties by uid.
+  /** On the Yard sale, at a place of the rack (`positions.ts rackSlot(slot)`), racked at `since`. */
+  | { at: 'rack'; slot: number; since: number }
+  /** A reusable batch on the Yard sale's trade corner (k its pallet), set down at `since`. */
+  | { at: 'corner'; k: number; since: number }
+  /** On the picking table (id `crate`) at its place k, tipped there at `since`. Nothing on it expires (P2). */
+  | { at: 'crate'; k: number; since: number }
+  /** A delivered lot ("oversize piece") on the oversize pad's square k (0 to 3). Never expires (ruling 13.3). */
+  | { at: 'lot'; k: number }
+  /** An end-of-life car on the car pad (k 0: one car at a time), set down from the hook-lift's flatrack. */
+  | { at: 'elvPad'; k: number }
+  /** An end-of-life car on a station's apron (the depollution bay's), set there by the forklift only. */
+  | { at: 'apron'; plate: PlateId }
+  /** rules-works wave 2 (ADD, requests.md): `reuse.firstThing` (the first bath) beside the Yard sale's canopy, not on the floor (2.12, 3.3); it waits for the boss. */
+  | { at: 'canopy'; k: number };
 
 /** One whole thing in the yard (old stock, a drop-off arrival, a tipped skip's thing). */
 export interface ThingState {
@@ -151,6 +195,10 @@ export interface ThingState {
    * works or carries it. Absent: an ordinary thing.
    */
   shell?: true;
+  /** v3 (2.10.1, B10): a delivered lot's mass, grams, fixed on arrival (its value once cut is μ × I then). Absent: the object's content mass. */
+  g?: number;
+  /** v3 (2.10.1): the partner (a register id) whose lorry delivered this lot; printed on its plate. Absent: not a lot. */
+  sender?: PartnerId;
 }
 
 /**
@@ -207,6 +255,13 @@ export interface BayState {
   /** Grams reserved for the crucible's next charge ("Take from bays") and for the supply deal. The round never takes them. */
   forCrucible_g: number;
   forDeal_g: number;
+  /**
+   * v3 (2.8.1, B8): grams reserved for each station that draws from this bay (up to the station's
+   * `inbuf`): the round collects only the stock above the reserves and Sell on them is refused (`routed`).
+   * It REPLACES `forCrucible_g` in Phase B (the migration maps that to `reserved.crucible`); optional
+   * until then, because bays are made in files Phase B owns. Absent = {}.
+   */
+  reserved?: Record<StationId, number>;
 }
 
 export type MachineStatus = 'notOwned' | 'arriving' | 'idle' | 'working' | 'trayFull' | 'waiting';
@@ -225,6 +280,11 @@ export interface MachineWork {
   credited: Stock;
   /** Grams of the piece worked before `startAt` (a rate change credits to that instant and restarts the segment from it). Absent = 0. */
   base_g?: number;
+  /**
+   * 2.1 (engine2-group): a GROUPED segment, started with no boss within sight, took every hopper piece of
+   * its grade with it: `piece` is their sum (the first one's uid) and `n` how many pieces it holds. Absent = 1.
+   */
+  n?: number;
 }
 
 export interface MachineState {
@@ -270,7 +330,8 @@ export interface CrucibleState extends MachineState {
   cooling: { grade: GradeId; n: number; short_g: number; since?: number; until?: number; by?: string } | null;
 }
 
-export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour';
+/** v3 'rack' (2.12): a yard hand racking a tagged thing on the Yard sale (within `crew.hand.load`, while a place is free). */
+export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour' | 'rack';
 export type CrewPhase = 'wait' | 'walkTo' | 'pick' | 'work' | 'walkBack' | 'drop';
 
 /**
@@ -306,6 +367,79 @@ export interface CrewMember {
   cut: { thing: string; whole: boolean } | null;
   /** A yard hand's destination for this trip's load: 'scale' or a machine id (feed); absent when idle. */
   dest?: string;
+  /**
+   * Stage 2, 2.1 (engine2-group): a GROUPED RUN, planned at a departure with no boss within sight, with
+   * one dated end (`end`, the queue's date for this member). While it runs, `from`/`to`/`t0`/`t1`/`phase`
+   * show the planned leg under way (set at the end of every advance; nothing decides from them) and
+   * `claims` is empty (each load holds its own). Absent on a leg-by-leg member and in a stage-1 save.
+   */
+  run?: CrewRun;
+  /**
+   * Stage 2, 2.1 (RULING2.md 14.1): the RUN he is on, from rung `group.fromRung`, whoever is looking: the
+   * kind of trip (with its place and destination) and the run's start t0. At every later departure he takes
+   * the next trip of this kind if it ends by t0 + the limit; else the first yard's order chooses again and
+   * a new run starts. Kept through a planned run (`run`), its opening and a save; absent below fromRung and
+   * in a stage-1 save (he chooses by the first yard's order).
+   */
+  course?: RunCourse;
+}
+
+/** The kind of a run's trips (2.1, 14.1): what is carried, from where, to where. */
+export type RunKind =
+  | { k: 'feed'; pile: string; dest: MachineId }
+  | { k: 'pile'; pile: string }
+  | { k: 'tray'; id: MachineId }
+  | { k: 'loose'; where: 'dropoff' | 'floor' }
+  | { k: 'floorWhole'; dest: MachineId | 'scale' }
+  | { k: 'whole'; where: 'dropoff' | 'floor' }
+  /** A cutter's run: things at one place, in his score order. */
+  | { k: 'cut'; where: 'dropoff' | 'floor' };
+
+/** A crew member's run (14.1 d): its kind, the job his legs show, and its start. */
+export interface RunCourse {
+  t0: number;
+  job: CrewJob;
+  kind: RunKind;
+}
+
+/** One trip of a yard hand's run: what it claimed at departure, where it picks, and its own two leg ends. */
+export interface RunLoad {
+  claims: string[];
+  spot: Spot;
+  /** The grade shown on the carrier while it walks back (display only). */
+  grade: GradeId | null;
+  pickAt: number;
+  dropAt: number;
+}
+
+/** One thing of a cutter's run: its walk's end and its whole cut's end. */
+export interface RunCut {
+  thing: string;
+  walkEnd: number;
+  cutEnd: number;
+}
+
+/** A grouped run (2.1): planned at `t0` from `start`; lands at `end`; `k` trips of about `legS` seconds (the frame's loops). */
+export interface CrewRun {
+  t0: number;
+  end: number;
+  start: [number, number];
+  k: number;
+  legS: number;
+  /** A yard hand's destination ('scale' or a machine id) and his loads, in order. */
+  dest?: string;
+  loads?: RunLoad[];
+  /** A cutter's things, in order. */
+  cuts?: RunCut[];
+}
+
+/** 2.1: a driver's trip planned at departure: each phase's end (walk .. park) and the truck's place then. */
+export interface TripPlan {
+  /** Yard second the trip left (its walk began). */
+  t0: number;
+  ends: number[];
+  x: number;
+  y: number;
 }
 
 /** A partner's skip (2.7, E13b): contents fixed when it fills, printed on its label, equal to the weigh-in. */
@@ -363,7 +497,16 @@ export interface TruckState {
   /** Who is in it. */
   by: 'boss' | 'driver' | null;
   /** The driver's run: its partner, phase, the yard second the phase began and the one it ends. */
-  trip: { partner: PartnerId; slot: number; phase: TripPhase; t0: number; endsAt: number } | null;
+  trip: {
+    partner: PartnerId;
+    slot: number;
+    phase: TripPhase;
+    t0: number;
+    endsAt: number;
+    plan?: TripPlan;
+    /** owner1 V3: the trip's speeds fixed at its departure, m/s: `vy` inside the fence (at most truck.yardV), `vl` on the lane (raised so the trip's total is what it was). Absent: the first yard's one speed. */
+    speeds?: { vy: number; vl: number };
+  } | null;
   /** Yard second the boss began standing still in a skip zone (the hook ring; moving clears it), or null. */
   hookSince: number | null;
   /** § and tipping-floor grams held at the driver's departure (no purchase takes cash below it; the hook always pays), or null. */
@@ -420,7 +563,16 @@ export type QueuedKind =
   | 'skipFull' // a partner's skip is full (ref: `${partner}.${slot}`)
   | 'arrival' // a purchase arrives (ref: shop key)
   | 'boostEnd' // the foreman's boost ends (ref: '')
-  | 'day'; // 00:00 UTC: the board's step, the deal's delivery, the rivals' day (ref: '')
+  | 'day' // 00:00 UTC: the board's step, the deal's delivery, the rivals' day (ref: '')
+  // v3 (2.18, B9; s2a-fix: one union): stage 2's kinds. Within ONE instant they come after 'machine' and before
+  // 'round', in this order (STAGE2_QUEUE_ORDER, tick.ts QUEUE_ORDER): it decides tick = jump.
+  | 'plate' // a works plate's piece, segment, car or tray event (ref: plate id)
+  | 'hall' // a hall's heat, pour or cooling ends; its idle start; its self-pour (ref: plate id)
+  | 'commission' // a plate arrives or commissions by itself (ref: plate id)
+  | 'crane' // the magnet crane's move (or its planned run) ends (ref: plate id)
+  | 'lot' // a delivered lot arrives (`lots.nextAt`; ref: '')
+  | 'visitor' // a member of the public buys at the Yard sale (`reuse.nextAt`, only while the rack holds a thing; ref: '')
+  | 'van'; // the reclamation dealer's van collects (`reuse.vanAt`; ref: '')
 
 export interface QueuedEvent {
   /** Yard second it happens. */
@@ -491,8 +643,8 @@ export interface Arriving {
 }
 
 export interface SalvageState {
-  /** Layout version 2 (the fix pass); a save of another layout starts afresh. */
-  v: 2;
+  /** Layout version 3 (stage 2, 2.20): save.ts loads layouts 2 and 3 (a layout-2 save gets the stage-2 fields fresh, ./state2.ts); any other layout starts afresh. */
+  v: 3;
   /** YARD SECONDS: live ticks plus away passes. Every dated field below counts it. */
   t: number;
   /** Bumped by every away pass, reconcile and preset: the world snaps (never tweens or arcs) across a change of epoch. */
@@ -512,7 +664,7 @@ export interface SalvageState {
   presence: Presence;
   presenceAt: number;
   /** The boss's current act: what, on what (thing uid, place id or pile key), since when, and its one dated end (null for acts without one: drive, strip, circle). */
-  act: { kind: 'none' | 'work' | 'pickup' | 'weigh' | 'feed' | 'strip' | 'circle' | 'hook' | 'tip' | 'drive'; target: string | null; since: number; endsAt: number | null };
+  act: { kind: ActKind; target: string | null; since: number; endsAt: number | null };
   /** Every whole thing in the yard. */
   things: ThingState[];
   /** Every whole piece on the ground. */
@@ -553,8 +705,37 @@ export interface SalvageState {
    * `worked:<machine>`, `hired:<role>`, `crewWeighIns:<role>`, `fetched:<partner>` (skips tipped),
    * `poured`, `visited:<point>`, `away` (away cards acked), `collected` (collection tickets),
    * `dealDone` (series steps finished). Optional only for states written before it (read as {}).
+   * v3 keys (2.18; whole numbers, as every count, since save.ts floors them): `bathSet` (1 once the first
+   * bath stands at rung 3, 2.20: the works layer and the bath are derived from rung ≥ 3 with it absent),
+   * `goalsAt` (2.1.10), `holdSold:<grade>` (2.2), `racked`, `rackSold`, `lotOpened`, `crateSorted`,
+   * `commissioned:<plate>`, `poured:<plate>` (the done grammar's `poured:rotary`), `analysed:<grade>`,
+   * `quote#` (the last pending quote's number, ./state2.ts `quoteId`).
    */
   counts?: Record<string, number>;
+  /**
+   * s2a-fix (the lead's ruling 4 of 26 Nov 09:50): a save of a NEWER layout (an over-the-air rollback of the
+   * app) is loaded as layout 3, and the raw save it came from is kept here untouched (one copy: a nested one
+   * is not kept), so that the newer build can take it back. Absent on every other save; no rule reads it.
+   */
+  newerSave?: { v: number; raw: unknown };
+
+  // ---------------------------------------------------------------- v3: stage 2 (2.18). Made fresh by ./state2.ts.
+  /** Every works plate bought (absent until bought), by plate id. The first yard's `machines` stay as they are; both are read through `station(s, id)` (2.5.3). */
+  works: Record<PlateId, WorksState>;
+  /** Where a shared input goes (2.7.1): a station id or 'bay'. A grade absent here follows I's own allocation (the owned plate with the best margin a kilogram that has capacity, else 'bay'). */
+  routes: Record<GradeId, StationId | 'bay'>;
+  /** Delivered lots (2.10.1): the next arrival (null until `backFieldOpen`, and while four wait) and how many have come. */
+  lots: LotsState;
+  /** The Yard sale and the van (2.12). */
+  reuse: ReuseState;
+  /** Plant finance (2.14.1): the one agreement, the letter, the history. */
+  bank: BankState;
+  /** The mode's part of real money (2.15; RULING2 section 15): looks chosen, the ledger, the pending quotes, the code, the age band, the second session. Owned products are the SHARED entitlements, never here (B5). */
+  iap: IapState;
+  /** Rewarded ads (2.16): the day's counts and the deferred away bonus. */
+  ads: AdsState;
+  /** The forklift (2.9) once it is here: its parked place, heading, who is in it, its load. Null while not owned or on its way. */
+  forklift: ForkliftState | null;
 }
 
 // ================================================================================================ events
@@ -588,9 +769,10 @@ export type SalvageEvent =
   // machines (2.5)
   | { type: 'machineState'; machine: MachineId; status: MachineStatus }
   | { type: 'machineOut'; machine: MachineId; grade: GradeId; g: number }
-  | { type: 'heatStart'; recipe: RecipeId; g: number }
-  | { type: 'readyToPour' }
-  | { type: 'pour'; ingots: number; grade: GradeId; short_g: number; dross_g: number; first: boolean; by: 'boss' | string }
+  // v3: `plate` names a hall's heat (2.19); absent = the first yard's crucible.
+  | { type: 'heatStart'; recipe: RecipeId; g: number; plate?: PlateId }
+  | { type: 'readyToPour'; plate?: PlateId }
+  | { type: 'pour'; ingots: number; grade: GradeId; short_g: number; dross_g: number; first: boolean; by: 'boss' | string; plate?: PlateId }
   | { type: 'cooled' }
   // partners, skips, the truck (2.7)
   | { type: 'skipFull'; partner: PartnerId; slot: number }
@@ -618,14 +800,59 @@ export type SalvageEvent =
   | { type: 'goal'; n: number; id: string }
   | { type: 'awayReport'; card: AwayCard }
   | { type: 'heldBay'; grade: GradeId; on: boolean }
-  | { type: 'recipe'; recipe: RecipeId; heelPoured: boolean };
+  | { type: 'recipe'; recipe: RecipeId; heelPoured: boolean; plate?: PlateId }
+  // ---- v3 (2.19; s2a-fix: one union, the parallel SalvageEventV3 merged). The away pass emits only awayReport,
+  // passed, rung and repaid (and no item events).
+  /** Rung 3's works layer opens (derived from rung ≥ 3 with `counts.bathSet` absent: also a migrated save's first tick, B14). */
+  | { type: 'backFieldOpen' }
+  | { type: 'plateArrived'; plate: PlateId }
+  /** Started up ("Commissioned · {plate}" on the chip): by the boss standing at it, or by itself at its date. */
+  | { type: 'commissioned'; plate: PlateId; by: 'boss' | 'self' }
+  | { type: 'plateState'; plate: PlateId; status: MachineStatus }
+  | { type: 'plateOut'; plate: PlateId; grade: GradeId; g: number }
+  /** A weigh-in line graded by the analyser: `from` the piece's own grade, `grade` its assay grade. */
+  | { type: 'analysed'; grade: GradeId; from: GradeId }
+  /** A car drained at the depollution bay (the chip "Certificate of destruction issued"). */
+  | { type: 'depolluted'; thing: string; plate: PlateId }
+  | { type: 'routeSet'; grade: GradeId; to: StationId | 'bay' }
+  | { type: 'lotArrived'; thing: string; k: number; sender: PartnerId | null }
+  | { type: 'lotOpened'; thing: string }
+  | { type: 'crateIn'; thing: string }
+  /** One thing sorted at the picking table, paid as a lot payment (its ticket line). */
+  | { type: 'crateSorted'; thing: string; paid: number }
+  /** The picking table is empty (section 7 plays then). */
+  | { type: 'crateCleared' }
+  | { type: 'racked'; thing: string; slot: number; by: 'boss' | string }
+  | { type: 'rackSold'; thing: string; q: number; ticket: Ticket }
+  /** A member of the public's walk (wicket, card reader, wicket; the path is the frame's). */
+  | { type: 'visitor'; t0: number; t1: number }
+  | { type: 'vanDated'; at: number }
+  | { type: 'vanCollected'; ticket: Ticket }
+  /** The lender's letter is due (once): the screen opens the `letter` card. */
+  | { type: 'letter' }
+  | { type: 'financed'; plate: PlateId; F: number; T: number }
+  | { type: 'bankTaken'; y: number; taken: number; T: number }
+  | { type: 'repaid'; plate: PlateId }
+  /** A pack granted (RULING2 15.5): S credited through `credit(…, 'grant')`. */
+  | { type: 'granted'; product: string; S: number; txId: string }
+  /** The pack's S moved between read and press (a purchase landed): the row says "Updated: §a → §b". */
+  | { type: 'quoteUpdated'; product: string; a: number; b: number }
+  /** A quote withdrawn by its own outcome or by the 72 h rule (RULING2 15.4, 15.11 f, 15.12): `why` 'expired' puts one line on the shop card until it is closed. */
+  | { type: 'quoteWithdrawn'; product: string; atMs: number; why: 'cancelled' | 'refused' | 'expired' }
+  /** The age question is due (the first time a pack row would show). */
+  | { type: 'ageAsked' }
+  | { type: 'adOffered'; kind: AdKind; amount: number }
+  | { type: 'adPaid'; kind: AdKind; amount: number }
+  /** The boss entered (on) or stepped out of (off) the forklift. */
+  | { type: 'forklift'; on: boolean };
 
 export type SalvageEventType = SalvageEvent['type'];
 
 // ================================================================================================ actions
 
 /** What a level is bought for: a crew member (by id), a machine, or a partner's supply (another skip in rotation, E13b). */
-export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId } | { kind: 'partner'; partner: PartnerId };
+/** v3 (s2a-fix: one union): also a works plate (2.6.4) and the Yard sale's room (2.12). */
+export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId } | { kind: 'partner'; partner: PartnerId } | { kind: 'plate'; plate: PlateId } | { kind: 'reuse' };
 
 /** What Sell showed (2.8 "shown equals applied"): the market day, the price per kg, the grams. */
 export interface SellShown {
@@ -672,7 +899,8 @@ export interface SalvageActions {
   declineDeal(cfg: SalvageConfig, g: SalvageGame, clock: number, events?: SalvageEvent[]): SalvageGame;
   stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: number; heading: Heading } | null, clock: number, events?: SalvageEvent[]): SalvageGame;
   skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: number, events?: SalvageEvent[]): SalvageGame;
-  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind }, clock: number): SalvageGame;
+  /** v3: `plate` with card 'works' (2.14.5, B11): reading a financeable works card under the letter's condition sets `bank.letterSeen` and emits `letter`. */
+  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: PlateId }, clock: number, events?: SalvageEvent[]): SalvageGame;
   ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame;
 }
 
@@ -697,7 +925,7 @@ export type TxtArg =
   | { grade: GradeId } // a grade's name from content.grades
   | { thing: ObjectId } // a thing's name from content.objects
   | { ref: string } // a record reference printed as it is: the car's treatment record "0012"
-  | { text: TextKey }; // another line (a tool's name in a refusal, an item in a goal)
+  | { text: TextKey }; // another line (a tool's name in a refusal, an item in a goal); v3: a plate's name is { text: 'title.works.<id>' }
 export type TxtArgs = Record<string, TxtArg>;
 /** A line as data: a key of strings.ts and its arguments (holes `{arg}` in the text). */
 export interface Txt {
@@ -720,7 +948,13 @@ export interface TicketLine {
   /** roundMoney(resolved kg × price); a total is the sum of its lines. */
   amount: number;
   /** "from car ref. {ref}" on a converter's line; "certified empty" on a closed vessel's. */
-  note?: { kind: 'fromCar'; ref: string } | { kind: 'certifiedEmpty' };
+  note?: { kind: 'fromCar'; ref: string } | { kind: 'certifiedEmpty' } | { kind: 'analysed' } | { kind: 'drained' };
+}
+// v3 notes (2.19): `analysed` "Analysed" (a grade from the analyser's assay, 2.5.2); `drained` "Depolluted" (a car's shell, T13).
+
+/** v3 (2.14.4): the bank's line of a lot ticket, set by `bank.ts payLot` BEFORE it prints: y to the bank; to you = paid − y. */
+export interface TicketBank {
+  y: number;
 }
 
 interface TicketBase {
@@ -753,15 +987,22 @@ export type Ticket =
   /** A household drop-off signed in at the gate: "{thing} · signed in · gate drop-off". */
   | (TicketBase & { kind: 'dropOffSlip'; thing: ObjectId })
   /** A partner's skip over the weighbridge: gross, tare (the truck's stored tare plus the empty skip), net, the price paid. */
-  | (TicketBase & { kind: 'skipWeighIn'; partner: PartnerId; trial: boolean; gross_g: number; tare_g: number; net_g: number; paid: number; things: { obj: ObjectId; n: number }[] })
+  | (TicketBase & { kind: 'skipWeighIn'; partner: PartnerId; trial: boolean; /** owner1-fix (finding 10): a trial load that cost nothing; the ticket prints ticket.freeTrial instead of ticket.boughtFor. Absent = false. */ free?: boolean; gross_g: number; tare_g: number; net_g: number; paid: number; things: { obj: ObjectId; n: number }[] })
   /**
    * The merchant's collection: lines with amounts, "Paid §x", the buyer named. `withBoss` false: none of
    * the lot was weighed in by the boss, and the screen shows the one-line chip at the cab ("Lot sold ·
    * §x", 4.4 item 4) instead of the ticket. `firstGrades`: grades sold for the first time on it.
    */
-  | (TicketBase & { kind: 'collection'; buyer: NameId; lines: TicketLine[]; paid: number; withBoss: boolean; firstGrades: GradeId[] })
+  | (TicketBase & { kind: 'collection'; buyer: NameId; lines: TicketLine[]; paid: number; withBoss: boolean; firstGrades: GradeId[]; bank?: TicketBank })
   /** A supply-deal delivery: "{foundry} · {kg} cast iron · §{x}". */
-  | (TicketBase & { kind: 'dealDelivery'; buyer: NameId; grade: GradeId; g: number; paid: number });
+  | (TicketBase & { kind: 'dealDelivery'; buyer: NameId; grade: GradeId; g: number; paid: number; bank?: TicketBank })
+  // ---- v3 (2.19; s2a-fix: one union): the stage's new lot tickets. `paid` is GROSS; `bank` is present while an agreement took its share.
+  /** A sale at the gate: "Sold at the gate · {thing} · §q" (q = roundMoney(reuse.factor × v), v its prepared scrap value at that step). */
+  | (TicketBase & { kind: 'rackSale'; thing: ObjectId; uid: string; v: number; paid: number; lines: TicketLine[]; bank?: TicketBank })
+  /** The reclamation dealer's collection: by thing and kilogram; paid = Σ batchFactor × each batch's prepared value. */
+  | (TicketBase & { kind: 'vanCollection'; buyer: NameId; things: { obj: ObjectId; n: number; g: number }[]; lines: TicketLine[]; paid: number; bank?: TicketBank })
+  /** One sorting at the picking table ("Sorted by hand · {n} things"): a line a thing; `open` while the boss still sorts (it closes when he walks off or the table is empty). */
+  | (TicketBase & { kind: 'crateLot'; n: number; lines: TicketLine[]; paid: number; open: boolean; bank?: TicketBank });
 
 export type TicketKind = Ticket['kind'];
 
@@ -774,13 +1015,29 @@ export type CardAction =
   | { act: 'level'; target: LevelTarget; price: number }
   | { act: 'setHold'; grade: GradeId; on: boolean }
   | { act: 'sell'; grade: GradeId; shown: SellShown }
-  | { act: 'setRecipe'; recipe: RecipeId; confirmHeel: boolean }
-  | { act: 'setFromBays'; on: boolean }
+  /** v3: `plate` names a hall (setPlateRecipe); absent = the first yard's crucible. */
+  | { act: 'setRecipe'; recipe: RecipeId; confirmHeel: boolean; plate?: PlateId }
+  /** v3: `plate` names a hall; absent = the crucible. */
+  | { act: 'setFromBays'; on: boolean; plate?: PlateId }
   | { act: 'signDeal'; terms: DealTerms }
   | { act: 'declineDeal' }
   | { act: 'skipGoal'; id: string }
   | { act: 'ackAway' }
-  | { act: 'open'; card: CardRef };
+  | { act: 'open'; card: CardRef }
+  // ---- v3 (2.19, 4.3 to 4.9; s2a-fix: one union, the parallel CardActionV3 merged; a plate's or the Yard sale's level is `level`)
+  /** Sign the finance card: the terms AS SHOWN (refused with bankTerms when they differ now). */
+  | { act: 'signFinance'; plate: PlateId; shown: FinanceShown }
+  | { act: 'setRoute'; grade: GradeId; to: StationId | 'bay' }
+  /** A scrip pack's Buy: the screen hands it to the shared store's `buyQuoted` with the mode's quotePack/settleQuote (RULING2 15). */
+  | { act: 'buyPack'; product: string; S: number }
+  /** A look or No ad videos: the shared store's plain `purchase(product)`. */
+  | { act: 'buyProduct'; product: string }
+  | { act: 'restorePurchases' }
+  | { act: 'chooseLook'; slot: LookSlot; id: string | null }
+  /** A rewarded ad's button (or, with No ad videos owned, "Take +§x"): `amount` as shown; `grade` the held bay of a spot buyer. */
+  | { act: 'watchAd'; kind: AdKind; amount: number; grade?: GradeId; /** rules-money wave 2: the spot buyer's Sell as shown (adPaid makes that Sell and pays the bonus apart, one action). */ sell?: SellShown }
+  /** The Settings switch "Scrip packs: shown / hidden": opens the code pad (`packCode`). */
+  | { act: 'setPacksHidden'; on: boolean };
 
 export interface CardButton {
   label: Txt;
@@ -810,6 +1067,8 @@ export interface CardRow {
   extra?: Txt | null;
   /** How the row is drawn (always set by cardOf; optional only for the screens' own stand-in rows). */
   state?: RowState;
+  /** owner1 H6: a crew member's row while he waits with nothing to do: why (card.crewWhy.*, the bubble's words). */
+  why?: Txt;
 }
 
 /**
@@ -820,9 +1079,11 @@ export interface CardRow {
 export type CardRef =
   | { kind: 'place'; place: PlaceId }
   | { kind: 'machine'; machine: MachineId }
-  | { kind: 'office'; tab: 'rota' | 'partners' | 'processBoard' }
+  /** v3: the Agreements tab; the process board's page (4.4: the page of the newest purchase when absent). */
+  | { kind: 'office'; tab: 'rota' | 'partners' | 'processBoard' | 'agreements'; page?: ProcessPage }
   | { kind: 'bay'; grade: GradeId }
-  | { kind: 'board'; focus?: GradeId }
+  /** v3: the price board's family tab (4.11; absent: the bay's tab, else the tab last used). */
+  | { kind: 'board'; focus?: GradeId; tab?: BoardTab }
   | { kind: 'skip'; partner: PartnerId; slot?: number }
   | { kind: 'deal' }
   | { kind: 'table' }
@@ -831,7 +1092,20 @@ export type CardRef =
   | { kind: 'rung'; n: number }
   | { kind: 'clipboard' }
   | { kind: 'settings' }
-  | { kind: 'help' };
+  | { kind: 'help' }
+  // ---- v3 (4.2; s2a-fix: one union, the parallel CardRefV3 merged)
+  | { kind: 'works'; plate: PlateId }
+  | { kind: 'finance'; plate: PlateId }
+  | { kind: 'letter' }
+  | { kind: 'yardSale' }
+  /** An oversize piece on the pad's square k. */
+  | { kind: 'lot'; k: number }
+  | { kind: 'crate' }
+  | { kind: 'shop' }
+  | { kind: 'packSheet'; product: string }
+  | { kind: 'ageQuestion' }
+  | { kind: 'packCode'; mode: 'set' | 'confirm' | 'enter' }
+  | { kind: 'awayBonus' };
 
 export type CardShape = 'panel' | 'wide' | 'centred';
 
@@ -853,7 +1127,9 @@ export interface CardData {
   title: Txt;
   /** Lines under the title (the rota's "Site licence · metal dealer", a machine's status, the deal's terms). */
   lead: Txt[];
-  /** Tabs of the office panel (Rota, Partners, Process board), with the open one (refs are `{kind:'office', tab}`). */
+  /** Help (kind 'help'; s2a-fix, the lead's ruling 7): the glossary's terms the yard's rung shows (content text.glossary, `fromRung` at most the rung), in order. */
+  glossary?: { term: string; line: string }[];
+  /** Tabs of the office panel (Rota, Partners, Process board, v3 Agreements), with the open one (refs are `{kind:'office', tab}`; v3 the process board's pages). */
   tabs?: { ref: CardRef; title: Txt; open: boolean }[];
   rows: CardRow[];
   /** Buttons at the foot (Sign / Not now, OK). */
@@ -876,6 +1152,27 @@ export interface CardData {
   places?: PlaceId[];
   /** The legal line where the card has one (the board's and the table's fictional line). */
   legal?: Txt | null;
+  // ---- v3 (4.2 to 4.11). Each card kind's own data; the screen draws from it and formats numbers only.
+  works?: WorksCard;
+  finance?: FinanceTerms;
+  /** The office's Agreements tab: open rows first, then the history. */
+  agreements?: AgreementRow[];
+  yardSale?: YardSaleCard;
+  lot?: LotCard;
+  crate?: CrateCard;
+  shop?: ShopCard;
+  packSheet?: PackSheetCard;
+  ageQuestion?: AgeQuestionCard;
+  packCode?: PackCodeCard;
+  bonus?: BonusCard;
+  /**
+   * 4.1.3 (D77, L4): this card SHOWS A DEBT (the finance card, a works card's bankLeft row, the Agreements
+   * page, an away card with a bank line): no shop entry and no ad button on it, and the bottom bar's ad
+   * button hides while it is up. Absent = false; Phase B (cards.ts) sets it on every card and makes it required.
+   */
+  showsDebt?: boolean;
+  /** Set ONLY by ./samples2.ts: hand-written sample data for drawing a screen before its rules exist. Never set by cardOf. */
+  sample?: true;
 }
 
 export interface MachineCard {
@@ -897,6 +1194,8 @@ export interface MachineCard {
   trayCap_g: number;
   /** Crucible only. */
   crucible?: { recipe: RecipeId; fromBays: boolean; charge_g: number; pot_g: number; poursInS: number | null; ready: boolean; heel_g: number };
+  /** RULING2.md 16.6 (engine2-dispatch): the yard hands are clearing the tipping floor before this machine's feed and tray (crew.ts waitsForFloor). Absent = false. */
+  floorFirst?: boolean;
 }
 
 /** One two-line row of the price board (4.4). */
@@ -917,6 +1216,10 @@ export interface BoardRow {
   sell: CardButton | null;
   /** On a held bay, how long Hold lasts (E32): "Held until a high day, two days at most"; null when not held. */
   heldLine?: Txt | null;
+  /** v3 (2.16, 4.9): the spot buyer beside Sell on a held bay ("Video · +§x", or "Bonus · +§x" with No ad videos); null when not offered (before the second session, the day's count used, a debt on screen). */
+  spot?: CardButton | null;
+  /** v3 (2.8.1): grams of this bay reserved for stations (Sell refuses them: `routed`). */
+  reservedFor?: { station: StationId; g: number }[];
 }
 
 export interface PriceBoard {
@@ -926,6 +1229,9 @@ export interface PriceBoard {
   rows: BoardRow[];
   /** The first opening's hint ("Cast iron: a low day. Holding is free."): set while `seen.cards` lacks 'board'. */
   hint: Txt | null;
+  /** v3 (4.11): the open family tab and every tab (a tab with no stock still shows: "Nothing in stock"). `rows` are the open tab's. */
+  tab?: BoardTab;
+  tabs?: { tab: BoardTab; open: boolean; rows: number }[];
 }
 
 /** A skip's label (2.7): a world plate and the skip card. */
@@ -941,11 +1247,16 @@ export interface SkipLabel {
   refusal: Txt | null;
   fullInS: number | null;
   fullAt: number;
+  /** owner1-fix (finding 10): a trial load that costs nothing; the label prints card.skipFree ("Free trial load") instead of its price. Absent = false. */
+  free?: boolean;
+  /** RULING2.md 16.6 (engine2-dispatch): the hired driver keeps the floor's room for a better load and leaves this ready skip standing (truck.ts keptForBetter). Absent = false. */
+  kept?: boolean;
 }
 
 // ================================================================================================ process board
 
-export type PlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed';
+/** v3 (4.2, B19; s2a-fix: one union): `arriving` (on the machine flatbed) and `installed` (here, not yet started up) for works plates. */
+export type PlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed' | 'arriving' | 'installed';
 
 export interface Plate {
   id: string;
@@ -957,13 +1268,24 @@ export interface Plate {
   /** The machine card it opens (null: greyed). */
   opens: CardRef | null;
   button: CardButton | null;
+  /** v3: a financed plate's ring, taken ÷ T (0 to 1); it prints no amount and is not a debt display (P7). */
+  ring?: number;
+  /** v3: the sub-plate riveted to a hall's plate (its filter: bought with the hall, never alone). */
+  sub?: Txt | null;
 }
+
+/** v3 (4.4): the process board's pages. */
+export type ProcessPage = 'first' | 'yard' | 'melt';
 
 /** The process board (4.5): rows of enamel plates joined by bars. */
 export interface ProcessBoardRows {
-  rows: { id: 'cable' | 'motors' | 'melt' | 'greyed'; plates: Plate[] }[];
+  /** v3: the row ids `yard`, `shredder`, `lead` (the first yard's `melt` gains the halls). */
+  rows: { id: 'cable' | 'motors' | 'melt' | 'greyed' | 'yard' | 'shredder' | 'lead'; plates: Plate[] }[];
   /** Riveted bars between plates, by plate id. */
   bars: [string, string][];
+  /** v3 (4.4): the page shown (`rows` are its rows) and the pages in tab order. Absent: the first yard's one page. */
+  page?: ProcessPage;
+  pages?: ProcessPage[];
 }
 
 // ================================================================================================ industry table
@@ -1027,6 +1349,18 @@ export interface AwayCard {
   unsold?: number;
   /** ADDED (join3): the signed change of the bays' value over the passes on this card (unsold = max(0, it)). */
   bayDelta?: number;
+  // ---- v3 (2.2, 2.14.4, 2.17). Optional: away.ts (engine2's) writes them.
+  /** The held bays a lot was set aside from to keep the yard going, in order, one line each ("Sold from hold to keep the yard going: {grade|short}"; key `away.heldSold`). It replaces away.ts's local `HeldCard`. */
+  heldSold?: GradeId[];
+  /** § the bank took while away ("To [bank]: §y"). `money` stays GROSS of it; the away bonus's base is money − bank. */
+  bank?: number;
+  /** Agreements repaid in full while away ("Repaid in full: {plate}"). */
+  repaid?: PlateId[];
+  /** Sales at the gate and by the van while away. */
+  rack?: { n: number; money: number };
+  van?: { n: number; money: number };
+  /** Oversize pieces waiting at the card's end ("{n} oversize pieces wait for you"). */
+  lotsWaiting?: number;
 }
 
 /** The goal card (2.10): its first line, what follows, and a meter where the goal counts something. */
@@ -1046,6 +1380,12 @@ export interface Goal {
   next: Txt | null;
   /** True for a goal with a Not now (skipGoal). */
   optional: boolean;
+  /**
+   * owner1 T2: the step of a load the boss fetches himself (goals.ts loadStep): "Get in the truck", "Drive out to the load",
+   * "Keep still: hooking", "Drive onto the weighbridge", "Tip it on the floor"; the chevron (frame.chevron) points at
+   * the same step. Absent: no load step (the goal's own line).
+   */
+  step?: Txt;
 }
 
 /** The advice line (2.10): the cheapest purchase that widens the bottleneck now (a buy, a hire or a level). */
@@ -1056,6 +1396,8 @@ export interface Advice {
   open: CardRef;
   price: number;
   line: Txt;
+  /** v3 (2.13): the bank's one sentence "A loan suits a machine that earns." follows the line (the purchase is a financeable plate the finance card would offer, the letter seen, no agreement open). */
+  loanHint?: boolean;
 }
 
 /** The top bar (4.1): cash, the ladder chip, carry. */
@@ -1122,6 +1464,26 @@ export interface FrameTable {
   circles: { x: number; y: number; r: number }[];
   /** The foreman's meter on his vest: on while the boost runs, its seconds left today. */
   foreman: { active: boolean; left_s: number };
+  // ---- v3 (stage 2; frame.ts writes them in Phase B, the world draws them in Phase C). Absent below rung 3.
+  /** The works plates on their plots (one per plot of `map.works`, bought or not, from rung 3). */
+  works?: FrameWorks[];
+  /** The forklift when owned and here. */
+  forklift?: FrameForklift | null;
+  /** Members of the public on their dated walk (wicket, card reader, wicket; the path is the frame's, inside the public bay). */
+  visitors?: Span[];
+  /** The reclamation dealer's van while it comes, loads and goes, else null. */
+  van?: { phase: 'in' | 'load' | 'out'; span: Span } | null;
+  /** The picking table's plate ("Picking table · {n} things"), from rung 3. */
+  crate?: { x: number; y: number; n: number } | null;
+  /** The magnet crane's move under way: from, to, its span (a planned run shows the move under way, as crew legs do). */
+  crane?: { from: { x: number; y: number }; to: { x: number; y: number }; span: Span; g: number } | null;
+  /**
+   * owner1 L2: a stamp of everything but the boss's own position: it stays the same from a state to the next when a
+   * presence sample changed nothing else (the boss is the screen's own), so the world need not push a new scene.
+   */
+  scene?: number;
+  /** rules-money wave 2 (2.15.1): the look chosen per slot (`iap.looks`: a product id, `rung<n>`, `foundry`, or null for the yard's own); only the frame reads it. */
+  looks?: Record<LookSlot, string | null>;
 }
 
 /** The boss as the rules see him: where to place him on mount and on an epoch change, his act, pose and ring. */
@@ -1138,6 +1500,12 @@ export interface FrameBoss {
   grade: GradeId | null;
   /** The work, weigh or hook ring: from p0 at t0 to full at t1. */
   ring: { t0: number; t1: number; p0: number } | null;
+  /**
+   * owner1 T4: a refusal that holds while he stands (the act `refused.<why>`: a skip he cannot hook, a load not weighed
+   * at the floor): its line with its figure ("Needs §x more for this load", "Tipping floor needs {kg} free"), shown on
+   * the skip's plate and by the one button for as long as it holds. Null: none.
+   */
+  refusal?: Txt | null;
   /** What he is next to (the mark round it), from the rules' nearness. */
   near: { kind: 'thing' | 'place' | 'pile'; id: string } | null;
   /** The one button's face: Open (at a place with a card), Step out (driving), or blank. */
@@ -1167,6 +1535,14 @@ export interface FrameThing {
   grade: GradeId | null;
   /** Who works it (the boss, a cutter's id), or null. */
   by: string | null;
+  /**
+   * v3 (4.6): a tagged thing's plate, at the present step: "Reusable" (· "Checked" for a bicycle) / "§{q} at the
+   * gate · §{v} as scrap" / a third line by `who`: boss (none), hands ("Yard hands will set it out"), full
+   * ("Yard sale full · cut as scrap"), heavy ("Too heavy to lift: {kg}"). Absent: not tagged (or below rung 3).
+   */
+  tag?: { q: number; v: number; who: 'boss' | 'hands' | 'full' | 'heavy'; checked: boolean; g: number };
+  /** v3 (4.7): an oversize piece's plate: "{partner|short} · {thing}" / "{kg} kg · about §{x} once cut". */
+  lot?: { sender: PartnerId | null; g: number; value: number };
 }
 
 export interface FramePiece {
@@ -1217,8 +1593,8 @@ export interface FrameMachine {
 
 export interface FrameBay {
   grade: GradeId;
-  /** The bay's look from content `grades.<id>.bay`: a lock-block heap, a stillage, the converter cage. */
-  kind: 'heap' | 'stillage' | 'cage';
+  /** The bay's look from content `grades.<id>.bay`: a lock-block heap, a stillage, the converter cage; v3: a works bunker, the closed battery box, big bags (content BAY_KINDS). */
+  kind: (typeof BAY_KINDS)[number];
   /** The manifest entry of its look (content `grades.<id>.bay.sprite`). */
   look: SpriteId;
   x: number;
@@ -1260,6 +1636,14 @@ export interface FrameCrew {
   carries: SpriteId | null;
   /** The whole pieces on the leg's carrier (drawn strapped on, never a tower); a whole thing names its entry in `thing`. */
   load: { uid: string; sprite: SpriteId; grade: GradeId; g: number; load: LoadFamily; thing?: SpriteId }[];
+  /**
+   * owner1 H6: why a yard hand or cutter with nothing to do waits (crew.ts idleWhyOf), while he waits or walks to his
+   * waiting place (job 'idle'): 'nothing', 'uncut' (only things that need cutting), 'yours' (only what lies at the
+   * boss's feet or is left for him), 'tool' (a cutter: the next thing needs a tool the yard has not). `idleText` is
+   * its line (card.crewWhy.*), drawn as a small bubble over him. Absent: not idle (or a content without the review's rules).
+   */
+  idleWhy?: 'nothing' | 'uncut' | 'yours' | 'tool';
+  idleText?: Txt;
 }
 
 export interface FrameTruck {
@@ -1273,8 +1657,15 @@ export interface FrameTruck {
   /** @deprecated none, empty, trial, full; read `load` (goes at the seam). */
   skip: 'none' | 'empty' | 'trial' | 'full';
   by: 'boss' | 'driver' | null;
-  /** The driver's trip as a leg: phase, partner, span, ends and the path (park → gate → lane site and back) from positions.ts. */
-  leg: { phase: TripPhase; partner: PartnerId; t0: number; t1: number; from: { x: number; y: number }; to: { x: number; y: number }; path: { x: number; y: number }[] } | null;
+  /**
+   * The driver's trip as a leg: phase, partner, span, ends and the path from positions.ts. owner1 V1: `path` is THIS
+   * PHASE'S OWN path (positions.ts tripPhasePath: out park → line → gate → lane → skip; hook standing at the skip; back
+   * skip → lane → gate → line → weighbridge; weigh standing on it; tip weighbridge → the floor's stop; park the floor's
+   * stop → park), and `at` the yard second the truck passes each of its points (inside the fence at most truck.yardV,
+   * the lane faster): the world moves the truck piecewise along it between at[i] and at[i+1] and stands it at the last
+   * point until t1 (a phase that starts with a standing part, the driver's walk to a parked truck, has at[0] > t0).
+   */
+  leg: { phase: TripPhase; partner: PartnerId; t0: number; t1: number; from: { x: number; y: number }; to: { x: number; y: number }; path: { x: number; y: number }[]; at?: number[] } | null;
   /** The hook ring's span while the boss swaps a skip. `hook` @deprecated: 0 to 1 sampled at t. */
   hookSpan: Span | null;
   hook: number | null;
@@ -1292,6 +1683,8 @@ export interface FrameFlatbed {
   from: { x: number; y: number };
   to: { x: number; y: number };
   path: { x: number; y: number }[];
+  /** owner1 V3, V4: the yard second it passes each point of `path` (along the drive line at most truck.yardV inside the fence). */
+  at?: number[];
   /** 0 to 3: the load drawn on its bed. */
   load: number;
 }
@@ -1305,6 +1698,14 @@ export interface FrameArrival {
   span: Span;
   /** in: driving in; setDown: the crane or the van's tail lift; out: driving away. */
   phase: 'in' | 'setDown' | 'out';
+  /**
+   * owner1 V4: the arrival's road: from beyond the gate along the drive line to the line's stop nearest its place
+   * (`stop`), where it sets down (the thing is at its place at span.t1, as the rules date it); `at` the yard second it
+   * passes each point (inside the fence at most truck.yardV). No path crosses a solid; no jump at set-down.
+   */
+  path?: { x: number; y: number }[];
+  at?: number[];
+  stop?: { x: number; y: number };
 }
 
 export interface FrameSkip {
@@ -1331,3 +1732,553 @@ export interface FrameLabel {
   /** A place label not yet seen (shows on first sight, 4.2). */
   first?: boolean;
 }
+
+// ================================================================================================ STAGE 2 (contract version 3)
+//
+// docs/design/yard-stage2.md 2.18 (the state), 2.19 (events, tickets, refusals, actions), 4.2 to 4.11 (card
+// data); RULING2.md section 14 (the engine step as built: the run kept on a crew member as `course`, the
+// planned run `run`, `counts.goalsAt`) and section 15 (paid packs: the pending quote's shape). Every number a
+// card shows is computed from the state at each read (B11); frozen are only the stored values: a pending
+// quote's S and I, a lot's mass, an agreement's terms and I, the away bonus's offer.
+
+/** A works plate's id: a key of content `works.plates` (baler, shear, analyser, granulator, depollution, crane, shredder, eddy, sorter, rotary, induction, breaker, smelter). */
+export type PlateId = string;
+/**
+ * B7: crew and machine code address the first yard's machines and the plates through ONE id and ONE
+ * accessor, `station(s, id): MachineState` (machines.ts, rules-works) over `machines` and `works`.
+ */
+export type StationId = MachineId | PlateId;
+
+/** The boss's act kinds. v3 (2.18): commission (standing 5 s at a plate), rack (setting a tagged thing on the Yard sale), lot (cutting an oversize piece), crate (sorting the picking table one thing every `crate.sort_s`). */
+export type ActKind = 'none' | 'work' | 'pickup' | 'weigh' | 'feed' | 'strip' | 'circle' | 'hook' | 'tip' | 'drive' | 'commission' | 'rack' | 'lot' | 'crate';
+
+/**
+ * B9: the queue's stage-2 kinds in their order within one instant: after 'machine', before 'round'
+ * (the first yard's order of the other kinds is tick.ts's and does not change).
+ */
+export const STAGE2_QUEUE_ORDER = ['plate', 'hall', 'commission', 'crane', 'lot', 'visitor', 'van'] as const satisfies readonly QueuedKind[];
+
+// ------------------------------------------------------------------------------------------------ works
+
+/** 2.6.3: on the machine flatbed (purchase + deliver_s), here and doing nothing (`installed`), started up (`running`). */
+export type PlatePhase = 'arriving' | 'installed' | 'running';
+
+/**
+ * A hall's heat (2.8): the crucible's heat fields (CrucibleState), kept in a sub-object because a plate's
+ * own `phase` is its life (arriving, installed, running) while a heat has its own phase (empty .. cooling).
+ * A hall's first heat waits at `ready` for the boss and pours by itself `works.selfCommission_s` after
+ * `phaseSince` (S11, decision 22). Reagents are paid at a heat's start, never by the clock.
+ */
+export interface HeatState {
+  recipe: RecipeId;
+  fromBays: boolean;
+  charge_g: number;
+  chargeBy?: Record<GradeId, number>;
+  heel_g: number;
+  phase: HeatPhase;
+  phaseSince: number;
+  endsAt: number | null;
+  lastFeedAt: number;
+  firstPoured: boolean;
+  cooling: CrucibleState['cooling'];
+}
+
+/**
+ * The magnet crane's move (2.7): one dated move of at most `crane.load_kg` from a pile (or the apron) to
+ * a station's hopper; its moves are a RUN whoever looks (2.1.4): `course` keeps its kind and t0; out of
+ * sight with `group.ahead` the rest is `planned` with one dated end (`end` is then the run's).
+ */
+export interface CraneMove {
+  /** Piece and thing uids moved (claimed: nobody else takes them). */
+  items: string[];
+  g: number;
+  /** A pile key (`floor`), or 'apron' (a drained shell). */
+  from: PileKey | 'apron';
+  /** A station id, or 'bay' (a drained shell to its bay). */
+  to: StationId | 'bay';
+  t0: number;
+  end: number;
+  /** Out of sight: the run's later moves, in order, each with its own end (as a yard hand's RunLoad). */
+  planned?: { items: string[]; g: number; end: number }[];
+}
+
+/**
+ * A works plate (2.18): MachineState (hopper, work, tray, status; `since` = the yard second it was set
+ * down) plus its life and the parts of its kind. Kept in `SalvageState.works` by plate id from its purchase.
+ */
+export interface WorksState extends MachineState {
+  plate: PlateId;
+  phase: PlatePhase;
+  /** Installed: the yard second it starts up by itself (arrival + `works.selfCommission_s`); null otherwise. */
+  commissionAt: number | null;
+  /** Who started it up, once running. */
+  commissionedBy?: 'boss' | 'self';
+  /** Batch plates (halls): the heat. */
+  heat?: HeatState;
+  /** Bay-fed plates (feedBy 'bays', 2.8.1): the current segment's start and the grams drawn in it by input grade (the cumulative rule's base). */
+  segStart?: number;
+  drawn_g?: Stock;
+  /** Station plates (the depollution bay): the car on its apron and its drain's span, or null. */
+  car?: { thing: string; t0: number; end: number } | null;
+  /** The magnet crane: the move under way, or null; its run (kind, place, destination, start). */
+  move?: CraneMove | null;
+  course?: { t0: number; from: PileKey | 'apron'; to: StationId | 'bay' };
+}
+
+// ------------------------------------------------------------------------------------------------ lots, reuse, bank
+
+/** 2.10.1: the next lot's date in yard seconds (first set at `backFieldOpen`, never at creation or migration; null while four wait) and the lots so far (the hash counter). */
+export interface LotsState {
+  nextAt: number | null;
+  n: number;
+}
+
+/** 2.12: the Yard sale's next visitor (null until the first thing is ever racked; the queue reads it only while the rack holds a thing), the van's date (null while none is dated), the rack's level, and today's sales. */
+export interface ReuseState {
+  nextAt: number | null;
+  vanAt: number | null;
+  level: number;
+  /** Sales at the gate on market day `day` ("Sold today: {n} · §{x}"). */
+  sold: { day: number; n: number; money: number };
+}
+
+/** 2.14.1: one agreement (§ in hundredths; `taken` rises from 0 to T). `kind` is stage 3's hook 2 (Agreements is a page of kinds). */
+export interface Agreement {
+  kind: 'bank';
+  plate: PlateId;
+  /** Price, financed part, charge, total to repay. Deposit = P − F. */
+  P: number;
+  F: number;
+  c: number;
+  T: number;
+  taken: number;
+  signedAt: number;
+  /** I read at signing (frozen; B11). */
+  I: number;
+}
+
+export interface BankState {
+  /** The one open agreement (`bank.maxAgreements` 1 in stage 2), or null. `bank.ts payLot` splits over a LIST oldest first; stage 2 passes this one. */
+  agreement: Agreement | null;
+  /** Set once the lender's letter is due (2.14.5): from then on a financeable works card may carry "Bank loan". */
+  letterSeen: boolean;
+  /** Repaid agreements, oldest first (the Agreements page's history). */
+  done: { plate: PlateId; T: number; signedAt: number; repaidAt: number }[];
+}
+
+// ------------------------------------------------------------------------------------------------ iap, ads, forklift
+
+/** 2.15.1: the look slots the frame draws (no rule reads them). */
+export type LookSlot = (typeof LOOK_SLOTS)[number];
+/** 2.15.3: the age band the age question keeps (never the year). */
+export type AgeBand = 'u13' | 't13' | 'a18';
+
+/**
+ * A pending scrip-pack quote (RULING2 15.3 to 15.6; it replaces 2.15.4's `{product, S, I, atMs}`): made
+ * at Buy, BEFORE the store's sheet opens and the save is flushed. `id` is unique in the save
+ * (`q<n>`, ./state2.ts `quoteId`); `known` the product's transaction ids the store listed just before the
+ * quote (a quote is never granted with an id in `known` or in the ledger); `state` open from Buy until the
+ * sheet's outcome, waiting when the store answered pending or with an error that does not prove nothing
+ * was charged. As ruled in 15.12 (the lead, 26 Nov 08:05; it replaces 15.6 where they differ): a new Buy
+ * does NOT withdraw an older open quote (it stands, does not block Buy, counts in headroom); at most
+ * `iap.maxStanding` quotes of one product stand at once (a further Buy: `packPending`); a WAITING one
+ * refuses a new Buy for 24 h of the DEVICE's clock from `atMs`, a clock earlier than `atMs` counting as
+ * elapsed; any standing quote is withdrawn when a FRESH listing whose request time (the STORE's clock) is
+ * at least 72 h after the quote's `askedMs` has been routed and the quote still stands. "Oldest" is the
+ * list's order (the order quotes were made in), never `atMs`. No clock decides a grant (15.1).
+ */
+export interface PendingQuote {
+  id: string;
+  product: string;
+  /** § granted on approval, exactly (frozen at Buy). */
+  S: number;
+  /** I read at Buy (frozen). */
+  I: number;
+  /** Device epoch ms of Buy (the shared store names a quote by product and atMs; the 24 h courtesy rule; never compared with a store date). */
+  atMs: number;
+  /**
+   * The STORE's request time (epoch ms) of the listing read at this Buy (the shared store passes it to the quote
+   * function): the 72 h rule is measured between it and a later fresh listing's request time, never on the
+   * device's clock (15.12 a). null only on a quote saved without one: such a quote is never withdrawn by time.
+   */
+  askedMs: number | null;
+  known: string[];
+  state: 'open' | 'waiting';
+  /**
+   * s2a-fix (RULING2 15.4, 15.11 c): WHY a waiting quote waits, for its row's words: 'pending' (the store
+   * answered pending: "Waiting for approval") or 'unconfirmed' (an error that does not prove nothing was
+   * charged: "The store has not confirmed this purchase yet. If you were charged, your scrip arrives when it
+   * does."). null (or absent, a save made before it) while open; a waiting quote without it reads as pending.
+   */
+  wait?: 'pending' | 'unconfirmed' | null;
+}
+
+/** One granted transaction (never granted twice). `quote` names the pending quote it took. */
+export interface LedgerEntry {
+  txId: string;
+  product: string;
+  S: number;
+  atMs: number;
+  quote?: string;
+}
+
+export interface IapState {
+  /** The chosen look per slot (a product id, an earned sign style `rung<n>` or `foundry`), null = the yard's own. */
+  looks: Record<LookSlot, string | null>;
+  ledger: LedgerEntry[];
+  pending: PendingQuote[];
+  /** Packs hidden in Settings behind a four-digit code (kept hashed), or null. */
+  hidden: { codeHash: string } | null;
+  ageBand: AgeBand | null;
+  /** Device epoch ms the save (or its migration) was made: information only (RULING2 15.1). */
+  createdMs: number;
+  /** "The second session" (2.15.2, P1): the YARD second the first away card from an absence of at least `ads.awayMinAbsence_min` was closed; null before. Nothing of money or ads exists before it. */
+  sessions2At: number | null;
+  /** rules-money wave 2 (15.11 f): quotes withdrawn by the 72 hours, for the shop card's one line "A purchase that was waiting never arrived. Nothing was added." until the shop card is closed (noteSeen {card: 'shop'}). Absent = none. */
+  expired?: { product: string; atMs: number }[];
+}
+
+export type AdKind = 'away' | 'spot';
+
+/** 2.16: counts on market day `day`, and the away bonus deferred to the bottom bar (kept until taken or replaced; it shows no time). */
+export interface AdsState {
+  day: number;
+  awayUsed: number;
+  spotUsed: number;
+  awayOffer: { amount: number; I: number; /** rules-money wave 2 (P6): true when the away card that made it showed no debt: the centred card opens once after that card; false: straight to the bottom bar's deferred button. Absent = true. */ centred?: boolean } | null;
+}
+
+/** 2.9: the forklift (the boss's only): where it stands, its heading, who is in it, its load (whole pieces and whole things as `Piece` with `whole`, as the boss's load). */
+export interface ForkliftState {
+  x: number;
+  y: number;
+  heading: Heading;
+  by: 'boss' | null;
+  load: Piece[];
+}
+
+// ------------------------------------------------------------------------------------------------ actions and hooks
+
+/** The finance card's terms as SHOWN (signFinance refuses with `bankTerms` when they differ now). */
+export interface FinanceShown {
+  P: number;
+  F: number;
+  charge: number;
+  T: number;
+}
+
+/** 2.14.4: what `bank.ts payLot(x, gross, t)` returns: y to the bank, z to the player (then `earn(x, z, t)`). */
+export interface PayLotResult {
+  y: number;
+  z: number;
+}
+/** The closed list of lot payments (2.14.4): each goes through payLot before its ticket prints. */
+export type LotPaymentKind = 'collection' | 'deal' | 'crate' | 'rack' | 'van';
+/** 2.14.4: ad rewards and granted scrip go through `clock.ts credit(x, amount, t, kind)`: cash and `earned` only, never the income buckets, the away card's money or payLot. */
+export type CreditKind = 'ad' | 'grant';
+
+/**
+ * The outcome of a pack's sheet as the shared store reports it (src/state/store.ts `QuoteOutcome`, merged in
+ * 17a2566): the first four withdraw the quote, 'pending' and 'unconfirmed' make it WAITING (PendingQuote.wait
+ * keeps which). Spelled here because the rules never import src/state (a React module); contract.test.ts
+ * holds it EQUAL to the shared type at compile time (s2a-fix).
+ */
+export type QuoteOutcome = 'cancelled' | 'declined' | 'unavailable' | 'unsaved' | 'pending' | 'unconfirmed';
+/** A purchase arriving at the mode: THE SHARED TYPE (src/engine/mode.ts, merged in 17a2566; s2a-fix: no mirror). `own` names the quote whose own sheet returned it; null for a later arrival. */
+export type ProductArrival = SharedProductArrival;
+/** A listing of the store account's transactions handed to `afterListing`: THE SHARED TYPE (src/engine/mode.ts), with the store's own `requestMs` (15.12 a). */
+export type ProductListing = SharedProductListing;
+
+/**
+ * v3 (2.19; RULING2 15): the new player actions, with the same shape as SalvageActions (pure; refusals
+ * pushed to `events` with the SAME state returned). Which check returns which key:
+ * - signFinance: `bankOne`, the plate's gate (`rung`, `needsItem`), `notFinanceable`, `bankReserve`, `cash`, `ceiling`, `bankTerms` (retry: the terms now). Then cash −= d, the plate `arriving`, the agreement stored, event `financed`.
+ * - setRoute: `notOwned` (station not owned), `noRoute` (it does not take the grade). Event `routeSet`.
+ * - setPlateRecipe: as setRecipe (`notOwned`, `heatRunning`, `confirmHeel`); `routed` when the recipe's grade is reserved by another station.
+ * - quotePack (the shared store's `quote` function): `packOff`, `packPending` (a WAITING quote of the product younger than 24 h of the device's clock, a clock earlier than its atMs counting as elapsed; or `iap.maxStanding` quotes of the product standing), `packHeadroom`, `quoteUpdated` (shown ≠ now); else appends a PendingQuote {state 'open', wait null, askedMs}. An older quote of the product is NEVER withdrawn by a new Buy: it keeps standing and counts in headroom (RULING2 15.12 b).
+ * - settleQuote (the store's `settle`): the named quote ({product, atMs}) withdrawn (cancelled, declined, unavailable, unsaved: event quoteWithdrawn) or made WAITING with `wait` 'pending' or 'unconfirmed'; same object if it no longer stands. Never refused.
+ * THE REFUSAL'S REASON (15.12 f) is not kept in the state: the shared store only says refused, and cardOf derives the row's words from the state at each read (packPending and packHeadroom follow from `iap.pending` and the headroom; a `quoteUpdated` refusal's a → b is the event's, which the screen keeps for the row while the card is open).
+ * - setPacksHidden: `packCode` (wrong code when showing again). setAgeBand: `badYear`. chooseLook: `notOwned`.
+ * - adPaid: `nothing` (no offer of that kind), `adCap`. Paid through `credit(…, 'ad')`.
+ * Racking, cutting an oversize piece, sorting the picking table, commissioning and entering the forklift go
+ * through `presence` (act kinds); refusals there: `rackFull`, `notReusable`, `forkliftLoad`, `tooHeavy`.
+ * Plates, the forklift, the pallet truck, the plasma cutter and the three-axle truck are bought with `buy`.
+ */
+export interface SalvageActions2 {
+  signFinance(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, shown: FinanceShown, clock: number, events?: SalvageEvent[]): SalvageGame;
+  setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to: StationId | 'bay', clock: number, events?: SalvageEvent[]): SalvageGame;
+  setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame;
+  quotePack(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: string[], askedMs: number, clock: number, events?: SalvageEvent[], ctx?: CardContext): SalvageGame;
+  settleQuote(cfg: SalvageConfig, g: SalvageGame, outcome: QuoteOutcome, quote: { product: string; atMs: number }): SalvageGame;
+  setPacksHidden(cfg: SalvageConfig, g: SalvageGame, on: boolean, code: string, clock: number, events?: SalvageEvent[]): SalvageGame;
+  setAgeBand(cfg: SalvageConfig, g: SalvageGame, year: number, now: number, clock: number, events?: SalvageEvent[]): SalvageGame;
+  adPaid(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, shownAmount: number, ref: { grade?: GradeId; sell?: SellShown }, clock: number, events?: SalvageEvent[]): SalvageGame;
+  chooseLook(cfg: SalvageConfig, g: SalvageGame, slot: LookSlot, id: string | null, clock: number, events?: SalvageEvent[]): SalvageGame;
+}
+
+/**
+ * The mode's hooks the shared store calls (salvageMode.ts, rules-money; shapes as `store-shared` built them,
+ * notes/store-shared.md "After the attack"): pure and idempotent.
+ * - grantProduct: ledger has txId → same; `own` → THAT quote unless its `known` has the id; else the OLDEST standing quote of the product whose `known` lacks it; none → same (another save). cash += S through credit(…, 'grant'); ledger += entry; event `granted`.
+ * - afterListing: after every listing, once its arrivals have been routed (grantProduct): only for a FRESH listing with a store request time, every quote still standing whose `askedMs` is at least 72 h before the listing's `requestMs` is withdrawn (event quoteWithdrawn, why 'expired'). The STORE's clock, never the device's (RULING2 15.11 b, 15.12 a); a quote with askedMs null is never withdrawn by time.
+ * - adAudience: 'child' for u13, 'teen' for t13, else null.
+ */
+export interface SalvageShopHooks {
+  grantProduct(cfg: SalvageConfig, g: SalvageGame, arrival: ProductArrival): SalvageGame;
+  afterListing(cfg: SalvageConfig, g: SalvageGame, listing: ProductListing, now: number): SalvageGame;
+  adAudience(cfg: SalvageConfig, g: SalvageGame): 'child' | 'teen' | null;
+}
+
+// ------------------------------------------------------------------------------------------------ card data (4.3 to 4.11), as DATA
+
+/** 4.11: the price board's family tabs (content `grades.<id>.boardTab`, content BOARD_TABS: one spelling, the content's). */
+export type BoardTab = (typeof BOARD_TABS)[number];
+
+/** 4.3: why a running plate's world chip shows (only when not working). */
+export type WorksChip = 'hopperFull' | 'trayFull' | 'waiting' | 'readyToPour';
+
+/**
+ * 4.3: the works card (one per plate; a hall's filter in its hall's card). Every number is applied as
+ * shown; only `saveUp_s` is "about". `foot` follows 2.14.5: `buy` always (greyed with its refusal when
+ * short); `loan` only after the letter and while P > cash − reserve (P12), greyed with `loanShort` while
+ * cash − reserve < d, greyed with bankOne's words while an agreement is open; `saveUp_s` beside it.
+ */
+export interface WorksCard {
+  plate: PlateId;
+  kind: 'rate' | 'batch' | 'station' | 'assay' | 'handling';
+  /** locked: gate not met (padlock and the gate, nothing else); buyable; arriving; installed; running. */
+  state: 'locked' | 'buyable' | 'arriving' | 'installed' | 'running';
+  gate: { rung: number | null; tonnes_g: number | null; needsItem: ShopKey | null } | null;
+  /** In → out (grades, or object ids for whole things such as `elv`, `cbody`), and what a kilogram of input gains at p̄ (0.24 = "+24 % on light iron"); never tonnes an hour. */
+  in: (GradeId | ObjectId)[];
+  out: GradeId[];
+  gain: { from: GradeId | ObjectId; pct: number } | null;
+  /** Running and not working: why (with the grade it waits for); null when working or not running. */
+  chip: { kind: WorksChip; grade?: GradeId } | null;
+  arrivesAt: number | null;
+  /** Installed: "Stand here to start · {s} s" and "Starts by itself in {t}". */
+  commission_s: number;
+  selfStartAt: number | null;
+  level: { level: number; max: number; pct: number; button: CardButton | null; state: RowState } | null;
+  /** Halls: their recipes ("Brass", "Bronze"), the one in use, and a button each. */
+  recipes?: { recipe: RecipeId; in: GradeId[]; out: GradeId[]; selected: boolean; button: CardButton | null }[];
+  /** Bay-fed plates: "Takes from: Light iron · Car body", each with its route now. */
+  takesFrom?: { grade: GradeId; route: StationId | 'bay' }[];
+  /** The depollution bay: its car on the apron ("End-of-life car · ref. {ref}") and the drain's end. */
+  car?: { thing: string; ref: string; endsAt: number } | null;
+  /** The rota's licence row this plate brings when started up (T21). */
+  permit?: 'elv' | 'lead' | null;
+  foot: {
+    buy: CardButton | null;
+    loan: CardButton | null;
+    /** "You pay now §{d} · §{x} more" while cash − reserve < d. */
+    loanShort: { d: number; more: number } | null;
+    /** "Save up (about {h} h {m} m)": (P − cash) ÷ I, or ÷ (I − bank.share × G) while an agreement is open; null when Buy is pressable or no loan is offered. */
+    saveUp_s: number | null;
+  };
+  /** Financed and open: "Bank loan · §{left} left of §{T}" (opens Agreements; the card showsDebt) and the ring's share. */
+  bank: { left: number; T: number; ring: number } | null;
+}
+
+/** 4.5: the finance card's five lines and the rule line; `sign` carries the terms as shown. */
+export interface FinanceTerms {
+  plate: PlateId;
+  P: number;
+  /** You pay now (d = P − F). */
+  deposit: number;
+  /** The bank pays (F). */
+  F: number;
+  charge: number;
+  /** You repay (T = F + charge). */
+  T: number;
+  /** `bank.share` (0.2: content `bank.shareWords` "A fifth"). */
+  share: number;
+  /** s2a-fix: the share in words as the card prints it ({ key: 'share.fifth' } "A fifth" while bank.share is 0.2, strings2's rule; else a percentage line). Optional until cards.ts fills it. */
+  shareWords?: Txt;
+  /** I read now (the terms move only when assets do). */
+  I: number;
+  sign: CardButton;
+  notNow: CardButton;
+  /** The first refusal that stands now (bankOne, bankReserve, cash, ceiling, bankTerms, a gate), or null. */
+  refusal: Txt | null;
+}
+
+/** 4.5: a row of the Agreements page (hook 2: rows carry their kind). */
+export interface AgreementRow {
+  kind: 'bank';
+  lender: NameId;
+  plate: PlateId;
+  T: number;
+  taken: number;
+  left: number;
+  share: number;
+  signedAt: number;
+  repaidAt: number | null;
+  open: boolean;
+}
+
+/** 4.6: the Yard sale's card. */
+export interface YardSaleCard {
+  slots: number;
+  free: number;
+  /** Oldest first: "§{q} at the gate". */
+  things: { uid: string; obj: ObjectId; q: number; v: number }[];
+  /** "Next visitor in {t}" (null: the rack is empty, nobody comes). */
+  nextVisitorInS: number | null;
+  soldToday: { n: number; money: number };
+  /** "More room · {a} → {b} places" with its Level button; null at the top. */
+  level: { level: number; max: number; from: number; to: number; button: CardButton | null; state: RowState } | null;
+  /** The trade corner: "[reclamation dealer] · {n} batches · van in {t}". */
+  corner: { dealer: NameId; batches: number; vanInS: number | null };
+}
+
+/** 4.7: an oversize piece ("{partner|short} · {thing}" / "{kg} kg · about §{x} once cut" / "Only you can cut this · {s} s"). */
+export interface LotCard {
+  uid: string;
+  obj: ObjectId;
+  sender: PartnerId | null;
+  g: number;
+  /** About § once cut, at p̄ (the only "about"). */
+  valueOnceCut: number;
+  cut_s: number;
+}
+
+/** 4.7: the picking table ("Picking table · {n} things" / "Stand here · {s} s a thing"). No time, nothing expires. */
+export interface CrateCard {
+  n: number;
+  max: number;
+  sort_s: number;
+  /** Oldest first. */
+  things: { uid: string; obj: ObjectId }[];
+}
+
+/** 4.8: a look's row: the store's own price string is the screen's (`iap.priceOrNull`), never the rules'. */
+export interface ShopLookRow {
+  product: string;
+  slot: LookSlot;
+  owned: boolean;
+  inUse: boolean;
+  /** Buy (buyProduct) when not owned; Use (chooseLook) when owned and not in use; null in use. */
+  button: CardButton | null;
+}
+
+/** 4.8: an earned look (sign styles of rungs reached, the foundry's plate): no price. */
+export interface EarnedLookRow {
+  id: string;
+  slot: LookSlot;
+  earned: boolean;
+  inUse: boolean;
+  /** Not yet earned: "Reach rung {n}". */
+  opensAtRung: number | null;
+  button: CardButton | null;
+}
+
+/**
+ * 4.8: a pack's row. offer: "§{S} · about {H} hours of your yard's earnings" with Buy (buyPack); noRoom:
+ * "Nothing to spend it on yet", no button; waiting: "Waiting for approval", no button (a quote waiting with
+ * `wait` 'pending', or a further Buy refused while `iap.maxStanding` stand); unconfirmed (s2a-fix, 15.11 c):
+ * "The store has not confirmed this purchase yet. If you were charged, your scrip arrives when it does.", no
+ * button (a quote waiting with `wait` 'unconfirmed'). `updated` when the S shown before moved ("Updated: §a →
+ * §b"). The state is derived from `iap.pending` at each read (cardOf), never stored.
+ */
+export interface PackRow {
+  product: string;
+  H: number;
+  S: number;
+  state: 'offer' | 'noRoom' | 'waiting' | 'unconfirmed';
+  updated: { a: number; b: number } | null;
+  button: CardButton | null;
+}
+
+/**
+ * 4.8: the shop (from the Rota's row and Settings only; never before `iap.sessions2At`, never for u13, never on
+ * a card that shows a debt). `packs` is null unless 2.15.3's four conditions hold: then no header and no word of packs.
+ */
+export interface ShopCard {
+  looks: ShopLookRow[];
+  earned: EarnedLookRow[];
+  noAds: { product: string; owned: boolean; button: CardButton | null } | null;
+  packs: PackRow[] | null;
+  /** The store country read at this opening (`storefrontCountry()`, unknown = null = packs off). */
+  country: string | null;
+  /** rules-money wave 2 (2.15.3, 4.8): the age question is due (the first time a pack row would show and no band is kept): the screen opens `{kind: 'ageQuestion'}` before the shop. */
+  askAge?: boolean;
+  /** rules-money wave 2 (15.11 f): "A purchase that was waiting never arrived. Nothing was added." until the card is closed. */
+  expired?: boolean;
+  /** rules-money wave 2 (4.8 section 5): Restore (looks and No ad videos) over "Scrip bought here lives in this device's save." */
+  restore?: CardButton | null;
+}
+
+/**
+ * s2a-fix (the critic's finding 7; for rules-money, cards.ts and the facade): what a card needs that is not in
+ * the state. The store country is read by the screen at each opening (src/services/region.ts
+ * `storefrontCountry()`, store only; unknown = null = packs off) and handed to `cardOf` (and the Settings and
+ * Help cards) as this argument; the rules decide packsOff, the rung, the age band and the hidden code from it
+ * and the state (2.15.3), so no screen computes it. Pinned by a u13 test and an unknown-country test (Phase B).
+ */
+export interface CardContext {
+  country: string | null;
+}
+
+/** 4.8: the pack sheet before the store's own ("§{S} for this yard" / "Bought scrip lives in this device's save. ..."). */
+export interface PackSheetCard {
+  product: string;
+  S: number;
+  H: number;
+  buy: CardButton;
+  notNow: CardButton;
+}
+
+/** 4.8: the age question (four digits, no default): OK only for a year in [minYear, maxYear]. */
+export interface AgeQuestionCard {
+  minYear: number;
+  maxYear: number;
+}
+
+/** 4.8: the code pad ("Choose a four-digit code" / "Enter it again" / "Enter the code"); `wrong` after a mismatch. */
+export interface PackCodeCard {
+  mode: 'set' | 'confirm' | 'enter';
+  wrong: boolean;
+}
+
+/** 4.9: the away bonus card ("For your time away" / "+§{x}") or a spot buyer's offer; `video` false with No ad videos ("Take +§{x}"). */
+export interface BonusCard {
+  kind: AdKind;
+  amount: number;
+  video: boolean;
+  take: CardButton;
+  later: CardButton | null;
+}
+
+// ------------------------------------------------------------------------------------------------ the frame (stage 2)
+
+/** A works plot as the world draws it (the world maps PlateId × look to manifest entries in ONE table it owns). */
+export type WorksLook = 'padlock' | 'buyable' | 'arriving' | 'installed' | 'idle' | 'working' | 'trayFull' | 'heating' | 'ready' | 'pour' | 'cooling';
+
+export interface FrameWorks {
+  plate: PlateId;
+  place: PlaceId;
+  look: WorksLook;
+  x: number;
+  y: number;
+  /** The commissioning ring while the boss stands at it (5 s), as the work ring. */
+  ring: { t0: number; t1: number; p0: number } | null;
+  /** A financed plate's ring, taken ÷ T (prints no amount; not a debt display, P7), else null. */
+  bankRing: number | null;
+  /** A heat's, a pour's or a car's span. */
+  span: Span | null;
+  trayShare: number;
+}
+
+export interface FrameForklift {
+  x: number;
+  y: number;
+  heading: Heading;
+  by: 'boss' | null;
+  /** The carry chip "{kg} / 1,500 kg" (print with kg_g), and the car on its forks if any. */
+  load_g: number;
+  cap_g: number;
+  car: boolean;
+}
+
+

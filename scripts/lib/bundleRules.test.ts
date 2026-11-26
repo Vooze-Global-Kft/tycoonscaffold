@@ -432,7 +432,8 @@ describe('the salvage mode (the scrapyard, docs/design/yard-ground.md)', async (
   const of = (over: Partial<BundleContents>) => bundleViolations(clean({ packages: [], assets: [], ...over }), MM).map((v) => `${v.rule} ${v.file}`);
 
   it('lists its rules, schema, the yard and its screens as salvage folders, its catalogue as Node only, its preview tools as web only, and its theme words', () => {
-    expect(modes.MODE_FOLDERS.salvage).toEqual(['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts']);
+    // 26 Nov: stage 2's frozen states and test contents are the mode's too (yard-stage2.md 8.1: salvage-stage2.json, salvage2works.ts, salvage2money.ts).
+    expect(modes.MODE_FOLDERS.salvage).toEqual(['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts']);
     expect(modes.NODE_ONLY).toContain('src/services/fx/catalog.salvage.ts');
     for (const f of ['src/modes/salvage/presets.web.ts', 'src/modes/salvage/devViews.web.ts', 'src/ui/salvage/dev/DevPanel.web.tsx', 'src/ui/salvage/dev/switches.web.ts']) expect(modes.WEB_ONLY).toContain(f);
     // The mode id itself is a shared literal (src/config/schema.ts): never a theme word.

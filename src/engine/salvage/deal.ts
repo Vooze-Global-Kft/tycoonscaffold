@@ -8,7 +8,8 @@
  */
 import { priceOf } from './board';
 import { bayOf } from './bays';
-import { count, dayAt, earn, printTicket, ticketBase, type Ctx } from './clock';
+import { payLot } from './bank';
+import { bankPart, count, dayAt, earn, printTicket, ticketBase, type Ctx } from './clock';
 import { roundMoney } from './money';
 import { supply } from './round';
 import type { DealTerms } from './types';
@@ -78,8 +79,11 @@ export function dealDeliver(x: Ctx, t: number): void {
     b.forDeal_g -= g;
     const paid = roundMoney((g / 1000) * d.price);
     supply(x, grade, g);
-    earn(x, paid, t);
-    const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'dealDelivery' as const, buyer: x.c.deal.partner, grade, g, paid });
+    // 2.14.4 (stage 2): a lot payment goes through bank.ts payLot BEFORE its ticket prints, then the player's part is earned.
+    const { y, z } = payLot(x, paid, t);
+    const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'dealDelivery' as const, buyer: x.c.deal.partner, grade, g, paid, ...(y > 0 ? { bank: { y } } : {}) });
+    bankPart(x, y);
+    earn(x, z, t);
     x.ev.push({ type: 'dealDelivered', ticket });
     if (x.away) {
       x.away.deliveries += 1;

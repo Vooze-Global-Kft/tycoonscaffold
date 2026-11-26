@@ -520,7 +520,8 @@ export function personLayers(a: PersonActor): Layer[] {
   const out: Layer[] = [];
   const hand: Layer | null = a.hand && a.who === 'boss' ? { id: `load.hand.${handFamilyOf(a.hand)}`, frame: 0, heading: a.heading, dx: 0, dy: 0 } : null;
   let cart: Layer | null = null;
-  if (a.carrier && a.pose === 'push') {
+  // in every pose, in front where it was pushed (a carrier never vanishes while its person works: owner1-world)
+  if (a.carrier) {
     const [dx, dy] = ahead4(a.heading, CARRIER_AHEAD[a.carrier.kind]);
     cart = { id: `carrier.${a.carrier.kind}`, frame: carrierFrameOf(a.carrier.load), heading: a.heading, dx, dy };
   }

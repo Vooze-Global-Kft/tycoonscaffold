@@ -31,6 +31,8 @@ import { SalvageSchema, type SalvageContent } from '../../config/schema.salvage'
 import type { GameConfig } from '../../config/schema';
 import { buy, createSalvage, shopPrice } from '../salvage';
 import { playStates, type Played } from '../salvage/director';
+import { away as botAway, newBot, playTo, seededCfg, startGame, type Bot } from '../salvage/bot';
+import stage2Json from './salvage-stage2.json';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from '../salvage/types';
 import type { GameState } from '../types';
 
@@ -393,4 +395,154 @@ function gameOf(f: FixtureState, base: GameState, now?: number): SalvageGame {
   salvage.epoch += 1;
   if (now !== undefined) salvage.clock = { ...salvage.clock, highMs: Math.max(now, salvage.clock.highMs) };
   return { ...base, cash: f.cash, lifetimeEarnings: f.lifetimeEarnings, runEarnings: f.lifetimeEarnings, stats: { ...base.stats, playSeconds: f.playSeconds }, salvage };
+}
+
+// ================================================================================================ stage 2's frozen states (engine2)
+//
+// yard-stage2.md 8.1 (B1): `r3`, `r3plain` and `held14`, PLAYED by the balance bot (src/engine/salvage/bot.ts)
+// on the game's own content as it stood when they were frozen, and FROZEN with that content beside them
+// (src/engine/fixtures/salvage-stage2.json, as bots/gate5 is in salvage-gate5.json): a rules test that loads
+// one runs it on the content it was played on, so tuning game.json moves nothing here. Remade only by the
+// loop's engineer (engine2), with `playStage2States` on the content of the day, the commands in
+// notes/s2a-engine2-hooks.md. What each holds (as played on 26 Nov by engine2-hooks):
+// - r3: seed 257, the normal hand, every purchase it meets (habit 'all'), route A, played to minute 60: the
+//   awaybench's state, at rung 3 (runs on), the foreman's boost used up for the day, the hand stripper idle,
+//   nothing held. The works layer opens at its first tick once Phase B builds it (2.20, from the state).
+// - r3plain: the same play to the first whole minute after 60 at which no boost is on, the hand stripper has
+//   nothing in its hopper or under way, no bay is held (so E40's lot cannot apply) and no thing of a
+//   `reuse.kinds` object stands at the drop-off or on the floor (the crews' places; the zones' old stock is
+//   the boss's alone and never a crew's, 2.6): the run tests' yard (B3, 2.1.7).
+// - held14: seed 1, the day-word holder (Hold on every bay on a low day), habit 'goal', route A: an hour, then
+//   twice 11.75 h away and 15 minutes played (the end of its third sitting, day 1): fourteen bays held and
+//   the cash below every load's price (yard-bots.md C5's dead absence; C5 named about §524 on the engine of
+//   25 Nov; on this engine the same habit holds all fourteen one sitting later, with less cash).
+// FIXTURE_EVENTS of each: the last event of each named kind the play emitted up to it.
+
+/** The three stage-2 states of 8.1 that are the loop's (engine2's). */
+export const STAGE2_NAMES = ['r3', 'r3plain', 'held14'] as const;
+export type Stage2Name = (typeof STAGE2_NAMES)[number];
+
+/** One frozen stage-2 state: its world seed and device time, the game, the events the preview re-emits. */
+export interface Stage2Frozen {
+  seed: number;
+  worldSeed: number;
+  now: number;
+  what: string;
+  g: SalvageGame;
+  events: SalvageEvent[];
+}
+
+/** The events a frozen state re-emits once (the last of each kind the play emitted up to it). */
+const STAGE2_EVENT_KINDS: Record<Stage2Name, SalvageEvent['type'][]> = {
+  r3: ['rung', 'collected', 'weighIn', 'bridgeWeighIn'],
+  r3plain: ['collected', 'weighIn', 'tip'],
+  held14: ['awayReport', 'heldBay', 'collected'],
+};
+
+/** A bot whose events are kept: the last of each kind, read before the bot clears them (bot.ts clears b.ev after each read). */
+function keeping(b: Bot): Map<string, SalvageEvent> {
+  const last = new Map<string, SalvageEvent>();
+  const raw: SalvageEvent[] = [];
+  b.ev = new Proxy(raw, {
+    set(target, prop, value) {
+      if (prop === 'length' && value === 0) for (const e of target) last.set(e.type, e);
+      (target as unknown as Record<string | symbol, unknown>)[prop] = value;
+      return true;
+    },
+  });
+  return last;
+}
+
+const pick = (last: Map<string, SalvageEvent>, kinds: SalvageEvent['type'][]): SalvageEvent[] => {
+  const out: SalvageEvent[] = [];
+  for (const k of kinds) {
+    const e = last.get(k);
+    if (e) out.push(structuredClone(e));
+  }
+  return out;
+};
+
+/**
+ * PLAY the three states on a content (the game's game.json `salvage` block, parsed): deterministic, a pure
+ * function of the content and the engine. Throws when a state does not hold what it is named for.
+ */
+export function playStage2States(content: SalvageContent, now = Date.UTC(2026, 10, 25, 9)): Record<Stage2Name, Stage2Frozen> {
+  const kinds = new Set(Object.keys((content as unknown as { reuse?: { kinds?: Record<string, unknown> } }).reuse?.kinds ?? {}));
+  const cfgOf = (seed: number) => seededCfg({ mode: 'salvage', salvage: content } as unknown as SalvageConfig, seed);
+  const frozen = (b: Bot, seed: number, what: string, last: Map<string, SalvageEvent>, n: Stage2Name): Stage2Frozen => {
+    for (const e of b.ev) last.set(e.type, e);
+    const g = structuredClone({ ...b.g, lastSavedAt: b.g.salvage.clock.highMs }) as SalvageGame;
+    return { seed, worldSeed: b.cfg.salvage.worldSeed, now: b.now, what, g, events: pick(last, STAGE2_EVENT_KINDS[n]) };
+  };
+  const plain = (b: Bot): boolean => {
+    const s = b.g.salvage;
+    const hs = s.machines.hand_stripper;
+    const f = content.foreman;
+    const boost = f.boost > 0 && s.foreman.day === s.clock.day && s.foreman.used_s < f.minutesPerDay * 60 - 1e-6 && s.t - s.foreman.lastWorkAt < f.windowS;
+    return !boost && !hs.work && hs.hopper.length === 0 && !Object.values(s.bays).some((q) => q.held) && !s.things.some((th) => kinds.has(th.obj) && (th.at.at === 'dropoff' || th.at.at === 'floor'));
+  };
+  // r3 and r3plain: seed 257.
+  const c257 = cfgOf(257);
+  const b = newBot(c257, startGame(c257, now), now, { seed: 257, hand: 'normal', habit: 'all', route: 'A' });
+  const last = keeping(b);
+  playTo(b, 3600);
+  if (b.g.salvage.ladder.rung < 3) throw new Error(`r3: rung ${b.g.salvage.ladder.rung} at minute 60`);
+  const r3 = frozen(b, 257, 'seed 257, the normal hand, habit all, route A, played to minute 60', last, 'r3');
+  let m = 61;
+  for (; m <= 120; m++) {
+    playTo(b, m * 60);
+    if (plain(b)) break;
+  }
+  if (!plain(b)) throw new Error('r3plain: no plain minute by minute 120');
+  const r3plain = frozen(b, 257, `r3's play continued to minute ${m}, the first whole minute with no boost, the hand stripper idle, nothing held and no reusable kind at the drop-off or on the floor`, last, 'r3plain');
+  // held14: seed 1, the day-word holder.
+  const c1 = cfgOf(1);
+  const h = newBot(c1, startGame(c1, now), now, { seed: 1, hand: 'normal', habit: 'goal', route: 'A', holder: true });
+  const lastH = keeping(h);
+  playTo(h, 3600);
+  for (let k = 0; k < 2; k++) {
+    botAway(h, 11.75 * 3600);
+    playTo(h, h.g.salvage.t + 15 * 60);
+  }
+  const held = Object.values(h.g.salvage.bays).filter((q) => q.held).length;
+  if (held !== 14) throw new Error(`held14: ${held} bays held`);
+  const held14 = frozen(h, 1, `seed 1, the day-word holder, habit goal, route A: an hour, then twice 11.75 h away and 15 min played; ${held} bays held, cash ${h.g.cash}`, lastH, 'held14');
+  return { r3, r3plain, held14 };
+}
+
+const STAGE2_FILE = stage2Json as unknown as { note: string; content: unknown; states: Record<Stage2Name, Stage2Frozen> };
+
+let STAGE2_CONTENT: SalvageContent | null = null;
+/** The content the stage-2 states were played on (salvage-stage2.json), parsed and frozen. */
+export function stage2Content(): SalvageContent {
+  return (STAGE2_CONTENT ??= deepFreeze(SalvageSchema.parse(STAGE2_FILE.content)));
+}
+
+const STAGE2_CFG: Partial<Record<Stage2Name, SalvageConfig>> = {};
+/** A frozen state's config: its content with its world seed (one object per state, so the rules' caches hold). */
+export function stage2Cfg(n: Stage2Name): SalvageConfig {
+  return (STAGE2_CFG[n] ??= deepFreeze({ mode: 'salvage', salvage: { ...stage2Content(), worldSeed: STAGE2_FILE.states[n].worldSeed } } as unknown as SalvageConfig));
+}
+
+function lazy2<T>(make: (n: Stage2Name) => T): Readonly<Record<Stage2Name, T>> {
+  const memo: Partial<Record<Stage2Name, T>> = {};
+  const o = {} as Record<Stage2Name, T>;
+  for (const n of STAGE2_NAMES) Object.defineProperty(o, n, { enumerable: true, get: () => (memo[n] ??= make(n)) });
+  return Object.freeze(o);
+}
+
+/** The three frozen states (frozen objects: copy before changing). */
+export const STAGE2_STATES: Readonly<Record<Stage2Name, FixtureState & { now: number; what: string }>> = lazy2((n) => {
+  const f = STAGE2_FILE.states[n];
+  return deepFreeze({ cash: f.g.cash, playSeconds: f.g.stats.playSeconds, lifetimeEarnings: f.g.lifetimeEarnings ?? 0, salvage: f.g.salvage, now: f.now, what: f.what });
+});
+
+/** FIXTURE_EVENTS of the stage-2 states: what the preview re-emits once after loading one. */
+export const STAGE2_EVENTS: Readonly<Record<Stage2Name, readonly SalvageEvent[]>> = lazy2((n) => deepFreeze(STAGE2_FILE.states[n].events));
+
+/** A frozen stage-2 state as a game (the salvage state copied; the epoch bumped as fixtureGame does). Run it with stage2Cfg(n). */
+export function stage2Game(n: Stage2Name, base?: GameState, now?: number): SalvageGame {
+  const f = STAGE2_STATES[n];
+  const b = (base ?? ({ cash: 0, lifetimeEarnings: 0, runEarnings: 0, lastSavedAt: f.salvage.clock.highMs, stats: { playSeconds: 0, clockHigh: f.salvage.clock.highMs } } as unknown as GameState)) as GameState;
+  return { ...gameOf(f, b, now), lastSavedAt: f.salvage.clock.highMs };
 }

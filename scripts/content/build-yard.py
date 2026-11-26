@@ -37,6 +37,21 @@ Then two checks, and nothing is written unless both pass:
     unbounded.
 The frozen TEST content (src/engine/fixtures/salvage.ts) is what the rules tests run on; this is what
 the game ships.
+
+STAGE 2 (yard-stage2.md 5.1, 5.2; content2, 26 November): the content carries stage 2's keys (the works,
+the bank, the Yard sale, lots, the crate, ads, the mode's part of real money, the works layer of the
+families and of the map). The checks of 5.2 that read the content alone are lintSalvage's (schema.salvage.ts
+lintStage2: (1), (2), (5), (6), (7), (8), (11) without ΔI, (12), (13), (14) and B4's tool part of (4));
+the map's (9: 3.6, the merged map) are yard_map.py's check_works; the build itself derives each plate's
+`financeable` (true when its out holds a sellable grade). The checks that need what does not exist yet are
+WARNINGS here, listed for Phase B (they never refuse until their inputs exist):
+  (3)  a plate's price against max(works.floor, tau_r x ΔI) from bots/plates.json (the payback rule's table);
+  (4)  a theta_r beyond a metal's sources at a person's pace (the bots);
+  (7)  a pack's H against tau_4 from the shared products' list (monetization.iap.products, Phase B);
+  (10) a text key the content names (a place's label, a plate's permit) missing from textKeys.ts, and a
+       works-layer grade or thing without its words in text.json (strings2's, Phase B);
+  (11) a plate's ΔI at its planned moment (the bots).
+    python3 scripts/content/build-yard.py --selftest   the tests of these checks (the map's: yard_map.py --selftest)
 """
 import json
 import math
@@ -71,9 +86,12 @@ SCHEMA = r"""
 import fs from 'node:fs';
 import { SalvageSchema, lintSalvage } from './src/config/schema.salvage';
 const raw = JSON.parse(fs.readFileSync(0, 'utf8'));
+// owner1 S1: the content as a build of its release plays it, AND the whole content (release.stage 2), so that stage 2's
+// blocks are checked while a release keeps them dark.
 const r = SalvageSchema.safeParse(raw);
-if (!r.success) { console.log(JSON.stringify({ errors: r.error.issues.map((i) => i.path.join('.') + ': ' + i.message) })); }
-else { console.log(JSON.stringify({ errors: lintSalvage(r.data) })); }
+const all = SalvageSchema.safeParse({ ...raw, release: { stage: 2 } });
+if (!r.success || !all.success) { console.log(JSON.stringify({ errors: [...(r.success ? [] : r.error.issues), ...(all.success ? [] : all.error.issues)].map((i) => i.path.join('.') + ': ' + i.message) })); }
+else { console.log(JSON.stringify({ errors: [...new Set([...lintSalvage(r.data), ...lintSalvage(all.data)])] })); }
 """
 
 
@@ -104,25 +122,33 @@ def build():
     s['skeletonPlaceholder'] = False
     s['names'] = src['names']
     text = load(TEXT) if os.path.exists(TEXT) else {}
+    layer = s.get('worksLayer') or {}
     for g, w in (text.get('grades') or {}).items():
-        if g in s['grades']:
-            for k in ('name', 'short', 'long'):
-                if k in w:
-                    s['grades'][g][k] = w[k]
+        for fam in (s['grades'], layer.get('grades') or {}):  # stage 2: the works layer's grades take their words too
+            if g in fam:
+                for k in ('name', 'short', 'long'):
+                    if k in w:
+                        fam[g][k] = w[k]
     for o, w in (text.get('objects') or {}).items():
-        if o in s['objects']:
-            for k in ('name', 'long'):
-                if k in w:
-                    s['objects'][o][k] = w[k]
+        for fam in (s['objects'], layer.get('objects') or {}):
+            if o in fam:
+                for k in ('name', 'long'):
+                    if k in w:
+                        fam[o][k] = w[k]
     blk = {k: nodollar(text[k]) for k in ('lessons', 'partners', 'glossary') if k in text}
     if blk:
         s['text'] = blk
     goals = nodollar(load(GOALS)) if os.path.exists(GOALS) else {}
-    for k in ('goals', 'dayOne', 'teach'):
+    for k in ('goals', 'dayOne', 'teach', 'stage2'):  # stage2: the stage's goal list (goals2, rules-money, 26 Nov)
         if k in goals:
             s[k] = goals[k]
     for fam, extra in (src['pending'] or {}).items():
         s.setdefault(fam, {}).update(extra)
+    # STAGE 2 (2.5.3): a plate's `financeable` is derived, never written by hand: its out holds a sellable grade
+    grades = {**s['grades'], **(s.get('worksLayer') or {}).get('grades', {})}
+    for p in ((s.get('works') or {}).get('plates') or {}).values():
+        outs = [x for sh in (p.get('out') or {}).values() for x in sh] + [x for r in (p.get('recipes') or {}).values() for x in r['out']]
+        p['financeable'] = any(g in grades for g, _ in outs)
     old = load(GAME)
     game = dict(old)
     game['salvage'] = s
@@ -313,6 +339,9 @@ def lint(s, sprites):
     # MAP.md M1 to M7 (the fix pass): scripts/content/yard_map.py
     for e in yard_map.check(s)[0]:
         bad(e)
+    # stage 2 (yard-stage2.md 3.1.3, 3.6, 5.2 (9)): the merged map, the works layer over the first yard's
+    for e in yard_map.check_works(s)[0]:
+        bad(e)
     for k, v in M['lane'].items():
         num(f'map.lane.{k}', v, True)
     num('map.detour', M['detour'], True)
@@ -356,6 +385,67 @@ def lint(s, sprites):
     return out
 
 
+TEXT_KEYS = os.path.join(ROOT, 'src', 'engine', 'salvage', 'textKeys.ts')
+PLATES_TABLE = os.path.join(ROOT, 'scripts', 'content', 'bots', 'plates.json')
+
+
+def warnings(s, game):
+    """5.2's checks whose inputs do not exist yet (see the head of this file): findings, never refusals."""
+    out = []
+    W = s.get('works') or {}
+    plates = W.get('plates') or {}
+    if not plates:
+        return out
+    tau = s.get('tau_h') or []
+    # (3) the payback rule's prices
+    if os.path.exists(PLATES_TABLE):
+        tab = load(PLATES_TABLE)
+        for pid, p in plates.items():
+            row = (tab.get('plates') or tab).get(pid)
+            r = int(str(p['gate']).replace('rung', '') or 3)
+            if not row or 'dI' not in row:
+                out.append('(3) bots/plates.json has no ΔI for plate %s' % pid)
+                continue
+            want = max(W['floor'], (tau[r - 1] or 0) * row['dI'])
+            if abs(p['price'] - want) > max(1, 0.01 * want):
+                out.append('(3) works.plates.%s.price §%s is not max(works.floor, tau_%d x ΔI) = §%.0f' % (pid, p['price'], r, want))
+    else:
+        out.append('(3) plate prices not checked: bots/plates.json (the payback rule\'s table, 2.6.4) does not exist yet: %d plates at first values' % len(plates))
+    # (14) for the away caps: now a refusal of the schema (s2a-fix: away.ts runLongerOf stops at the stage's top rung)
+    # 2.10.1's fallback lot: none (the lead's ruling 6 of 26 Nov 09:50: lots wait for a kind the yard can open)
+    # (4) and (11): what the bots measure
+    out.append('(4) theta_r against each metal\'s sources at a person\'s pace: not measured (the bots, Phase B); the tool part of B4 is lintStage2\'s')
+    out.append('(11) each plate\'s ΔI at its planned moment above 0: not measured (the bots, Phase B); the +5 % at p̄ is lintStage2\'s')
+    # (7) the shared products' H
+    prods = ((game.get('monetization') or {}).get('iap') or {}).get('products') or []
+    packs = [p for p in prods if p.get('kind') == 'hoursOfIncome']
+    if not packs:
+        out.append('(7) no hoursOfIncome product in monetization.iap.products yet (Phase B, the shared schema): checked against ruling 9.1\'s fixed 2, 5, 10, 20 h')
+    elif len(tau) >= 4 and tau[3]:
+        for p in packs:
+            if (p.get('value') or 0) >= tau[3]:
+                out.append('(7) product %s gives %s h of I, not under tau_4 %s h' % (p.get('id'), p.get('value'), tau[3]))
+    # (10) the words the content names
+    keys = set(re.findall(r"'([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)'", open(TEXT_KEYS, encoding='utf-8').read())) if os.path.exists(TEXT_KEYS) else set()
+    text = load(TEXT) if os.path.exists(TEXT) else {}
+    named = set()
+    for pl in ((s['map'].get('works') or {}).get('places') or {}).values():
+        if pl.get('label'):
+            named.add(pl['label'])
+    for p in plates.values():
+        if p.get('permit'):
+            named.add(p['permit'])
+    miss = sorted(k for k in named if k not in keys)
+    if miss:
+        out.append('(10) %d text key(s) the content names are not in textKeys.ts yet (strings2, Phase B): %s' % (len(miss), ', '.join(miss)))
+    L = s.get('worksLayer') or {}
+    for fam in ('grades', 'objects'):
+        m = sorted(k for k in (L.get(fam) or {}) if k not in (text.get(fam) or {}))
+        if m:
+            out.append('(10) %d works-layer %s without words in text.json yet: %s' % (len(m), fam, ', '.join(m)))
+    return out
+
+
 def summary(s):
     rows = ['goal order and prices: ' + ', '.join('%s §%s' % (i['key'], f'{i["price"]:,}') for i in s['shop'])]
     rows.append('partners: ' + '; '.join('%s load %.0f kg §%s every %ds, trial §%s' % (p, d['skipMass_kg'], f'{d["skipPrice"]:,}', d['fill_s'], d['trialPrice']) for p, d in s['partners'].items()))
@@ -364,7 +454,39 @@ def summary(s):
     return '\n'.join('  ' + r for r in rows)
 
 
+def selftest():
+    """Tests of this script's stage-2 checks: the derived `financeable`, and each Phase-B warning fires on the content
+    that should raise it (lintSalvage's are tested in src/engine/salvage/contentChecks.test.ts, the map's by yard_map.py)."""
+    import copy
+    game, _ = build()
+    s = game['salvage']
+    fails = 0
+
+    def expect(name, ok):
+        nonlocal fails
+        print('%s %s' % ('ok  ' if ok else 'FAIL', name))
+        fails += 0 if ok else 1
+    pl = s['works']['plates']
+    expect('the baler is financeable (its out holds lib)', pl['baler']['financeable'] is True)
+    expect('the analyser and the crane are not', pl['analyser']['financeable'] is False and pl['crane']['financeable'] is False)
+    ws = warnings(s, game)
+    expect('(3) warns while bots/plates.json is missing', os.path.exists(PLATES_TABLE) or any(w.startswith('(3)') for w in ws))
+    c = copy.deepcopy(s)
+    c['map']['works']['places']['shear']['label'] = 'place.noSuchKey'
+    expect('(10) warns on a label textKeys.ts lacks', any('place.noSuchKey' in w for w in warnings(c, game)))
+    c = copy.deepcopy(s)
+    c['worksLayer']['grades']['zzz'] = dict(c['worksLayer']['grades']['ss'])
+    expect('(10) warns on a works-layer grade without words', any('zzz' in w for w in warnings(c, game)))
+    g2 = copy.deepcopy(game)
+    g2.setdefault('monetization', {}).setdefault('iap', {})['products'] = [{'id': 'pack30', 'kind': 'hoursOfIncome', 'value': 30}]
+    expect('(7) warns on a pack of 30 h against tau_4 22 h', any('pack30' in w for w in warnings(s, g2)))
+    print('selftest: %d failed' % fails)
+    return 1 if fails else 0
+
+
 def main(argv):
+    if '--selftest' in argv:
+        return selftest()
     game, sprites = build()
     s = game['salvage']
     errs = tsx(SCHEMA, stdin=json.dumps(s))['errors']
@@ -380,6 +502,8 @@ def main(argv):
         return 1
     if '--quiet' not in argv:
         print(summary(s))
+        for w in warnings(s, game):
+            print('  [warning, Phase B] ' + w)
     if '--lint' in argv:
         print('lint: clean (SalvageSchema, lintSalvage and this script\'s own checks)')
         return 0

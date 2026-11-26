@@ -102,11 +102,13 @@ export interface GoalValues {
   share: number | null;
   next: string | null;
   advice: string | null;
+  /** owner1 T2: the step of a load the boss fetches himself ("Drive onto the weighbridge"), the line under the goal while present. */
+  step: string | null;
 }
 
 /** The goal card's lines from the facade's `nextGoal` (with its meter and next line) and `advice`. */
 export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, now: number): GoalValues {
-  if (!g?.salvage) return { goal: null, progress: null, share: null, next: null, advice: null };
+  if (!g?.salvage) return { goal: null, progress: null, share: null, next: null, advice: null, step: null };
   const c = cfg.salvage;
   const goal = R.nextGoal(cfg, g);
   const adv = R.advice(cfg, g, now);
@@ -118,7 +120,42 @@ export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, n
     share: meter ? Math.max(0, Math.min(1, meter.share)) : null,
     next: goal?.next ? say(goal.next, c) : null,
     advice: adv ? say(adv.line, c) : null,
+    // owner1-fix finding 9: the step's line is hidden when its words are the goal's own ("Tip it on the floor" twice).
+    step: goal?.step && (!goal || say(goal.step, c) !== say(goal.text, c)) ? say(goal.step, c) : null,
   };
+}
+
+/** The one button's three forms (yard-stage1.md 2.1). */
+export type ButtonMode = 'open' | 'stepOut' | 'blank';
+
+/**
+ * owner1-fix finding 4 and 11: the one button's form. At the wheel it is "Step out", everywhere, the truck's park
+ * included: the boss is at the wheel when the RULES say so (the frame's `boss.button`, from `truck.by === 'boss'`)
+ * or when the world drives him (its own flag, which leads the rules by one presence sample when he gets in). The
+ * world's flag alone could drop while he still sat in the cab (the player's 844 drive after the hook: the shell's
+ * mount reset `driving` to false behind the frame loop, which had already put him in the cab); the rules' word
+ * cannot. On foot: "Open" at a place whose card has something to show, else blank.
+ */
+export function buttonMode(worldDriving: boolean, rulesButton: 'stepOut' | 'open' | null, place: string | null, placeOpens: boolean): ButtonMode {
+  if (worldDriving || rulesButton === 'stepOut') return 'stepOut';
+  return place && placeOpens ? 'open' : 'blank';
+}
+
+/** The rules' word on the one button (the frame's boss.button; memoised on the state's identity), or null. */
+export function rulesButton(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): 'stepOut' | 'open' | null {
+  if (!g?.salvage) return null;
+  return R.frame(cfg, g).boss.button;
+}
+
+/**
+ * owner1 T4: the words of the refusal the boss's act holds now (FrameBoss.refusal: "Needs §x more for this
+ * load", "Weigh it in first"), or null. The frame is the rules' (memoised on the state's identity, so the
+ * world's own call and this one share it); only asked while the act is `refused.*`.
+ */
+export function heldRefusal(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): string | null {
+  if (!g?.salvage || !(g.salvage.act.target ?? '').startsWith('refused.')) return null;
+  const t = R.frame(cfg, g).boss.refusal;
+  return t ? say(t, cfg.salvage) : null;
 }
 
 /** The toast's words for an event, or null (pure; ./hud.test.ts). */

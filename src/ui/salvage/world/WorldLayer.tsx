@@ -43,6 +43,7 @@ import { hudLayout } from '../hud/metrics';
 import { useSalvageUi } from '../uiState';
 import { STICK_R, stick } from './stick';
 import { labelsDev } from './labelsDev';
+import { IdleTags } from './IdleTags';
 import type { YardLayout } from './yard';
 
 /** The store's picture (?view=hero-store) shows no edge arrow (L2). */
@@ -56,6 +57,13 @@ const LABEL_MS = 500;
 const RING_STEPS = 24;
 /** The ring's largest radius, metres (a car's ring stays a ring on the ground at its middle, its stroke readable). */
 const RING_MAX_M = 1.1;
+/**
+ * owner1 T3 / screens1 finding 5 (the owner's review, point 5: at the farm "nothing really happened"): the ring
+ * around the boss's truck while it hooks a skip (the rules' dated span, frame.truck.hookSpan: 4 s), metres, and
+ * the pulse of its halo (a second, larger ring breathing at HOOK_PULSE_HZ) so that it cannot be missed.
+ */
+const HOOK_RING_M = 2.6;
+const HOOK_PULSE_HZ = 1.6;
 /** Ingot cooling pictures per metal. */
 const COOL_STEPS = 8;
 const COOL_METALS = ['brass', 'aluminium'] as const;
@@ -87,7 +95,68 @@ export function WorldLayer({ cfg, yard, anim, width, height, insets, active = tr
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <FxCanvas cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
       <Labels cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
+      <WaitTags cfg={cfg} yard={yard} anim={anim} width={width} height={height} insets={insets} active={active} />
+      <HookWords cfg={cfg} yard={yard} anim={anim} width={width} height={height} active={active} />
     </View>
+  );
+}
+
+/** owner1 H6: the waiting workers' tags (./IdleTags.tsx) at the yard's text size. */
+function WaitTags(p: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; insets: ScreenInsets; active: boolean }) {
+  const size = useLabelSize();
+  const { fontScale } = useWindowDimensions();
+  return <IdleTags {...p} size={size} fontScale={labelsDev.fontScale ?? fontScale} />;
+}
+
+/**
+ * owner1 T2 / T3 (screens1 finding 5): while the boss's truck hooks, the goal's step ("Keep still: hooking")
+ * stands beside the ring on a paper chip, following the truck on the UI thread; it goes with the hook's span.
+ */
+/** The hook words' box, points (centred under the truck). */
+const HOOK_HOLD_W = 260;
+
+function HookWords({ cfg, yard, anim, width, height, active }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; active: boolean }) {
+  const size = useLabelSize();
+  const [text, setText] = useState('');
+  useEffect(() => {
+    if (!active) {
+      setText('');
+      return;
+    }
+    const run = () => {
+      const g = useGame.getState().game as R.SalvageGame;
+      if (!g?.salvage) return;
+      const f = R.frame(cfg, g);
+      const hooking = f.truck.hookSpan !== null && f.truck.by === 'boss' && f.t < f.truck.hookSpan.t1;
+      const step = hooking ? (R.nextGoal(cfg, g)?.step ?? ({ key: 'goal.step.hook' } as R.Txt)) : null;
+      setText(step ? say(step, cfg.salvage) : '');
+    };
+    run();
+    return useGame.subscribe(run);
+  }, [cfg, active]);
+  const { ppm, tilt, lift } = yard;
+  const W = width;
+  const H = height;
+  const cam = anim.camera;
+  const body = anim.body;
+  const style = useAnimatedStyle(() => {
+    const c = cam.value;
+    const b = body.value;
+    const q = [0, 0];
+    // owner1 play 6: BELOW the truck, under the ring's south edge, centred (never on the skip's plate, which
+    // stands beside the skip on the lane's far side or above it).
+    toScreen(q, b.x, b.y + HOOK_RING_M + 0.15, 0, c, ppm, tilt, lift, W, H);
+    return { transform: [{ translateX: Math.max(8, Math.min(W - 8 - HOOK_HOLD_W, q[0] - HOOK_HOLD_W / 2)) }, { translateY: Math.min(H - Math.ceil(size * 1.4) - 14, q[1] + 2) }] };
+  });
+  if (!text) return null;
+  return (
+    <Animated.View pointerEvents="none" style={[styles.hookHold, style]}>
+      <View style={[styles.plate, styles.placePlate, { paddingHorizontal: 7, paddingVertical: 3, borderColor: YARD.ink }]}>
+        <Text allowFontScaling={false} numberOfLines={1} style={{ fontSize: size * 1.1, lineHeight: Math.ceil(size * 1.4), color: YARD.ink, fontWeight: '800' }}>
+          {text}
+        </Text>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -162,8 +231,14 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
       const z = cv.zoom > 0 ? cv.zoom : 1;
       const now = Date.now() / 1000;
       const open = loadingClock.done.value;
-      const boss = anim.body.value;
+      // The boss by the rules' own presence (frame.boss, at most one sample old), not the frame loop's body:
+      // a JS read of a value the UI thread writes every frame blocks on it (owner1 phone 1).
+      const boss = f.boss && f.boss.x === f.boss.x ? { x: f.boss.x, y: f.boss.y, driving: f.truck.by === 'boss' ? 1 : 0 } : null;
+      // owner1 play 6: while the boss's truck hooks, the skip's plate steps aside for the ring (the hook's words
+      // below the truck say what happens); at 844 the plate stood on the road side over the truck and its ring.
+      const hooking = f.truck.hookSpan !== null && f.truck.by === 'boss' && f.t < f.truck.hookSpan.t1;
       const shown = items.filter((it) => {
+        if (hooking && it.kind === 'skip') return false;
         const near = boss ? Math.hypot(boss.x - it.x, boss.y - it.y) <= NEAR_M : false;
         if (it.near) return near;
         if (!it.place) return true;
@@ -198,6 +273,11 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
         const bx = (boss.x * v.ppm - cv.x - width / 2) * z + width / 2;
         const by = (boss.y * v.ppm * v.tilt - cv.y - height / 2) * z + height / 2;
         blocks.push({ x0: bx - bw, x1: bx + bw, y0: by - bh, y1: by + 6 });
+        // The hook's ring and its words: no plate on them.
+        if (hooking) {
+          const rr = HOOK_RING_M * v.ppm * z;
+          blocks.push({ x0: bx - rr, x1: bx + rr, y0: by - rr * v.tilt - bh, y1: by + rr * v.tilt + 40 });
+        }
       }
       const hides: Rect[] = [];
       // The ticket up now (the hud's ticketBoxes): a plate it would touch is not shown.
@@ -234,7 +314,7 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, anim.body, size, fontScale, width, height, inT, inL, inR, inB, active, tops, machineTop]);
+  }, [cfg, yard, cam, size, fontScale, width, height, inT, inL, inR, inB, active, tops, machineTop]);
   const W = width;
   const H = height;
   const style = useAnimatedStyle(() => {
@@ -378,7 +458,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const cam = anim.camera;
   const body = anim.body;
   const live = useSharedValue<Live[]>([]);
-  const rings = useSharedValue<{ x: number; y: number; r: number; t: number; t0: number; t1: number; p0: number; born: number }[]>([]);
+  const rings = useSharedValue<{ x: number; y: number; r: number; t: number; t0: number; t1: number; p0: number; born: number; hook?: number }[]>([]);
   const chev = useSharedValue({ on: 0, x: 0, y: 0, z: 0 });
   const box = useSharedValue([0, 0, width, height]);
   const pic = useSharedValue<SkPicture>(useMemo(() => record(() => {}), []));
@@ -422,9 +502,27 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       if (r.born < 0) r.born = now;
       const yt = r.t + (now - r.born);
       const share = r.t1 > r.t0 ? r.p0 + ((1 - r.p0) * (yt - r.t0)) / (r.t1 - r.t0) : r.p0;
+      if (r.hook === 1 && share >= 1) continue;
       const k = Math.max(1, Math.min(RING_STEPS, Math.round(Math.max(0, Math.min(1, share)) * RING_STEPS)));
+      // The hook's ring sits on the truck where the screen draws it (the boss drives it himself).
+      const hx = r.hook === 1 && body.value.driving === 1 ? body.value.x : r.x;
+      const hy = r.hook === 1 && body.value.driving === 1 ? body.value.y : r.y;
+      if (r.hook === 1) {
+        // The halo: the whole ring a little larger, breathing.
+        const ph = 0.5 + 0.5 * Math.sin(now * Math.PI * 2 * HOOK_PULSE_HZ);
+        const sc = (r.r / RING_R) * (1.1 + 0.08 * ph);
+        paint.setAlphaf(0.25 + 0.35 * ph);
+        cv.save();
+        cv.translate(hx * ppm, hy * ppm * tilt);
+        cv.scale(sc, sc);
+        cv.saveLayer(paint);
+        cv.drawPicture(pics.ring[RING_STEPS]);
+        cv.restore();
+        cv.restore();
+        paint.setAlphaf(1);
+      }
       cv.save();
-      cv.translate(r.x * ppm, r.y * ppm * tilt);
+      cv.translate(hx * ppm, hy * ppm * tilt);
       cv.scale(r.r / RING_R, r.r / RING_R);
       cv.drawPicture(pics.ring[k]);
       cv.restore();
@@ -600,13 +698,19 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       const f = R.frame(cfg, g);
       lastFrame.current = f;
       // The rings: each from p0 at t0 to full at t1 (yard seconds), run on from the frame's own second.
-      rings.value = f.things
+      // Built here and written once: never read back on this thread (a JS read of a shared value the UI side has
+      // set since blocks on the UI thread: owner1 phone 1).
+      const rs = f.things
         .filter((t) => t.ring !== null && t.ring !== undefined)
         .map((t) => {
           const s = cfg.salvage.objects[t.obj]?.size;
           const r = t.ring!;
-          return { x: t.x, y: t.y, r: Math.min(RING_MAX_M, (s ? Math.max(s.w, s.d) / 2 : 0.5) + 0.35), t: f.t, t0: r.t0, t1: r.t1, p0: r.p0, born: -1 };
+          return { x: t.x, y: t.y, r: Math.min(RING_MAX_M, (s ? Math.max(s.w, s.d) / 2 : 0.5) + 0.35), t: f.t, t0: r.t0, t1: r.t1, p0: r.p0, born: -1 } as (typeof rings.value)[number];
         });
+      // The boss's hook (owner1 T3): its own ring around the truck, from the rules' dated span.
+      const hs = f.truck.hookSpan;
+      if (hs && f.truck.by === 'boss') rs.push({ x: f.truck.x, y: f.truck.y, r: HOOK_RING_M, t: f.t, t0: hs.t0, t1: hs.t1, p0: 0, born: -1, hook: 1 });
+      rings.value = rs;
       // A new epoch (away pass, reconcile, preset): snap, no effect carries across it.
       if (f.epoch !== lastEpoch) {
         lastEpoch = f.epoch;
@@ -616,7 +720,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       // Over a place that wears its name plate, the chevron hovers above the plate.
       const plated = tg ? f.labels.some((l) => l.kind === 'place' && l.id === `place.${tg.id}`) : false;
       chev.value = tg ? { on: 1, x: tg.x, y: tg.y, z: chevronZ(cfg, f, tg.id) + (plated ? 0.9 : 0) } : { on: 0, x: 0, y: 0, z: 0 };
-      if (tg || rings.value.length) wakeRef.current();
+      if (tg || rs.length) wakeRef.current();
     };
     push();
     return useGame.subscribe(push);
@@ -625,7 +729,9 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const play = useRef<(events: readonly R.SalvageEvent[], frame?: R.FrameTable) => void>(() => {});
   play.current = (events, frame) => {
     const g = useGame.getState().game as R.SalvageGame;
-    const ctx: FxContext = { content: cfg.salvage, frame: frame ?? lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: { x: anim.body.value.x, y: anim.body.value.y }, grades };
+    const fr = frame ?? lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null);
+    // The boss by the rules' presence (frame.boss), not the frame loop's body (owner1 phone 1: no blocking read).
+    const ctx: FxContext = { content: cfg.salvage, frame: fr, boss: fr ? { x: fr.boss.x, y: fr.boss.y } : null, grades };
     const start: FxSpawn[] = [];
     const stop: string[] = [];
     for (const e of events) {
@@ -879,5 +985,6 @@ const styles = StyleSheet.create({
   stem: { position: 'absolute', top: 0, width: 2, backgroundColor: YARD.ink, opacity: 0.7 },
   lockBox: { backgroundColor: YARD.ink, alignItems: 'center', justifyContent: 'center', marginRight: 5 },
   slide: { position: 'absolute', left: 0, top: 0, width: 180, alignItems: 'center' },
+  hookHold: { position: 'absolute', left: 0, top: 0, width: HOOK_HOLD_W, alignItems: 'center' },
   slideText: { color: YARD.inkSoft, fontWeight: '700', backgroundColor: 'rgba(251,251,246,0.85)', paddingHorizontal: 5, borderRadius: 5, overflow: 'hidden' },
 });

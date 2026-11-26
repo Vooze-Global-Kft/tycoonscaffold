@@ -8,10 +8,14 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E36).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E41; E37 to E41 came after
+  the owner's decisions of 26 November).
 - Part 3: the first yard after its review (S1 to S24).
 - Part 4: the first yard's map after the review of the built game (M1 to M7).
 - Part 5: the rulings on the review of the built game, by finding (S, R, H, P, W, L).
+- Part 6: the owner's decisions of 26 November (purchases limited to looks and scrip, bank loans,
+  partnerships, yard sales, the company as a neighbourhood) and the lead's ruling on them (sections 1
+  to 13; later sections change earlier ones).
 
 ---
 
@@ -151,6 +155,10 @@ All three judges chose the "hand" design. It is the base.
 ---
 
 ## The first yard's economy: the lead's decisions after the first prototype (25 November)
+
+> Where an entry of this part and part 6 differ, part 6 is right: it is the later ruling (E37's
+> "own output grades" is corrected by E41 and part 6 section 11; E39's "a part in a partner" is a
+> partnership, part 6 sections 9.7 and 9.10).
 
 The first prototype (`proto/REPORT.txt`) played `docs/design/yard-stage1.md` as written. The first
 five minutes hold for every player. After that the yard is starved: once the old stock is gone the
@@ -490,6 +498,60 @@ nothing sells); it costs no value (the away card prints what stands in the bays,
 it is reworked with the two exchanges in the next stage, where timing a sale is the game. (d) The
 slow hand's first drive is within one and a half times the normal hand's on 11 seeds of 15 (E24
 asks nine of ten): kept as measured.
+
+### After the owner's decisions of 26 November (the ruling RULING2.md)
+
+**E37. E11 amended: credit exists, from rung 3, on works plates only.** E11 now reads: no credit in
+the first hour's shop: tools, carriers, crew and the first machines are bought with cash. From rung
+3 the bank's plant finance exists, on works plates that earn: the bank pays at most four fifths of
+the price and at most min(2 h, 0.15 x tau) of rated income; a flat charge fixed at signing; repaid
+only as a share of the payments for the financed plate's own output grades; no date, nothing that
+grows, no button to repay, cash never below zero (RULING2.md section 3). E4 (no dead end) holds:
+an idle plate pays nothing and its debt waits.
+
+**E38. Rated income, I.** Everything priced in hours of income (scrip packs, the bank's limit, a
+helper's daily limit) uses the scrip an hour the yard would earn with its present assets, no boss,
+at usual prices. It is computed from assets, never from recent sales, and it must agree with the
+measured away income an hour within a tenth at rungs 3 to 5 (RULING2.md 2.1).
+
+**E39. E20 restated for holdings.** With every part in a partner owned, three fifths of a load's
+margin still come from the yard's work: a part takes at most a tenth off a partner's load price
+and is capped to the trade done with that partner when it was bought (RULING2.md 4.2).
+
+**E40. Hold never stops the yard (it replaces E36(c)'s deferral; amended after the attack on the
+engine step, RULING2.md 14.6).** While the boss is away and the cash cannot pay the next load, the
+yard sets aside from one held bay just enough, at today's price, to pay for that load: first a bay
+whose word of the day is not low, then the one worth most. Hold stays on; the away card names the
+grade. Built with the engine step that opens stage 2.
+
+**E41. The bank's share is of every sale (it corrects E37's "own output grades").** From signing
+the bank takes a fifth (tune 0.15 to 0.25) of every lot payment until the total is repaid; nothing
+else repays; no date, no button; one agreement at a time in stage 2 (RULING2.md section 11).
+
+**E42. From rung 3 the crew works in runs (RULING2.md 14.1).** A yard hand keeps at one kind of
+trip for up to 30 s and a cutter at one place for up to 120 s before choosing again, in the boss's
+sight and out of it alike; out of sight the run is planned ahead with one dated end (that is what
+makes time away cheap). The first hour below rung 3 is unchanged. From rung 3 the yard clears its
+floor faster than the first yard's leg-by-leg order did (the attacker measured 6 to 17 % more
+tonnes over three days with the limits as first built); that move is accepted as stage 2's
+baseline, and the bots' report on the new engine (REPORT7) states it.
+
+**E43. The merchant's round is the same watched or not (RULING2.md 14.3).** It is never lengthened
+for time away.
+
+**E44. The driver and the farm's skips (RULING2.md section 16; as it ended, 16.9: the yard hands' rule alone removed the fault and the driver keeps the first yard's rule).** In the first yard as merged the
+hired driver fetched the skip that had been full longest, and "Another skip" for the farm made the
+yard poorer once demolition was open (its light skips crowded out loads that net twice as much).
+From rung 3 he ranks partners by what a load nets and keeps the floor's room for the best; a
+partner's level never lowers what the yard keeps. No purchase may make the yard poorer: the bots
+check every purchase, hire and level for it from now on.
+
+**E45. No purchase makes the yard poorer (RULING2.md section 17).** Buying the motor bench at rung
+2 lowered what the first yard kept by about 30 %: yard hands fed machines and emptied trays before
+they cleared the tipping floor. From now on every purchase, hire and level is walked by the bots
+in every report: the mean change in what the yard keeps is never below -1 %. The hands' order of
+work puts the floor first while it is more than half full (or the rule the measurement finds
+better), and each machine is shown to pay at a crew a player can hire.
 
 ---
 
@@ -990,3 +1052,1123 @@ Six reviewers played and read the joined first yard and reported 101 findings. E
   Ruling: do.
 - **W26** (minor). E31b ('a cutter's and a yard hand's level adds a quarter') and E31d (rung 2 at 2.4 t) are not in the content: hand.lev 0.12, cutter.lev 0.15, rung2.t 2.2.
   Ruling: do with R4 (E31b and rung 2 at 2.4 t).
+
+---
+
+## The lead's ruling on the owner's decisions of 26 November
+
+After the first yard was delivered, the owner decided: "Purchases should be limited to cosmetics,
+currency etc. Maybe you could even get bank loans, Etc... investments, yard sales," and "30 players
+could join a company like for instance how Hay Day is designed you can have neighborhoods".
+
+Four researchers gathered the facts and a second person checked each (`docs/design/research/`:
+`yard-social.md`, `yard-policy2.md`, `yard-money.md`, `yard-finance.md`). Three designers proposed
+inside a frame the lead set (`design2/FRAME.md`); four judges judged (a player and the owner's
+intent; store policy, ratings and fair boards; the economy and its exploits; the builder). This
+ruling stands above the proposals and the judges. A point that cannot work is reported with its
+smallest example, never quietly replaced. Numbers given here are starting values for the numbers
+prototype unless a point says "fixed".
+
+### 1. How the owner's words are read
+
+1. "Cosmetics" are LOOKS: things that change how a yard looks and nothing else.
+2. "Currency" is SCRIP (§), the one currency the first yard has, sold only as hours of the buyer's
+   own yard's rated income. There is no second, paid currency (the EU consumer authorities warn
+   against mixing currencies and against exchanges before a purchase).
+3. "Etc." is read narrowly: a NO AD VIDEOS purchase, and bundles of looks with it. No pass, nothing
+   random, no timer on any offer, nothing that adds tonnes or rank directly.
+4. "Bank loans" are the bank's PLANT FINANCE (stage 2), a merchant's ADVANCE (stage 3) and a SITE
+   LOAN (stage 4): each repaid only out of sales.
+5. "Investments" are A PART IN A PARTNER that comes back as better terms on real trade with that
+   partner (stage 3), and A PASSED RIVAL'S YARD bought as a site (stage 4). Player text never says
+   invest, returns, shares, stock, dividend or stake.
+6. "Yard sales" are a REUSE RACK at the gate from which the public buys (stage 2). Between players
+   nothing is ever sold at a price a player sets.
+7. "A company like a neighbourhood": every player keeps their own yard; a company is founded and
+   joined, at most 30 members (the design's section 7 stands), and members HELP each other a
+   little every day and share a WEEKLY ORDER. The groups, the rack and the weekly order are our
+   own in theme, words, rules and numbers: nothing of another game is copied.
+
+### 2. Money
+
+2.1 **Rated income, I (fixed).** Everything priced in hours uses one measure: the scrip an hour the
+    yard would earn with its present assets, no boss, at usual prices (rated capacity times the
+    margin a tonne of what that capacity makes). It is computed from ASSETS, never from the moving
+    average of recent sales (a player can pump that: hold every bay through a low day, sell all,
+    open the card). The rated function must count the step that binds (the bots found cutting and
+    the one truck bind late). Gate: I is within 0.9 to 1.1 of the measured away income an hour at
+    rungs 3, 4 and 5.
+2.2 **The catalogue of stage 2.** All real-money prices are on ONE card, the shop (opened from the
+    office and from Settings; it is not a new place on the first yard's map). No working card
+    (truck, crane, gate, machine) ever carries a real-money button.
+    - LOOKS, each $1.99 to $2.99, bought once, restored on reinstall: six fleet colours, four
+      yard-dressing sets, a founder's plaque poured in the yard's own crucible. Emblem parts and
+      company looks go on sale only in stage 5, when others can see them.
+    - EARNED LOOKS, never sold: a sign style at each rung and the foundry's plate, so that a player
+      who never pays has looks to show.
+    - NO AD VIDEOS, $4.99: every ad reward at once, same limits.
+    - ONE BUNDLE of looks with No ad videos, at one fixed price, always on sale, never timed, never
+      limited in number, offered only while the player owns none of its parts. A bundle never
+      holds scrip (a bundle with scrip is a consumable whose looks would not restore).
+    - SCRIP PACKS: 2, 5.5, 11.5 and 24 hours of I at $1.99, $4.99, $9.99 and $19.99. The largest
+      pack is at most the payback time of the rung where packs open.
+2.3 **How a scrip pack works (fixed).**
+    - Packs open at RUNG 4, never before: the measured first day is the same for everyone.
+    - The amount S = H x I is fixed when the card opens (shown again if the market step changed
+      before the store's sheet opens) and granted exactly as shown however late the approval comes
+      (a parent's approval can take hours). A ledger of granted transaction ids, a listener for
+      pending purchases and a reconcile at start keep a paid pack from being lost or paid twice;
+      bought scrip survives a restore and a save migration.
+    - Headroom: a pack is offered only while the yard can spend it now (the sum of what is buyable
+      now under the rung's ceiling). Otherwise its row reads "Nothing to spend it on yet" and has
+      no Buy button.
+    - The card prints the scrip and "about H hours of your yard's earnings". It never says "H hours
+      ahead" (the real lead is tau x ln(1 + H / tau), less than H) and never promises success.
+    - The grant goes through this mode's own money rules (a salvage consumable kind), not the
+      shared time-warp kind, which pays a moving average.
+2.4 **The switch (fixed).** Scrip packs are switched by country in the game's data: OFF in the EEA
+    and Switzerland at launch (until the owner has a lawyer's answer on showing a real-money figure
+    beside every scrip price), OFF where the country is unknown, ON elsewhere. Settings carries a
+    plain switch "Scrip packs: shown / hidden" so that a parent can hide them. The frame's "off for
+    players the platform reports as under 18" cannot fire today: no age signal exists without a
+    native module, and Expo Go has none. It becomes real when a store build carries the platform's
+    age signal, which is the owner's decision before the first store build; until then nothing in
+    the game or its store page claims it. THE GAME IS WHOLE WITH PACKS OFF: a player without packs
+    lacks only time, and every aim is measured in both modes.
+2.5 **Never.** No goal, advice line, away card, refusal, ticket or debt card ever names a real-money
+    product. No real-money prompt in the first session. No ad and no shop button on any card or
+    ticket that shows a debt.
+2.6 **Ads.** Rewarded videos only, behind labelled buttons that show what they pay: together at
+    most 4 % of a day's rated income (two away bonuses of up to 15 minutes of I, three spot buyers
+    of up to 8 minutes of I: 54 minutes a day). The away bonus is offered on its own small card
+    after the away card is closed, never on the away card. Ad rewards never count on a board and
+    never repay anything.
+2.7 **Boards stay worth playing for someone who buys nothing (stage 5).**
+    - Weekly brackets: every player is credited at most min(D frozen at placement, the band's top)
+      for the whole week, so capacity bought on Tuesday moves nothing until next week's placement.
+    - The company order: a member's credited deliveries are at most 1.25 times their own frozen
+      share (6.2).
+    - The all-time board: the shared credit curve. A player is credited at most the tonnes an
+      always-on player who never pays would have reached by that day; the figure is labelled
+      "credited", and the private ladder keeps every real tonne.
+2.8 **The store sentence.** With packs on: "Purchases change how your yard looks, remove ad videos,
+    or add scrip worth some hours of your own yard's earnings. Nothing sold adds tonnes directly,
+    and shared boards credit no more than play can reach." With packs off: "Purchases change how
+    your yard looks or remove ad videos. They never add scrip or tonnes."
+2.9 **Ratings expected.** Apple 13+ (contests); the European rating 3 to 7 (nothing timed, nothing
+    random, no relegation; "in-game purchases" shown); the German rating very likely 12 where packs
+    are on ("increased incentives to buy"): accepted.
+2.10 **On the owner's phone.** In Expo Go purchases are simulated: Buy gives the look or the scrip
+    and no money is taken. A dev switch sets the region so that the owner can see the shop with
+    packs on and off. Real charges begin with the first store build.
+
+### 3. The bank
+
+3.1 **ECONOMY E11 is amended by name.** "No credit in the first hour's shop: tools, carriers, crew
+    and the first machines are bought with cash. From rung 3 the bank's plant finance exists, on
+    works plates only."
+3.2 **Plant finance (stage 2, from rung 3; fixed in form).**
+    - Who: one invented lender, the bank's plant-finance desk ([bank]).
+    - What: a works plate that earns (a machine with its own output grades), priced at least half
+      an hour of I. "Finance what earns" is the only sentence the advice line ever says about it.
+    - How much: the bank pays F, at most 80 % of the price and at most F_max = min(2 h, 0.15 x
+      tau_r) x I; the player pays the rest now (the deposit, at least 20 %), and the deposit never
+      takes the reserve the driver's next load needs (E19, E29).
+    - What it costs: a flat charge c = 8 % of F (tune 5 to 12), fixed at signing. Total T = F x
+      (1 + c), printed on the card.
+    - How it is repaid: a share s = 25 % (tune 15 to 30) of each payment for lots of the financed
+      plate's OWN OUTPUT GRADES, until T is paid: the machine pays for itself, and nothing is taken
+      from the yard's other trade. No due date, nothing that grows, no "repay now" button, cash
+      never below zero. A plate that stands idle pays nothing and its debt stays as it was.
+    - How many: one agreement at a time in stage 2; later never more than 40 % of any payment in
+      all.
+    - Time away: the same function; lots collected while away repay by the same share.
+    - What the player sees: the lender's letter the first time a works card costs more than the
+      cash in hand while the deposit is in hand; on the card "Finance" beside "Save up (about x)"
+      (only the time is "about": every other number is applied as shown); a tag and a ring that
+      fills on the machine; on each ticket for those lots "Paid §x · to the bank §y · to you §z";
+      a ledger page in the office. A debt never shows in the top bar, the goal card or the advice
+      line.
+    - Worked example (rung 3, I about §54,500 an hour, tau about 9 h): a baler at §80,000. Deposit
+      §16,000; F = §64,000 (under F_max = 1.35 h x I = §73,600); T = §69,120; a quarter of each
+      bale lot goes to the bank until §69,120 is paid.
+3.3 **Aims (measured by the bots before the screens exist).** The sum taken equals T exactly; cash
+    never below zero; a tick equals a jump with an agreement open; with an agreement open no
+    bought load loses money at any rung (else s falls); a bot that always finances reaches rung 5
+    at most a tenth sooner than one that never does; by the card's own numbers finance is the
+    better choice on a quarter to a half of the purchases where it is offered.
+3.4 **Later.** Stage 3: the merchant's advance: a charge fixed at signing; repaid from every lot of
+    the advanced grade whoever buys it; no delivery date and no penalty. Stage 4: the site loan,
+    repaid from that site's payments; a grant with conditions the player can see and meet.
+3.5 **The server (stage 5).** The bound on a client's claims becomes: assets + cash <= gross
+    earnings + verified pack grants + financed - repaid.
+3.6 The agreement is in the save and changes the contract's version. The review notes carry one
+    line: loans in the game are fictional, in scrip, and pay nothing out.
+
+### 4. Holdings
+
+4.1 **Words.** "A part in [partner]", "your part", "terms"; the office's ledger page is "Holdings";
+    Help says: fictional, scrip only, nothing is paid out, not financial advice.
+4.2 **A part in a partner (stage 3).** One per partner, in three steps. It returns only as better
+    terms on real trade with that partner: at most a tenth off that partner's load price for the
+    lane partners; a fixed percentage more on deliveries for the foundry co-op (membership). It is
+    priced by the payback rule on the trade done with that partner WHEN BOUGHT and it is capped to
+    that trade (so many loads or tonnes a market day; raised only by buying the next step): raising
+    the flow later never raises the benefit for free. It is never resold and never lost; it pays
+    only on loads actually bought; it never adds tonnes. The weighbridge ticket prints "Your part:
+    -§x". ECONOMY E20 is restated: with every holding owned, three fifths of a load's margin still
+    come from the yard's work.
+4.3 **A passed rival's yard (stage 4).** A simulated firm the player has passed may offer its yard
+    on the key board; bought as a site, with its old stock in heaps (hand work at once); its
+    tonnes count from the day bought. Simulated firms only, never players.
+4.4 **Not built.** A resale of anything; a price or a return set by chance; a deposit that pays by
+    the clock; anything in another player's company; a company pot or project paid in scrip (bought
+    scrip would reach every member's yard, and paying in would become a social duty). If a company
+    build comes in stage 5 it is paid in delivered tonnes and gives a look only; it is the first
+    thing cut.
+4.5 **Aims.** Each holding pays back in 0.8 to 1.5 tau; all holdings together add at most a tenth
+    of a day's income at day 14; no holding changes tonnes.
+
+### 5. Yard sales
+
+5.1 **The reuse rack (stage 2, from rung 3).** A rack under a canopy by the gate, new at rung 3 (the
+    first yard's map before rung 3 does not change). A thing fit for reuse is fixed as such when it
+    is made (a hash; a green tag shows it before any choice): single real things (a bath, a
+    radiator, a bicycle, brass taps, a stove, gates). Never racked: anything electrical or sealed,
+    cylinders, batteries, converters, car parts. The hand lifts a tagged thing whole instead of
+    cutting it and carries it to the rack; yard hands carry tagged things there too.
+5.2 **The sale.** Members of the public come on foot (agents on dated legs, off the drive line),
+    one every period while the rack holds anything, the same whether the player is there or away,
+    with a defined restart when an empty rack gets a thing (a tick equals a jump). One price in
+    stage 2: 2.5 times the thing's scrap value at the sale's step (no timing edge from racking on
+    a high day). A choice of price tags is the first thing cut and comes back only if the rack
+    fills in play.
+5.3 **So that it is still felt at rung 5.** Partner loads may carry a reusable batch, printed on the
+    load's label before paying; set aside whole at the rack's trade corner, it is collected by a
+    reclamation dealer's van (not carried out by the public) at 1.5 times its cut value.
+5.4 **The first moment.** At rung 3 one reusable bath stands beside the new rack; the first visitor
+    comes within four minutes.
+5.5 **The ladder.** Mass sold from the rack counts as supplied tonnes (one ladder), with its term in
+    the server's bound.
+5.6 **Aims.** 2 to 5 % of a day's income at rungs 3 to 5, never above 8 %; a minute of the boss's
+    racking earns at least 1.2 times a minute of his cutting; the same result present or away.
+5.7 **Between players (stage 5).** A member's rack is read-only on a tour (an emote may be left). No
+    stand, no price a player sets, no scrip from one player to another, no "send a buyer".
+
+### 6. The company
+
+6.1 The design's section 7 stands. The company's place is a flagpole at every member's gate.
+6.2 **The weekly order.** Each member sets "in" or "out" before the week; the roster freezes at the
+    week's start. The order is 25 h x the sum of the in-members' rated capacity at the freeze. A
+    member's credited deliveries are at most 1.25 times their own frozen share, so capacity bought
+    in mid-week cannot lift the company. Lines by grade where at least two members can supply. A
+    claim ("I can cover copper.") stays the visible marker the design gave it and lapses quietly
+    after 24 hours at no cost. Tiers at 50, 80, 100 and 125 % are credited automatically at the
+    week's close; rewards are looks, kept for good, and kept by a member removed in mid-week. Once
+    a month a calm week (an inspection week): the order at 60 %, no class moves.
+6.3 **Classes, not leagues.** Companies are ranked within classes of about fifteen companies of
+    like size and capacity, by how much of their order they completed; pennants for the top three,
+    kept for good; nothing is ever lost for a quiet week; no relegation (losing status for not
+    returning is what the European rating calls pressure, and rates 12).
+6.4 **Help, every day.** (a) A request for feed: a grade one of the poster's machines takes; one
+    request a market day; at most two hours of the requester's I; the price is locked at posting
+    for both sides; the requester pays the game, the helper is paid the same amount by the game;
+    a helper gives at most one hour of their own flow a day; the received mass is booked so that no
+    tonne is counted twice; it applies at the first event after the client receives it, never
+    back-dated; the server writes it; an unfilled request stays open and withdrawing it returns
+    what was set aside (no merchant's fallback at a premium). (b) Covering a short delivery of a
+    member's supply deal: it moves neither goods nor scrip, prevents a loss of trust and never adds
+    trust. If stage 5 runs over, (a) is kept and its lorry animation is cut first.
+6.5 Nothing bought and no ad ever buys a claim, a request, points, an allowance, a deadline, a
+    class or a second draw of rewards.
+6.6 A removed member keeps what they earned; the wait before joining another company grows with
+    each removal. A list for finding a company shows its emblem, its members, an activity word and
+    a mark where its average rung matches the player's. Fixed phrases and emotes; no free chat, no
+    typed names. Without a network, and for a player under 13, simulated firms play the whole
+    company in the local mode.
+
+### 7. The stages
+
+7.1 **Stage 2, the works (the next build)** is the design's stage 2 with: the shop (looks, No ad
+    videos, the bundle; scrip packs from rung 4 where the country's switch is on; simulated in
+    Expo Go); the earned sign styles; rewarded ads; plant finance; the reuse rack and its sale;
+    and two things owed from the first yard: the aggregation of crew legs so that time away is
+    cheap, and the tuning step of ECONOMY E36 (the driver's level or a second truck).
+    In the order a player meets it: the first hour as built; at rung 3 the back field with the
+    first works plate (a baler) and the lender's letter; the rack with its bath and the first
+    visitor; from the second session the shop; at rung 4 the scrip packs, the shredder line and
+    the melt lines; rung 5.
+    The shared store files change FIRST and by one owner, with the four other games' tests green,
+    before any shop screen is built.
+7.2 **If stage 2 runs over**, one melt line (the battery breaker and lead) moves to stage 3. Never
+    cut: the country switch and its unknown-country default; the rung-4 gate on packs; the refusal
+    above headroom; the frozen quote and the ledger; the share and the total printed on finance and
+    their tests; no shop and no ad on a debt card. Cut first, in this order: the second kind of
+    reusable batch, the 11.5 h and 24 h packs, two dressing sets, levels of the rack.
+7.3 Stage 3 (the market): the merchant's advance; a part in a partner. Stage 4 (territories): the
+    site loan, a grant, a passed rival's yard as a site, a rack at each site. Stage 5 (other
+    players): the company's flagpole, the in and out roster, help, classes, the calm week, the
+    finder; the credit curve and the frozen brackets; emblem parts and company looks on sale; the
+    age signal if the owner chose it. Stage 6 as designed.
+7.4 Each stage's aims are measured only up to that stage's top rung; the buyer-against-non-buyer
+    aims at days 7, 14 and 30 stay in the numbers prototype until the stages they need exist.
+
+### 8. What the owner is told and asked
+
+1. Scrip packs are in, as hours of your own yard's earnings. They are off in the EU and
+   Switzerland at launch until a lawyer has answered one question (there, every scrip price might
+   have to show its real-money value); looks and No ad videos sell everywhere.
+2. With packs on, Germany's rating will very likely be 12. A buyer climbs their own ladder faster;
+   the shared boards credit no more than play can reach.
+3. Companies compete in classes of like companies for pennants; no company is ever dropped down
+   for a quiet week (that would raise the European age rating).
+4. Hiding packs from under-18s needs the phone to report an age, which needs a native module in
+   the first store build: your decision then. On your phone in Expo Go all purchases are pretend.
+
+### 9. Rulings on what the writer and the critics found (01:50; these change sections 1 to 8 where they differ)
+
+9.1 **The packs' ladder.** 2, 5, 10 and 20 hours of I at $1.99, $4.99, $9.99 and $19.99: one flat
+    rate, no discount for size, and the largest pack under the payback time of rung 4 (22 h). (It
+    replaces 2, 5.5, 11.5 and 24 in 2.2.)
+9.2 **No bundle in stage 2.** A store product has one fixed price, so a bundle either charges for
+    parts already owned or is a one-chance offer. The shop of stage 2 sells looks, No ad videos
+    and packs. (It replaces the bundle of 2.2 and 7.1.)
+9.3 **A neutral age question makes the under-18 rule real.** Asked once, the first time something
+    needs it (the packs' rows where the country's switch is on; in stage 5 before the terms): year
+    of birth, no default; kept on the device as a band only (under 13, 13 to 17, 18 or over).
+    Under 18: packs hidden. Under 13: the local mode only (the design's 7.6). A platform's age
+    signal may replace the question in a store build (the owner's decision). (It amends 2.4.)
+9.4 **The Settings switch is locked.** Whoever sets "Scrip packs: hidden" chooses a four-digit
+    code; showing them again asks for it. It is a courtesy to parents, NOT declared to a store as
+    "parental controls"; the review notes name the platforms' own purchase approval.
+9.5 **The country** is the store account's country as the purchase module reports it, read each
+    time the shop opens; never the device's language or region, never an address on the network.
+    Until it answers, or if it fails: unknown, so packs are off.
+9.6 **One store sentence, true everywhere:** "Purchases change how your yard looks or remove ad
+    videos; in some countries they can also add scrip worth some hours of your own yard's income
+    in the game. Nothing sold adds tonnes directly, and shared boards count no more than play can
+    reach." Never "cosmetic only". The German rating is very likely 12 for the whole app, although
+    packs are off in Germany at launch: a rating is of the app, not of a country's switch.
+9.7 **The owner's words on screen.** The finance card's button reads "Bank loan" beside "Save up
+    (about 1 h 20 m)"; its lines: Price · You pay now · The bank pays · Charge · You repay · "{x}
+    of each {output} lot goes to the bank until it is repaid. No date." The advice line's one
+    sentence: "A loan suits a machine that earns." The rack's card is titled "Yard sale" (the
+    owner's word, for our own thing: the public buys things fit for reuse from a scrapyard); it
+    never sells looks or decorations and has no sale time. A holding is a PARTNERSHIP: "Partnership
+    with [partner] · step 1 of 3"; the ticket line "Partner terms: -§x"; the office's page for
+    loans and partnerships is "Agreements". (It replaces "a part in a partner", "your part" and
+    "Holdings" in section 4.)
+9.8 **The bank's share never makes a machine worse than none.** The share s is set per plate so
+    that a financed kilogram never nets less than the same kilogram unprocessed; first value 0.18
+    for the baler (baled §0.62 against loose §0.50); the bots raise it only while that holds. The
+    card prints the share that applies.
+9.9 **Ads and the bank never meet.** The spot buyer is never offered on an output grade of a plate
+    with an open agreement. The away bonus is half of the away cash that reached the player after
+    the bank's share, paid as its own line and never part of a payment the bank shares in. No ad
+    button stands on screen beside a card or ticket that shows a debt (a screen test).
+9.10 **A partnership must be worth having.** With the first yard's loads E20 leaves almost nothing
+    for a discount (1.25 % at the demolition partner, none at the farm). Stage 3's specification
+    and its numbers prototype choose the form among: better terms within E20, first pick of the
+    partner's loads (a richer mix, which raises the value of the yard's own work too), a share of
+    the foundry co-op's premium on what the player delivers; each step pays back in 0.8 to 1.5 tau
+    by the card's own numbers. Nothing of it is built in stage 2.
+9.11 **Help is priced when it arrives.** Each part of a request's mass is priced at the posted
+    price of the step at which it arrives, the same for both sides (the game pays the helper
+    exactly what the requester pays); the price at posting is a guide; what the requester's
+    set-aside and cash cannot pay is not sent. (It replaces "locked at posting" in 6.4.)
+9.12 **Classes are formed afresh each week** from that week's frozen roster size and capacity only,
+    never from results; they have no order and no ranking names ("12 companies of your size");
+    about twelve to a class (tune 10 to 14). The monthly easy week is "Inspection week" in player
+    text.
+9.13 **Looks and companies.** Emblem parts on sale and emblem parts earned are separate sets;
+    nothing the weekly order gives is ever sold. A look bought by a member shows on that member's
+    own flagpole and yard only; a company's shared emblem uses earned parts only.
+9.14 **Words.** "Counted", not "credited", on boards ("Counted on this board: 41.2 t"). "I can send
+    copper." "No ad videos: get every ad reward without watching." Player text never says "daily"
+    or "missed". One sentence in Help for everything pretend: "Prices, exchanges, loans,
+    partnerships and listings in this game are fictional and use scrip only. Nothing can be paid
+    out, and nothing here is financial advice." "Stock" is banned only as a word for a holding
+    ("old stock" stays).
+9.15 **Names in the design.** Every name in the design document is the names register's current
+    name or a placeholder in square brackets; the old currency name goes.
+
+### 10. Rulings on the second critic's points (exploits and buildability; 02:00)
+
+10.1 **The bank's share cannot be dodged.** Repayment is tied to what the financed plate MAKES, not
+    to how its output is sold. Each time mass of the plate's output leaves its tray, whatever its
+    destination (a lot, or another machine's hopper), an amount falls DUE: s_p x that mass x the
+    step's posted price for that output, never more than what remains of the total. What is due is
+    collected from the yard's next lot payments, at most 40 % of any one payment, and from nothing
+    else (not from cash in hand, ad rewards or packs), so cash never goes below zero. An idle
+    plate makes nothing, so nothing falls due. The ticket prints "to the bank §y" on a payment
+    that carries a collection. (It replaces "of each payment for lots of the plate's own output
+    grades" in 3.2.) The stage-3 advance is collected from every lot's payment by a share.
+10.2 **The share per plate.** s_p = min(bank.share, 0.8 x u_p), where u_p is the part of the
+    output's value that the plate adds (1 - the input's value per kilogram of output / the
+    output's value per kilogram, at usual prices), computed by the content script. The baler: u =
+    0.194, s = 0.155. (It replaces 9.8's first value.)
+10.3 **The cut that moves the lead line** also lowers rung 5's range in stage 2's content, and the
+    no-dead-end test and the bots run on the cut content before it is accepted.
+10.4 **Time away made cheap is a change to the ONE engine.** Crew trips are grouped whenever no
+    boss is within sight, in a tick, a jump and time away alike (as the cutter's whole-thing rule
+    already does), so that a tick equals a jump and present equals away stay exact. It is built
+    and benched as its own engine step BEFORE any stage-2 rule, together with rated income I and
+    10.5.
+10.5 **Hold never stops the yard (ECONOMY E40; it replaces E36(c)'s "next stage").** While the boss
+    is away and the cash cannot pay the next load, the held bay worth most rejoins the merchant's
+    round, one bay at a time; the away card names it ("Sold from hold to keep the yard running:
+    {grade}").
+10.6 **Rated income at named moments.** I is stated and gated at each rung's entry and at its last
+    purchase. "A day's income" is I x the production hours of the twice-a-day habit (12.3 h at
+    rung 3). The margin per tonne in I uses, for a machine with several recipes, the recipe with
+    the lowest margin (a player cannot raise I by switching a furnace before opening the shop).
+    The quote S is fixed when the card opens and shown again only when a purchase has arrived.
+10.7 **Ads fit the day.** All ad rewards together are at most 4 % of a day's income as defined in
+    10.6: at rung 3 about 30 minutes of I (one away bonus of up to 15 minutes; three spot buyers
+    of up to 5). The spot buyer is attached to a held bay's Sell, whose amount is known: it pays
+    min(a tenth of that Sell, its cap), and the button shows the figure. (It replaces 2.6's
+    numbers.)
+10.8 **A pack lives in this device's save.** The reconcile grants only transactions dated after
+    the save was created and missing from the ledger, at the amount stored with the pending
+    quote. The sheet shown before a purchase says that bought scrip lives in this device's save
+    (a consumable is not restored by a store). "Survives a restore" becomes "survives a save
+    migration" until stage 5 gives the player an account.
+10.9 **The shop in the shared code.** A shared product kind for hours of income (consumable) and a
+    hook in the modes' contract by which a mode grants a product with its transaction id and its
+    quote; no mode's name in a shared list. The four other games' tests stay green.
+10.10 **The yard sale's pace follows value.** The next visitor is dated at t + period x (the price
+    of the thing just sold / a reference price), so the rack earns at most a fixed rate whatever
+    is on it. The van is dated at t + its period when a batch reaches an empty trade corner; a
+    batch is valued at its prepared value at the collection's step. While the boss is in the yard
+    a tagged thing is his (he racks it or cuts it); while he is away yard hands rack tagged things
+    within their load; a tagged thing nobody present can lift is cut as any other. Content keys
+    are reuse.* (the tool rack keeps "rack").
+10.11 **Boards (stage 5).** A weekly bracket ranks by counted tonnes over the player's own frozen
+    capacity (how fully the yard ran that week), so capacity, bought or earned, cannot rank anyone
+    above a band-mate. On the all-time board the day and the cohort are anchored at the server's
+    first sight of the player, and ties on the curve break by the date the curve was reached. The
+    server's money bound sums every channel at its factor (the rack, the van, deals and orders)
+    with verified ad grants and booked fees.
+10.12 **The company order (stage 5).** Lines for grades that at least two in-members can supply,
+    and one "any grade" line for the rest, so that a company of one has a line. A member counts
+    "in" by default only with an accepted action in the last seven days. The order's size is a
+    content number tuned so that about three fifths of active companies reach 100 % (first value:
+    half of the in-members' frozen weekly capacity; it replaces "25 h"). "Send to the company
+    order" is refused beyond the member's counted cap ("Your part of the order is full") and pays
+    the posted price of the delivery's step, with no premium. A cover is one per member per week
+    and only for a shortfall of at most a quarter of that day's quantity.
+10.13 **On the owner's phone.** A development row in Settings (region, and a jump to a played
+    rung-4 yard) exists only in development builds and is checked absent from every release
+    export; the project rules record the exception. The shop's entry is on the office's first tab,
+    never on the Agreements page; the ad button hides while any card that shows a debt is open.
+
+### 11. The bank's share, corrected (02:15; it replaces 9.8, 10.1 and 10.2)
+
+The worked example showed the fault in 10.1 and 10.2: a share of the value the baler adds repays
+the first loan (§69,120) only after 719 tonnes of bales, days of play, and one agreement at a time
+would then shut the player out of the bank for most of the stage. A real lender that takes no
+dates takes a share of ALL sales, and that is the rule:
+
+11.1 **A fifth of every sale.** From signing, the bank takes s = bank.share (first value 0.2, tune
+    0.15 to 0.25) of EVERY lot payment the yard receives, whatever the lot, until the total T is
+    repaid. Nothing else repays (not cash in hand, ad rewards or packs), there is no date and no
+    button to repay, and cash never goes below zero. There is nothing to dodge: every sale counts.
+11.2 **One agreement at a time in stage 2.** Later, all agreements together never take more than
+    bank.share of a payment: they are collected one after another, oldest first. (It replaces "at
+    most 40 %".)
+11.3 **What may be financed** stays as ruled: a works plate that earns, priced at least half an
+    hour of I; the bank pays at most four fifths of the price and at most min(2 h, 0.15 x tau) x
+    I; a flat charge of 8 % fixed at signing.
+11.4 **The card's line:** "A fifth of each sale goes to the bank until §69,120 is repaid. No date."
+    Every ticket while an agreement is open: "Paid §x · to the bank §y · to you §z".
+11.5 **Aims.** The sum taken equals T exactly; cash never below zero; a tick equals a jump with an
+    agreement open; with an agreement open no bought load nets a loss at any rung (the first
+    yard's loads: the farm's skip, bought at §958 and worth §1,320 prepared, nets +§98 at a fifth;
+    the demolition skip, §1,842 and §2,689, nets +§309): this aim sets the share's ceiling; the
+    first loan (the baler, §69,120) is repaid within about four hours of the yard's running; a
+    bot that always finances reaches rung 5 at most a tenth sooner than one that never does.
+11.6 The stage-3 advance and the stage-4 site loan follow the same rule (a share of every lot
+    payment; for the site loan, of that site's payments).
+
+### 12. The engine step, after the specification's critics (03:20)
+
+The rulings G1 to G3 (crew trips grouped), I1 to I6 (rated income) and H1, D1 in
+`notes/engine2-LEAD.md` are part of this ruling. In short: a tick equals a jump exactly, and
+grouping may move the three-day tables by at most 2 %; rated income is NET, counts the one truck
+once (as a time budget shared by the partners), is bounded by what feeds the yard, and never reads
+a switch the player can flip (it assigns material to machines by margin, best first; this replaces
+10.6's "lowest margin"); its gate is measured at usual prices and counts stock and what a bank
+took.
+
+### 13. After the critics of stage 2's specification (03:35)
+
+Four critics read stage 2's specification (78 findings; each with its ruling in
+`stage2/critics-ruled.json`; the writers' seventeen points in `stage2/LEAD.md`). Where they change
+this ruling:
+
+13.1 **A tagged thing's owner is decided by sight** (it replaces 10.10's "while the boss is in the
+    yard a tagged thing is his"): it is the boss's only while he is within sight of it and a slot
+    of the yard sale is free; otherwise yard hands rack it within their load while a slot is free,
+    and crews cut it when none is. Tags exist only from rung 3.
+13.2 **"The second session"** everywhere means: the first away card from an absence of at least
+    thirty minutes has been closed. The shop's rows, its Settings rows and every ad button are
+    gated on that one stored moment, so nothing of money or ads can appear in the first hour.
+13.3 **Nothing expires.** The crate waits for the boss for ever; no countdown, no hand-over.
+13.4 **Safety and the trade.** A car that still holds its fluids is never tipped or lifted by the
+    magnet; batteries come in a closed box; the public stays in a railed bay by the gate and pays
+    at the rack; the lead line's people wear respirators; a furnace is charged only from covered
+    bays; filter dusts go where the trade sends them.
+13.5 **Every plate and recipe pays.** At usual prices, after reagents, each nets at least a
+    twentieth more than its input (a content check).
+13.6 **The shop in the shared list.** Products sit in the game's shared product list with the
+    existing kinds for looks and No ad videos and one new shared kind for hours of income; what is
+    owned is read from the shared entitlements.
+13.7 **Children.** A player who gives an age under 13 sees no shop and gets child-treated ad
+    requests; 13 to 17: no packs. Ad consent and tracking are asked only when the first ad button
+    would show.
+13.8 **Rated income is net** (stage2/LEAD.md L2); the ads are an away bonus of up to 15 minutes of
+    I and three spot buyers of up to 4 (L3); the Trade Book moves to stage 3 (L15).
+
+13.9 **The away bench.** Grouping brought six hours away from about 727 ms to about 175 ms of node
+    CPU (the first hour's tables reproduce exactly; grouping moves six hours' sales by a
+    thousandth). The gate for stage 2 is 250 ms; 150 and the aim of 50 wait for whole-cycle
+    aggregation of the work per whole item. Run limits as built: yard hands 30 s, cutters 120 s.
+
+### 14. After the attack on the engine step (05:05; it replaces G2 of section 12 and 13.9's run limits, and amends 10.4, 10.5 and E40)
+
+An engineer who wrote none of it attacked the engine step (`attack/engine2/`; seven findings,
+each with its ruling in `attack/engine2/ruled.json`). What held: a tick equals a jump on the whole
+state; an absence cut into many passes equals one pass at a fixed rung; 934 actions pressed
+inside runs broke nothing; mass is exact; absences and a clock set back pay once; an old save
+loads; the state stays bounded. What did not hold, and what the lead rules:
+
+14.1 **THE RUN IS THE RULE, IN SIGHT AND OUT OF SIGHT** (finding 1, blocking). As built, crew out
+    of the boss's sight worked in planned runs (a yard hand keeps at one kind of trip for up to
+    30 s, a cutter at one place for up to 120 s) while crew in his sight chose again by the first
+    yard's order at every departure. Measured by the attacker: the unwatched yard supplied 6 to 17 %
+    more tonnes over three days than the watched one. A yard that does better when nobody looks is
+    wrong in this game. The lead does not go back to single trips (the bench would be about 290 ms
+    and the lever that keeps time away cheap in later stages would be gone). Instead the run is
+    made the rule of the yard from rung `group.fromRung` (3), whoever is looking:
+    (a) A run starts at a departure where the first yard's order chooses the first trip (for a
+        cutter: the first thing). It has a kind, a place, a destination and a start t0. At every
+        later departure inside the run the member takes the next trip of the same kind from the
+        same place to the same destination (the planner's own in-place choice; for a cutter the
+        next thing at the same place in score order), if that trip would end no later than
+        t0 + `group.handRun_s` (a cutter: `group.cutRun_s`). When there is none, or it would end
+        later, the run is over and the first yard's order chooses again. The first trip always goes.
+    (b) OUT OF SIGHT at a departure (no fresh boss within `reach.sight` of the start, the source
+        or the destination), the rest of the run is planned there, claimed, with one dated end:
+        as built. IN SIGHT the member makes the same run trip by trip: each trip an ordinary trip
+        of the first yard (its own leg ends, claims only for the trip under way, landing at its own
+        drop), chosen at its own departure by (a). Nothing a person can see is claimed ahead.
+    (c) A run begun in sight whose member departs out of sight plans the REST of the run (to
+        t0 + the limit). A planned run that comes into sight is opened as built, and its member
+        goes on with the same run trip by trip (kind, place, destination and t0 are kept).
+    (d) The run's kind, place, destination and t0 are kept on the member in the state: saved,
+        optional, bounded; a save without them chooses by the first yard's order.
+    (e) The rules that differ with presence on purpose (pieces only while the boss is in the yard,
+        the floor's whole things, the foreman, the hand stripper) are untouched.
+    (f) A switch for tests and the bots: `group.ahead` (true; false: every run is made trip by trip
+        even out of sight). `group.fromRung` beyond the ladder: no runs at all (the first yard's rules).
+    The numbers of `group` move into the content (schema and `salvage.content.ts`): fromRung 3,
+    handRun_s 30, cutRun_s 120, ahead true.
+
+14.2 **THE GATE, restated (it replaces G2).** Planning ahead is a shortcut and may move little:
+    (i) from the same played state, one capped absence with `ahead` true against false: net within
+    2 % on at least 8 of 10 states (five seeds, minute 60 and day 1); (ii) the bots' three days at
+    the twice-a-day habit, `ahead` true against false: supplied tonnes and LIFETIME EARNINGS within
+    2 % at day 1 and day 3 on at least 13 of 15 seeds (cash at a sitting's end is no measure: the
+    bot spends it at different moments); (iii) no crew trip lost (mass, as tested). Reported, not
+    gated: the same three days with no runs at all (`fromRung` 99): this is what the rule itself
+    does to the yard from rung 3. The lead accepts that move as stage 2's baseline (ECONOMY E42):
+    below rung 3 nothing changes at all, and stage 2's numbers are tuned on the new engine.
+
+14.3 **THE MERCHANT'S ROUND IS NEVER LENGTHENED** (findings 1 and 6). `group.roundAway_s` and the
+    opening of a long round are removed: the round is away `merchant.round_s` in every presence
+    state. Measured by the lead on the bench's state at load 0.0: 186 ms without the long round
+    against 199 ms with it: it saved nothing, moved net by about +2.5 %, and after an absence of a
+    minute it printed a card on which nothing had been paid.
+
+14.4 **THE CHECKS FOLLOW THE STATE, NOT THE PASS** (finding 2). Partners opening, the rung, rivals
+    passed and the deal's offer are checked at every dirty instant away, as in live play. Goals
+    alone keep a timer, and it is the state's: they are checked when the yard's clock enters a new
+    minute since `goalsAt` (kept in the state). Nothing is forced at the end of an away pass. An
+    absence cut into passes equals one pass ALSO when a rung is reached inside it.
+
+14.5 **RATED INCOME IS GATED ON YARDS AS PLAYERS PLAY THEM** (findings 3 and 4). I is held against
+    G (I5) also on states played with the normal price board (G still measured at usual prices):
+    within 0.9 to 1.1 on at least 17 of 20 moments (ten seeds, minute 60 and day 1), and no moment
+    outside 0.85 to 1.15. The carrying term is corrected until it does. The crucible counts in I
+    only once it can run with nobody there (owned and poured at least once).
+
+14.6 **HOLD SELLS ONLY WHAT THE NEXT LOAD NEEDS, AND STAYS ON** (finding 5; it amends 10.5 and
+    E40). When, with the boss away, the merchant waits with nothing to take, the driver is idle
+    with the truck free and the cheapest full skip costs more than the cash: the yard sets aside,
+    from ONE held bay, just enough at today's price to pay for that skip (rounded up to the scale's
+    step, at most what the bay holds), exactly as the Sell button sets a lot aside. The bay: first
+    those whose word of the day is not low, then the one worth most. Hold stays switched on. The
+    away card's line is unchanged. If the bots' three days with the day-word Hold then lose more
+    than a tenth against the same days without Hold, the lot covers two skips instead of one.
+
+14.7 **A TICK'S COST** (finding 7) is measured again on a quiet machine. The promise as it can be
+    kept: median at most 0.2 ms, 99 of 100 ticks under 1 ms; a single tick over 8 ms that is not
+    the runtime collecting garbage is a fault. No landing is spread over ticks (a tick must land
+    what a jump lands).
+
+14.8 **THE BENCH.** The gate stays 250 ms for six hours away (13.9), measured alone on a quiet
+    machine after these changes. If 14.3 and 14.4 push it over, the saving is taken from the work
+    per whole item (the index of pieces by pile the first engineer named), not from the rule.
+
+14.9 **THE GATE OF 14.2, RESTATED AFTER THE FIX (06:10).** The first fixer built 14.1 (the run as
+    the rule, watched or not) and measured the shortcut against it honestly (`notes/engine2-fixA.md`
+    section 4). Two facts. (a) The yard is chaotic: the cutters' power changed by one part in a
+    billion moves one absence's net by up to 4 % (7 of 10 states within 2 %). So no bound on
+    single trajectories can be a gate, and 14.2's "within 2 % on 8 of 10 states / 13 of 15 seeds"
+    is withdrawn. (b) On MEANS the shortcut costs about what the noise does: one capped absence,
+    planned ahead against trip by trip, net -1.0 % (ten states; the noise alone -0.7 %); three
+    days on fifteen seeds, lifetime earnings +0.5 % at day 1 and +1.0 % at day 3 (standard error
+    about 0.8), supplied tonnes +1.4 % and +3.6 %. THE GATE NOW: over at least fifteen seeds (ten
+    states for the single absence), the MEAN difference between `group.ahead` true and false is
+    within 2 % for net and for lifetime earnings and within 5 % for supplied tonnes, with the
+    noise floor printed beside it (the same runs with the cutters' power times 1 + 1e-9). It is
+    met as measured. The rule's own effect (no runs against runs) is about a sixth more tonnes by
+    day 3, watched or not (E42). What was tried to bring plan and trip-by-trip closer (landing at
+    the yard's own instants, a fair share of claims, full loads only) made the gap larger and is
+    not in the code. The machines' grouped segment is removed (it depended on sight and saved
+    nothing).
+
+14.10 **RATED INCOME'S GATE, RESTATED (06:20; it replaces 14.5's count and I5's band).** Measured
+    after the fix (`fixB/income-after.txt`): G itself spreads by up to 8 % either way between seeds
+    whose assets are identical, so "17 of 20 moments within 0.9 to 1.1" cannot hold for any I that
+    is computed from assets. And on the engine as it now stands I is biased: about +10 % at rung
+    3's entry, -14 % at day 1, -9 % at day 3 (crews in runs carry more than I's carrying term
+    knows; levels count for too little). THE GATE NOW, at each named moment over at least fifteen
+    seeds, on the flat board and on the normal board: the MEDIAN of I/G within 0.95 to 1.05; at
+    least 13 of 15 seeds within 0.88 to 1.12; none outside 0.80 to 1.25. And I is MONOTONE: no
+    purchase, hire or level lowers it (a test over every asset step on five played states). It is
+    NOT met today. It is owed before any stage-2 rule reads I for money (the bank's limit, a
+    pack's quote, an ad's cap): one calibration step of its own on the merged engine, by one
+    engineer who owns `rate.ts` for it, with the bots' tables before and after.
+
+14.11 **HOLD'S MEASURE COUNTS WHAT IS STILL HELD (06:20).** The second fixer built 14.6 and, when
+    one skip a lot lost about a fifth, its fallback (a lot covers two skips). The day-word holder
+    still shows 10 to 15 % less LIFETIME EARNINGS over three days than the same days without Hold,
+    but part of that is stock it still holds at the end. The bound stays a tenth and is measured
+    as lifetime earnings plus unsold stock at usual prices at the end, on at least 13 of 15 seeds;
+    the bots' report prints both measures.
+
+### 15. Paid packs: which purchase belongs to which quote (06:50; after the attack on the shared shop files; it replaces 10.8's date rule and amends the specification's 2.15.4 and 2.15.5)
+
+An engineer who wrote none of it attacked the shared purchase plumbing (`notes/store-attack-money.md`,
+tests in `attack/store/money.test.ts`). It held where it was meant to (one grant per id, the quote
+on disk before the store's sheet, a kill between sheet, grant and save, restore, the four games).
+It did NOT hold where a purchase is matched to a quote: by product and date only. That gave free
+scrip from the account's older purchases (a kill at the sheet, then any old transaction; a clock
+set back at a new save), took a waiting quote away from its approval, lost a paid pack after a
+store error, and blocked a pack for ever when the device's clock had been wrong. The lead rules:
+
+15.1 **No clock decides a grant.** A store date is never compared with the device's clock.
+    `iap.createdMs` stays in the save as information only. (This replaces 10.8's "only
+    transactions dated after the save was created".)
+15.2 **One name for a purchase.** A transaction is known by the id the store's LISTING gives it;
+    the result of a purchase is read through the same listing, never through a second id.
+15.3 **A quote knows what was there before it.** At Buy, before the quote is made, the store asks
+    the listing afresh for the ids of that product (`known`). If it cannot be asked on a real
+    store, no sheet opens ("The store cannot be reached. Nothing was charged."). The quote keeps
+    `known`. A quote is never granted with an id in its `known`, nor with an id in the ledger.
+15.4 **A quote has a state**: OPEN from Buy until the sheet's outcome; WAITING when the store
+    answered pending, or with any error that does not prove nothing was charged. Outcomes that
+    withdraw the quote: the player cancelled; the store refused (not allowed, invalid, product
+    unavailable); no sheet could open. The words: "Nothing was charged." only on those;
+    "Waiting for approval" on pending; "The store has not confirmed this purchase yet. If you
+    were charged, your scrip arrives when it does." on the others.
+15.5 **Who gets an arriving purchase.** The sheet's own result: the id that is new against the
+    quote's `known` goes to THAT quote (shown equals applied: the S on the row). Later arrivals
+    (the listener, the check at start): an id not in the ledger goes to the OLDEST standing quote
+    of its product whose `known` lacks it. With no such quote it belongs to another save and is
+    not granted. While a sheet for a product is open, that product's arrivals are held and
+    replayed when the sheet has answered. A withdraw names its quote; it never drops "the last".
+15.6 **How long a quote stands.** At most ONE open quote per product: a new Buy withdraws an older
+    open one (a purchase that did complete then arrives at the newer quote). A WAITING quote
+    refuses a new Buy of that product ("Waiting for approval") for 24 hours of the device's clock
+    (this clock use decides no grant); after that a new Buy gets its own quote and the old one
+    keeps standing. Any standing quote is withdrawn when a FRESH listing (from the network), at
+    least 72 hours after it was made, shows nothing new for it. Headroom counts every standing
+    quote.
+15.7 **Looks and No ad videos that wait for approval** (the salvage route only; the four games
+    stay exactly as they are): the banner says "Waiting for approval", not that it failed, and
+    the look is applied when its approval arrives, not at the next start.
+15.8 **The small ones**: the check at start reads a fresh listing and is run once more after the
+    listener is subscribed; one native listener per program, removed with its store; when the
+    store's date cannot be read no device time stands in for it.
+15.9 **Accepted until there is a server** (stage 5, with the boards): two devices on one store
+    account. A purchase made on one can also be granted on the other only while that other holds
+    a standing quote of the same product (a deliberate kill at the sheet, or an approval that
+    waits): at most one grant a purchase a device. Bought scrip never counts on a board (2.5).
+15.10 **Where it lives.** The shared store carries purchases and outcomes to the mode and holds
+    arrivals back while a sheet is open; the MODE's shop rules own the quotes, their `known`,
+    their states, the ledger and every decision above (pure functions of the save, tested there).
+    The contract's `iap.pending` entries become `{id, product, S, I, atMs, known, state}`.
+
+14.12 **THE ENGINE STEP AS IT STANDS (07:25, after the confirmation and the bots' REPORT7).**
+    Confirmed by an engineer who wrote none of it: a tick equals a jump on the whole state with the
+    boss walking in and out of sight of runs; an absence cut into passes equals one pass across
+    every rung; mass, the save and 934 actions inside runs are clean; live play below rung 3 is
+    bit for bit the first yard as merged; the long round is gone; the checks follow the state;
+    Hold sells only what the loads need and stays on. The watched yard is no longer the poorer one
+    (over an hour it carries 3 % more tonnes and earns 0.4 % more than the unwatched). Measured by
+    the lead alone on a quiet machine: six hours away 218 ms (gate 250); one tick's median 0.13 ms,
+    99 of 100 under 1 ms, the largest 4.8 ms. The bots (REPORT7): every beat below rung 3 as on the
+    owner's phone; from rung 3 the runs lift sales (minutes 60 to 90: §2,020 a minute against
+    §1,930 without runs); planned ahead against trip by trip within the gate of 14.9; runs against
+    no runs +12 % tonnes at day 1 and +16 % at day 3 (E42).
+    STILL OWED, each with its place: (a) rated income's gate and its monotony (14.10): a
+    calibration step of its own in Phase A, before any rule reads I for money; (b) a yard hand's
+    planned run tests sight only at its first pick-up spot (minor): the loop's engineer in Phase A;
+    (c) Hold: the day-word holder ends three days a median 8.7 % behind the same days without
+    Hold, counting the stock it still holds (10.8 % in lifetime earnings; the worst seed 14.8 %).
+    The lead accepts this as the cost of holding in a yard that grows this fast: the bound is now
+    "a median of at most a tenth, no seed over 15 %", and Hold is looked at again with stage 3's
+    market, where prices swing further. No absence pays nothing (E40's promise): met.
+
+15.11 **What section 15 left open, settled (07:55, after the specification's editor listed it).**
+    (a) A quote's id is its product and the moment it was made (`<product>:<atMs>`), the same two
+    the shared store names it by. (b) "Nothing new for it" at 72 hours: after the arrivals of a
+    FRESH listing have been routed, every quote still standing that was made at least 72 hours
+    before is withdrawn. (c) Words: the shared store's banner is the passing notice in neutral
+    words; the pack's row carries the state in the game's own words for as long as the quote waits
+    ("Waiting for approval"; "The store has not confirmed this purchase yet. If you were charged,
+    your scrip arrives when it does."). (d) A cancel by the player shows nothing: no banner, no
+    line. "Nothing was charged." is said only when the store refused or could not be reached.
+    (e) A look or No ad videos that the store has not confirmed gets the same "not confirmed"
+    notice as a pack (it is as true there). (f) A withdrawn quote emits `quoteWithdrawn {product,
+    why: 'cancelled' | 'refused' | 'replaced' | 'expired'}`; for 'expired' the shop card shows one
+    line until it is closed: "A purchase that was waiting never arrived. Nothing was added."
+    (g) Whether a listing called fresh can still come from a cache when the phone is offline is
+    checked on a store build (the device list in `notes/store-shared.md`); until then a quote is
+    withdrawn at 72 hours only on a listing that the store itself answered.
+
+15.12 **Three holes in 15.6, found by the confirmation of the shared files, closed (08:05).** The
+    seams are confirmed ("stage 2's rules may be built on them"); the holes were in the lead's own
+    rule, and each lost a PAID pack:
+    (a) THE 72 HOURS ARE THE STORE'S, NOT THE DEVICE'S. A player who sets the clock three days
+        forward while a parent's approval waits must not lose the pack. Every listing carries the
+        store's own request time; a quote keeps the request time of the listing read at its Buy
+        (`askedMs`); it is withdrawn only when a FRESH listing whose request time is at least 72
+        hours after `askedMs` has been routed and the quote still stands. No device clock.
+    (b) AN OPEN QUOTE IS NOT WITHDRAWN BY A NEW BUY. (A sheet paid, the app killed before the
+        store listed it, a new Buy, that sheet cancelled: the first payment then found no quote.)
+        A superseded open quote keeps standing, does not block Buy, counts in headroom, and goes
+        by (a). 15.6's "at most one open quote per product" is withdrawn; instead at most
+        `iap.maxStanding` (3) quotes of a product stand at once, and a further Buy is refused with
+        the waiting words.
+    (c) THE 24 HOURS of a waiting quote stay on the device's clock (they decide no grant), but a
+        clock that reads earlier than the quote's `atMs` counts as elapsed, so a clock that was
+        ahead never blocks a pack for long.
+    (d) "OLDEST" IS THE ORDER IN WHICH QUOTES WERE MADE (the list's order), never `atMs`.
+    (e) AT BUY THE LISTING MUST BE FRESH on a real store: if the store's cache could not be
+        cleared and read anew, no sheet opens ("The store cannot be reached. Nothing was charged.").
+    (f) A refused Buy's reason (the quote changed, a pack is waiting, no headroom) is the mode's
+        to keep for its row; the shared store only says refused.
+    The contract's `iap.pending` entry is `{id, product, S, I, atMs, askedMs, known, state}`.
+
+15.13 **Last small points on paid packs (08:35, after the contract and the specification were brought
+    into step).** (a) A quote's id is the contract's counter in the order quotes were made (`q<n>`);
+    this replaces 15.11 (a): the shared store goes on naming a quote by its product and `atMs`, and
+    "oldest" is the smallest counter. (b) The event is `quoteWithdrawn {product, atMs, why:
+    'cancelled' | 'refused' | 'expired'}`: "refused" also when no sheet could open (the store could
+    not be reached, the product is unavailable, the save could not be written), each with "Nothing
+    was charged."; 'replaced' does not exist (15.12 b). (c) `iap.maxStanding` is fixed at 3.
+    (d) A first-yard save that is migrated keeps `iap.sessions2At` null (the specification's 2.20;
+    the answer N3 in its 11.3 is withdrawn): the shop appears after the player's next absence of
+    thirty minutes or more. The development rows' prepared yards ("Start at rung 3", "Start at
+    rung 4") have it set, so that the owner sees the shop at once on the phone.
+
+### 16. The driver fetches what pays best (09:35; found while rated income was being calibrated)
+
+The engineer who calibrated rated income found a fault in the FIRST yard's own economy
+(`notes/s2a-engine2-income2.md` section 3): buying "Another skip" for the farm partner makes the
+yard earn LESS once the demolition partner is open (seed 1, day 1, demolition at 2 skips: the yard
+keeps §47,949, §43,129, §38,145 an hour with the farm at 1, 2, 3 skips; four of five seeds lose
+4.5 to 7.7 % at minute 90). The driver fetches the skip that has been full longest and fits the
+floor; the farm's light skips are full first and fit first, and they crowd out the demolition
+loads, which net about twice as much a load. A purchase that makes the yard poorer is a fault
+(the economy's first rule), and no rated income can be both honest and rising while the yard
+itself falls. The lead rules:
+
+16.1 **The rule.** From rung `truck.pickFromRung` (first value 3, so that the first hour as merged
+    is untouched), the hired driver chooses by what a load nets, not by which skip was full first:
+    (a) every open partner has a rated net a load, from the content alone: the load's contents at
+        usual prices as they weigh in, less the load's price at usual prices;
+    (b) he departs for the best-ranked partner that has a full skip the yard can pay for and whose
+        load fits the tipping floor;
+    (c) he does not depart for a lesser partner while a better-ranked partner has a full skip the
+        yard can pay for that does not fit: he waits, and the floor's room is kept for the load
+        that pays best;
+    (d) equal ranks: the skip that has been full longest, as before;
+    (e) a skip the yard cannot pay for blocks nobody (no dead end; Hold's rule 14.6 as it is);
+    (f) the boss at the wheel fetches whatever he likes; a truck the boss left loaded is finished
+        as before.
+    Below `truck.pickFromRung` the first yard's rule stands, bit for bit.
+16.2 **Rated income follows the same rule** in its replay of the driver, so that I rises (or
+    stays) when a partner is levelled.
+16.3 **The gates.** (i) Levelling ANY partner never lowers what the yard keeps: on fifteen seeds at
+    minute 90, day 1 and day 3, each partner's level set by hand one step up: the MEAN change of G
+    is not below -1 % and no seed loses more than 4 % (the yard's own noise). (ii) The yard under
+    the new rule keeps at least what it kept under the old one, on means, at the same three
+    moments. (iii) A tick equals a jump; an absence cut into passes equals one pass; mass; the
+    first hour below the rung bit for bit. (iv) Rated income's band (14.10) measured again on the
+    new rule, with the monotony restated: no single purchase, hire or level lowers I by more than
+    5 %, and none where the yard's own G rises by more than I falls (what is left are artefacts of
+    a replay that must cost under a millisecond; they are printed, not hidden).
+16.4 **The first hour.** The bots also play the first hour with `truck.pickFromRung` 1 (the rule
+    from the first trip) and print its beats beside the merged ones; the lead decides from that
+    table whether the rule starts at rung 1 (as he will for the runs, LEAD L16).
+
+### 17. No purchase makes the yard poorer (09:55; the critic of Phase A found the second case)
+
+The critic of Phase A measured a second purchase of the FIRST yard that makes it poorer, far
+worse than the farm's skips (section 16): buying the motor bench at rung 2 lowers what the real
+yard keeps by about 30 % (seed 31: §33,946 to §23,016 an hour over a capped absence at usual
+prices; a second state §31,067 to §22,254; the same with no runs, that is, on the owner's phone
+today). The likely cause, to be measured before anything is changed: the first yard's order of
+work sends yard hands to feed machines and to empty their trays BEFORE they clear the tipping
+floor; in a yard bound by carrying, a machine whose work adds less than the hands' time it takes
+makes the yard poorer. (The runs of 14.1 gained their sixth for the same reason: hands that stay
+on the floor.) The lead rules:
+
+17.1 **The aim, as a gate for this game from now on.** For every purchase, hire and level a
+    player can make, from fifteen played states at each of minute 30, minute 60, minute 90, day 1
+    and day 3, bought by hand one step at a time: the MEAN change in what the yard keeps an hour
+    (G: a capped absence at usual prices, stock counted) is not below -1 %, and no seed loses
+    more than 4 % (the yard's own noise). The bots run this walk in every report.
+17.2 **The rule for the hands' order of work.** The engineer first measures where the bench's
+    30 % goes (the hands' time by kind of trip, the floor's mass, loads, what is sold by grade,
+    before and after the purchase), then builds the smallest rule that meets 17.1 and keeps every
+    machine worth buying. The lead's first candidate, to be measured against at least one other
+    (each trip valued in scrip a second and the best taken): WHILE THE TIPPING FLOOR IS MORE THAN
+    HALF FULL, A YARD HAND CLEARS THE FLOOR BEFORE HE FEEDS A MACHINE OR EMPTIES ITS TRAY, except
+    for a machine whose work at least doubles the worth of what it takes (from the content at
+    usual prices). Whatever is built: one rule in every presence state; the first choice of a
+    run (14.1), which then goes on as built; the rules that differ with presence on purpose stay
+    as they are; a tick equals a jump; no dead end.
+17.3 **A machine stays worth buying.** With hands enough for the floor each machine raises what
+    the yard keeps: the table of G with and without each machine at two, three and four yard
+    hands is printed; if a machine never pays at any crew a player can hire, its rate or its
+    shares are a content fault and are reported to the lead.
+17.4 **Rated income follows** the order as built (and the driver's rule of section 16); its band
+    (14.10) and its restated monotony (16.3 iv) are measured again.
+17.5 **From which rung, and the first hour.** Sections 16 and 17 fix the first hour too (the
+    bench is bought in it). The engineer measures the first hour with both rules from rung 1
+    (`truck.pickFromRung` and `crew.orderFromRung` 1). IF every beat before the first of the
+    changed moments is unchanged, and the later beats can be brought back into their bands
+    (rung 3 at 55 to 65 minutes; the storyboard's order) by the rung-3 tonnage alone, he sets
+    both keys to 1, retunes that one number, and prints the hour's tables before and after
+    (with the late hour's sales a minute: the aim of §2,000 at minutes 55 to 60 may now be met).
+    IF NOT, both keys stay at 3 and the table goes to the lead. Either way the first yard's
+    pinned figures that move are listed one by one.
+
+16.5 **The rank is what a load nets for the step it loads most (12:25; it replaces 16.1 (a)).** The
+    engineer built 16.1 as worded and measured it (`notes/dispatch-engine2.md` 3.3): the farm's
+    fault is gone, but a DEMOLITION level now makes a cut-bound yard poorer (-8 to -9 % from
+    minute 60 on the bots' yards): a demolition load nets 2.15 times a farm load, but it needs
+    1,200 s of cutting against 433 s, so a cutting second earns less on it (0.58 against 0.75).
+    "No ranking from the content alone can be right both ways": the lead's (a) was wrong. THE
+    RANK NOW: a load's rated net divided by the time it costs the yard's slowest step for it: the
+    greatest of the truck's round trip, its cutting seconds over the cutters the yard has, and
+    its carrying seconds over the yard hands it has (rated income's own per-load terms, from the
+    content and the yard's ASSETS; cached on rated income's asset key; never a switch a player can
+    flip, never recent sales). 16.1 (b) to (f) stand as built. The engineer measured this ("rate")
+    before the ruling allowed it: the demolition level passes from minute 60 on, and four steps
+    are left at minute 30 or on one seed, at the size of the yard's own noise. It is built in the
+    step's one pass of fixes, with the walk of 17.1 printed again; rated income's replay follows
+    the same rank.
+16.6 **What a player is told.** A truck that stands while a skip shows ready, and a machine that
+    waits while the hands are on the floor, each get one line where the player looks: on the
+    waiting skip's card and label ("The driver is keeping the floor for a better load"), on the
+    machine's card ("The yard hands are clearing the floor first"). The words' and screens'
+    engineers build them in Phase C; the rules give the card the reason now.
+16.7 **The measurement over three days is owed again** once the bots know stage 2: today the
+    bots follow the goal card into stage 2's list, which they cannot play yet, and three days
+    earn half of this morning's with the old rules too (the engineer's 5c). The comparison of new
+    against old over three days (16.3 ii) is run by the bots' engineer after the join, on bots
+    that play the stage.
+
+16.8 **The driver's rule must beat the yard hands' rule alone, or it goes (12:50, after the
+    independent check).** The check measured on ten new seeds: the hands' rule (17.2) alone
+    raises what the yard keeps by about a tenth on every seed; the driver's rule as first built
+    (net a load, waiting for room) then LOSES 10 to 14 % on every yard with one level-2 cutter
+    and 13 to 15 % over the bots' three days. So in the one pass of fixes: (1) measure the walk
+    of 17.1 with the hands' rule ALONE (`truck.pickFromRung` beyond the ladder): if a farm level
+    no longer lowers what the yard keeps there (mean not below -1 %, no seed below -4 %), the
+    driver keeps the first yard's rule (the key stays beyond the ladder; the code stays as an
+    option for later stages) and 16.1 and 16.5 are not shipped; (2) if the farm's fault is still
+    there, build 16.5's rank and ship it ONLY if, on the same states and over the bots' days, it
+    keeps at least what the hands' rule alone keeps (mean within -1 %, no seed below -4 %) and
+    clears the farm's and the demolition's rows; if neither (1) nor (2) holds, ship the hands'
+    rule alone and report the farm's row to the lead with its numbers. (3) The bench in a yard of
+    two cutters and two hands (-1.7 to -1.9 % on means, the worst seed -6.4 %; it was -26 %): one
+    honest try in this pass; if it stays, the lead accepts it as within the yard's noise at that
+    crew and the bots watch the row. (4) Rated income: the band again on the rules as shipped;
+    the feed term as the check proposes. (5) NOT changed: rated income never reads a switch (the
+    crucible's "Take from bays"): a player who turns it off earns less and gains nothing (I4).
+    (6) For the bots' tuning, not this pass: a farm skip beyond the third adds nothing on any
+    seed: no level a player can buy may add exactly nothing (a lower top level or a rising fill
+    rate).
+
+16.9 **How the two purchase faults ended (13:35, after the one pass of fixes).** THE YARD HANDS' RULE
+    ALONE SHIPS (17.2 as built: while the tipping floor is more than half full a yard hand clears
+    it before he feeds a machine or empties its tray; a FULL tray keeps its place), from rung 1,
+    with rung 3 at 28.5 t. The hired driver keeps the first yard's rule (`truck.pickFromRung`
+    beyond the ladder); the rank of 16.5 is built and stays in the code as an option, not
+    shipped: on the same states it keeps what the hands' rule alone keeps and fixes the demolition
+    level, but it buys nothing the simpler rule does not, and a truck that stands beside a ready
+    skip is exactly what confuses a player (the owner's review, point 5). Measured as shipped on
+    fifteen seeds: against the old rules the yard keeps 11 to 18 % more on means; the purchase walk
+    of 17.1 passes every row on means (the farm level at minute 30: -0.9 %, one seed -5.4 %; the
+    bench at two cutters and two hands: -1.2 % at minute 60, -0.8 % at day 1: both accepted as at
+    the yard's noise, watched by the bots in every report); every beat of the first hour up to the
+    first pour is unchanged to the second; sales at minutes 55 to 60 reach §2,000 a minute on 5 of
+    15 seeds (none before). 16.6's line for the skip is not needed; the machine's reason (the yard
+    hands are clearing the floor first) is in the card's data for Phase C's words. Still owed, by
+    the join and the bots: rated income's terms for the van and the Yard sale (its medians are
+    0.90 to 0.92 from rung 3 until then); the three days on bots that play the stage (16.7); an
+    hour away is now 0.81 of an hour played (E19 asks at most 0.8: the bots' tuning looks at it).
+
+### 18. The owner's first review of the yard on the phone (13:55; the ruling is `owner1/RULING-owner1.md`)
+
+The owner played the first yard on the phone and wrote seven points (OWNER.txt). The diagnosis
+(`notes/owner1-diagnose.md`) found that each was real and why: (2) between his hire and the
+cutter's the helper stood idle 70 to 86 % of the time, on the platform scale, because the first
+yard's rules kept him from everything the boss had cut ("never from the heaps") and from whole
+things while the boss was in the yard, and the screen said nothing; (5) the trial load cost §150
+right after the truck's purchase (refused for cash on a fifth of seeds, with one toast), and the
+goal was only done on the weighbridge, which nothing pointed at: a player who parked and stepped
+out was stuck until a driver was hired; (7) the screen drew the truck's park phase along the whole
+lane trip: 140 to 290 m/s through the yard with jumps of up to 285 m; the driver tipped on the
+floor's centre, on top of the people working there; purchase vans drove through the office; and
+the trucks' real speeds (10.8 to 21.6 m/s) were no yard's; (1) the rules' frame was built twice or
+more at each of about twenty store changes a second. The ruling in one line each: what the boss
+cuts and leaves, the yard hand carries; nobody waits on the scale; a waiting worker says why; the
+trial load is free and the goal follows the load step by step; every phase of a trip has its own
+path; no vehicle exceeds 4 m/s inside the fence (the lane pays for it: no table moves); arrivals
+follow the drive line; the frame is built once. And `release.stage` keeps stage 2 dark on the
+owner's phone until its screens exist, so that these fixes, the cheaper time away and the yard
+hands' order of work can go to the phone now.
+
+#### 18.1 The ruling on the behaviour points (13:55; `owner1/RULING-owner1.md`, copied here so that the repository holds it)
+
+The owner's words are in OWNER.txt and at the head of every step. The diagnosis is `notes/owner1-diagnose.md`
+(read it whole: every mechanism, script and number below is from it). This file says what is built. Where it
+differs from the first yard's specification (2.6's "never from the heaps", P11, the trial's price, the truck's
+speeds), this file is right: the specification was measured for its timings, never for what a player sees.
+
+##### Point 2: a helper who stands still (he was idle 70 to 86 % of the time between his hire and the cutter's)
+
+H1. WHAT THE BOSS CUTS AND LEAVES, THE YARD HAND CARRIES (the diagnosis's V1). A yard hand may carry cut
+    pieces that lie beside a thing in a heap's bed when the boss is more than `crew.hand.leaveM` (3 m) from
+    them; they come after the tipping floor in his order of work. Pieces within 3 m of the boss stay his. The
+    chalk circles stay as they are (pieces in a circle first).
+H2. A WHOLE THING AT THE DROP-OFF WHEN HE WOULD OTHERWISE STAND (V2): only when nothing else is offered and
+    the boss is beyond `reach.sight` of it.
+H3. THE CABLE BUNDLE GOES TO THE POWERED STRIPPER (V3, a bug against P11 as written).
+H4. "IN THE YARD" MEANS INSIDE THE FENCE. A boss driving on the lane beyond the gate is away for P11 and E35
+    (today a boss who sits at the farm keeps the hands off whole things and the yard earns nothing).
+H5. NOBODY WAITS ON THE PLATFORM SCALE. A yard hand or cutter with nothing to do walks to a waiting place
+    beside the scale house (content `map.points`: places for as many crew as the yard can hire, clear of the
+    scale, the bays' fronts and the drive line; the checker knows them) as an ordinary dated leg, and waits
+    there. He is offered work again at every event AND at every presence sample while anybody waits (the boss
+    walking away from a heap frees its pieces: nobody may stand until "something else happens").
+H6. HE SAYS WHY. The frame's crew entry carries `idleWhy`: 'nothing' (nothing in the yard to carry or cut),
+    'uncut' (only things that need cutting or a tool the yard lacks), 'yours' (only pieces at the boss's
+    feet), and for a cutter 'tool' (the next thing needs a tool or a tier he has not). The rota's row carries
+    the same. Words (three text files; the words' check at 0 findings), at most 22 characters each, plain:
+    "Nothing to carry", "Waiting for cut pieces", "Leaving those to you", "Needs the torch" (the tool's name by
+    key). The world draws them as a small bubble over a waiting worker (the world's engineer).
+H7. THE FIRST HOUR IS MEASURED AGAIN. H1 to H4 make the hour faster (the diagnosis: about 9 % more earned by
+    minute 60, rung 2 two minutes earlier, rung 3 three). Bring every beat back into its band of
+    docs/design/yard-bots.md by the rung-2 and rung-3 tonnages ALONE (`ladder.rung2.t`, `ladder.rung3.t` and
+    their copies in `rungs`); if a beat cannot be brought back by those two numbers, leave it and report it
+    with the table. Then print: the yard hand's idle share between his hire and the cutter's (the aim: under
+    a third on every style and seed, and never a wait of over 30 s while cut pieces lie anywhere), the
+    purchase walk of ruling 17.1, the hard promises, a tick against a jump.
+
+##### Point 5: the farm's trial container
+
+T1. THE TRIAL LOAD IS FREE at the hook (`partners.partnerFarm.trialPrice` 0; the farm lets the first one go
+    on trust). It can never be refused for cash.
+T2. THE GOAL FOLLOWS THE LOAD. "Fetch the farm's trial load" shows the step the player is at, and the chevron
+    points at it: to the truck (not driving), to the gate and the farm (driving, no skip), "Keep still: hooking"
+    (at the skip, the ring running), "Drive onto the weighbridge" (a skip aboard, not weighed: the chevron on
+    the weighbridge), "Tip it on the floor" (weighed: the chevron on the floor's stop). Stepping out with a
+    skip aboard that is not yet weighed or tipped shows the step's words as a toast and the chevron stays on
+    the truck. The same steps serve every later load the boss fetches himself.
+T3. THE BOSS HOOKS IN 4 SECONDS, not 10 (`truck.bossHandle_s` 4; the hired driver's `handle_s` stays 10, so
+    his trip and every measured table stay). The ring is the rules' (the act's dated end).
+T4. A REFUSAL STAYS ON SCREEN for as long as it holds (the act stays `refused.<why>` and the frame carries the
+    reason and its figure: "Needs §x more", "No room on the floor"): the screens show it on the skip's plate
+    and by the one button until it ends, not as one toast.
+
+##### Point 7: the vehicles
+
+V1. EVERY PHASE OF A TRIP CARRIES ITS OWN PATH (frame.ts; one function in positions.ts shared with the rules'
+    distances): out: park, turn, line, gate, lane, skip; hook: standing at the skip; back: skip, lane, gate,
+    line, weighbridge; weigh: standing on it; tip: weighbridge to the floor's stop; park: the floor's stop,
+    turn, park. No phase is ever drawn along another phase's path (today the park phase draws the whole lane
+    trip in a second and a half: 140 to 290 m/s through the yard, with jumps of up to 285 m: this is what the
+    owner saw). A test walks every phase of every partner's trip: the drawn point is continuous across phase
+    switches (no jump over half a metre) and never faster than the phase's own speed.
+V2. THE DRIVER TIPS AT THE FLOOR'S STOP on the drive line (`driveLine.stops.floor`), as the boss does, never
+    on the floor's centre where people work.
+V3. A YARD'S SPEED IN THE YARD. Inside the fence no vehicle moves faster than `truck.yardV` (4 m/s); beyond
+    the gate the lane's speed is raised so that the TOTAL of every trip, at every driver's level and with the
+    foreman's boost, is what it was to the millisecond (a test over every level): no measured table moves.
+    The boss's own truck: at most `truck.bossYardV` (4.5 m/s) inside the fence and `truck.bossV` 11 on the
+    lane, so that the first drive's beat stays within five seconds of today's.
+V4. WHAT ARRIVES, ARRIVES BY THE DRIVE LINE: the purchase van, the machine flatbed and the merchant's flatbed
+    follow the line to the stop nearest their place and set down there (the thing is then at its place, as the
+    rules date it); no drawn path crosses a solid; no jump at set-down. The map's checker refuses an arrival
+    path through a solid.
+V5. NOBODY GIVES WAY BY RULE (dated legs stay dated). The world draws the nearer of two in front; the review
+    looks again once V1 to V4 are in.
+
+##### Point 1: what the rules hand the screen
+
+L1. `frame()` is computed ONCE for a state and shared (a memo by the state's identity in frame.ts; the hud,
+    the rings, the hints and the labels read the same object), and reuses its unchanged parts (things and
+    pieces change only at events).
+L2. A presence sample that changes nothing but the boss's own position pushes no new scene to the screen (the
+    boss is the screen's own).
+The screen's side (who reads `frame()` and when; the truck's smoothing) is the world's engineer's.
+
+##### The switch: stage 2 stays dark on the owner's phone until its screens exist
+
+S1. Content `release.stage` (1 or 2; absent means 2, so every test and frozen content keeps working; the real
+    content says 1 until the lead changes it). At stage 1: the works never open (no works layer, no stage-2
+    grade, thing, partner, shop item, bay, lot, rack, plate; the stage's goal list is never offered); the
+    ladder's top is rung 3 (rungs 4 and up shown padlocked, as the first yard showed them); no shop row, no
+    pack, no ad offer, no away bonus, no letter, no Agreements tab, no bank; the away caps as the first
+    yard's. What stays ON, because it is the first yard's engine now: runs from rung 3, the yard hands' order
+    of work, Hold's release, the cheaper time away, everything of this ruling.
+S2. Tests: three days of bots at stage 1 touch no stage-2 state (works empty, no agreement, the shop's state
+    as created, lots and reuse undated, no stage-2 event, no stage-2 card or row from any frozen state); a
+    save made at stage 1 loads at stage 2 and opens the works at its first live instant at rung 3 or more; the
+    first hour at stage 1 equals the first hour at stage 2 below rung 3, bit for bit.
+S3. Also in this pass: the test fix2a.test.ts "backFieldOpen is heard exactly once" (its mock of works.ts is
+    bypassed: repair the test so that it tests the rule on the real opening path).
+
+#### 18.2 After the review of the fixes (about 16:45): a player's findings and the lead's rulings
+
+A player and a phone engineer who built none of it looked at the result. The player's verdict was
+"close, not ready": four things would still look broken in the first ten minutes. One pass of fixes
+followed (three engineers: world, hud, rules). Each finding and its ruling:
+
+- Finding 1 (blocking, world): My own worker vanishes. Standing at the tool rack only a helmet tip shows above the roof; walking near the office he is gone for minutes at a time.
+  RULING: A PLAYER ALWAYS SEES HIMSELF. Whenever the boss's position lies under a roof or canopy as it is drawn (the tool rack, the office, the scale house, any shed), that roof is drawn see-through (about a third of its ink, eased over a fifth of a second) for as long as he is under it; crew under a roof are drawn the same way through it. No walkable ground changes. A test over every roofed place of the map: with the boss at its centre and at each edge his sprite is not fully covered. Pictures at the tool rack and the office, looked at.
+- Finding 2 (blocking, world): The merchant's flatbed drives through yard hands who stand on the weighbridge and the drive line. This is the owner's 'running people over', still visible at the right speed.
+  RULING: PEOPLE STEP ASIDE, on the screen only (dated legs stay dated: the lead's V5 stands for the rules). While a moving vehicle's drawn body would overlap a drawn person (the vehicle's width plus 0.4 m either side, over the next second of its dated path), that person is drawn stepped off the vehicle's path to the nearer side, eased out and back, by at most 1.6 m; his rules position is untouched and he arrives where and when the rules say. A person who STANDS on the drive line or the weighbridge while waiting is a rules fault: report in requests.md where the rules made him stand (the rules' engineer moves the waiting places). A test: the played minute-30 state run for five minutes of frames: no frame in which a person's drawn centre is inside a moving vehicle's drawn body.
+- Finding 3 (blocking, rules): Stopping beside the farm's sign, a truck's length short of the skip, does nothing and says nothing. The goal still reads 'Drive out to the load' and only a chevron sits on the skip. The preview's own scripted driver stopped there and went home empty.
+  RULING: THE WHOLE SITE IS THE STOP. A truck that stands still anywhere on the partner's site (from 6 m before its sign to 6 m past its last skip, the lane's width; content: derived from the site's own points, checked by the map's checker) hooks the full skip: the 4 s ring starts wherever it stands. Outside the site but within 15 m of it and standing still, the goal's step reads 'Pull up to the skip' and the chevron stays on the skip (a new step; words within the goal line's box at font scale 1.3). Also the preview's scripted drive route stops inside the site. Test: the reviewer's stop at lane x 236 hooks; a stop 10 m short shows the step and does not hook.
+- Finding 4 (blocking, hud): At 844, after the hook the disc went blank and dim while I was still in the truck, all the way home, during the weigh and during the tip: no 'Step out'. At 667 the same drive kept 'Step out', so it happens only sometimes.
+  RULING: THE DISC NEVER GOES BLANK IN THE TRUCK. The one button's mode comes from the rules (the frame's truck: the boss is at the wheel) and not from the world's own driving flag alone: at the wheel it always reads 'Step out', also at the truck's park (finding 11: never 'Open' while in the truck; a place's card opens only on foot). Find where the flag dropped after the hook at 844 and say it. A test over a whole scripted trip: every frame at the wheel the disc's label is 'Step out'.
+- Finding 5 (important, rules): With the boss standing at the drop-off holding a full load, the yard hand waits beside the platform scale for about 80% of two minutes under 'Leaving those to you'. That is the owner's frozen-helper picture with a label added. 'Those' is unclear, and nothing tells me to move.
+  RULING: THE HELPER CARRIES UNLESS THE BOSS IS ABOUT TO. H1 and H2 of the ruling change: a cut piece in a heap, and a whole thing at the drop-off that the yard hand may carry, are the boss's ONLY while all three hold: he is within crew.hand.leaveM (3 m) of it, his load has room for it, and he has moved or worked within the last crew.hand.leaveS (5 s). Otherwise the yard hand takes it (H2 no longer waits for the boss to be beyond sight, and no longer only when nothing else is offered: whole drop-off things come in his order after the heaps' pieces). The reason 'yours' is given only under those three. The waiting places move to the scale house's wall (content points; clear of the scale's plate, the bays' fronts and the drive line; the checker), and nobody ever waits ON the drive line or the weighbridge (the world's engineer will tell you in requests.md if he sees it). Then the first hour again with the bots (15 seeds, 2 routes): bring rung 2 and rung 3 back into their bands by their two tonnages alone, print the yard hand's idle share between his hire and the cutter's (aim: under a third on the median of every style) and the longest wait with something he may carry lying anywhere (aim: under 15 s), the purchase walk, the hard promises, a tick against a jump.
+- Finding 6 (important, world): The 'Keep still: hooking' pill lies on the skip's label and hides its last lines ('+ 2 more · Net 540 kg'). At 844 I saw no ring in the three frames where the pill showed; at 667 the ring is drawn clearly.
+  RULING: The hook's words stand BELOW the truck (never on the skip's label), and the ring is drawn at 844 as at 667 (find why three frames at 844 showed none: its size, its place behind the label, or its start). Pictures at both sizes during the 4 s.
+- Finding 7 (important, hud): Standing between the tool rack and the weighbridge, the card that opened with the tool rack's list was titled 'Weighbridge'.
+  RULING: A place's card is titled from the place whose rows it shows (the tool rack's list was titled 'Weighbridge' when opened between the two). Find the cause (the card's ref against the nearest place) and pin it with a test at the reviewer's two positions.
+- Finding 8 (important, hud): The first view lists sales worth about §106,000, yet NET reads +§21,580. The load costs (Hob's Farm Clearance, 43 loads, -§41,971) appear only after scrolling, so the first sight looks like the numbers do not add up.
+  RULING: THE AWAY CARD ADDS UP AT FIRST SIGHT. The fixed foot shows, beside NET, one line 'Sold +§x · Loads −§y' (and the bank's share when there is one), from CardData's own totals, so that the first view explains the net without scrolling; both sizes, font scale 1.3.
+- Finding 9 (minor, hud): The goal card repeats itself: 'Tip it on the floor' and then '▸ Tip it on the floor'.
+  RULING: Hide the goal's step line when its words equal the goal's own.
+- Finding 10 (minor, rules): 'Net 540 kg · §0.00' and a red 'Bought for §0.00' read as if the load is worthless or broken.
+  RULING: A FREE LOAD SAYS FREE. The trial load's skip label and its weighbridge ticket say 'Free trial load' (label) and 'Free: the farm's trial' (ticket line) instead of §0.00 and a red 'Bought for §0.00': the ticket's data carries a flag the screens print (tell the hud's engineer its name in requests.md); words in the three text files, the check at 0 findings.
+- Finding 11 (minor, hud): Sitting in the truck at the park the disc reads 'Open' (the park card), and the truck put me in the driver's seat while the shop card was still open.
+  RULING: With finding 4: at the wheel the disc reads 'Step out' everywhere; the park's card opens only on foot; entering the truck closes an open card first.
+- Finding 12 (minor, hud): 'Washing machine · signed in · gate drop-off' toasts keep coming while I am at the farm, 180 m away.
+  RULING: Drop-off toasts ('signed in') are held while the boss is beyond the gate and shown as one line when he is back inside ('{n} things signed in at the gate'), if any.
+- Finding 13 (minor, world): Two empty dashed circles with an X near the weighbridge look like unfinished art. At m5 the ghost-thumb hint sits on top of the stripper bench.
+  RULING: An EMPTY chalk circle is drawn faint (a quarter of its ink); the ghost thumb's hint never sits on a machine or a place's label (move it to free ground near the stick's rest).
+- Finding 14 (minor, hud): The crane's sign reads 'Cinder Lane Yard · 2.8 t supplied' while the line below reads 'You: 9.01 t supplied'. They look contradictory.
+  RULING: The rung sign's own line reads 'Opened at {t}' (the rung's tonnage) so that it does not contradict 'You: {t} supplied' below it; words in the three text files.
+- Finding 15 (important, rules): A farm level at minute 90 lowers what the yard keeps by 3.8 % on means (it was 0.0 after the yard hands' rule alone).
+  RULING: not now (the lead: it goes to the bots' tuning with stage 2: a lower top level for the farm's skips or the driver's rank of ruling 16.5; print the row again after finding 5's change so that the lead sees whether it moved).
+
+What the one pass measured (15 seeds, four styles): the yard hand's idle share between his hire and
+the cutter's fell from 48 to 63 % to 44 to 52 % (the aim of under a third is NOT met: about 60 % of
+what remains is "nothing cut yet", which no rule about his order of work can change before a cutter
+is hired); the longest wait with something he may carry lying about is over 15 s on 6 of 60 runs
+(worst 26.5 s). Rung 2 moved from 2.8 t to 3.0 t and rung 3 from 31.5 t to 32.2 t to keep the normal
+hand's beats in their bands (rung 2 at 13:12, rung 3 at 59:27); the slow hand's rung 3 is in band on
+7 of 15 runs (it was 12): the bots' tuning with stage 2 looks at it. No hard promise broke on 144
+runs. Finding 15's row (the farm's level at minute 90) reads -3.33 % on means: left for that tuning.
+
+#### 18.3 Who sits in the cab (the lead, about 17:45)
+
+Behind point 5 there was a second cause, found while closing the fixers' requests. The screen and
+the rules each decided for themselves whether the boss sits in the truck: the yard view flips into
+the cab the frame the player steers into the truck; the rules seated him only when a presence
+sample lay within `truck.enter`, the door was armed again (`truck:out`) AND no act of his was still
+running. A pick-up's ring beside the truck (pieces on the floor, a tray) kept him on foot in the
+rules while the screen drove away: a truck the rules thought parked, which hooked nothing, until a
+hired driver took that parked truck on trips: the owner's words exactly. Samples are also coalesced
+after a stall of the JavaScript thread, which could leave the two doors armed differently; and the
+other way round the rules could seat him (the truck pulls up beside him) while the screen kept him
+on foot, the rules' truck then following a walking man.
+
+RULING: THE TWO NEVER DISAGREE ON WHO DRIVES, AND WHAT THE PLAYER SEES IS WHAT THE RULES HAVE.
+- The screen's cab flag is the player's getting in: a presence sample that says "at the wheel" seats
+  the boss whenever the truck stands free (owned, nobody at its wheel, on no trip, not on its way
+  in), cancelling the act that was running (work keeps its progress) and without asking whether the
+  door was armed. The sample's place stays clamped as any sample's (R7), so the truck goes no
+  faster than a truck. The rules' own walk-in stays for a sample without the flag (the truck that
+  pulls up beside him) and for the bots, which never send the flag unseated: no measurement moves.
+- The screen follows the rules back: when the rules seat him, the yard view puts him in the cab;
+  when the truck leaves with the driver before the rules heard he was in it, he is set down; at a
+  snap (a reload, time away) the view takes the rules' word both ways (time away at the wheel gives
+  the truck to the driver: he is on foot when the player returns).
+- Step out: the view tells the rules exactly what it did (at the wheel, still, the truck's place
+  and its heading, one of eight) and waits for their answer; if they refuse, he is back in the cab.
+  The truck no longer turns to an old heading when he steps out.
+- The screens' "driving" flag is said by the frame loop at every snap; the shell no longer resets
+  it on mount (that reset could land after the first frame and blank the button at the wheel).
+Tests: `src/engine/salvage/seat.test.ts`. Seen in the preview: the first drive from the park by the
+gate to the farm, the hook, the weighbridge, the floor; and the same with a Step out at the gate, a
+walk to the weighbridge and back into the truck.
+
+#### 18.4 The confirm before the merge (about 18:05): a player and an attacker of the cab change
+
+A player who built none of it watched point 5 work twice end to end (the first drive; the same with a
+Step out at the gate and back in) and the away card at both sizes: READY on points 5 and 6, nothing
+blocking; points 1, 2, 3, 7 and the button at 667 were not looked at again in that pass (the earlier
+reviewers' pictures and the tests carry them). An attacker read the cab's handshake frame by frame
+and ran the engine: SOUND, nothing blocking, two important and six minor findings. Rulings:
+
+- THE AWAY CARD STAYS (important, a regression of the one pass): the effect that closes an open card
+  when the wheel is taken closed the "while you were away" card of a player who had left the phone
+  at the wheel. The wheel now closes only a PLACE's card. And where the boss is after time away at
+  the wheel: with nobody to take the truck it waits where he left it and he comes back at its wheel;
+  when a hired driver takes it home with a skip aboard from beyond the fence, the boss rides with
+  him and waits where a fresh yard starts (he is not left on the lane).
+- ONLY AT THE DOOR (important before stage 5's boards; today only a tampered screen could use it):
+  the cab flag seats the boss only when the sample's clamped place is within `truck.enter +
+  truck.rearm` of the free truck. The screen sends the entering sample at the truck's own place and
+  never drops it (it goes ahead of any sample still waiting), so an honest entry is always at the
+  door whatever stalls happen. A flag from farther off seats nobody and moves no truck.
+- Step out takes the screen's place for the truck only within a sample's slack of the presence, and
+  its heading always (one of eight).
+- The truck's heading: at the wheel every sample carries it, so the rules' truck faces as the drawn
+  one (after a reload or time away it no longer snaps to an old heading); at Step out the drawn
+  angle stays when it rounds to the rules' heading.
+- A remount just after Step out: the door is disarmed while he stands beside the truck.
+- A second tap on the disc during Step out: the rules hear the Step out before the screens' flag
+  falls.
+- The same sample twice is the same object also when its cab flag cannot be honoured.
+- The player's finding (important): on foot beside the truck after Step out the disc is blank while
+  the goal says "Get in the truck". RULING: the one button GETS IN: within reach of the free truck
+  the disc reads "Get in" and a press seats him (the walk-in stays). Not in today's update (new
+  words, a new act of the button, pictures): it is the first item of the next one.
+- Minor, not now: the truck left slanted across the gate is drawn over the hedge; the preview's
+  scripted thumb weaves at the farm's skip (a tool).
+Tests: `seat.test.ts` (10). Seen again in the preview after these changes: route `cab`, 844 x 390.

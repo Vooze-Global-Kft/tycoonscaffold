@@ -99,6 +99,8 @@ export type AwayData = AwayCard & {
   next?: Txt | null;
   /** Grade lines the selector left out (its own cut), counted into "+ n more". */
   moreLines?: number;
+  /** E40 (engine2-income): held bays sold while away to keep the yard running. */
+  heldSold?: string[];
 };
 
 /** rules-book's away selector (R.awayView, announced 19:55) as it may come: every field optional here. */
@@ -116,6 +118,7 @@ export interface AwayViewLike {
   passed?: string[];
   next?: Txt | null;
   runLonger?: AwayData['runLonger'];
+  heldSold?: string[];
 }
 
 /** The state's away card with rules-book's selector laid over it where it gives a field (its numbers win). */
@@ -138,6 +141,7 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
     passed: (v.passed ?? a.passed) as AwayCard['passed'],
     next: v.next !== undefined ? v.next : a.next,
     runLonger: v.runLonger !== undefined ? v.runLonger : a.runLonger,
+    heldSold: v.heldSold ?? a.heldSold,
   };
 }
 
@@ -148,7 +152,7 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
  * grade lines (five at most, three at large type) and "+ n more". At large type the loads bought are
  * one line (their total), so the rivals passed stay above the fold at 667 x 375 (P19).
  */
-export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; unsold: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
+export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; unsold: Txt | null; held: Txt[]; news: Txt[]; next: Txt | null; lines: Txt[] } {
   const head: Txt = { key: 'away.head', args: { t: { secs: a.absentS ?? a.seconds }, c: { secs: a.seconds } } };
   const rl = a.runLonger ?? null;
   const longer: Txt | null = !rl ? null : 'item' in rl ? { key: 'away.longerNight', args: { c: { secs: rl.capS } } } : { key: 'away.longerRung', args: { c: { secs: rl.capS } } };
@@ -166,13 +170,15 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   }
   // join3: right under Net, what the time away left in the bays not yet sold (the rules' own figure).
   const unsold: Txt | null = net && (a.unsold ?? 0) > 0 ? { key: 'away.unsold', args: { x: { money: a.unsold! } } } : null;
+  // engine2-income (E40, H1): one line a held bay sold to keep the yard running, printed only when there was one.
+  const held: Txt[] = (a.heldSold ?? []).map((grade): Txt => ({ key: 'away.heldSold', args: { grade: { grade } } }));
   const news: Txt[] = [];
   if (a.deliveryList?.length) for (const d of a.deliveryList) news.push({ key: 'ticket.dealDelivery', args: { kg: { mass_g: d.g, step: 'lot' }, x: { money: d.paid } } });
   else if (a.deliveries > 0) news.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
   // desk2 (4c): at a large font scale two or more rivals passed fold into one line, so 'Next: ...' stays in sight.
   if (large && a.passed.length >= 2) news.push({ key: 'away.passedN', args: { n: { n: a.passed.length } } });
   else for (const r of a.passed) news.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
-  if (!net && !news.length) news.unshift({ key: 'away.nothing' });
+  if (!net && !news.length && !held.length) news.unshift({ key: 'away.nothing' });
   // The next step: rules-book's, else the rules' hint (printed once: it can be the "nothing" line itself).
   let next: Txt | null = a.next ?? a.hint ?? null;
   if (next && news.some((t) => t.key === next!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(next!.args ?? {}))) next = null;
@@ -182,7 +188,7 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   const lines = a.lines.slice(0, max).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
   const rest = Math.max(0, a.lines.length - max) + (a.moreLines ?? 0);
   if (rest > 0) lines.push({ key: 'ticket.more', args: { n: { n: rest } } });
-  return { head, longer, money, net, unsold, news, next, lines };
+  return { head, longer, money, net, unsold, held, news, next, lines };
 }
 
 // ------------------------------------------------------------------------------- the clipboard's tickets
@@ -208,13 +214,21 @@ export function ticketSummary(t: Ticket, conv: Txt | null = null): { head: Txt; 
     case 'skipWeighIn':
       return {
         head: t.trial ? { key: 'ticket.skipHead', args: { partner: { name: t.partner }, load: { text: 'ticket.trial' } } } : { key: 'card.skipState', args: { partner: { name: t.partner } } },
-        total: { key: 'ticket.paid', args: { x: { money: t.paid } } },
+        // owner1-fix finding 10: money OUT says "Bought for" (a free trial load "Free: the farm's trial"), never "Paid".
+        total: t.free ? { key: 'ticket.freeTrial' } : { key: 'ticket.boughtFor', args: { x: { money: t.paid } } },
         lines: [{ key: 'ticket.grossTareNet', args: { a: { mass_g: t.gross_g, step: 'bridge' }, b: { mass_g: t.tare_g, step: 'bridge' }, c: { mass_g: t.net_g, step: 'bridge' } } }, { key: 'ticket.partnerLegal' }, date],
       };
     case 'dropOffSlip':
       return { head: { key: 'ticket.dropOffSlip', args: { thing: { thing: t.thing } } }, total: null, lines: [date] };
     case 'dealDelivery':
       return { head: { key: 'ticket.dealDelivery', args: { kg: { mass_g: t.g, step: 'lot' }, x: { money: t.paid } } }, total: null, lines: [{ key: 'ticket.weighedOut' }, date] };
+    // Stage 2's lot tickets (s2a-fix widened the union; their full history lines are Phase C's).
+    case 'rackSale':
+      return { head: { key: 'ticket.rackSale', args: { thing: { thing: t.thing }, x: { exact: t.paid } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
+    case 'vanCollection':
+      return { head: { key: 'ticket.vanCollection', args: { reclaimer: { name: t.buyer } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
+    case 'crateLot':
+      return { head: { key: 'ticket.crateLot', args: { n: { n: t.n } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
   }
 }
 
@@ -236,7 +250,9 @@ export const planLoad = (s: SkipLabel): 'empty' | 'trial' | 'full' => (s.state =
 
 /** What the rung sign says and what the rung opens (rung 2: torch, portal, deal; rung 3: the capacity). */
 export function rungLines(n: number, tonnes: number, capacity: number | null): { sign: Txt; opens: Txt | null } {
-  const sign: Txt = { key: 'table.rungSign', args: { t: { tonnes_g: tonnes * 1e6 } } };
+  // owner1-fix finding 14: the sign names the rung's own tonnage as when it OPENED ("Opened at 2.8 t"), so that it does
+  // not read against "You: 9.01 t supplied" under it.
+  const sign: Txt = { key: 'table.rungOpened', args: { t: { tonnes_g: tonnes * 1e6 } } };
   const key = `opens.rung${n}` as TextKey;
   if (n === 2) return { sign, opens: { key } };
   if (n === 3) return { sign, opens: { key, args: { c: { n: capacity ?? 0 } } } };

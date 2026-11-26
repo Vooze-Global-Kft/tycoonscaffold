@@ -204,9 +204,13 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
   }
 
   // Partner loads: the label plate.
+  // owner1 T4 (screens1 finding 5): while the boss stands refused at a partner's skip (act target
+  // `refused.<partner>`), that skip's plate carries the frame's refusal with its figure, in the warning ink.
+  const held = f.boss?.refusal && typeof f.boss.target === 'string' && f.boss.target.startsWith('refused.') ? { partner: f.boss.target.slice(8), why: f.boss.refusal } : null;
   for (const s of f.skips) {
-    const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
-    if (!lab) continue;
+    const lab0 = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
+    if (!lab0) continue;
+    const lab = held && held.partner === s.partner ? { ...lab0, refusal: held.why } : lab0;
     out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y, under: true, footDy: SKIP_FOOT_M, halfW: SKIP_HALF_M });
   }
   // join3 (L7/P10): each partner site's name on its gate sign, at the sign the lane's art places
@@ -286,7 +290,9 @@ export function skipPlate(c: Content, lab: R.SkipLabel): LabelItem {
   if (lab.state !== 'filling') {
     for (const th of lab.things.slice(0, 3)) lines.push(line(say({ key: 'card.skipLine', args: { thing: { thing: th.obj }, n: { n: th.n }, kg: { mass_g: th.g, step: 'lot' } } }, c), LIMITS.skip));
     if (lab.things.length > 3) lines.push(line(say({ key: 'ticket.more', args: { n: { n: lab.things.length - 3 } } }, c), LIMITS.skip, 'muted'));
-    lines.push(line(withPrice(c, say({ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, c), lab.price), LIMITS.skip, 'strong'));
+    // owner1 finding 10: a free trial load says so (not a price of 0.00).
+    const net = say({ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, c);
+    lines.push(line(lab.free ? say({ key: 'chip.padlockPrice', args: { x: { text: 'card.skipFree' } } } as R.Txt, c).replace('{why}', net) : withPrice(c, net, lab.price), LIMITS.skip, 'strong'));
   }
   const why = lab.refusal ?? (lab.state === 'filling' && lab.fullInS !== null ? ({ key: 'refusal.filling', args: { t: { secs: lab.fullInS } } } as R.Txt) : null);
   if (why) lines.push(line(say(why, c), LIMITS.skip, 'warn'));

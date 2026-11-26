@@ -9,7 +9,7 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../../../engine/fixtures
 import * as R from '../../../engine/salvage';
 import type { GameState } from '../../../engine/types';
 import { createPump, type PumpEffects } from './pump';
-import { avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, slotChipShown, textW, ticketFade, ticketHeight, TICKET_UNDER_BOSS } from './metrics';
+import { LADDER_CHROME, measureW, avoidRect, cashCoinPoint, cashFit, cashSlotNeed, CASH_WIDEST, fitText, hudScale, overlaps, placeFromSlot, underCash, hudLayout, MIN_PT, pickForm, placeTicket, slotChipShown, textW, ticketFade, ticketHeight, TICKET_UNDER_BOSS } from './metrics';
 import { crewWeighInChip, dealChip, lotSoldChip, MAX_ROWS, planTicket, slipText, ticketView } from './ticketView';
 import { barMoney, toastText } from './words';
 import { barValues, carryText, goalValues, ladderForms } from './words';
@@ -64,10 +64,11 @@ describe('bar text fits at font scale 1.3, never under 11 pt', () => {
         const v = barValues(cfg, game(name));
         expect(v.ok).toBe(true);
         const forms = ladderForms(v, c);
-        const pick = pickForm(forms, L.slots.ladder - 40, L.rows.bar - 6, L.s);
+        const pick = pickForm(forms, L.slots.ladder - LADDER_CHROME, L.rows.bar - 6, L.s);
         expect(pick.fit.cut).toBe(false);
         expect(pick.fit.pt).toBeGreaterThanOrEqual(MIN_PT);
-        expect(textW(forms[pick.index], pick.fit.pt)).toBeLessThanOrEqual(L.slots.ladder - 40);
+        // measured as the text check measures (owner1-hud): the old 0.56 em estimate is not the rule any more
+        expect(measureW(forms[pick.index], pick.fit.pt)).toBeLessThanOrEqual(L.slots.ladder - LADDER_CHROME);
         const carry = fitText(carryText(v, c), L.slots.carry - 12, L.rows.bar - 4 - 3, 12, L.s, true);
         expect(carry.cut).toBe(false);
         expect(carry.pt).toBeGreaterThanOrEqual(MIN_PT);

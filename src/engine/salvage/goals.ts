@@ -14,8 +14,9 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { advice, cardForItem } from './advice';
-import { roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
-import { pointOf } from './positions';
+import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
+import { pointOf, siteRect, skipZone, stopOf } from './positions';
+import { owner1Rules } from './content';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
 
@@ -41,10 +42,36 @@ export function bump(counts: Counts, key: string, n = 1): Counts {
 
 const countsOf = (g: SalvageGame): Counts => g.salvage.counts ?? {};
 
-/** Every goal in order: the hour's, then the day-1 list (content `dayOne`, the hints' file). */
-export function goalSpecs(c: SalvageContent): { goals: GoalSpec[]; dayOne: GoalSpec[] } {
-  const dayOne = ((c as unknown as { dayOne?: Partial<GoalSpec>[] }).dayOne ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }) as GoalSpec);
-  return { goals: c.goals as GoalSpec[], dayOne };
+/** Every goal list: the hour's, the day-1 list (content `dayOne`) and stage 2's (content `stage2`, goals.json's list; 1.3, 2.13). */
+export function goalSpecs(c: SalvageContent): { goals: GoalSpec[]; dayOne: GoalSpec[]; stage2: GoalSpec[] } {
+  const fill = (l: Partial<GoalSpec>[] | undefined) => (l ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }) as GoalSpec);
+  const x = c as unknown as { dayOne?: Partial<GoalSpec>[]; stage2?: Partial<GoalSpec>[] };
+  return { goals: c.goals as GoalSpec[], dayOne: fill(x.dayOne), stage2: fill(x.stage2) };
+}
+
+/** The rung the works open at (2.20: derived from the state, not from a rung event): the lowest gate of content `works.plates`; Infinity without plates. */
+function worksRung(c: SalvageContent): number {
+  let r = Infinity;
+  for (const p of Object.values(c.works?.plates ?? {})) r = Math.min(r, gateRung(p.gate) || Infinity);
+  return r;
+}
+
+/** Is stage 2's list offered (2.13, 2.20): the yard at or above the works' rung. */
+function stage2Offered(c: SalvageContent, g: SalvageGame): boolean {
+  return g.salvage.ladder.rung >= worksRung(c);
+}
+
+type Footprint = { x: number; y: number; w: number; d: number };
+const worksMap = (c: SalvageContent) => (c.map as unknown as { works?: { points?: Record<string, [number, number] | { x: number; y: number }>; footprints?: Record<string, Footprint> } }).works ?? {};
+
+/** `at:<place>` (goals.json $stage2): the boss, in the yard, on foot, within reach.place of the place's footprint on the merged map, now. */
+function bossAt(c: SalvageContent, g: SalvageGame, place: string): boolean {
+  const f = worksMap(c).footprints?.[place];
+  const p = g.salvage.presence as { x: number; y: number; driving?: boolean };
+  if (!f || g.salvage.away || p.driving) return false;
+  const dx = Math.max(0, Math.abs(p.x - f.x) - f.w / 2);
+  const dy = Math.max(0, Math.abs(p.y - f.y) - f.d / 2);
+  return Math.hypot(dx, dy) <= c.reach.place;
 }
 
 /**
@@ -125,7 +152,8 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'worked':
       return countOf(c, g, `worked:${parts[1]}`) >= num(2);
     case 'owned':
-      return s.owned.includes(parts[1]) || hiredKey(c, g, parts[1]);
+      // Stage 2: a plate is owned once it is in `works` (any phase, however paid); plates never enter `owned`.
+      return s.owned.includes(parts[1]) || hiredKey(c, g, parts[1]) || s.works?.[parts[1]] !== undefined;
     case 'hired':
       return s.crew.filter((m) => m.role === parts[1]).length >= num(2);
     case 'fetched':
@@ -146,7 +174,22 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
       return cr.owned && cr.fromBays && (cr.charge_g > 0 || Object.values(s.bays).some((b) => b.forCrucible_g > 0) || cr.phase !== 'empty');
     }
     case 'poured':
+      // Stage 2: `poured:<plate>` (a hall's first pour, counts['poured:<plate>']); a NUMBER stays the first yard's heats.
+      if (parts[1] && !/^\d+$/.test(parts[1])) return (s.counts?.[`poured:${parts[1]}`] ?? 0) >= 1;
       return countOf(c, g, 'poured') >= num(1);
+    // ---- stage 2's grammar (goals.json $stage2; 1.3, 2.13)
+    case 'plate':
+      return s.works?.[parts[1]] !== undefined;
+    case 'commissioned':
+      return (s.counts?.[`commissioned:${parts[1]}`] ?? 0) >= 1;
+    case 'racked':
+      return (s.counts?.racked ?? 0) >= num(1);
+    case 'lot':
+      return (s.counts?.lotOpened ?? 0) >= num(1);
+    case 'crate':
+      return (s.counts?.crateSorted ?? 0) >= num(1);
+    case 'at':
+      return bossAt(c, g, parts[1]);
     case 'passed':
       return s.ladder.passed >= num(1);
     case 'visited':
@@ -176,13 +219,28 @@ export function goalMet(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): boolea
   return conditionMet(cfg, g, d.done);
 }
 
-/** The goals in the order the card offers them: the hour's, then day-1 (each once its `after` holds). */
-function ordered(cfg: SalvageConfig, g: SalvageGame): GoalSpec[] {
-  const { goals, dayOne } = goalSpecs(cfg.salvage);
-  return [...goals, ...dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null))];
+const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
+
+/**
+ * The goals in the order the card offers them: the hour's, then stage 2's from the works' rung (requests.md
+ * [goals2] 26 Nov: after the hour's), then day-1 (each once its `after` holds). THE LEAD'S RULE (requests.md,
+ * 26 Nov 11:10): whenever stage 2's current goal (its first open one under `gs`) is one of its REPEATING goals
+ * (the waits before a supply goal and at the stage's top), the day-one goals still open come first, in the
+ * day-one order; when none is open, the repeating goal shows. Below the works' rung: the first yard's order.
+ */
+function ordered(cfg: SalvageConfig, g: SalvageGame, gs: GoalState = g.salvage.goals): GoalSpec[] {
+  return orderedLead(cfg, g, gs).list;
 }
 
-const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
+/** `ordered` and the ids of the day-one goals put before stage 2's repeating goal (empty when none were). */
+function orderedLead(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): { list: GoalSpec[]; lead: Set<string> } {
+  const { goals, dayOne, stage2 } = goalSpecs(cfg.salvage);
+  const s2 = stage2.length && stage2Offered(cfg.salvage, g) ? stage2 : [];
+  const d1 = dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null));
+  const i = s2.findIndex((d) => isOpen(gs, d));
+  if (i >= 0 && (s2[i].repeat || s2[i].done === 'repeat') && d1.some((d) => isOpen(gs, d))) return { list: [...goals, ...s2.slice(0, i), ...d1, ...s2.slice(i)], lead: new Set(d1.map((d) => d.id)) };
+  return { list: [...goals, ...s2, ...d1], lead: new Set() };
+}
 
 /**
  * The rules' goal check (2.12 step 6): ticks every goal met in order from the current one, passes a
@@ -196,11 +254,16 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
   const done: string[] = [];
   const before = currentSpec(cfg, g, gs);
   for (let guard = 0; guard < 200; guard++) {
-    const list = ordered(cfg, g).filter((d) => isOpen(gs, d));
-    const cur = list[0];
+    const o = orderedLead(cfg, g, gs);
+    const list = o.list.filter((d) => isOpen(gs, d));
+    // A day-one goal put before stage 2's repeating goal (the lead's rule) is offered first but never holds the
+    // stage's list back: it ticks when met, and the goals after it go on ticking as before (the list never stalls).
+    let k = 0;
+    while (k < list.length && o.lead.has(list[k].id) && !goalMet(cfg, g, list[k])) k++;
+    const cur = list[k];
     if (!cur) break;
-    if (cur.repeat || cur.done === 'repeat') {
-      const after = list[1];
+    if (!o.lead.has(cur.id) && (cur.repeat || cur.done === 'repeat')) {
+      const after = list[k + 1];
       if (after && goalMet(cfg, g, after)) {
         gs = { ...gs, done: [...gs.done, cur.id] };
         done.push(cur.id);
@@ -219,7 +282,7 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
 }
 
 function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpec | null {
-  return ordered(cfg, g).find((d) => isOpen(gs, d)) ?? null;
+  return ordered(cfg, g, gs).find((d) => isOpen(gs, d)) ?? null;
 }
 
 // ============================================================================ what the card prints
@@ -287,16 +350,74 @@ export function goalTarget(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): str
   return null;
 }
 
+/**
+ * owner1 T2 (RULING-owner1): the step of a load the boss fetches himself, from the truck's state. While the current goal
+ * fetches or tips a partner's load, or whenever the boss's truck carries a skip (every later load he fetches himself):
+ * not driving with nothing aboard: to the truck; driving with nothing aboard: to the gate and the partner's site (the
+ * hook ring running there: "Keep still: hooking"); a skip aboard not weighed: onto the weighbridge; weighed: onto the
+ * floor's stop. Stepped out with a skip aboard, the words stay the load's and the chevron points at the truck. Null:
+ * no load step (the goal's own target and words).
+ */
+export function loadStep(cfg: SalvageConfig, g: SalvageGame, goalDone?: string | null): { text: Txt; target: { x: number; y: number; id: string } | null } | null {
+  const c = cfg.salvage;
+  if (!owner1Rules(c)) return null;
+  const s = g.salvage;
+  const tr = s.truck;
+  if (!tr.owned || tr.by === 'driver') return null;
+  const parts = (goalDone ?? '').split(':');
+  const goalPartner = parts[0] === 'fetched' || parts[0] === 'tipped' ? parts[1] : null;
+  if (!tr.skip && !goalPartner) return null;
+  const driving = tr.by === 'boss';
+  const truckPt = { x: tr.x, y: tr.y, id: 'truck' };
+  const at = (id: string) => ({ ...stopOf(c, id), id });
+  if (tr.skip) {
+    const text: Txt = { key: (tr.skip.weighed ? 'goal.step.tip' : 'goal.step.weigh') as TextKey };
+    return { text, target: driving ? at(tr.skip.weighed ? 'floor' : 'weighbridge') : truckPt };
+  }
+  // A goal of a load already weighed in (fetched) leaves the tip to its own goal.
+  if (!driving) return { text: { key: 'goal.step.truck' as TextKey }, target: truckPt };
+  if (s.act.kind === 'hook') return { text: { key: 'goal.step.hook' as TextKey }, target: null };
+  const partner = goalPartner!;
+  const beyond = s.presence.x > c.yard.width;
+  const z = c.partners[partner] ? skipZone(c, partner, 0) : null;
+  // owner1-fix (finding 3): standing still outside an open partner's site but within map.siteNear_m of it: "Pull up to
+  // the skip", the chevron on that partner's skip (inside the site the hook starts by itself).
+  if (beyond && !s.presence.moving && c.map.siteNear_m !== undefined) {
+    const px = s.presence.x;
+    const py = s.presence.y;
+    for (const [pid, ps] of Object.entries(s.partners)) {
+      if (!ps.open || !c.partners[pid]) continue;
+      const r = siteRect(c, pid, Math.max(1, ps.skips.length));
+      if (!r) continue;
+      const dx = Math.max(r.x0 - px, 0, px - r.x1);
+      const dy = Math.max(r.y0 - py, 0, py - r.y1);
+      const d = Math.hypot(dx, dy);
+      if (d > 1e-9 && d <= c.map.siteNear_m + 1e-9) {
+        const zz = skipZone(c, pid, 0);
+        return { text: { key: 'goal.step.pullUp' as TextKey }, target: { x: zz.x, y: zz.y, id: `skip.${pid}` } };
+      }
+    }
+  }
+  return { text: { key: 'goal.step.drive' as TextKey }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
+}
+
 /** The chevron's point in metres, or null (frame.ts: FrameTable.chevron). */
 export function chevronOf(cfg: SalvageConfig, g: SalvageGame): { x: number; y: number; id: string } | null {
   const goal = nextGoal(cfg, g);
+  const step = loadStep(cfg, g, goal ? ordered(cfg, g).find((d) => d.id === goal.id)?.done : null);
+  if (step) return step.target;
   if (!goal || !goal.target) return null;
   const s = g.salvage;
   const spec = ordered(cfg, g).find((d) => d.id === goal.id);
   const via = spec?.via && s.truck.by !== 'boss' ? spec.via : null;
   const id = via ?? goal.target;
   if (id === 'truck') return s.truck.owned ? { x: s.truck.x, y: s.truck.y, id } : null;
-  if (!cfg.salvage.map.points[id]) return null;
+  if (!cfg.salvage.map.points[id]) {
+    // Stage 2: a target on the works layer of the map (map.works.points: firstThing, baler, backfield, ...).
+    const w = worksMap(cfg.salvage).points?.[id];
+    if (!w) return null;
+    return Array.isArray(w) ? { x: w[0], y: w[1], id } : { x: w.x, y: w.y, id };
+  }
   const p = pointOf(cfg.salvage, id);
   return { x: p.x, y: p.y, id };
 }
@@ -313,7 +434,9 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
   if (!cur) return null;
   const nxt = list[1];
   const m = meterOf(cfg, g, cur.d);
+  const step = loadStep(cfg, g, cur.d.done);
   return {
+    ...(step ? { step: step.text } : {}),
     n: cur.n,
     id: cur.d.id,
     text: goalText(cfg, g, cur.d),

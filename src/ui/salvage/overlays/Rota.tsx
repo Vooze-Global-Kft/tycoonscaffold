@@ -14,7 +14,7 @@ export function Rota({ data, tabs, onTab, onClose }: { data: CardData; tabs?: Ta
     <Panel title={data.title} onClose={onClose} tabs={tabs} onTab={onTab} lead={data.lead} foot={data.foot}>
       {data.rows.map((r) => {
         const m = memberRow(r);
-        return <Row key={r.id} row={m.row} padlock={m.padlock} />;
+        return <Row key={r.id} row={m.row} padlock={m.padlock} why={m.why} />;
       })}
     </Panel>
   );

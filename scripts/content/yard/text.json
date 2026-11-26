@@ -22,7 +22,23 @@
     "cab": { "name": "Heavy cable", "short": "Heavy cable", "long": "Heavy insulated copper cable, not stripped" },
     "tcab": { "name": "Thin cable", "short": "Thin cable", "long": "Thin insulated cable, such as a car's wiring loom" },
     "mot": { "name": "Electric motors", "short": "Motors", "long": "Electric motors, whole" },
-    "conv": { "name": "Converter, whole", "short": "Converter", "long": "Catalytic converter, whole, paid on assay" }
+    "conv": { "name": "Converter, whole", "short": "Converter", "long": "Catalytic converter, whole, paid on assay" },
+    "lib": { "name": "Baled light iron", "short": "Iron bales", "long": "Light iron pressed into bales" },
+    "ss": { "name": "Stainless 304", "short": "304 solids", "long": "304 stainless solids (18 % chromium, 8 % nickel), sorted by analyser" },
+    "ssu": { "name": "Mixed stainless", "short": "Mixed stainless", "long": "Stainless not yet sorted by grade" },
+    "bzs": { "name": "Bronze solids", "short": "Bronze", "long": "Bronze solids: bushings, valves and propellers" },
+    "bzi": { "name": "Bronze ingot", "short": "Bronze ingot", "long": "Bronze ingot, cast in the yard" },
+    "bzd": { "name": "Bronze dross", "short": "Bronze dross", "long": "Bronze dross skimmed from the induction furnace" },
+    "pbb": { "name": "Lead batteries", "short": "Batteries", "long": "Whole lead-acid batteries, in a closed box" },
+    "pbp": { "name": "Paste and grids", "short": "Paste, grids", "long": "Lead paste and grids from broken batteries" },
+    "pbi": { "name": "Lead ingot", "short": "Lead ingot", "long": "Lead ingot, cast in the yard" },
+    "pp": { "name": "Plastic chips", "short": "PP chips", "long": "Polypropylene chips from battery cases" },
+    "shred": { "name": "Shredded steel", "short": "Shred", "long": "Steel from the shredder, cleaned by its magnet" },
+    "zorba": { "name": "Zorba", "short": "Zorba", "long": "Shredded mixed non-ferrous metal" },
+    "twitch": { "name": "Twitch", "short": "Twitch", "long": "Shredded aluminium from the sorter" },
+    "znh": { "name": "Mixed heavies", "short": "Heavies", "long": "Heavy non-ferrous pieces left by the sorter" },
+    "cug": { "name": "Copper granules", "short": "Granules", "long": "Copper chopped from cable by the granulator" },
+    "dust": { "name": "Zinc filter dust", "short": "Zinc dust", "long": "Zinc oxide dust from the brass filter" }
   },
   "objects": {
     "washer": { "name": "Washing machine", "long": "Washing machine" },
@@ -45,7 +61,24 @@
     "pipe": { "name": "Copper pipe", "long": "Bundle of copper pipe" },
     "coil": { "name": "Cable coil", "long": "Coil of heavy demolition cable" },
     "motor": { "name": "Electric motor", "long": "Electric motor, whole" },
-    "car": { "name": "End-of-life car", "long": "End-of-life car, depolluted" }
+    "car": { "name": "End-of-life car", "long": "End-of-life car, depolluted" },
+    "elv": { "name": "End-of-life car", "long": "End-of-life car · to be depolluted at your bay" },
+    "pbb": { "name": "Car battery", "long": "Lead-acid car battery, carried in a closed box" },
+    "bushing": { "name": "Bronze bushing", "long": "Bronze bushing from a machine" },
+    "sink": { "name": "Stainless sink", "long": "Stainless steel sink" },
+    "bronzeValve": { "name": "Bronze valve", "long": "Bronze valve: it looks like brass" },
+    "loom": { "name": "Wiring loom", "long": "A car's wiring loom" },
+    "catcon": { "name": "Catalytic converter", "long": "Catalytic converter from a depolluted car" },
+    "discs": { "name": "Brake discs", "long": "Cast-iron brake discs" },
+    "springs": { "name": "Coil springs", "long": "Steel coil springs" },
+    "bath2": { "name": "Cast-iron bath", "long": "Cast-iron bath" },
+    "radiatorCI": { "name": "Cast-iron radiator", "long": "Cast-iron radiator with brass valves" },
+    "ironGate": { "name": "Iron gate", "long": "Steel garden gate" },
+    "bicycle2": { "name": "Bicycle", "long": "Bicycle with a steel frame, checked" },
+    "propeller": { "name": "Bronze propeller", "long": "A boat's bronze propeller" },
+    "casing": { "name": "Engine casing", "long": "Aluminium engine casing" },
+    "cateringTable": { "name": "Catering table", "long": "Stainless catering table" },
+    "bushingCrate": { "name": "Crate of bushings", "long": "Crate of bronze bushings" }
   },
   "lessons": {
     "li": { "ticket": "lesson.li", "help": "Light iron is thin steel: the panels of appliances, bicycle frames, gates and sheet. It is the most common grade in a yard and pays the least." },
@@ -64,7 +97,13 @@
     "bri": { "ticket": "lesson.bri", "help": "In the crucible, brass solids melt. The dross is skimmed off and the clean metal is cast as ingots. A foundry pays more for an ingot than for scrap." },
     "dross": { "ticket": "lesson.dross", "help": "Dross is the crust skimmed off molten metal. It still holds some metal, so it is sold, not thrown away." },
     "ali": { "ticket": "lesson.ali", "help": "Cast aluminium from wheels and end caps melts in the crucible and is cast as aluminium alloy ingot." },
-    "conv": { "ticket": "lesson.conv", "help": "A catalytic converter holds small amounts of platinum, palladium and rhodium. It is sold whole and paid on assay, after a lab has measured its metals. This one comes from a depolluted car with a treatment record." }
+    "conv": { "ticket": "lesson.conv", "help": "A catalytic converter holds small amounts of platinum, palladium and rhodium. It is sold whole and paid on assay, after a lab has measured its metals. This one comes from a depolluted car with a treatment record." },
+    "ss": { "ticket": "lesson.ss", "help": "Stainless 304 holds chromium and nickel. A magnet hardly holds it, so the analyser names it at the scale. Sorted on its own it pays far more than light iron." },
+    "bzs": { "ticket": "lesson.bzs", "help": "Bronze is an alloy of copper and tin; brass is copper and zinc. They look alike. The analyser tells them apart, and bronze pays more." },
+    "bzi": { "ticket": "lesson.bzi", "help": "Bronze solids melt in the induction furnace. The dross is skimmed off and the clean metal is cast as bronze ingot, which a foundry pays more for." },
+    "pbb": { "ticket": "lesson.pb", "help": "A lead-acid battery is broken first: the case becomes plastic chips, the lead becomes paste and grids. The lead smelter melts the paste into lead ingot under its filter." },
+    "zorba": { "ticket": "lesson.zorba", "help": "Zorba is the mixed non-ferrous metal the eddy current throws out of the shredder's stream: aluminium, copper, brass and zinc. The sensor sorter sorts it into pure grades." },
+    "lib": { "ticket": "lesson.lib", "help": "Light iron pressed into bales is dense and easy to load, so a steel mill pays more for bales than for loose light iron." }
   },
   "partners": {
     "partnerFarm": {
@@ -78,39 +117,65 @@
     "foundry": {
       "card": "{foundry}",
       "line": "Buys cast iron for its furnaces"
+    },
+    "partner.garage": {
+      "card": "{garageContact} · {partner.garage}",
+      "line": "Garage: wheels, looms, converters"
+    },
+    "partner.plumbing": {
+      "card": "{plumbingContact} · {partner.plumbing}",
+      "line": "Plumbing: pipe, valves, baths"
+    },
+    "partner.boatyard": {
+      "card": "{partner.boatyard}",
+      "line": "Boatyard: a bronze propeller"
     }
   },
   "glossary": [
     { "term": "Alloy", "line": "A metal mixed from two or more metals, such as brass." },
+    { "term": "Analyser", "fromRung": 3, "line": "A hand-held instrument that names a metal's alloy in seconds." },
     { "term": "Assay", "line": "A lab test that measures how much metal a lot holds." },
+    { "term": "Bag-house filter", "fromRung": 3, "line": "Fabric filters that catch the dust in a furnace's fumes." },
+    { "term": "Bale", "fromRung": 3, "line": "Light iron pressed into a dense block for loading." },
     { "term": "Bare bright", "line": "Clean, bare, unalloyed copper wire: the best copper grade." },
     { "term": "Bay", "line": "Where one grade waits, weighed in, for the merchant's flatbed." },
     { "term": "Brass", "line": "An alloy of copper and zinc." },
     { "term": "Cast iron", "line": "Hard, brittle iron that breaks rather than bends." },
     { "term": "Catalytic converter", "line": "A car part that holds platinum, palladium and rhodium." },
     { "term": "Certified empty", "line": "A closed vessel checked empty and safe to cut." },
+    { "term": "Commissioning", "fromRung": 3, "line": "Starting a new machine for the first time." },
     { "term": "Crucible", "line": "A pot in which metal is melted, under an extraction hood." },
     { "term": "Depolluted", "line": "A car with its fluids, battery, tyres and airbags taken out." },
+    { "term": "Depollution bay", "fromRung": 3, "line": "Where a car's fluids, battery and airbags are taken out." },
     { "term": "Dross", "line": "The crust skimmed off molten metal; it still holds metal." },
+    { "term": "Eddy current", "fromRung": 3, "line": "A spinning magnet that throws non-ferrous metal out of a stream." },
     { "term": "Ferrous", "line": "Holding iron, so a magnet picks it up." },
     { "term": "Foundry", "line": "A works that melts metal and casts it into shapes." },
     { "term": "Grade", "line": "A named kind of scrap that is bought and sold as one." },
     { "term": "Gross, tare, net", "line": "Loaded weight, empty weight, and the load: gross less tare." },
     { "term": "Heel", "line": "The molten metal left in the crucible between heats." },
     { "term": "HMS 80:20", "line": "Heavy melting steel, grades 1 and 2 mixed 80 to 20." },
+    { "term": "Hold", "line": "Keeps a bay from the merchant. Away, it sells if the yard cannot pay for a load." },
     { "term": "Ingot", "line": "A cast block of metal, made to be melted again." },
     { "term": "Licensed waste carrier", "line": "A firm allowed by law to take the yard's waste away." },
     { "term": "Light iron", "line": "Thin steel, such as the panels of a washing machine." },
     { "term": "Lot", "line": "The weight of one grade that the merchant collects and pays for." },
-    { "term": "Non-ferrous", "line": "Every metal without iron: copper, brass, aluminium." },
     { "term": "No.2 copper", "line": "Unalloyed copper that is coated, tinned or soldered." },
+    { "term": "Non-ferrous", "line": "Every metal without iron: copper, brass, aluminium." },
+    { "term": "Oversize piece", "fromRung": 3, "line": "A large piece a partner delivers that only you can cut." },
     { "term": "Payable", "line": "The share of a metal's value that the buyer pays." },
+    { "term": "Picking table", "fromRung": 3, "line": "Where a person sorts by hand what a machine would sort less well." },
     { "term": "Radiation portal", "line": "A gate that checks every load for radioactive sources." },
     { "term": "Rota", "line": "The board in the office that shows who works the yard." },
+    { "term": "Salt flux", "fromRung": 3, "line": "Salt that covers molten aluminium in a rotary furnace." },
+    { "term": "Sensor sorter", "fromRung": 3, "line": "A machine that sorts metals by sight with jets of air." },
+    { "term": "Shred", "fromRung": 3, "line": "Fist-sized pieces of steel from a shredder." },
     { "term": "Shredder", "line": "A large mill that tears car bodies into small pieces." },
     { "term": "Stainless", "line": "Steel with chromium and nickel that resists rust." },
     { "term": "Stripper", "line": "A machine that cuts insulation off cable to free the copper." },
     { "term": "Supply deal", "line": "An agreement to deliver a grade each day at a price locked at signing." },
-    { "term": "Weighbridge", "line": "The large scale a truck drives over, loaded and empty." }
+    { "term": "Twitch", "fromRung": 3, "line": "Shredded aluminium sorted from zorba." },
+    { "term": "Weighbridge", "line": "The large scale a truck drives over, loaded and empty." },
+    { "term": "Zorba", "fromRung": 3, "line": "The mixed non-ferrous metal from a shredder." }
   ]
 }

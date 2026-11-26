@@ -3,7 +3,7 @@
  * values per kilogram, tools, carriers, distances. Pure functions of content (and the state where named).
  * Owner: rules-sim. No number is written here: every one comes from content.
  */
-import type { SalvageContent } from '../../config/schema.salvage';
+import type { PlateDef, SalvageContent } from '../../config/schema.salvage';
 import { boardX, priceOf } from './board';
 import { pieceAt, specIndex } from './frame';
 import { pointOf } from './positions';
@@ -187,4 +187,65 @@ export const sumStock = (st: Record<string, number>): number => Object.values(st
 /** A machine's place on the map (both strippers share the stripper pad). */
 export function machinePlace(id: MachineId): string {
   return id === 'hand_stripper' ? 'stripper' : id;
+}
+
+// ============================================================================================ stage 2: the plates (rules-works)
+
+/** A works plate's content (`works.plates.<id>`), or undefined (not a plate of this content). */
+export function plateDef(c: SalvageContent, id: string): PlateDef | undefined {
+  return c.works?.plates[id];
+}
+
+/** The input key a piece goes into a plate as (2.5.3): its whole thing's object when the plate takes that object, else its grade when the plate takes it, else null. */
+export function plateKey(d: PlateDef, p: Pick<Piece, 'grade' | 'whole'>): string | null {
+  if (p.whole && d.in.includes(p.whole)) return p.whole;
+  return d.in.includes(p.grade) ? p.grade : null;
+}
+
+/**
+ * A plate's out shares for one input (2.5.3, E7: per input): grades and `stream` (the line's conveyor), in
+ * the content's order; `carrier` entries and anything else are waste (the rest of the input's mass, with its
+ * reagents). Memoised per content.
+ */
+const PLATE_OUT = new WeakMap<SalvageContent, Map<string, readonly (readonly [string, number])[]>>();
+export function plateOut(c: SalvageContent, plate: string, input: string): readonly (readonly [string, number])[] {
+  let m = PLATE_OUT.get(c);
+  if (!m) PLATE_OUT.set(c, (m = new Map()));
+  const k = `${plate}|${input}`;
+  let v = m.get(k);
+  if (!v) {
+    const d = plateDef(c, plate);
+    v = (d?.out[input] ?? []).filter(([to]) => to !== 'carrier' && (to === 'stream' || !!c.grades[to])).map(([to, sh]) => [to, sh] as const);
+    m.set(k, v);
+  }
+  return v;
+}
+
+/** The analyser's grade of a piece spec (2.5.2): the 5th element of `[grade, g, n, sprite, assay]`, by (grade, spec index, grams), only where every object with that key agrees. Memoised per content. */
+const ASSAY = new WeakMap<SalvageContent, Map<string, string | null>>();
+export function assayOf(c: SalvageContent, p: Pick<Piece, 'grade' | 'spec' | 'g' | 'whole'>): string | null {
+  if (p.whole || p.spec < 0) return null;
+  let m = ASSAY.get(c);
+  if (!m) {
+    m = new Map();
+    for (const o of Object.values(c.objects)) {
+      (o.pieces as readonly (readonly unknown[])[]).forEach((sp, i) => {
+        const k = `${sp[0] as string}|${i}|${sp[1] as number}`;
+        const a = typeof sp[4] === 'string' && c.grades[sp[4]] ? (sp[4] as string) : null;
+        if (!m!.has(k)) m!.set(k, a);
+        else if (m!.get(k) !== a) m!.set(k, null);
+      });
+    }
+    ASSAY.set(c, m);
+  }
+  return m.get(`${p.grade}|${p.spec}|${p.g}`) ?? null;
+}
+
+/**
+ * owner1 (RULING-owner1): the review's rules (the yard hands' H1 to H5, the goal's steps T2, the trip's paths V1 to V4)
+ * run on a content that carries `crew.hand.leaveM` (the shipped content). A frozen test content without it keeps the
+ * first yard's rules bit for bit, as `crew.orderFromRung` does.
+ */
+export function owner1Rules(c: SalvageContent): boolean {
+  return typeof (c.crew.hand as { leaveM?: unknown }).leaveM === 'number';
 }

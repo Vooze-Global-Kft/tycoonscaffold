@@ -9,9 +9,10 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { marketDay } from './board';
 import { lotPrice } from './content';
+import { contentAt } from './layer';
 import { commitCash, roundMoney } from './money';
 import { stampSeries } from './series';
-import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
+import type { CreditKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
 
 const DAY_MS = 86_400_000;
 
@@ -28,6 +29,34 @@ export function clone<T>(x: T): T {
   return out as T;
 }
 
+/** Are two plain data values equal all the way down? */
+export function sameData(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return typeof a === 'number' && typeof b === 'number' && Number.isNaN(a) && Number.isNaN(b);
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameData(a[i], b[i])) return false;
+    return true;
+  }
+  if (Array.isArray(b)) return false;
+  const ka = Object.keys(a as object);
+  if (ka.length !== Object.keys(b as object).length) return false;
+  for (const k of ka) if (!sameData((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) return false;
+  return true;
+}
+
+/**
+ * owner1 L1, L2: a transition's new state keeps the PREVIOUS state's object for each of `keys` (every key when null)
+ * whose data did not change, so that the frame (frame.ts) reuses what it built from them and a presence sample that
+ * moved only the boss shares everything else. States are never mutated after a transition, so sharing is safe.
+ */
+export function shareUnchanged(prev: SalvageState, next: SalvageState, keys: readonly (keyof SalvageState)[] | null): void {
+  const ks = keys ?? (Object.keys(next) as (keyof SalvageState)[]);
+  const n = next as unknown as Record<string, unknown>;
+  const p = prev as unknown as Record<string, unknown>;
+  for (const k of ks) if (k in p && n[k] !== p[k] && sameData(p[k], n[k])) n[k] = p[k];
+}
+
 /** What an away pass gathers for its card (2.16). */
 export interface AwayAcc {
   lines: Record<string, { g: number; money: number }>;
@@ -42,6 +71,17 @@ export interface AwayAcc {
   bought: Record<string, { n: number; spent: number }>;
   /** E34: the deal's deliveries while away (deal.ts dealDeliver). */
   deliveryList: { day: number; g: number; paid: number }[];
+  // ---- stage 2 (s2a-fix, the critic's findings 3 (g) and 17; types.ts AwayCard's v3 fields). away.ts copies each
+  // onto the card only when it holds something (a first-yard card is unchanged) and adds them up across passes.
+  /** § the bank took while away (2.14.4): `money` stays GROSS (the call site adds y to both through `bankPart`). */
+  bank: number;
+  /** Agreements repaid in full while away, in order (bank.ts, Phase B). */
+  repaid: string[];
+  /** Sales at the gate and by the van while away (reuse.ts, Phase B). */
+  rack: { n: number; money: number };
+  van: { n: number; money: number };
+  /** Oversize pieces waiting at the pass's end (lots.ts sets it, Phase B); null: none counted. */
+  lotsWaiting: number | null;
 }
 
 export interface Ctx {
@@ -61,17 +101,30 @@ export interface Ctx {
   dirty: boolean;
   /** Prices met in this transition (a pure function of the day: memoised here only). */
   prices: Map<string, number>;
-  /** Yard second the checks last ran (the away pass runs them at most every CHECK_EVERY_S). */
-  checkedAt: number;
 }
 
-/** In the away pass the instant's checks run at most this often (yard seconds), and at its end. */
-export const CHECK_EVERY_S = 5;
+/**
+ * Are the transition's item events heard? Not inside an away pass: its sink keeps only awayReport, passed
+ * and rung (away.ts awaySink), so the hot rules skip BUILDING the events it would drop (pickups, pieces off,
+ * weigh-ins, feeds: tens of thousands in six hours). The state is the same either way.
+ */
+export function heard(x: Ctx): boolean {
+  return x.away === null;
+}
+
+/**
+ * The goals' minute in the away pass (RULING2.md 14.4; rate.ts goalsDue): away, the goal list is checked
+ * only when the yard's clock has entered a new minute of this length since `counts.goalsAt` (the goal list
+ * was a fifth of six hours away once crew legs were cheap). The other checks (partners, the rung, rivals
+ * passed, the deal's offer) run at every instant at which something they read changed, live and away.
+ */
+export const CHECK_EVERY_S = 60;
 
 export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[] | undefined, live = true): Ctx {
   const s = clone(g.salvage);
   if (!s.counts) s.counts = {};
-  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map(), checkedAt: -Infinity };
+  // The content this state reads (./layer.ts, s2a-fix): the works layer joined once the works opened (counts.bathSet), else the base content itself.
+  return { cfg, c: contentAt(cfg.salvage, s), s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map() };
 }
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */
@@ -135,6 +188,40 @@ export function earn(x: Ctx, amount: number, t: number): void {
   }
   inc.buckets[inc.buckets.length - 1] = roundMoney(inc.buckets[inc.buckets.length - 1] + a);
   if (x.away) x.away.money = roundMoney(x.away.money + a);
+}
+
+/**
+ * The bank's part y of one lot payment (2.14.4), at its call site right after bank.ts payLot and before the
+ * player's part z is earned (s2a-fix): while away the card's money stays GROSS (earn adds z, this adds y) and
+ * its `bank` line sums y. Nothing when y is 0 (the stub's answer), so the first yard is unchanged.
+ */
+export function bankPart(x: Ctx, y: number): void {
+  if (!(y > 0) || !x.away) return;
+  x.away.money = roundMoney(x.away.money + y);
+  x.away.bank = roundMoney(x.away.bank + y);
+}
+
+/**
+ * Money in that is NOT a lot payment (stage 2, 2.14.4, B2): an ad reward (`'ad'`, 2.16) or granted scrip
+ * (`'grant'`, a pack's S, 2.15.5). It adds to cash and to the lifetime `earned` total ONLY: never to the
+ * income buckets (the advice line's budget, incomeRate), never to the away card's money, never through
+ * `bank.ts payLot` (the bank takes no share of it). `t` decides nothing here; `kind` 'grant' also adds the
+ * amount to the granted total `counts['granted:c']` (hundredths), the part of `earned` no board may rank.
+ */
+export function credit(x: Ctx, amount: number, t: number, kind: CreditKind): void {
+  void t;
+  const a = roundMoney(amount);
+  if (a <= 0) return;
+  x.cash = roundMoney(x.cash + a);
+  x.earned += a;
+  x.dirty = true;
+  // s2a-fix (the critic's minor 17): bought scrip never counts on a board (2.15.5), but `earned` feeds lifetime
+  // earnings, which the missions ('earn') read and a board may: the granted total is kept apart, in hundredths,
+  // so that whoever ranks or counts EARNED money takes it off (counts['granted:c']).
+  if (kind === 'grant') {
+    const c = x.s.counts!;
+    c['granted:c'] = (c['granted:c'] ?? 0) + Math.round(a * 100);
+  }
 }
 
 /** Money out (a purchase, a load's price): never below zero (the checks refuse first). */

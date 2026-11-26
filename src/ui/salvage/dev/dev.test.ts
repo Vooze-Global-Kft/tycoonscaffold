@@ -24,7 +24,7 @@ beforeAll(() => {
 }, 120_000);
 
 /** Every kind of the CardRef union (types.ts): a new kind fails here until the board has a switch for it. */
-const REF_KINDS: Record<R.CardRef['kind'], true> = { place: true, machine: true, office: true, bay: true, board: true, skip: true, deal: true, table: true, processBoard: true, away: true, rung: true, clipboard: true, settings: true, help: true };
+const REF_KINDS: Record<R.CardRef['kind'], true> = { place: true, machine: true, office: true, bay: true, board: true, skip: true, deal: true, table: true, processBoard: true, away: true, rung: true, clipboard: true, settings: true, help: true, works: true, finance: true, letter: true, yardSale: true, lot: true, crate: true, shop: true, packSheet: true, ageQuestion: true, packCode: true, awayBonus: true };
 
 describe('the dev board', () => {
   it('has a sample of every event type, of that type, in every frozen state', () => {

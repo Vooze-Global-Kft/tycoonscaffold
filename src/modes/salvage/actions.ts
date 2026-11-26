@@ -138,6 +138,17 @@ export const salvageActions = {
         const data = R.cardOf(now.cfg, now.g, a.card, Date.now());
         return salvageActions.noteSeen({ card: data.kind, ...(a.card.kind === 'place' ? { place: a.card.place } : {}) });
       }
+      // Stage 2's buttons (types.ts CardAction v3; s2a-fix widened the union): the rules' actions are Phase B's
+      // (actionsWorks.ts, actionsMoney.ts) and the store's purchases Phase C's; until then nothing happens.
+      case 'signFinance':
+      case 'setRoute':
+      case 'buyPack':
+      case 'buyProduct':
+      case 'restorePurchases':
+      case 'chooseLook':
+      case 'watchAd':
+      case 'setPacksHidden':
+        return NOT_SALVAGE;
     }
   },
 };

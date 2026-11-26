@@ -127,7 +127,8 @@ function officeCards(cfg: SalvageConfig, g: SalvageGame, now: number): { rota: C
 
 /** Which office tab a ref opens, or null when the ref is not the office's. */
 function officeTab(ref: CardRef, data: CardData): OfficeTab | null {
-  if (ref.kind === 'office') return ref.tab;
+  // v3's Agreements tab (s2a-fix widened CardRef) is drawn by Phase C's office; the first yard's office has three tabs.
+  if (ref.kind === 'office') return ref.tab === 'agreements' ? null : ref.tab;
   if (data.kind === 'rota') return 'rota';
   if (data.kind === 'partners') return 'partners';
   return null;

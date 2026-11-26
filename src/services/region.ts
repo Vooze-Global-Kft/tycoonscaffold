@@ -67,3 +67,35 @@ export async function detectRegion(): Promise<string | null> {
     return null;
   }
 }
+
+/** The development row "Store country" (Auto · US · DE · Unknown): 'auto' asks the store; a code or null is used as it is. */
+let devStorefront: 'auto' | string | null = 'auto';
+
+/**
+ * Development builds only (the web preview and Expo Go, where no store account exists): what
+ * storefrontCountry() answers. 'auto' (the default) asks the purchase module as a release does; a
+ * code answers that code; null answers unknown. In a release build it does nothing.
+ */
+export function setStorefrontForDev(value: 'auto' | string | null): void {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  devStorefront = value === 'auto' ? 'auto' : normalise(value);
+}
+
+/**
+ * The store account's country (ISO alpha-2) as the purchase module reports it, for rules that must
+ * follow the account and nothing else (scrip packs, yard-stage2.md 2.15.3). Unlike detectRegion it
+ * has NO device fallback: no purchase module (Expo Go, web), a module that is not configured, a call
+ * that fails or a code that cannot be read all answer null, which the caller treats as unknown.
+ * Read it at every opening of the screen that needs it; nothing is cached here.
+ */
+export async function storefrontCountry(): Promise<string | null> {
+  if (devStorefront !== 'auto') return devStorefront;
+  if (Platform.OS === 'web') return null;
+  try {
+    const purchases = loadPurchases();
+    const storefront = await purchases?.getStorefront();
+    return normalise(storefront?.countryCode);
+  } catch {
+    return null;
+  }
+}

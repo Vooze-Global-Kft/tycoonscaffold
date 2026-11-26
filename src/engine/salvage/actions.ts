@@ -7,12 +7,15 @@
  */
 import { nextGoal } from './goals';
 import { priceOf } from './board';
+import { onAwayClosed, onSeen } from './actionsMoney';
+import { buyWorks, levelWorks } from './actionsWorks';
+import { contentAt } from './layer';
 import { asideOf, bayOf, freeOf } from './bays';
-import { begin, count, finish, spend } from './clock';
-import { newCrew } from './crew';
+import { begin, count, finish, shareUnchanged, spend } from './clock';
+import { anyIdle, crewDepart, newCrew, owner1Rules } from './crew';
 import { crucibleFromBays, pour } from './crucible';
 import { dealSign, dealTerms } from './deal';
-import { bossStep } from './hand';
+import { bossStep, seatByFlag, truckFree } from './hand';
 import { buyCheck, hireCheck, levelCheck } from './ladder';
 import { rerate } from './machines';
 import { resolveGrams } from './money';
@@ -64,7 +67,9 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   const q = s.presence;
   if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return g;
   const heading = Number.isFinite(p.heading) ? Math.floor(p.heading as number) : (q.heading ?? 0);
-  const sameSample = q.x === p.x && q.y === p.y && q.driving === !!p.driving && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
+  // The flag compared as it would be stored (a cab flag the rules cannot honour is stored false: the same sample twice is the same object).
+  const flag = !!p.driving && s.truck.owned && (s.truck.by === 'boss' || truckFree(s));
+  const sameSample = q.x === p.x && q.y === p.y && q.driving === flag && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
   if (sameSample && clock - s.presenceAt < cfg.salvage.feel.staleS / 2) return g;
   const x = begin(cfg, g, events, true);
   // R7: the sample is clamped: inside the yard and the lane (save.ts's bounds), no faster than the boss's
@@ -72,11 +77,21 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   // while the boss holds the truck, standingFor in [0, 3600].
   const at = clampPresence(cfg, s, p.x, p.y, clock);
   const standing = Number.isFinite(p.standingFor) ? Math.min(STANDING_MAX_S, Math.max(0, p.standingFor || 0)) : 0;
-  x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && s.truck.by === 'boss', moving: !!p.moving, standingFor: standing, heading };
+  // The screen's cab flag seats him when the truck stands free and the sample is AT ITS DOOR (hand.ts seatByFlag:
+  // the screen and the rules never disagree on who drives). The screen sends the entering sample at the truck's
+  // own place and never drops it (world/frameLoop.ts enterRules), so an honest sample is always at the door; a
+  // flag from farther off seats nobody and moves no truck. The place is the clamped one (R7).
+  const seat = !!p.driving && truckFree(s) && Math.hypot(at.x - s.truck.x, at.y - s.truck.y) <= cfg.salvage.truck.enter + cfg.salvage.truck.rearm;
+  x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && (s.truck.by === 'boss' || seat), moving: !!p.moving, standingFor: standing, heading };
   x.s.presenceAt = clock;
   const t = Math.max(clock, x.s.t);
+  if (seat) seatByFlag(x, t);
   bossStep(x, t);
+  // owner1 H5: while anybody waits, every presence sample offers work again (the boss walking away from a heap frees its pieces).
+  if (owner1Rules(x.c) && anyIdle(x.s)) crewDepart(x, t);
   checks(x, t);
+  // owner1 L2: what the sample did not change keeps the previous state's objects (the frame's scene stamp holds).
+  shareUnchanged(s, x.s, null);
   return finish(g, x);
 }
 
@@ -99,7 +114,10 @@ function shopItem(cfg: SalvageConfig, key: ShopKey) {
 
 /** Buy a tool, carrier, machine, the truck, a recipe or the Night watch at the price the card showed. */
 export function buy(cfg: SalvageConfig, g: SalvageGame, item: ShopKey, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  const it = shopItem(cfg, item);
+  // The content the state reads (layer.ts contentAt, s2a-fix): the works layer's items once the works opened.
+  const it = shopItem({ ...cfg, salvage: contentAt(cfg.salvage, g.salvage) }, item);
+  // Stage 2 (s2a-fix, the dispatcher): a plate is the works' (actionsWorks.ts buyWorks, through works.ts orderPlate).
+  if (it?.kind === 'works') return buyWorks(cfg, g, item, shownPrice, clock, events);
   if (!it || it.kind === 'crew') return refuse(g, events, 'nothing');
   const ch = buyCheck(cfg, g, item);
   const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'buy', item, price }));
@@ -138,6 +156,8 @@ export function hire(cfg: SalvageConfig, g: SalvageGame, role: CrewRole, shownPr
 
 /** Buy the next level of a crew member, a machine or a partner (another skip in rotation) at the price shown. */
 export function level(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
+  // Stage 2 (s2a-fix, the dispatcher): a plate's level and the Yard sale's room are the works' (actionsWorks.ts).
+  if (target.kind === 'plate' || target.kind === 'reuse') return levelWorks(cfg, g, target, shownPrice, clock, events);
   const ch = levelCheck(cfg, g, target);
   const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'level', target, price }));
   if (r) return r;
@@ -290,7 +310,12 @@ export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: 
   if (s.truck.by !== 'boss') return refuse(g, events, 'nothing');
   if (s.presence.moving) return refuse(g, events, 'stopFirst');
   const x = begin(cfg, g, events, true);
-  leaveTruck(x, at ?? { x: s.presence.x, y: s.presence.y, heading: s.presence.heading ?? s.truck.heading }, Math.max(clock, x.s.t));
+  // The truck stands where he sat (the presence, which the rules clamp): the screen's `at` is taken for its heading,
+  // and for its place only within a sample's slack of the presence (the truck is never set down somewhere else).
+  const here = { x: s.presence.x, y: s.presence.y, heading: s.presence.heading ?? s.truck.heading };
+  const near = !!at && Number.isFinite(at.x) && Number.isFinite(at.y) && Math.hypot(at.x - here.x, at.y - here.y) <= PRESENCE_SLACK_M;
+  const h = at && Number.isFinite(at.heading) ? ((Math.floor(at.heading) % 8) + 8) % 8 : here.heading;
+  leaveTruck(x, near ? { x: at!.x, y: at!.y, heading: h } : { ...here, heading: h }, Math.max(clock, x.s.t));
   return finish(g, x);
 }
 
@@ -303,21 +328,21 @@ export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: 
 }
 
 /** The screen saw a place's label or opened a card (every "first time" text reads `seen`). Same object when already seen. */
-export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind }, clock: number): SalvageGame {
-  void cfg;
+export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: string }, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
   const s = g.salvage;
   const addPlace = seen.place !== undefined && !s.seen.places.includes(seen.place);
   const addCard = seen.card !== undefined && !s.seen.cards.includes(seen.card);
-  if (!addPlace && !addCard) return g;
-  return { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } };
+  // Stage 2 (s2a-fix): the money's part of a sighting (the lender's letter, actionsMoney.ts onSeen; the stub returns the game as it is).
+  if (!addPlace && !addCard) return onSeen(cfg, g, seen, events);
+  return onSeen(cfg, { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } }, seen, events);
 }
 
 /** The away card's OK: the card goes (its money was paid when computed). */
 export function ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame {
-  void cfg;
   if (!g.salvage.away) return g;
   const counts = { ...(g.salvage.counts ?? {}) };
   counts.away = (counts.away ?? 0) + 1;
-  return { ...g, salvage: { ...g.salvage, away: null, counts } };
+  // Stage 2 (s2a-fix): what closing the card starts (iap.sessions2At, the away bonus: actionsMoney.ts onAwayClosed; the stub returns the game as it is).
+  return onAwayClosed(cfg, { ...g, salvage: { ...g.salvage, away: null, counts } }, g.salvage.away);
 }

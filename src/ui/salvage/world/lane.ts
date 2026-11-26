@@ -12,7 +12,8 @@ export interface LaneGeo {
   /** Half the asphalt's width, metres. */
   half: number;
   /** Partner id -> x of its site (the gate plus its lane distance). */
-  sites: { id: string; x: number; look: number }[];
+  /** sign: the site's sign board in metres along the lane from x (content map.sites.<id>.sign; owner1 finding 3). */
+  sites: { id: string; x: number; look: number; sign?: number }[];
   /** x of the weight-limited bridge (null: none), and how far a vehicle may go. */
   bridge: number | null;
   end: number;
@@ -23,7 +24,8 @@ export function laneGeo(c: SalvageContent): LaneGeo | null {
   if (!g) return null;
   const lane = c.map.lane ?? {};
   const half = ((c.map as { laneWidth?: number }).laneWidth ?? 6) / 2;
-  const sites = Object.entries(c.partners).map(([id, p], i) => ({ id, x: g[0] + (lane[p.lane] ?? 0), look: i }));
+  const signs = (c.map as { sites?: Record<string, { sign?: number }> }).sites ?? {};
+  const sites = Object.entries(c.partners).map(([id, p], i) => ({ id, x: g[0] + (lane[p.lane] ?? 0), look: i, sign: signs[id]?.sign }));
   const bridgeKey = Object.keys(lane).find((k) => k.startsWith('bridge'));
   const bridge = bridgeKey ? g[0] + lane[bridgeKey] : null;
   const far = Math.max(g[0] + 20, ...sites.map((s) => s.x + 12));
@@ -36,7 +38,7 @@ export function laneGeo(c: SalvageContent): LaneGeo | null {
  * plate on it is labels.ts's, join3): the farm's beside its shed, the demolition site's on its hoarding.
  */
 export function laneSigns(l: LaneGeo): { id: string; x: number; y: number; frame: number }[] {
-  return l.sites.map((s) => (s.look === 0 ? { id: s.id, x: s.x - 4, y: l.gy - l.half - 0.2, frame: 0 } : { id: s.id, x: s.x - 2.2, y: l.gy - l.half + 0.1, frame: 1 }));
+  return l.sites.map((s) => (s.look === 0 ? { id: s.id, x: s.x + (s.sign ?? -4), y: l.gy - l.half - 0.2, frame: 0 } : { id: s.id, x: s.x + (s.sign ?? -2.2), y: l.gy - l.half + 0.1, frame: 1 }));
 }
 
 /** How far the drawn lane runs east (asphalt past the bridge). */

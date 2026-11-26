@@ -30,7 +30,7 @@
 import type { GameConfig } from '../../config/schema';
 import type { PresetName } from '../../dev/presets';
 import * as E from '../../engine/economy';
-import { playedEvents, playedGame, playedOn, type FixtureName } from '../../engine/fixtures/salvage';
+import { playedEvents, playedGame, playedOn, stage2Game, STAGE2_EVENTS, STAGE2_NAMES, type FixtureName, type Stage2Name } from '../../engine/fixtures/salvage';
 import * as R from '../../engine/salvage';
 import { person } from '../../engine/salvage/director';
 import { hand, standUntil, walkTo } from '../../engine/salvage/play';
@@ -180,6 +180,14 @@ export function salvagePreset(cfg: GameConfig, name: PresetName, now: number): G
       return { ...base, cash: g.cash, lifetimeEarnings: g.lifetimeEarnings, runEarnings: g.lifetimeEarnings, stats: { ...base.stats, playSeconds: g.stats.playSeconds }, salvage, lastSavedAt: now } as GameState;
     }
     console.warn('[preset] pour: the play reached no brass heat; showing m30');
+  }
+  // The stage-2 frozen states by their own names (?preset=r3 | r3plain | held14): rung 3 with the crew in runs,
+  // looked at before the stage's own prepared yards exist (the lead, 26 Nov; wiring2 replaces this with its rows).
+  const asked2 = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('preset') : null;
+  if (asked2 && (STAGE2_NAMES as readonly string[]).includes(asked2)) {
+    const n = asked2 as Stage2Name;
+    emitEventsWhenShown(structuredClone(STAGE2_EVENTS[n]) as SalvageEvent[]);
+    return { ...stage2Game(n, base, now), lastSavedAt: now } as GameState;
   }
   const fixture = askedFixture(name);
   if (fixture === 'fresh') {

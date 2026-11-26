@@ -69,7 +69,7 @@ describe('the salvage engine mode', () => {
     const base = fresh();
     for (const bad of [null, 7, 'x', {}, { salvage: null }, { salvage: { v: 9 } }, { salvage: { v: 1, things: [] } }, { salvage: { v: 2, things: 'no' } }]) {
       const g = M.reconcile(cfg, base, bad) as R.SalvageGame;
-      expect(g.salvage.v).toBe(2);
+      expect(g.salvage.v).toBe(3);
       expect(g.salvage.things.length).toBeGreaterThan(0);
     }
   });

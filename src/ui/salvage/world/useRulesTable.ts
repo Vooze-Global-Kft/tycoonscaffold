@@ -6,9 +6,17 @@
  * legs, the truck, the flatbed, the public's car) that the frame loop moves. The screen never computes a
  * rule itself. Before the art is baked the scene holds the facts and no items; it is pushed again when the
  * bake ends.
+ *
+ * owner1 L1 / L2 (the owner's review, point 1: "helper laggy"): the frame is read ONCE per store change (the
+ * rules' frame() is memoised on the state, so the hud, the rings, the hints and the labels that read it at the
+ * same change share that one object), a store change whose frame keeps its `scene` stamp (a presence sample
+ * that moved only the boss, who is the screen's own) pushes NOTHING to the UI thread, and the scene's atlas
+ * items travel in their own shared value (`rulesItems`) only when the list itself changed (./actors.ts
+ * reuses it while things, pieces and the rest are the same): an ordinary tick copies the actors' few numbers,
+ * not the yard's hundreds of sprites.
  */
 import { useEffect } from 'react';
-import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { makeMutable, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { ACT_WRECK, type YardLayout } from './yard';
@@ -41,22 +49,69 @@ function currentResolver(): Resolver {
 }
 export { currentResolver };
 
+/** The scene's atlas items (RulesScene.items), on the UI thread; replaced only when the list changed. */
+export const rulesItems = makeMutable<number[]>([]);
+/** Scenes and item lists pushed to the UI thread so far (owner1 phone 3: the development panel's 'push' rates). */
+export const pushCounts = { scenes: 0, items: 0 };
+const NO_ITEMS: number[] = [];
+
+/**
+ * The pusher behind useRulesTable, testable without React: `read()` is called at each store change and pushes
+ * at most one scene (`out.scene`) and one item list (`out.items`). Counts in `stats`.
+ */
+export function makeRulesPusher(
+  yard: YardLayout,
+  get: () => { cfg: unknown; game: unknown },
+  out: { scene: (s: RulesScene) => void; items: (a: number[]) => void },
+  resolver: () => Resolver = currentResolver,
+): { read: (force?: boolean) => void; stats: { reads: number; frames: number; scenes: number; items: number } } {
+  let last: R.SalvageState | null = null;
+  let lastFrame: R.FrameTable | null = null;
+  let lastStamp: number | undefined;
+  let lastItems: number[] | null = null;
+  let n = 0;
+  const stats = { reads: 0, frames: 0, scenes: 0, items: 0 };
+  const read = (force = false) => {
+    const { cfg, game } = get();
+    const g = game as R.SalvageGame;
+    if (!R.isSalvage(cfg as never) || !g?.salvage || (g.salvage === last && !force)) return;
+    last = g.salvage;
+    stats.reads++;
+    try {
+      const f = R.frame(cfg as R.SalvageConfig, g);
+      if (f !== lastFrame) stats.frames++;
+      const same = !force && lastFrame !== null && f.scene !== undefined && f.scene === lastStamp;
+      lastFrame = f;
+      lastStamp = f.scene;
+      if (same) return;
+      const sc = rulesTable(yard, f, (cfg as R.SalvageConfig).salvage, resolver(), ++n);
+      if (sc.items !== lastItems || force) {
+        lastItems = sc.items;
+        out.items(sc.items);
+        stats.items++;
+      }
+      out.scene({ ...sc, items: NO_ITEMS });
+      stats.scenes++;
+    } catch (e) {
+      console.warn('salvage: the rules frame could not be read', e);
+    }
+  };
+  return { read, stats };
+}
+
 export function useRulesTable(yard: YardLayout): SharedValue<RulesScene> {
   const table = useSharedValue<RulesScene>(NO_SCENE);
   useEffect(() => {
-    let last: R.SalvageState | null = null;
-    let n = 0;
-    const push = (force = false) => {
-      const { cfg, game } = useGame.getState();
-      const g = game as R.SalvageGame;
-      if (!R.isSalvage(cfg) || !g.salvage || (g.salvage === last && !force)) return;
-      last = g.salvage;
-      try {
-        table.value = rulesTable(yard, R.frame(cfg, g), cfg.salvage, currentResolver(), ++n);
-      } catch (e) {
-        console.warn('salvage: the rules frame could not be read', e);
-      }
-    };
+    const { read: push } = makeRulesPusher(yard, () => useGame.getState(), {
+        scene: (s) => {
+          pushCounts.scenes++;
+          table.value = s;
+        },
+        items: (a) => {
+          pushCounts.items++;
+          rulesItems.value = a;
+        },
+      });
     push();
     const off = onYardArt(() => push(true));
     const unsub = useGame.subscribe(() => push());

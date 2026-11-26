@@ -9,6 +9,7 @@ import type { GameState } from '../types';
 import { marketDay } from './board';
 import { pointOf } from './positions';
 import { seriesKey } from './series';
+import { freshStage2 } from './state2';
 import type { CrucibleState, MachineState, PartnerState, SalvageConfig, SalvageGame, SalvageState, ThingState } from './types';
 
 const machine = (owned: boolean): MachineState => ({ owned, level: owned ? 1 : 0, hopper: [], work: null, tray_g: {}, trayClaim_g: {}, status: owned ? 'idle' : 'notOwned', since: 0 });
@@ -24,7 +25,8 @@ export function stockThings(c: SalvageContent): ThingState[] {
   return out;
 }
 
-function partnerOf(c: SalvageContent, id: string): PartnerState {
+/** A partner's fresh state (closed, its trial load full); also the works layer's partners at the works' opening (works.ts worksOpen). */
+export function partnerOf(c: SalvageContent, id: string): PartnerState {
   const p = c.partners[id];
   const mass = Object.entries(p.trial).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
   return { open: false, trialUsed: false, level: 0, skips: [{ slot: 0, phase: 'full', setAt: 0, fullAt: 0, contents: { ...p.trial }, mass_g: mass, price: p.trialPrice, priceDay: 0, trial: true, n: 0 }] };
@@ -37,7 +39,7 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
   const first = Object.keys(c.machines.crucible.recipes)[0] ?? 'brass';
   const crucible: CrucibleState = { ...machine(false), recipe: first, fromBays: true, charge_g: 0, heel_g: 0, phase: 'empty', phaseSince: 0, endsAt: null, lastFeedAt: 0, firstPoured: false, cooling: null };
   return {
-    v: 2,
+    v: 3,
     t: 0,
     epoch: 0,
     clock: { highMs: now, day, startDay: day },
@@ -74,6 +76,8 @@ export function freshSalvage(c: SalvageContent, now: number): SalvageState {
     income: { minute: 0, buckets: [0, 0, 0, 0, 0] },
     // The two ticket books (W16, series.ts): the last number printed in each, from 0.
     counts: { [seriesKey('weigh')]: 0, [seriesKey('sale')]: 0 },
+    // Stage 2 (contract v3, 2.18): the stage's fields, fresh (./state2.ts; the migration gives a layout-2 save the same).
+    ...freshStage2(c, now, day),
   };
 }
 
@@ -90,7 +94,7 @@ export function createSalvage(cfg: SalvageConfig, base: GameState, now: number):
 export function reconcileSalvage(cfg: SalvageConfig, base: GameState, raw: unknown, now: number): SalvageGame {
   const r = (raw as { salvage?: Partial<SalvageState> } | null)?.salvage;
   const fresh = freshSalvage(cfg.salvage, now);
-  if (!r || r.v !== 2 || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: fresh };
+  if (!r || ((r.v as number) !== 2 && r.v !== 3) || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: fresh };
   return { ...base, salvage: { ...fresh, ...r, epoch: (Number(r.epoch) || 0) + 1, clock: { ...fresh.clock, ...r.clock, highMs: Math.max(fresh.clock.highMs, Number(r.clock.highMs) || 0) } } as SalvageState };
 }
 

@@ -76,10 +76,12 @@ export function crucibleVerbs(r: CardRow): CardRow {
  * level waits), and a level that waits for a rung reads "Level up opens at {t} supplied" (card.levelOpensAt)
  * where the rules still give the shop's "Opens at {t} supplied" (refusal.rung). Other rows pass unchanged.
  */
-export function memberRow(r: CardRow): { row: CardRow; padlock: boolean } {
+export function memberRow(r: CardRow): { row: CardRow; padlock: boolean; why: Txt | null } {
   const member = r.name.key === 'card.crewRow';
   const locked = !r.button && !!r.line && r.line.key.startsWith('refusal.');
-  if (!member) return { row: r, padlock: locked };
-  if (r.line?.key === 'refusal.rung') return { row: { ...r, line: { key: 'card.levelOpensAt', args: r.line.args } }, padlock: false };
-  return { row: r, padlock: false };
+  if (!member) return { row: r, padlock: locked, why: null };
+  // owner1 H6 (screens1 n8): a hired yard hand's or cutter's row while he waits carries why (CardRow.why), printed as its state line.
+  const why = r.why ?? null;
+  if (r.line?.key === 'refusal.rung') return { row: { ...r, line: { key: 'card.levelOpensAt', args: r.line.args } }, padlock: false, why };
+  return { row: r, padlock: false, why };
 }

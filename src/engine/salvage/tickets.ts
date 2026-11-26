@@ -172,7 +172,7 @@ export function skipTicket(c: SalvageContent, g: SalvageGame, s: { partner: stri
   const round = (x: number) => Math.floor(Math.max(0, x) / step + 0.5 + 1e-9) * step;
   const gross_g = round(s.tare_g + s.load_g);
   const tare_g = round(s.tare_g);
-  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'skipWeighIn'), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
+  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'skipWeighIn'), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, ...(s.trial && s.paid <= 0 ? { free: true } : {}), gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
 }
 
 /** A supply-deal delivery (2.9): grams resolved down to 0.1 kg at the locked price. */
@@ -201,9 +201,28 @@ export interface TicketView {
   /** One or two legal lines (11 pt). */
   legal: Txt[];
   lesson: Txt | null;
+  /**
+   * Stage 2 (2.14.5, rules-money): "to the bank §y · to you §z" under "Paid §x" on a lot ticket whose payment
+   * the bank shared in (the ticket's `bank.y`, set by bank.ts payLot before it printed; z = paid − y). Absent
+   * on every other ticket. A ticket with it SHOWS A DEBT (`showsDebt`): no ad and no shop entry beside it.
+   */
+  bank?: Txt;
+  showsDebt?: boolean;
 }
 
 const MAX_LINES = 3;
+
+/** The bank's line of a lot ticket (2.14.5), or nothing: y as payLot took it, z = paid − y. */
+function bankLine(t: Ticket): Pick<TicketView, 'bank' | 'showsDebt'> {
+  const b = 'bank' in t ? t.bank : undefined;
+  if (!b || !(b.y > 0) || !('paid' in t)) return {};
+  return { bank: { key: 'ticket.bankSplit', args: { y: { exact: b.y }, z: { exact: roundMoney(t.paid - b.y) } } }, showsDebt: true };
+}
+
+/** The view of a ticket (2.2's table) with its bank line when the bank shared in its payment (2.14.5). */
+export function ticketView(t: Ticket): TicketView {
+  return { ...ticketViewBase(t), ...bankLine(t) };
+}
 
 function noteTxt(l: TicketLine): Txt | null {
   if (l.note?.kind === 'fromCar') return { key: 'ticket.fromCar', args: { ref: refArg(l.note.ref) } };
@@ -211,8 +230,7 @@ function noteTxt(l: TicketLine): Txt | null {
   return null;
 }
 
-/** The view of a ticket (2.2's table). */
-export function ticketView(t: Ticket): TicketView {
+function ticketViewBase(t: Ticket): TicketView {
   const date: Txt = { key: 'ticket.date', args: { date: { day: t.day } } };
   const cut = <T>(xs: T[]) => ({ shown: xs.slice(0, MAX_LINES), more: xs.length > MAX_LINES ? ({ key: 'ticket.more', args: { n: { n: xs.length - MAX_LINES } } } as Txt) : null });
   switch (t.kind) {
@@ -264,6 +282,13 @@ export function ticketView(t: Ticket): TicketView {
       };
     case 'dropOffSlip':
       return { head: { key: 'ticket.dropOffSlip', args: { thing: { thing: t.thing } } }, date, lines: [], more: null, value: null, legal: [], lesson: null };
+    // Stage 2's lot tickets (s2a-fix widened the union; their grade rows and the bank's lines are rules-money's, Phase B).
+    case 'rackSale':
+      return { head: { key: 'ticket.rackSale', args: { thing: { thing: t.thing }, x: { exact: t.paid } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
+    case 'vanCollection':
+      return { head: { key: 'ticket.vanCollection', args: { reclaimer: { name: t.buyer } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
+    case 'crateLot':
+      return { head: { key: 'ticket.crateLot', args: { n: { n: t.n } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
   }
 }
 
