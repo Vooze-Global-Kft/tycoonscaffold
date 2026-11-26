@@ -12,7 +12,9 @@
  *   game's `salvage.names` (written by the build script from scripts/content/yard/names.json, read by
  *   kind and name through `NAME_SELECTORS`; never a name written here, D13, S21);
  * - `{grade|short}`: a `{ grade }` argument printed as the grade's short name (tickets and bay chips;
- *   text.json grades.<id>.short, ≤ 15 characters), its name where the content has no short one.
+ *   text.json grades.<id>.short, ≤ 15 characters), its name where the content has no short one;
+ * - `{id|short}` (and a `{ name }` argument with `|short`): the register's short form `<id>.short`, else the name;
+ * - `{id|cap}`: the name (or argument) with its first letter in capitals ("Scrip packs": the currency starts a sentence).
  * `say(txt, content)` is the one function that turns a Txt into words.
  */
 import * as R from '../../engine/salvage';
@@ -76,7 +78,7 @@ export const TEXT = {
   'chip.crewWeighIn': '{role} · {kg} in',
   'chip.lotSold': 'Lot sold · {x}',
   'chip.certifiedEmpty': 'certified empty',
-  'chip.bridgeLimit': 'Weight limit 7.5 t',
+  'chip.bridgeLimit': 'Axle limit 10 t', // stage 2 (T9, LEAD L13): the bridge's one number; a three-axle hook-lift crosses
   'chip.needsTorchGate': 'Needs a cutting torch',
   'chip.count': '{what} · {n}',
 
@@ -270,7 +272,7 @@ export const TEXT = {
   'line.portal': 'Every load checked. Every seller identified. Payment by transfer only.',
   'line.crewAway': 'The yard now earns while you are away.',
   'line.backfield': 'Back field · the works are being built here',
-  'line.fictional': 'All prices, exchanges and shares are fictional and have no real-world value. Nothing in this game is financial advice.',
+  'line.fictional': 'Prices, exchanges, loans, partnerships and listings in this game are fictional and use {currency} only. Nothing can be paid out, and nothing here is financial advice.', // stage 2 (RULING2 9.14, 5.3): the one sentence Help carries
   'line.shortened': 'Building costs and times are shortened so the business grows in days, not decades; metal prices keep their true proportions.',
   'line.carName': 'End-of-life car from {partnerDemolition} · depolluted · treatment record ref. {ref}',
 
@@ -427,6 +429,334 @@ export const TEXT = {
   'refusal.stopFirst': 'Stop the truck first',
   // E25's gate by another item owned (moved from TEXT_PENDING by rules-sim with REFUSAL_KEYS' needsItem, 17:10)
   'refusal.needsItem': 'Opens with: {item}', // item: { text: item.* }
+
+  // ============================================================================================ STAGE 2
+  // strings2 (26 November; yard-stage2.md 5.3, 4, 2.14 to 2.16). Holes as above; the stage's own:
+  // {plate}: { text: 'title.works.<id>' } (a plate's name); {bank}, {reclaimer}, {partner.garage}, ...:
+  // register ids (names.json byId), `|short` the register's short form where it has one; {currency|cap}:
+  // the currency's name with a capital (a sentence starts with it). Money is { money } unless a ticket's
+  // { exact }; a count { n }; a duration { secs }.
+
+  // --- places (5.3; ≤ 18): the works layer's plates, plots and pads (content map.works.places.<id>.label) ---
+  'place.shredder': 'Shredder',
+  'place.rotaryHall': 'Rotary hall',
+  'place.inductionHall': 'Induction hall',
+  'place.leadLine': 'Lead line',
+  'place.yardSale': 'Yard sale', // the owner's word (RULING2 9.7); never "the rack" (the tool rack's word)
+  'place.oversizePad': 'Oversize pad',
+  'place.pickingTable': 'Picking table', // T11: the crate's player word
+  'place.carPad': 'Car pad',
+  'place.worksBunkers': 'Works bunkers',
+  'place.worksStillages': 'Works stillages',
+  'place.batteryBox': 'Battery box',
+  'place.forklift': 'Forklift',
+  'place.baler': 'Baler',
+  'place.crane': 'Magnet crane',
+  'place.depollution': 'Depollution bay',
+  'place.granulator': 'Granulator',
+  'place.shear': 'Shear',
+  'place.eddy': 'Eddy current',
+  'place.sorter': 'Sensor sorter',
+  'place.smelter': 'Lead smelter',
+
+  // --- chips (4.3, 4.6, 4.5; world chips, 11 pt) ---
+  'chip.works.bankTag': '{bank|short}', // the financed plate's tag beside its ring (the ring prints no amount, P7)
+  'chip.commissioned': 'Commissioned · {plate}', // T25: the trade's word stays on the chip; 2.6 s
+  'chip.weighedAtWorks': 'Weighed at the works · {grade|short}', // 2.8.1: a back-field plate's belt weigher, only in sight
+  'chip.cod': 'Certificate of destruction issued', // 4.3 (33): a car's depollution done
+  'chip.lotSoldBank': 'Lot sold · {x} · bank {y}', // 4.5: a crew sale while an agreement is open; x gross, y the bank's
+  'chip.rackSold': 'Sold at the gate · {x}', // 4.6: at the card reader; x { money } (whole § from §100)
+  'chip.van': '{reclaimer} · {x}', // 4.6: the van's collection
+  'chip.forPlate': '{plate} · {a} / {b}', // 2.8.1: a bay's reserve for a station, up to its inbuf (the first yard's chip.forCrucible's twin)
+  'chip.leadArea': 'Lead area · masks on', // 3.3, T6: the sign at the breaker's door
+  'chip.visitorsKeep': 'Visitors: keep to this area', // 3.3, T7: the public bay's rail
+  'chip.payHere': 'Pay here', // 3.3, T7: the card reader on the canopy's east post
+
+  // --- titles (4.2 to 4.9): the thirteen plates' names (≤ 18; also the process board's plates and {plate}) ---
+  'title.works.crane': 'Magnet crane',
+  'title.works.shear': 'Shear',
+  'title.works.baler': 'Baler',
+  'title.works.analyser': 'Analyser',
+  'title.works.depollution': 'Depollution bay',
+  'title.works.granulator': 'Granulator',
+  'title.works.shredder': 'Shredder',
+  'title.works.eddy': 'Eddy current',
+  'title.works.sorter': 'Sensor sorter',
+  'title.works.rotary': 'Rotary furnace',
+  'title.works.induction': 'Induction furnace',
+  'title.works.breaker': 'Battery breaker',
+  'title.works.smelter': 'Lead smelter',
+  'title.finance': 'Bank loan · {plate}', // 4.5: the owner's words
+  'title.letter': '{bank} · loans for machines', // 4.5, T16: "plant finance" stays in the rules and Help's body
+  'title.agreements': 'Agreements', // RULING2 9.7: the office's fourth tab
+  'title.shop': 'Shop',
+  'title.yardSale': 'Yard sale',
+  'title.lot': 'Oversize piece', // T11: a delivered lot in player text
+  'title.crate': 'Picking table',
+  'title.packSheet': '{currency|cap} pack',
+  'title.ageQuestion': 'What year were you born?', // 4.8: no default; kept as a band only
+  'title.packCode': '{currency|cap} packs',
+  'title.awayBonus': 'For your time away', // 4.9
+
+  // --- tabs (4.4 the process board's pages; 4.11 the price board's families, content BOARD_TABS) ---
+  'tab.first': 'First yard',
+  'tab.yard': 'Yard and shredder',
+  'tab.melt': 'Melt and lead',
+  'tab.ferrous': 'Ferrous',
+  'tab.nonFerrous': 'Non-ferrous',
+  'tab.works': 'Products', // 4.11 "Works products" (bales, shred, ingots, granules) does not fit a fourth of the row at 1.3
+  'tab.intermediates': 'Intermediates',
+  'board.tabEmpty': 'Nothing in stock', // 4.11: a tab with no row
+
+  // --- a hall's recipes (2.8) ---
+  'recipe.alu': 'Aluminium',
+  'recipe.brass': 'Brass',
+  'recipe.bronze': 'Bronze',
+  'recipe.lead': 'Lead',
+
+  // --- the works plate in the world (4.3; every line ≤ 31, `worksPlateLine`) ---
+  'plate.works.buyable': '{plate} · {x}', // "Baler · §9,000"
+  'plate.works.arriving': 'On its way',
+  'plate.works.commission': 'Stand here to start · {n} s', // n: works.commission_s
+  'plate.works.selfStart': 'Starts by itself in {t}', // t: { secs }
+  'plate.works.hopperFull': 'Hopper full',
+  'plate.works.trayFull': 'Tray full',
+  'plate.works.waiting': 'Waiting for {grade|short}',
+  'plate.works.ready': 'Ready to pour · waits for you', // 4.3's "Ready to pour · it waits for you" is 32 characters, the box 31
+  'plate.opens': 'Opens at {t}', // T19: "Opens at 1,000 t" (t: { tonnes_g }), the world plate and the process board alike
+  'plate.filter': 'Filter', // 4.4: a hall's filter, a sub-plate riveted to its hall's plate
+  // --- the tag (4.6) ---
+  'plate.reuse.tag': 'Reusable',
+  'plate.reuse.tagChecked': 'Reusable · Checked', // T15: a bicycle from a named partner's load
+  'plate.reuse.prices': 'Gate {q} · as scrap {v}', // q, v: { money }; 4.6's "§{q} at the gate · §{v} as scrap" is 36 at §9,999, the box 31
+  'plate.reuse.heavy': 'Too heavy to lift: {kg}',
+  'plate.reuse.full': 'Yard sale full · cut as scrap',
+  'plate.reuse.hands': 'Yard hands will set it out',
+  // --- an oversize piece and the picking table (4.7) ---
+  'plate.lot': '{thing}', // 4.7's one line "{partner|short} · {thing}" is 39 at its widest (no short form of the bridge partners yet), the box 31: three lines
+  'plate.lotFrom': 'From {partner|short}', // partner: { name: <register id> } (T18: the plate names its sender)
+  'plate.lotValue': '{kg} · cut: about {x}', // T18: the only "about"; 4.7's "... once cut" is 33 at its widest
+  'plate.crate': 'Picking table · {n} things',
+  'plate.crateStand': 'Stand here · {n} s a thing', // P11: n crate.sort_s
+
+  // --- the works card (4.3) ---
+  'card.works.inOut': '{in} → {out}', // "Light iron → Baled light iron"
+  'card.works.inOut2': '{in} → {a}, {b}', // every output, largest first (as card.inOut2)
+  'card.works.gain': '+{pct} on {grade}', // what a kilogram of input gains at p̄: "+24 % on Light iron"; never tonnes an hour
+  'card.works.installed': 'Installed · stand here {n} s',
+  'card.works.selfStart': 'Starts by itself in {t}',
+  'card.works.levelGain': '+{pct} on this machine', // "Level 3 → 4" is card.levelFromTo
+  'card.works.takesFrom': 'Takes from: {a}', // a: { grade } (or { thing }); a bay-fed plate's inputs
+  'card.works.takesFrom2': 'Takes from: {a} · {b}',
+  'card.works.takesFrom3': 'Takes from: {a} · {b} · {c}',
+  'card.works.toBays': 'Out to the works bunkers', // 2.8.1: a back-field plate has no tray and no ticket
+  'card.works.depollution': 'Fluids and gas out · airbags made safe', // T13 (38); nothing is shown of how
+  'card.works.waste': 'Waste to a licensed waste carrier', // T13, P18
+  'card.works.car': 'End-of-life car · ref. {ref}',
+  'card.works.carIn': 'Depolluted in {t}',
+  'card.works.noCar': 'No car on the apron',
+  'card.works.filter': 'Bought with its filter', // 2.6.5: one price, one plot; no furnace runs without one (L3)
+  'card.works.loan': 'Bank loan', // the owner's words (RULING2 9.7)
+  'card.works.saveUp': 'Save up (about {t})', // t: { secs }; only the time is "about"
+  'card.works.loanShort': 'You pay now {d} · {x} more', // d, x: { money }
+  'card.works.bankLeft': 'Bank loan · {left} left of {total}', // left, total: { money }; the card showsDebt
+  'card.rota.permitElv': 'Treatment permit · end-of-life cars', // T21: comes with the plate, no price
+  'card.rota.permitLead': 'Permit · lead smelting',
+  'card.bay.route': 'Goes to: {to}', // to: { text: 'title.works.<id>' } or { text: 'card.bay.sellFromBay' }
+  'card.bay.sellFromBay': 'Sell from the bay',
+
+  // --- the bank (2.14, 4.5; RULING2 9.7, 11.4). {share}: { text: 'share.fifth' } while content bank.share is 0.2
+  // (bank.shareWords "A fifth"), else { pct: share } ("20 %"); mid-line `share.fifthIn`. ---
+  'card.letter.lend': 'We lend on machines that earn.',
+  'card.letter.split': 'You pay some of the price now. The bank pays the rest.', // D24: the letter avoids "part"
+  'card.letter.rule': '{share} of each sale goes to the bank until it is repaid. No date.',
+  'card.finance.price': 'Price',
+  'card.finance.deposit': 'You pay now',
+  'card.finance.lent': 'The bank pays',
+  'card.finance.charge': 'Charge',
+  'card.finance.total': 'You repay',
+  'card.finance.rule': '{share} of each sale goes to the bank until {x} is repaid. No date.', // the lead's fixed sentence
+  'card.agreements.row': '{bank} · {plate}',
+  'card.agreements.repay': 'You repay {total} · repaid {taken}',
+  'card.agreements.left': '{left} left · {share} of each sale', // share: { text: 'share.fifthIn' }
+  'card.agreements.history': '{plate} · {total} · repaid {date}', // date: { day }
+  'card.agreements.historyHead': 'Repaid',
+  'card.agreements.none': 'No open agreement',
+  'share.fifth': 'A fifth',
+  'share.fifthIn': 'a fifth',
+
+  // --- the Yard sale, oversize pieces, the picking table, the batch (4.6, 4.7) ---
+  'card.yardSale.thing': '{x} at the gate', // the row's name is the thing's
+  'card.yardSale.free': '{n} free places',
+  'card.yardSale.freeOne': 'One free place',
+  'card.yardSale.full': 'No free place',
+  'card.yardSale.next': 'Next visitor in {t}',
+  'card.yardSale.empty': 'Set out a thing and visitors come', // the rack is empty: nobody comes
+  'card.yardSale.soldToday': 'Sold today: {n} · {x}',
+  'card.yardSale.level': 'More room · {a} → {b} places', // a, b: { n }
+  'card.yardSale.corner': '{reclaimer|short} · {n} batches',
+  'card.yardSale.van': 'Van in {t}', // 4.6's one line "... · van in {t}" is 43 at its widest: the van's date on a line of its own
+  'card.yardSale.cornerEmpty': '{reclaimer|short} · no batches',
+  'card.lot.value': '{kg} · about {x} once cut',
+  'card.lot.cut': 'Only you can cut this · {n} s',
+  'card.lot.from': 'From {partner}',
+  'card.crate.count': '{n} things wait',
+  'card.crate.stand': 'Stand here · {n} s a thing',
+  'card.crate.empty': 'Nothing to sort',
+  'skip.reuseBatch': 'Reusable: {thing} × {n} · {kg}', // 4.6: on the skip plate and card, before Buy
+  'card.rung.styleNew': 'New sign style: rung {n}', // 4.10
+  'card.rung.useIt': 'Use it',
+
+  // --- the shop (2.15, 4.8; RULING2 15.4, 15.11, 15.12) ---
+  'card.shop.row': 'Shop', // the row on the Rota and in Settings
+  'card.shop.looks': 'Looks',
+  'card.shop.colours': 'Yard colours',
+  'card.shop.coloursLine': 'Trucks, vests and skips',
+  'card.shop.decorations': 'Yard decorations',
+  'card.shop.plaqueLine': 'Poured in your crucible, by the gate', // 4.8's "..., set by the gate" is 40, the effect line 38
+  'card.shop.look': '{name}', // name: { name: 'product.<id>' } or { name: 'look.<id>' }
+  'card.shop.earned': 'Earned',
+  'card.shop.signStyle': 'Sign style · rung {n}',
+  'card.shop.foundryPlate': '{foundry} plate',
+  'card.shop.reachRung': 'Reach rung {n}',
+  'card.shop.use': 'Use',
+  'card.shop.inUse': 'In use',
+  'card.shop.buy': 'Buy', // the store's own price string is the screen's (iap.priceOrNull), never a made-up one
+  'card.shop.unavailable': 'Unavailable',
+  'card.shop.noAds': '{product.skipAds}',
+  'card.shop.noAdsLine': 'Get every ad reward without watching', // RULING2 9.14
+  'card.shop.packs': '{currency|cap} packs',
+  'card.shop.packName': '{x}', // the pack's S
+  'card.shop.packLine': 'about {n} hours of your yard’s earnings', // the lead's fixed words; n: H (2, 5, 10, 20)
+  'card.shop.noRoom': 'Nothing to spend it on yet',
+  'card.shop.waiting': 'Waiting for approval', // pending (15.4); also the row for as long as it waits (15.11 c)
+  'card.shop.unconfirmed': 'The store has not confirmed this purchase yet. If you were charged, your {currency} arrives when it does.', // 15.4, word for word
+  'card.shop.nothingCharged': 'Nothing was charged.', // only when the store refused (15.11 d); a cancel shows nothing
+  'card.shop.unreachable': 'The store cannot be reached. Nothing was charged.', // 15.3, 15.12 e
+  'card.shop.expired': 'A purchase that was waiting never arrived. Nothing was added.', // 15.11 f, until the card is closed
+  'card.shop.updated': 'Updated: {a} → {b}', // a, b: { money }
+  'card.shop.restore': 'Restore',
+  'card.shop.restoreLine': '{currency|cap} bought here lives in this device’s save.',
+  'card.packSheet.amount': '{x} for this yard',
+  'card.packSheet.save': 'Bought {currency} lives in this device’s save. It is not restored on another device or a new install.',
+  'card.code.set': 'Choose a four-digit code',
+  'card.code.confirm': 'Enter it again',
+  'card.code.enter': 'Enter the code',
+  'card.restart.packLost': 'Bought {currency}, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.', // P16
+
+  // --- ads (2.16, 4.9) ---
+  'card.ad.spot': 'Video · +{x}', // the spot buyer beside a held bay's Sell
+  'card.ad.bonus': 'Bonus · +{x}', // the same with No ad videos owned
+  'card.ad.video': 'Watch a video',
+  'card.ad.take': 'Take +{x}',
+  'card.ad.amount': '+{x}',
+  'card.ad.notReady': 'Video not ready',
+
+  // --- items (5.3; ≤ 38 effect lines) ---
+  'item.truckBridge': 'Three-axle truck',
+  'item.pallet': 'Pallet truck',
+  'item.forklift': 'Forklift',
+  'item.plasma': 'Plasma cutter',
+  'effect.truckBridge': 'Three axles: crosses the bridge', // T9 (30)
+  'effect.pallet': 'Moves a bath in one trip',
+  'effect.forklift': 'Lifts a car onto the depollution bay', // T1: the only way a car reaches the apron
+  'effect.plasma': 'Cuts stainless and aluminium too', // T8 (32)
+
+  // --- the rung signs 4 and 5, and what rung 3 opens (4.10, 1.4) ---
+  'table.rungN': 'Rung {n} · {t} supplied',
+  'opens.works': 'Machines by the tipping floor',
+  'opens.backfield': 'The back field',
+  'opens.yardSale': 'A Yard sale by the gate',
+  'opens.shredder': 'The shredder line',
+  'opens.halls': 'Two furnace halls',
+  'opens.lead': 'The lead line',
+  'opens.levelsOn': 'Every machine can still level up',
+
+  // --- the away card (2.17, 4.5) ---
+  'away.bank': 'To {bank}: {x}', // the card showsDebt
+  'away.repaid': 'Repaid in full: {plate}',
+  'away.rack': 'Sold at the gate: {n} · {x}',
+  'away.van': '{reclaimer}: {x}',
+  'away.lots': '{n} oversize pieces wait for you', // T11
+  'away.lotOne': 'An oversize piece waits for you',
+
+  // --- tickets (2.19, 4.5 to 4.7) ---
+  'ticket.bankSplit': 'to the bank {y} · to you {z}', // under "Paid {x}" (ticket.paid, bold); ≤ 38 at five figures
+  'ticket.rackHead': '{homeYard} · Yard sale',
+  'ticket.rackSale': 'Sold at the gate · {thing} · {x}', // x: { exact }
+  'ticket.vanCollection': 'Collected by {reclaimer}',
+  'ticket.vanLine': '{thing} × {n} · {kg} · {x}',
+  'ticket.crateLot': 'Sorted by hand · {n} things', // one ticket a sorting, a line a thing
+  'ticket.note.analysed': 'Analysed',
+  'ticket.note.drained': 'Depolluted', // T13: the glossary's word
+  'ticket.cod': 'Certificate of destruction issued',
+
+  // --- Settings and Help (4.8; 5.3) ---
+  'clip.shop': 'Shop',
+  'clip.packsShown': '{currency|cap} packs: shown',
+  'clip.packsHidden': '{currency|cap} packs: hidden',
+  'help.bank': 'Bank loans',
+  'help.bankBody': 'Plant finance: {bank} lends on a machine that earns. You pay some of the price now and the bank the rest, for a charge fixed at signing. Some of each sale goes to the bank until it is repaid. No date.', // T16; no share named (it is content's)
+  'help.yardSale': 'The Yard sale',
+  'help.yardSaleBody': 'The public buys single things fit for reuse at the gate: baths, radiators, stoves, gates. Set a tagged thing on the Yard sale and a visitor pays more than its scrap value. Visitors keep to the railed bay by the gate.',
+  'help.packs': '{currency|cap} packs',
+  'help.packsBody': 'Where the store allows it, the shop sells {currency} worth some hours of your own yard’s earnings. It lives in this device’s save, is not restored on another device, never repays a loan and adds no tonnes.',
+  'help.code': 'The code',
+  'help.codeBody': 'Whoever hides {currency} packs in Settings chooses a four-digit code; showing them again asks for it. A forgotten code clears only when the game is installed again, which starts a new yard.',
+  'help.packLost': 'Bought {currency}, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.', // P16
+  'help.breaker': 'The battery breaker',
+  'help.breakerBody': 'The breaker opens lead-acid batteries into plastic chips and lead paste. The acid is neutralised and leaves as a salt solution, with a licensed waste carrier. The smelter melts the paste into lead ingot.', // T20
+
+  // --- goals (5.3; ≤ 30; goals.json list `stage2`, 1.3's order) ---
+  'goal.rackBath': 'Put the bath on the Yard sale',
+  'goal.buyBaler': 'Buy the baler',
+  'goal.startBaler': 'Start up the baler', // T25
+  'goal.buyAnalyser': 'Buy the analyser',
+  'goal.buyShear': 'Buy the shear',
+  'goal.buyTruckBridge': 'Buy the three-axle truck',
+  'goal.fetchGarage': 'Fetch the garage’s first load', // as the first yard's "Fetch the farm’s trial load": the register has no short garage name, and the full one makes 35
+  'goal.fetchPlumbing': 'Fetch the plumber’s first load',
+  'goal.cutLot': 'Cut an oversize piece', // T11
+  'goal.sortCrate': 'Sort the picking table',
+  'goal.buyDepollution': 'Buy the depollution bay',
+  'goal.supplyRung4': 'Supply {t} ({r} metals)', // T12: "metals" in stage 2's goals; t { tonnes_g }, r { n }
+  'goal.buyCrane': 'Buy the magnet crane',
+  'goal.walkBackfield': 'Walk into the back field', // P10: just before "Buy the shredder"
+  'goal.buyShredder': 'Buy the shredder',
+  'goal.buyRotary': 'Buy the rotary furnace',
+  'goal.pourRotary': 'Pour at the rotary furnace', // T12, P14: done poured:rotary
+  'goal.buyInduction': 'Buy the induction furnace',
+  'goal.buyBreaker': 'Buy the battery breaker',
+  'goal.buySmelter': 'Buy the lead smelter',
+  'goal.pourLead': 'Pour a lead ingot', // done poured:smelter
+  'goal.supplyRung5': 'Supply {t} ({r} metals)',
+  'advice.loanHint': 'A loan suits a machine that earns.', // 2.13: the bank's one sentence, under its four conditions
+
+  // --- lessons (5.3, T14; ≤ 48) ---
+  'lesson.ss': 'A magnet hardly holds 304 stainless.',
+  'lesson.bzs': 'An analyser tells bronze from brass.',
+  'lesson.bzi': 'Bronze is copper and tin.',
+  'lesson.pb': 'A battery is broken, then its lead is smelted.', // 5.3's "... first, then its lead smelted." is 49, the lesson 48
+  'lesson.zorba': 'Zorba: mixed metals from the eddy current.',
+  'lesson.lib': 'Bales pay more than loose light iron.',
+
+  // --- refusals of stage 2 (2.19; refusals.ts REFUSAL_KEYS_V3) ---
+  'refusal.bankOne': 'One loan at a time. This one is repaid as you sell.', // 2.14.3
+  'refusal.bankReserve': 'Kept for the next load: {x}', // E19, E29
+  'refusal.bankTerms': 'The terms changed. Look again.', // as priceUpdated
+  'refusal.notFinanceable': 'No bank loan for this',
+  'refusal.quoteUpdated': 'Updated: {a} → {b}', // a, b: { money }
+  'refusal.packPending': 'Waiting for approval', // the same words as card.shop.waiting
+  'refusal.packHeadroom': 'Nothing to spend it on yet',
+  'refusal.packOff': 'Not offered here', // names nothing of packs (P13)
+  'refusal.packCode': 'That code does not match',
+  'refusal.badYear': 'Enter a year of four digits',
+  'refusal.rackFull': 'The Yard sale is full',
+  'refusal.notReusable': 'Not for the Yard sale',
+  'refusal.forkliftLoad': 'Too heavy for the forklift: {kg}',
+  'refusal.noRoute': 'That machine does not take this',
+  'refusal.routed': 'This feeds the {plate}. Choose Sell from the bay first.', // T17: a toast of two lines
+  'refusal.adCap': 'No more this market day',
 } as const satisfies Record<R.TextKey, string>;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).
@@ -548,15 +878,23 @@ function argText(a: R.TxtArg, c: Content): string {
 
 /** Fills `{hole}`s: a Txt argument first, else an invented name by register id, else the hole stays. */
 export function fill(text: string, args: R.TxtArgs | undefined, c: Content): string {
-  return text.replace(/\{([A-Za-z0-9_.]+)(\|short)?\}/g, (whole, h: string, short?: string) => {
+  return text.replace(/\{([A-Za-z0-9_.]+)(?:\|(short|cap))?\}/g, (whole, h: string, mod?: string) => {
     const a = args?.[h];
-    if (short && a && 'grade' in a) {
+    if (mod === 'short' && a && 'grade' in a) {
       const g = c.grades[a.grade] as { name?: string; short?: string } | undefined;
       return g?.short ?? g?.name ?? a.grade;
     }
-    if (a) return argText(a, c);
-    const n = c.names[h];
-    return n ?? whole;
+    // strings2: `{id|short}` and `{partner|short}` ({ name }) print the register's short form (`<id>.short`) where it has one.
+    if (mod === 'short' && a && 'name' in a) return c.names[`${a.name}.short`] ?? c.names[a.name] ?? a.name;
+    let out: string;
+    if (a) out = argText(a, c);
+    else {
+      const n = mod === 'short' ? (c.names[`${h}.short`] ?? c.names[h]) : c.names[h];
+      if (n === undefined) return whole;
+      out = n;
+    }
+    // strings2: `{currency|cap}` starts a sentence with the name's first letter in capitals.
+    return mod === 'cap' ? out.charAt(0).toUpperCase() + out.slice(1) : out;
   });
 }
 

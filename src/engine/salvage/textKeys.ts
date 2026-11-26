@@ -144,7 +144,7 @@ export const TEXT_KEYS = {
   /** Package 4: the price board and bays (4.4). */
   board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice', 'board.empty', 'board.tabEmpty'],
   /** Package 4: the process board's plates (4.5). */
-  plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung', 'plate.works.buyable', 'plate.works.arriving', 'plate.works.commission', 'plate.works.selfStart', 'plate.works.hopperFull', 'plate.works.trayFull', 'plate.works.waiting', 'plate.works.ready', 'plate.opens', 'plate.filter', 'plate.reuse.tag', 'plate.reuse.tagChecked', 'plate.reuse.prices', 'plate.reuse.heavy', 'plate.reuse.full', 'plate.reuse.hands', 'plate.lot', 'plate.lotValue', 'plate.crate', 'plate.crateStand'],
+  plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung', 'plate.works.buyable', 'plate.works.arriving', 'plate.works.commission', 'plate.works.selfStart', 'plate.works.hopperFull', 'plate.works.trayFull', 'plate.works.waiting', 'plate.works.ready', 'plate.opens', 'plate.filter', 'plate.reuse.tag', 'plate.reuse.tagChecked', 'plate.reuse.prices', 'plate.reuse.heavy', 'plate.reuse.full', 'plate.reuse.hands', 'plate.lot', 'plate.lotFrom', 'plate.lotValue', 'plate.crate', 'plate.crateStand'],
   /** Package 4: the industry table and the rung sign (2.11). */
   table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare', 'table.rungN', 'opens.works', 'opens.backfield', 'opens.yardSale', 'opens.shredder', 'opens.halls', 'opens.lead', 'opens.levelsOn'],
   /** Package 4: the away card (4.4). */
@@ -291,6 +291,7 @@ export const TEXT_KEYS = {
     'card.yardSale.soldToday',
     'card.yardSale.level',
     'card.yardSale.corner',
+    'card.yardSale.van',
     'card.yardSale.cornerEmpty',
     'card.lot.value',
     'card.lot.cut',
