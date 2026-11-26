@@ -297,8 +297,9 @@ def screen_y(by, H, y, z=0.0):
 
 # --------------------------------------------------------------------------- the checks
 
-def check(s):
-    """Errors (a list of strings) and a report (a list of strings)."""
+def check(s, walks=True):
+    """Errors (a list of strings) and a report (a list of strings). walks=False skips recomputing map.routes (the
+    selftest's cases that move nothing a walk passes)."""
     M = s['map']
     P, F = M['points'], M['footprints']
     errs, rep = [], []
@@ -401,7 +402,7 @@ def check(s):
     rep.append("walk drop-off's first place-scale: %.1f m (at most 10)" % d0)
     if d0 > 10:
         bad("M5: the walk from the drop-off's first place to the scale is %.1f m (at most 10)" % d0)
-    fresh = routes(s)
+    fresh = routes(s) if walks else {}
     for k, v in fresh.items():
         if abs(rt.get(k, -99) - v) > 0.05:
             bad('map.routes.%s is %s, the map gives %s (python3 -I scripts/content/yard_map.py --routes)' % (k, rt.get(k), v))
@@ -551,12 +552,13 @@ def bay_slot_pos(s, grade):
     return (x, f['y'])
 
 
-def check_works(s0):
-    """The merged map's checks (3.1.3: M1 to M7 again, and 3.6). Errors and a report; ([], []) without a works layer."""
+def check_works(s0, walks=True):
+    """The merged map's checks (3.1.3: M1 to M7 again, and 3.6). Errors and a report; ([], []) without a works layer.
+    walks=False skips recomputing the walks (the selftest's cases that move nothing a walk passes)."""
     s = merged(s0)
     if s is None:
         return [], []
-    errs, rep = check(s)
+    errs, rep = check(s, walks)
     errs = ['merged map: ' + e for e in errs]
     bad = errs.append
     M = s['map']
@@ -604,7 +606,7 @@ def check_works(s0):
                 if not (P[plates[q]['plot']][0] < P[p['plot']][0] and plates[q]['slot'] > p['slot']):
                     bad('3.6 (4): %s feeds %s, but their plots or slots are not in the chain\'s order along x' % (pid, q))
     # (5) the walks, the crane's reach, the car pad, the battery box
-    fresh = works_routes(s)
+    fresh = works_routes(s) if walks else dict(WK.get('routes', {}))
     for k, lim in WORKS_LIMITS.items():
         v = fresh.get(k)
         if v is None or v > lim + 1e-6:
@@ -614,7 +616,7 @@ def check_works(s0):
         if have is None or abs(have - v) > 0.05:
             bad('map.works.routes.%s is %s, the merged map gives %s (python3 -I scripts/content/yard_map.py --routes --works)' % (k, have, v))
     rep.append('walks of 3.4 (merged map): ' + ', '.join('%s %s m' % kv for kv in fresh.items()))
-    first = routes(s)
+    first = routes(s) if walks else {}
     for k, v in first.items():
         if k in M['routes'] and abs(M['routes'][k] - v) > 0.05:
             bad('merged map: the first yard’s walk %s is %s on the merged map, map.routes has %s (put the merged value in map.works.routes)' % (k, v, M['routes'][k]))
@@ -885,6 +887,7 @@ def _selftest(s=None):
         pb['staff'] = [53.1, 54.3]
         pb['rail'][1]['x0'], pb['rail'][1]['w'] = 54.3, 9.7
 
+    walked = {'floor-crane', 'stale walk'}
     cases = [
         ('the crane at 3.3\'s (38, 31.5): floor-crane 10.5 m', lambda c: place(c, 'crane', x=38), '3.6 (5): the walk floor-crane'),
         ('the staff gap 1.2 m (3.3)', staff12, 'staff gap is 1.2 m'),
@@ -913,7 +916,7 @@ def _selftest(s=None):
     for name, mutate, want in cases:
         c = copy.deepcopy(base)
         mutate(c)
-        errs, _ = check_works(c)
+        errs, _ = check_works(c, walks=any(w in name or w in want for w in walked))
         ok = any(want in e for e in errs)
         print('%s refuses %s' % ('ok  ' if ok else 'FAIL', name) + ('' if ok else ' (wanted "%s"; got %s)' % (want, errs[:4])))
         fails += 0 if ok else 1

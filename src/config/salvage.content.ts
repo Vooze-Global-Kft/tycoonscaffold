@@ -1566,6 +1566,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // The sixteen products themselves are the shared list's (monetization.iap.products, B5: Phase B, with the shared schema).
   iap: {
     packsFromRung: 4,
+    // RULING2.md 15.12 (b): quotes of one product that may stand at once (the lead, 08:05)
+    maxStanding: 3,
     packsOff: ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "CH"],
     lookOf: {
       colour1: { slot: "colour", value: "look.colour1" },

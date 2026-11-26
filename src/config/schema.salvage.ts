@@ -45,7 +45,7 @@ const spriteId = z.string().regex(/^[a-z0-9]+(\.[a-z0-9]+)+$/);
 export const CARD_KINDS = [
   'rack', 'rota', 'partners', 'processBoard', 'machine', 'board', 'skip', 'deal', 'table', 'away', 'rung', 'clipboard', 'settings', 'help', 'park', 'dropoff', 'floor',
   // STAGE 2 (yard-stage2.md 4.2; contract v3's CARD_KINDS_V3, content2): a place's card may name the first four.
-  'works', 'finance', 'letter', 'yardSale', 'lot', 'crate', 'shop', 'packSheet', 'ageQuestion', 'packCode', 'awayBonus',
+  'works', 'finance', 'letter', 'yardSale', 'lot', 'crate', 'shop', 'packSheet', 'ageQuestion', 'packCode', 'awayBonus', 'agreements',
 ] as const;
 export type CardKind = (typeof CARD_KINDS)[number];
 /** The look family of a carried load (the art's people.draw.ts LoadFamily). */
@@ -783,6 +783,8 @@ const BankSchema = z.object({
 export const LOOK_SLOTS = ['colour', 'dressing', 'plaque', 'sign'] as const;
 const IapSchema = z.object({
   packsFromRung: z.literal(4),
+  /** RULING2.md 15.12 (b): how many quotes of one product may stand at once. */
+  maxStanding: z.number().int().positive(),
   /** Store-account countries where packs are off at launch (ISO 3166-1 alpha-2: the EEA and Switzerland, fixed). */
   packsOff: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1),
   /** Product id -> the look slot it fills and the look's register id. */
@@ -1163,6 +1165,10 @@ export function lintStage2(s0: SalvageContent): string[] {
   type Step = { where: string; inputs: string[]; outOf: (i: string) => [string, number][]; wasteOf: (i: string) => [string, number][]; reagents: [string, number, number][] };
   const steps: Step[] = [];
   for (const [pid, p] of Object.entries(plates)) {
+    if (s.works && p.financeable !== undefined) {
+      const fin = Object.values(p.recipes ?? {}).some((r) => sellable(r.out) > 0) || Object.values(p.out).some((sh) => sellable(sh) > 0);
+      if (fin !== p.financeable) out.push(`works.plates.${pid}.financeable is ${p.financeable}; it is derived: ${fin} (out holds a sellable grade)`);
+    }
     if (p.kind === 'assay' || p.kind === 'handling') continue;
     if (p.kind === 'batch') {
       if (!p.batch) out.push(`works.plates.${pid}: a batch plate needs batch {kg, s, start_share, start_idle}`);
@@ -1185,10 +1191,6 @@ export function lintStage2(s0: SalvageContent): string[] {
         if (!ok || plates[q].row !== p.row || plates[q].slot <= p.slot) out.push(`works.plates.${pid}.feeds ${q}: a feeds chain out of order (${q} must need ${pid} and follow it in its row: slot ${plates[q].slot} after ${p.slot})`);
         if (plates[q].feedBy !== 'stream') out.push(`works.plates.${q} is fed by ${pid}'s stream: its feedBy is "stream"`);
       }
-    }
-    if (s.works && p.financeable !== undefined) {
-      const fin = Object.values(p.recipes ?? {}).some((r) => sellable(r.out) > 0) || Object.values(p.out).some((sh) => sellable(sh) > 0);
-      if (fin !== p.financeable) out.push(`works.plates.${pid}.financeable is ${p.financeable}; it is derived: ${fin} (out holds a sellable grade)`);
     }
   }
   // a needs cycle
