@@ -149,6 +149,19 @@ export function cardRefs(cfg: SalvageConfig): { label: string; ref: CardRef }[] 
     { label: 'clipboard', ref: { kind: 'clipboard' } },
     { label: 'settings', ref: { kind: 'settings' } },
     { label: 'help', ref: { kind: 'help' } },
+    // stage 2's cards (CardRef v3; s2a-fix widened the union): the rules answer each with its title until Phase B
+    { label: 'works·baler', ref: { kind: 'works', plate: 'baler' } },
+    { label: 'finance·shear', ref: { kind: 'finance', plate: 'shear' } },
+    { label: 'letter', ref: { kind: 'letter' } },
+    { label: 'office·agreements', ref: { kind: 'office', tab: 'agreements' } },
+    { label: 'yardSale', ref: { kind: 'yardSale' } },
+    { label: 'lot', ref: { kind: 'lot', k: 0 } },
+    { label: 'crate', ref: { kind: 'crate' } },
+    { label: 'shop', ref: { kind: 'shop' } },
+    { label: 'packSheet', ref: { kind: 'packSheet', product: 'pack2' } },
+    { label: 'ageQuestion', ref: { kind: 'ageQuestion' } },
+    { label: 'packCode', ref: { kind: 'packCode', mode: 'set' } },
+    { label: 'awayBonus', ref: { kind: 'awayBonus' } },
   ];
   const places = Object.entries(cfg.salvage.map.places)
     .filter(([, p]) => p.card !== false)
