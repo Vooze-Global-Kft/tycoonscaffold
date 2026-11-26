@@ -2072,6 +2072,8 @@ export interface FinanceTerms {
   T: number;
   /** `bank.share` (0.2: content `bank.shareWords` "A fifth"). */
   share: number;
+  /** s2a-fix: the share in words as the card prints it ({ key: 'share.fifth' } "A fifth" while bank.share is 0.2, strings2's rule; else a percentage line). Optional until cards.ts fills it. */
+  shareWords?: Txt;
   /** I read now (the terms move only when assets do). */
   I: number;
   sign: CardButtonV3;

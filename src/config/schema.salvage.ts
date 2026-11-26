@@ -704,7 +704,8 @@ export const PlateSchema = z.object({
   deliver_s: z.number().nonnegative(),
   kind: z.enum(['rate', 'batch', 'station', 'assay', 'handling']),
   in: z.array(id),
-  feedBy: z.enum(['hands', 'bays', 'stream']).nullable(),
+  /** Who feeds it: yard hands, the bays (back field), the line's stream, or (s2a-fix) the forklift only (the depollution bay's car, set on its apron from the car pad; no yard hand is ever sent to it). */
+  feedBy: z.enum(['hands', 'bays', 'stream', 'forklift']).nullable(),
   out: z.record(id, Shares).default({}),
   waste: z.record(id, Shares).default({}),
   reagents: z.array(z.tuple([id, z.number().nonnegative(), z.number().nonnegative()])).default([]),
@@ -740,12 +741,22 @@ const ForkliftSchema = z.object({ load: z.number().positive(), v: z.number().pos
 /** Delivered lots, "oversize pieces" (2.10.1): yard seconds between arrivals, at most `max` waiting, μ minutes of I by rung, the boss's cut seconds [min, max], the kinds. */
 const LotKindSchema = z.object({
   obj: id,
+  /** s2a-fix: the boss's seconds to cut this kind (within lots.cut_s; absent: the range's least). */
+  cut_s: z.number().positive().optional(),
   /** The named partner whose lorry brings it (a register id: partner.boatyard, partner.garage, ...). */
   from: z.string(),
   /** A kind comes only while the player owns one of these (a machine of the first yard or a plate; the analyser counts as stainless's line, decision 9). Empty: always ("an intermediate sold whole"). */
   line: z.array(id).default([]),
 });
-const LotsSchema = z.object({ period_s: z.number().positive(), max: z.number().int().positive(), mu_min: z.array(z.number().positive().nullable()), cut_s: z.tuple([z.number().positive(), z.number().positive()]), kinds: z.array(LotKindSchema).min(1) });
+const LotsSchema = z.object({
+  period_s: z.number().positive(),
+  max: z.number().int().positive(),
+  mu_min: z.array(z.number().positive().nullable()),
+  cut_s: z.tuple([z.number().positive(), z.number().positive()]),
+  kinds: z.array(LotKindSchema).min(1),
+  /** s2a-fix (2.10.1 "else an intermediate sold whole"): the thing a lot is when no kind can be drawn (an object of tier at most 3 with a whole grade); null: none named (a point for the lead: then no lot comes at rung 3 before the plasma cutter). */
+  fallback: z.object({ obj: id }).nullable().optional(),
+});
 /** The crate, "the picking table" (2.10.2): share of a tip by hash, things it holds, seconds a thing, the factor on its prepared value. No hold time (P2). */
 const CrateSchema = z.object({ share: z.number().min(0).max(1), max: z.number().int().positive(), sort_s: z.number().positive(), u: z.number().positive() });
 /** The Yard sale (2.12). */
@@ -783,8 +794,8 @@ const BankSchema = z.object({
 export const LOOK_SLOTS = ['colour', 'dressing', 'plaque', 'sign'] as const;
 const IapSchema = z.object({
   packsFromRung: z.literal(4),
-  /** RULING2.md 15.12 (b): how many quotes of one product may stand at once. */
-  maxStanding: z.number().int().positive(),
+  /** RULING2.md 15.12 (b), 15.13 (c): how many quotes of one product may stand at once: fixed at 3. */
+  maxStanding: z.literal(3),
   /** Store-account countries where packs are off at launch (ISO 3166-1 alpha-2: the EEA and Switzerland, fixed). */
   packsOff: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1),
   /** Product id -> the look slot it fills and the look's register id. */
@@ -946,7 +957,7 @@ const SalvageObject = z.object({
   const lists: [string, unknown[] | undefined][] = [
     ['ceilings_t_h', s.ceilings_t_h],
     ['tau_h', s.tau_h],
-    // awayCapByRung_h: held at the first yard's three in Phase A (the away card reads the next rung's cap): build-yard.py warns
+    // awayCapByRung_h's length is lintStage2More's (f) (s2a-fix): a content frozen before it (salvage-stage2.json) must still parse.
     ['lots.mu_min', s.lots?.mu_min],
     ['reuse.shareI', s.reuse?.shareI],
     ['ads.dayHours_h', s.ads?.dayHours_h],
@@ -1072,6 +1083,10 @@ export function withWorksLayer(s: SalvageContent): SalvageContent {
   };
 }
 
+/** RULING2 (fixed): the store-account countries where packs are off at launch: the EEA and Switzerland (iap.packsOff must be exactly these). */
+export const PACKS_OFF_FIXED = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', 'NO', 'CH'] as const;
+/** T24 (fixed): the materials the magnet crane never lifts. */
+export const CRANE_NEVER_FIXED = ['copper', 'brass', 'bronze', 'alu', 'lead', 'stainless'] as const;
 /** Ruling 9.1 (fixed): the scrip packs' hours of I (pack2, pack5, pack10, pack20). */
 export const PACK_HOURS = [2, 5, 10, 20] as const;
 /** E5, 5.2 (8): the board moves a price by at most 5.7 % a day. */
@@ -1277,7 +1292,7 @@ export function lintStage2(s0: SalvageContent): string[] {
       }
       const used = a.awayCap_min * a.awayPerDay + a.spotCap_min * a.spotPerDay;
       if (used > a.maxDayShare * 60 * h + 1e-9) out.push(`ads at rung ${r}: ${a.awayCap_min} x ${a.awayPerDay} + ${a.spotCap_min} x ${a.spotPerDay} = ${used} minutes of I a day, over ${a.maxDayShare} x 60 x ${h} h = ${(a.maxDayShare * 60 * h).toFixed(2)} (5.2 (6))`);
-      if (r > s.awayCapByRung_h.length) continue; // the away caps are held at the first yard's three in Phase A
+      if (r > s.awayCapByRung_h.length) continue; // a content without stage 2's length is refused by the superRefine (14)
       const cap = s.awayCapByRung_h[r - 1];
       const want = Math.round((2 * (cap + s.nightWatch_h) + HABIT_PLAY_H) * 100) / 100;
       if (!near(h, want)) out.push(`ads.dayHours_h[${r - 1}] (rung ${r}) is ${h} h; the habit gives 2 x (${cap} + ${s.nightWatch_h}) + ${HABIT_PLAY_H} = ${want} h (ruling 10.6)`);
@@ -1328,6 +1343,144 @@ export function lintStage2(s0: SalvageContent): string[] {
     const reach = [...mats].filter((m) => Object.entries(G).some(([g, d]) => d.material === m && (src.get(g) ?? 99) <= 4));
     const need = (rungsOf4(s) ?? 0);
     if (reach.length < need) out.push(`rung 4 asks a range of ${need}; by rung 4 the sources reach only ${reach.length} materials (${reach.join(', ')}) (B4, D14)`);
+  }
+  out.push(...lintStage2More(s0, s));
+  return out;
+}
+
+/**
+ * s2a-fix (26 November, the critic's finding 8 and 9): checks a person would make and lintStage2 did not.
+ * (a) A plate's shop item and the plate agree (price, gate, needs, deliver_s; one each way): the content file
+ *     derives the items from works.plates, so two sources can only disagree in a hand-edited game.json.
+ * (b) The trade's safety (T1, T24): a battery or an undrained car never arrives by a skip's tip; the magnet
+ *     never lifts the six materials nor any battery or undrained car; a partner's tipped load holds no such
+ *     thing and a grown load's body matches what it carries.
+ * (c) Every grade a plate or recipe makes has a bay of its own (a layer grade its entry in worksLayer.bays).
+ * (d) A hall is charged only from covered bays (T5): every recipe input's bay is a stillage, a box or bags, or
+ *     a bunker under one of map.works.roofs.
+ * (e) A station plate's (the depollution bay's) out and waste are its object's pieces, shell and waste by
+ *     mass, and it is fed by the forklift (feedBy 'forklift'): one definition of a car's yield.
+ * (f) The ladder's tonnes and the ceilings rise rung by rung; iap.packsOff is the fixed list.
+ * (g) Lots: a kind's cut_s lies within lots.cut_s; the fallback, when named, is a tier <= 3 thing sold whole.
+ */
+export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] {
+  const out: string[] = [];
+  const L = s0.worksLayer;
+  const plates = s.works?.plates ?? {};
+  const G = s.grades;
+  const O = s.objects;
+  // (a)
+  if (s.works) {
+    const items = [...s.shop, ...s.dayOneList];
+    for (const [pid, p] of Object.entries(plates)) {
+      const it = items.filter((i) => i.key === pid);
+      if (it.length !== 1) {
+        out.push(`works.plates.${pid} has ${it.length} shop items (a plate is bought as exactly one shop item of kind 'works', 2.6.2)`);
+        continue;
+      }
+      const i = it[0];
+      if (i.kind !== 'works') out.push(`shop item "${pid}" is of kind ${i.kind}; a plate's item is of kind 'works'`);
+      if (i.price !== p.price) out.push(`works.plates.${pid}.price §${p.price} differs from its shop item's §${i.price} (one source: the plate)`);
+      if (i.gate !== p.gate) out.push(`works.plates.${pid}.gate ${p.gate} differs from its shop item's ${i.gate}`);
+      if ((i.needsItem ?? null) !== (p.needs ?? null)) out.push(`works.plates.${pid}.needs ${p.needs} differs from its shop item's needsItem ${i.needsItem ?? null}`);
+      if ((i.deliver_s ?? null) !== p.deliver_s) out.push(`works.plates.${pid}.deliver_s ${p.deliver_s} differs from its shop item's ${i.deliver_s}`);
+    }
+    for (const i of items) if (i.kind === 'works' && !plates[i.key]) out.push(`shop item "${i.key}" is of kind 'works' but names no plate`);
+  }
+  // (b)
+  const unsafe = (oid: string) => {
+    const tags = O[oid]?.tags ?? [];
+    return tags.includes('battery') || tags.includes('fuel');
+  };
+  for (const [oid, o] of Object.entries(L?.objects ?? {})) {
+    const arr = o.arrives ?? 'tip';
+    if (o.tags?.includes('fuel') && arr !== 'pad') out.push(`worksLayer.objects.${oid} holds fuel (an undrained car) and arrives by "${arr}": it comes on the flatrack to the car pad only ('pad', T1)`);
+    else if (o.tags?.includes('battery') && arr === 'tip') out.push(`worksLayer.objects.${oid} is a battery and arrives by "tip": batteries come only in the closed battery box ('batteryBox', T1)`);
+  }
+  for (const [pid, p] of Object.entries(s.partners)) {
+    for (const oid of [...Object.keys(p.trial), ...Object.keys(p.skip)]) if (unsafe(oid)) out.push(`partners.${pid}'s trial or skip holds "${oid}", which is never tipped (T1)`);
+    for (const gr of p.grows ?? []) {
+      const want = gr.body === 'flatrack' ? 'pad' : gr.body === 'batteryBox' ? 'batteryBox' : 'tip';
+      for (const oid of Object.keys(gr.contents)) {
+        const arr = O[oid]?.arrives ?? 'tip';
+        if (arr !== want) out.push(`partners.${pid}.grows (${gr.body}) holds "${oid}", which arrives by "${arr}" (the ${gr.body} carries only things that arrive by "${want}", T1)`);
+      }
+    }
+  }
+  if (s.crane) {
+    for (const m of CRANE_NEVER_FIXED) if (!s.crane.never.includes(m)) out.push(`crane.never lacks "${m}" (the magnet never lifts copper, brass, bronze, aluminium, lead or stainless, T24)`);
+    for (const oid of Object.keys(O)) if (unsafe(oid) && !s.crane.neverObjects.includes(oid)) out.push(`crane.neverObjects lacks "${oid}" (a battery or an undrained car is never lifted by the magnet, T1)`);
+  }
+  // (c)
+  const bayOf = (g: string): boolean => g in s.bays || (!!s0.grades[g] && !L?.grades?.[g]);
+  const makes: [string, string][] = [];
+  for (const [pid, p] of Object.entries(plates)) {
+    for (const sh of Object.values(p.out)) for (const [g] of sh) if (G[g]) makes.push([pid, g]);
+    for (const r of Object.values(p.recipes ?? {})) for (const [g] of r.out) if (G[g]) makes.push([pid, g]);
+  }
+  for (const [pid, g] of makes) if (!bayOf(g)) out.push(`works.plates.${pid} makes "${g}", which has no bay (worksLayer.bays.${g}: every new grade has a bay, 2.5.1)`);
+  for (const g of Object.keys(L?.grades ?? {})) if (!(g in (L?.bays ?? {}))) out.push(`worksLayer.grades.${g} has no bay capacity in worksLayer.bays (2.5.1)`);
+  // (d)
+  const W = s.map.works;
+  const covered = (g: string): boolean => {
+    const b = G[g]?.bay as { kind?: string; place?: string; slot?: number } | undefined;
+    if (!b?.kind) return false;
+    if (b.kind === 'stillage' || b.kind === 'box' || b.kind === 'bags') return true;
+    if (b.kind !== 'bunker' || !W || !b.place) return false;
+    const fp = W.footprints?.[b.place];
+    if (!fp) return false;
+    const n = Object.values(G).filter((q) => (q.bay as { kind?: string; place?: string } | undefined)?.kind === 'bunker' && (q.bay as { place?: string }).place === b.place).length;
+    const pitch = fp.w / Math.max(1, n);
+    const cx = fp.x - fp.w / 2 + pitch * ((b.slot ?? 0) + 0.5);
+    return Object.values(W.roofs ?? {}).some((r) => cx >= r.x0 && cx <= r.x0 + r.w && fp.y >= r.y0 && fp.y <= r.y0 + r.d);
+  };
+  for (const [pid, p] of Object.entries(plates)) for (const [rid, r] of Object.entries(p.recipes ?? {})) for (const g of r.in) if (G[g] && !covered(g)) out.push(`works.plates.${pid}.recipes.${rid} takes "${g}", whose bay is not covered (a hall is charged only from covered bays, T5)`);
+  // (e)
+  for (const [pid, p] of Object.entries(plates)) {
+    if (p.kind !== 'station') continue;
+    if (p.feedBy !== 'forklift') out.push(`works.plates.${pid} is a station: it is fed by the forklift only (feedBy "forklift", 2.7), not "${p.feedBy}"`);
+    for (const i of p.in) {
+      const o = O[i];
+      if (!o) continue;
+      const want = new Map<string, number>();
+      for (const pc of o.pieces) want.set(pc[0], (want.get(pc[0]) ?? 0) + (pc[1] * pc[2]) / o.gross_g);
+      if (o.shell) want.set(o.shell.grade, (want.get(o.shell.grade) ?? 0) + o.shell.g / o.gross_g);
+      const have = new Map<string, number>();
+      for (const [g, k] of p.out[i] ?? []) have.set(g, (have.get(g) ?? 0) + k);
+      for (const g of new Set([...want.keys(), ...have.keys()])) if (Math.abs((want.get(g) ?? 0) - (have.get(g) ?? 0)) > 1e-9) out.push(`works.plates.${pid}.out.${i}: "${g}" is ${+(have.get(g) ?? 0).toFixed(6)} of the input; the object ${i} gives ${+(want.get(g) ?? 0).toFixed(6)} (a station's yield is its object's: one definition)`);
+      const w = (p.waste[i] ?? []).reduce((a, [, k]) => a + k, 0);
+      if (Math.abs(w - o.waste_g / o.gross_g) > 1e-9) out.push(`works.plates.${pid}.waste.${i} is ${+w.toFixed(6)}; the object ${i}'s waste is ${+(o.waste_g / o.gross_g).toFixed(6)}`);
+      for (const pc of o.pieces) if (G[pc[0]]?.family === 'pm' && o.source?.type !== 'partner') out.push(`objects.${i} gives a converter whose source is not a partner's (2.7: a test refuses any other)`);
+    }
+  }
+  // (f)
+  const rungs = [...s.ladder.rungs].sort((a, b) => a.n - b.n);
+  for (let k = 1; k < rungs.length; k++) if (!(rungs[k].t > rungs[k - 1].t)) out.push(`ladder.rungs: rung ${rungs[k].n}'s ${rungs[k].t} t is not above rung ${rungs[k - 1].n}'s ${rungs[k - 1].t} t`);
+  for (let k = 1; k < s.ceilings_t_h.length; k++) if (!(s.ceilings_t_h[k] >= s.ceilings_t_h[k - 1])) out.push(`ceilings_t_h[${k}] (rung ${k + 1}) ${s.ceilings_t_h[k]} t/h falls below rung ${k}'s ${s.ceilings_t_h[k - 1]}`);
+  // 5.2 (14) for the away caps (s2a-fix): away.ts runLongerOf stops at the stage's top rung, so the list has one a rung.
+  if (s.ladder.topRung !== undefined && s.awayCapByRung_h.length !== s.ladder.topRung) out.push(`awayCapByRung_h has ${s.awayCapByRung_h.length} entries; ladder.topRung ${s.ladder.topRung} wants one a rung (5.2 (14), B18)`);
+  for (let k = 1; k < s.awayCapByRung_h.length; k++) if (!(s.awayCapByRung_h[k] >= s.awayCapByRung_h[k - 1])) out.push(`awayCapByRung_h[${k}] (rung ${k + 1}) ${s.awayCapByRung_h[k]} h falls below rung ${k}'s`);
+  if (s.iap) {
+    const a = [...s.iap.packsOff].sort().join(',');
+    const b = [...PACKS_OFF_FIXED].sort().join(',');
+    if (a !== b) out.push(`iap.packsOff is not the fixed list (the EEA and Switzerland): ${a} against ${b}`);
+  }
+  // (g)
+  for (const [pid, p] of Object.entries(L?.partners ?? {})) if (plates[p.opens]) out.push(`worksLayer.partners.${pid}.opens "${p.opens}" is a plate: the bridge partners open with a vehicle (2.9: the three-axle hook-lift)`);
+  if (s.lots) {
+    for (const k of s.lots.kinds) if (!(k.from in s.partners) && s.names[k.from] === undefined) out.push(`lots.kinds.${k.obj}.from "${k.from}" is neither a partner nor a register id (scripts/content/yard/names.json)`);
+    const [lo, hi] = s.lots.cut_s;
+    for (const k of s.lots.kinds) if (k.cut_s !== undefined && (k.cut_s < lo || k.cut_s > hi)) out.push(`lots.kinds.${k.obj}.cut_s ${k.cut_s} is outside lots.cut_s [${lo}, ${hi}]`);
+    const f = s.lots.fallback;
+    if (f) {
+      const o = O[f.obj];
+      if (!o) out.push(`lots.fallback "${f.obj}" is not an object`);
+      else {
+        if (Math.max(o.tier, ...(o.pieceTiers ?? [])) > 3) out.push(`lots.fallback "${f.obj}" needs tier ${o.tier}: the fallback is what comes before the plasma cutter (at most 3)`);
+        if (!o.whole) out.push(`lots.fallback "${f.obj}" has no whole grade (an intermediate sold whole, 2.10.1)`);
+        if (unsafe(f.obj)) out.push(`lots.fallback "${f.obj}" is a battery or an undrained car (T1)`);
+      }
+    }
   }
   return out;
 }

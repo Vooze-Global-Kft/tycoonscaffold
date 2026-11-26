@@ -2816,6 +2816,7 @@
           "floor-shear": 17.3,
           "floor-baler": 19.4,
           "shear-scale": 27.1,
+          "baler-scale": 31.2,
           "scale-shredder": 66.5,
           "scale-rotary": 86.9,
           "scale-smelter": 118.2
@@ -3369,7 +3370,9 @@
     "awayCapByRung_h": [
       0.5,
       2,
-      4
+      4,
+      6,
+      8
     ],
     "nightWatch_h": 2,
     "rivals": {
@@ -3741,7 +3744,7 @@
           "in": [
             "elv"
           ],
-          "feedBy": "hands",
+          "feedBy": "forklift",
           "out": {
             "elv": [
               [
@@ -4234,30 +4237,35 @@
           "line": [
             "crucible",
             "rotary"
-          ]
+          ],
+          "cut_s": 7
         },
         {
           "obj": "bushingCrate",
           "from": "partner.plumbing",
           "line": [
             "induction"
-          ]
+          ],
+          "cut_s": 7
         },
         {
           "obj": "cateringTable",
           "from": "partner.plumbing",
           "line": [
             "analyser"
-          ]
+          ],
+          "cut_s": 4
         },
         {
           "obj": "propeller",
           "from": "partner.boatyard",
           "line": [
             "induction"
-          ]
+          ],
+          "cut_s": 10
         }
-      ]
+      ],
+      "fallback": null
     },
     "crate": {
       "share": 0.15,

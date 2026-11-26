@@ -73,6 +73,36 @@ describe('5.2: each check refuses a broken content', () => {
   }, 'kg of sellable grades a kilogram');
   // (5)
   refuses('(5) an electrical thing on the Yard sale', (c) => ((c.reuse as Any).kinds.washer = { fromPartnerOnly: false }), 'reuse.kinds.washer is tagged electrical');
+  // s2a-fix (the critic's finding 8 and 9: attack/s2a/breaks.ts, each of these PASSED before)
+  refuses('T1: the car arriving by a skip\'s tip', (c) => (layer(c).objects.elv.arrives = 'tip'), 'worksLayer.objects.elv holds fuel');
+  refuses('T1: batteries arriving by a skip\'s tip', (c) => (layer(c).objects.pbb.arrives = 'tip'), 'worksLayer.objects.pbb is a battery');
+  refuses('T1: a battery in a partner\'s tipped skip', (c) => (layer(c).partners['partner.garage'].skip.pbb = 2), "holds \"pbb\", which is never tipped");
+  refuses('T24: crane.never without bronze', (c) => ((c.crane as Any).never = (c.crane as Any).never.filter((m: string) => m !== 'bronze')), 'crane.never lacks "bronze"');
+  refuses('T1: crane.neverObjects without the car', (c) => ((c.crane as Any).neverObjects = ['pbb']), 'crane.neverObjects lacks "elv"');
+  refuses('a plate\'s price that differs from its shop item\'s', (c) => (plate(c, 'baler').price = 1), 'works.plates.baler.price §1 differs');
+  refuses('a plate\'s gate that differs from its shop item\'s', (c) => (plate(c, 'shredder').gate = 'rung3'), 'works.plates.shredder.gate rung3 differs');
+  refuses('a plate\'s needs that differs from its shop item\'s', (c) => (plate(c, 'smelter').needs = null), 'works.plates.smelter.needs null differs');
+  refuses('a plate with no shop item', (c) => (layer(c).shop = layer(c).shop.filter((i: Any) => i.key !== 'baler')), 'works.plates.baler has 0 shop items');
+  refuses('a grade a plate makes with no bay', (c) => delete layer(c).bays.shred, 'makes "shred", which has no bay');
+  refuses('T5: a hall recipe input from an uncovered bay', (c) => plate(c, 'rotary').recipes.alu.in.push('li'), 'takes "li", whose bay is not covered');
+  refuses('a station fed by hands', (c) => (plate(c, 'depollution').feedBy = 'hands'), 'it is fed by the forklift only');
+  refuses('a station\'s yield that differs from its object\'s', (c) => {
+    plate(c, 'depollution').out.elv[0][1] = 0.03;
+    plate(c, 'depollution').out.elv[4][1] = 0.785;
+  }, 'a station\'s yield is its object\'s');
+  refuses('a rung below the one before it', (c) => (c.ladder.rungs[4].t = 500), "rung 5's 500 t is not above rung 4's");
+  refuses('a ceiling that falls', (c) => (c.ceilings_t_h[4] = 10), 'ceilings_t_h[4] (rung 5) 10 t/h falls');
+  refuses('packsOff without one country of the fixed list', (c) => ((c.iap as Any).packsOff = (c.iap as Any).packsOff.filter((x: string) => x !== 'DE')), 'iap.packsOff is not the fixed list');
+  refuses('a lot kind cut outside lots.cut_s', (c) => ((c.lots as Any).kinds[0].cut_s = 30), 'is outside lots.cut_s');
+  refuses('a lot fallback that needs the plasma cutter', (c) => ((c.lots as Any).fallback = { obj: 'casing' }), 'the fallback is what comes before the plasma cutter');
+  refuses('a lot from an unknown sender', (c) => ((c.lots as Any).kinds[0].from = 'partner.nope'), 'neither a partner nor a register id');
+  refuses('a bridge partner that opens with a plate', (c) => (layer(c).partners['partner.garage'].opens = 'baler'), 'is a plate: the bridge partners open with a vehicle');
+  refuses('(14) an away-cap list shorter than ladder.topRung', (c) => (c.awayCapByRung_h = [0.5, 2, 4]), 'awayCapByRung_h has 3 entries; ladder.topRung 5');
+  it('the schema refuses iap.maxStanding other than 3 (ruling 15.13 c)', () => {
+    const a = structuredClone(RAW) as Any;
+    a.iap.maxStanding = 9;
+    expect(SalvageSchema.safeParse(a).success).toBe(false);
+  });
   refuses('(5) a bicycle not only from a named partner', (c) => ((c.reuse as Any).kinds.bike.fromPartnerOnly = false), 'fromPartnerOnly');
   // (6)
   refuses('(6) ads over the day', (c) => ((c.ads as Any).spotPerDay = (c.ads as Any).spotPerDay + 1), /ads at rung 3: .* over 0\.04/);

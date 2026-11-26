@@ -25,6 +25,7 @@ import type {
   TextKey,
   Txt,
   TxtArgs,
+  AwayCard,
   WorksCard,
   YardSaleCard,
 } from './types';
@@ -35,6 +36,7 @@ type SampleKind = (typeof CARD_KINDS_V3)[number];
 /** The text keys the samples name (5.3's families): strings2 adds each one; contract.test.ts prints those still missing. */
 export const SAMPLE_TEXT_KEYS = [
   'title.works.baler',
+  'title.works.shear',
   'title.finance',
   'title.letter',
   'title.agreements',
@@ -61,6 +63,9 @@ export const SAMPLE_TEXT_KEYS = [
   'card.sign',
   'card.notNow',
   'refusal.cash',
+  'share.fifth',
+  'away.bank',
+  'away.repaid',
 ] as const;
 
 /** A line by key, typed loosely (samples only: the key may not exist yet, see the header). */
@@ -116,6 +121,7 @@ export function sampleFinance(): FinanceTerms {
     charge: 5120,
     T: 69120,
     share: 0.2,
+    shareWords: k('share.fifth'),
     I: 54500,
     sign: btn(k('card.sign'), { act: 'signFinance', plate: 'shear', shown }),
     notNow: btn(k('card.notNow'), { act: 'open', card: { kind: 'works', plate: 'shear' } }),
@@ -175,7 +181,7 @@ export function sampleShop(): ShopCard {
     noAds: { product: 'noAds', owned: false, button: btn(k('card.shop.buy'), { act: 'buyProduct', product: 'noAds' }) },
     packs: [
       // "§109,000 · about 2 hours of your yard's earnings" (S = roundMoney(H × I) at I §54,500).
-      { product: 'pack2', H: 2, S: 109000, state: 'offer', updated: null, button: btn(k('card.shop.packLine', { x: { money: 109000 }, h: { hours: 2 } }), { act: 'buyPack', product: 'pack2', S: 109000 }) },
+      { product: 'pack2', H: 2, S: 109000, state: 'offer', updated: null, button: btn(k('card.shop.packLine', { x: { money: 109000 }, n: { n: 2 } }), { act: 'buyPack', product: 'pack2', S: 109000 }) },
       { product: 'pack5', H: 5, S: 272500, state: 'waiting', updated: null, button: null },
       { product: 'pack10', H: 10, S: 545000, state: 'noRoom', updated: null, button: null },
       { product: 'pack20', H: 20, S: 1090000, state: 'noRoom', updated: null, button: null },
@@ -206,7 +212,7 @@ const base = (kind: SampleKind, title: Txt, shape: CardData['shape'], showsDebt:
 /** One sample CardData per stage-2 card kind (4.2). */
 export const SAMPLES: Record<SampleKind, () => CardData> = {
   works: () => ({ ...base('works', k('title.works.baler'), 'panel', false), works: sampleWorksCard() }),
-  finance: () => ({ ...base('finance', k('title.finance'), 'centred', true), finance: sampleFinance() }),
+  finance: () => ({ ...base('finance', k('title.finance', { plate: { text: 'title.works.shear' as TextKey } }), 'centred', true), finance: sampleFinance() }),
   letter: () => base('letter', k('title.letter'), 'centred', false),
   yardSale: () => ({ ...base('yardSale', k('title.yardSale'), 'panel', false), yardSale: sampleYardSale() }),
   lot: () => ({ ...base('lot', k('title.lot'), 'panel', false), lot: sampleLot() }),
@@ -221,9 +227,39 @@ export const SAMPLES: Record<SampleKind, () => CardData> = {
 
 /** Extra samples of states a screen must draw: a works card with the Bank loan, and financed. */
 export const MORE_SAMPLES = {
-  worksLoan: (): CardData => ({ ...base('works', k('title.works.baler'), 'panel', false), works: sampleWorksLoanCard() }),
-  worksFinanced: (): CardData => ({ ...base('works', k('title.works.baler'), 'panel', true), works: { ...sampleWorksLoanCard(), state: 'running', foot: { buy: null, loan: null, loanShort: null, saveUp_s: null }, bank: { left: 56720, T: 69120, ring: 12400 / 69120 } } }),
+  worksLoan: (): CardData => ({ ...base('works', k('title.works.shear'), 'panel', false), works: sampleWorksLoanCard() }),
+  worksFinanced: (): CardData => ({ ...base('works', k('title.works.shear'), 'panel', true), works: { ...sampleWorksLoanCard(), state: 'running', foot: { buy: null, loan: null, loanShort: null, saveUp_s: null }, bank: { left: 56720, T: 69120, ring: 12400 / 69120 } } }),
+  /** s2a-fix: the away card with the bank's line and a repayment (it shows a debt). */
+  awayWithBank: (): CardData => ({ kind: 'away', shape: 'centred', title: { key: 'title.away' }, lead: [], rows: [], foot: [{ label: { key: 'ok' }, action: { act: 'ackAway' }, refusal: null }], showsDebt: true, sample: true, away: sampleAwayWithBank() }),
 };
+
+/**
+ * s2a-fix: the first yard's away card with stage 2's bank line while an agreement is open (2.14.4, 2.17): the
+ * card shows a debt (`showsDebt`, so the hud hides the ad button), its money GROSS of the bank's §y, and an
+ * agreement repaid in full while away.
+ */
+export function sampleAwayWithBank(): AwayCard {
+  return {
+    seconds: 4 * 3600,
+    capS: 4 * 3600,
+    lines: [
+      { grade: 'hms', g: 38_400_000, money: 9600 },
+      { grade: 'li', g: 21_000_000, money: 4200 },
+    ],
+    supplied_g: 59_400_000,
+    money: 13800,
+    loads: 31,
+    deliveries: 0,
+    passed: [],
+    hint: null,
+    absentS: 5 * 3600,
+    spent: 2100,
+    bought: [],
+    net: 11700,
+    bank: 2760,
+    repaid: ['depollution'],
+  };
+}
 
 /** The sample for a stage-2 card ref; null for a ref the first yard's `cardOf` answers. */
 export function sampleCard(ref: CardRefAll): CardData | null {

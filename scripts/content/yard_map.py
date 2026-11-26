@@ -473,7 +473,8 @@ def check(s, walks=True):
 
 # The walks of 3.4 (`--routes --works`), and the ids their names stand for.
 WORKS_WALKS = ['scale-crate', 'dropoff-reuseRack', 'floor-reuseRack', 'floor-crane', 'crane-shear', 'crane-baler', 'forklift-elvPad',
-               'elvPad-apron', 'floor-shear', 'floor-baler', 'shear-scale', 'scale-shredder', 'scale-rotary', 'scale-smelter']
+               'elvPad-apron', 'floor-shear', 'floor-baler', 'shear-scale', 'baler-scale', 'scale-shredder', 'scale-rotary', 'scale-smelter']
+# s2a-fix: baler-scale beside 3.4's walks (the critic's minor 18: a bale is carried to the scale by hand); not capped: a point for the lead
 WALK_ALIAS = {'apron': 'depollution.apron'}
 # 3.6 (5): the walks with a limit (metres)
 WORKS_LIMITS = {'scale-crate': 20, 'dropoff-reuseRack': 24, 'floor-crane': 10}

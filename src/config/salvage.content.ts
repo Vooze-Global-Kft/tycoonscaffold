@@ -61,8 +61,10 @@ const PLATES: Plates = {
   },
   analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 6000, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   depollution: {
-    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 80000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "hands",
-    // one car at a time on its apron, depollution.s a car; out whole: the battery, four wheels, the loom, the converter, the drained shell (shares of the car's 1 t)
+    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 80000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
+    // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
+    // out whole: the battery, four wheels, the loom, the converter, the drained shell: the elv object's pieces, shell and waste by mass
+    // (lintStage2More (e) holds the two equal: one definition of a car's yield)
     out: { elv: [["pbb", 0.015], ["alw", 0.036], ["tcab", 0.004], ["conv", 0.0015], ["cbody", 0.8]] },
     waste: { elv: [["carrier", 0.1435]] }, // fluids and tyres, in sealed drums, to a licensed waste carrier
     lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 2000, permit: "card.rota.permitElv",
@@ -223,6 +225,8 @@ const MAP_WORKS: MapWorks = {
     "floor-shear": 17.3,
     "floor-baler": 19.4,
     "shear-scale": 27.1,
+    // s2a-fix: reported beside 3.4's walks (3.4 names none; 3.4's shear-scale is 16): a bale and a sheared piece go to the scale by hand
+    "baler-scale": 31.2,
     "scale-shredder": 66.5,
     "scale-rotary": 86.9,
     "scale-smelter": 118.2,
@@ -1409,10 +1413,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   ceilings_t_h: [6, 110, 400, 800, 3500],
   // STAGE 2 (2.11, E11): payback hours by rung (null at rungs 1 and 2; tau_4 > 20 h is a fixed lower bound)
   tau_h: [null, null, 9, 22, 45],
-  // E33. STAGE 2 (2.11) makes it [0.5, 2, 4, 6, 8] (6 h at rung 4, 8 h at rung 5): HELD at the first yard's three in Phase A,
-  // because the first yard's away card reads the next rung's cap (away.ts runLongerOf loops to the list's end): a fourth
-  // entry would print "from rung 4 it runs six hours" at rung 3 (requests.md, to the loop's owner; build-yard.py warns until then)
-  awayCapByRung_h: [0.5, 2, 4],
+  // E33. STAGE 2 (2.11): 6 h at rung 4, 8 h at rung 5 (s2a-fix: away.ts runLongerOf now stops at the stage's top rung, so
+  // rungs 1 to 3 read and print exactly the first yard's 0.5, 2 and 4 h; 5.2 (14) holds the list at ladder.topRung's length)
+  awayCapByRung_h: [0.5, 2, 4, 6, 8],
   nightWatch_h: 2,
   rivals: {
     rule: "tonnes = T0_t x (1 + g x min(d, 40)), d = market days since the player's first second (E27); the k-th rival below the player shows at most (1 - 0.03 k) x the player (S17)",
@@ -1523,11 +1526,15 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     cut_s: [4, 10],
     kinds: [
       // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
-      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"] },
-      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"] },
-      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"] },
-      { obj: "propeller", from: "partner.boatyard", line: ["induction"] },
+      // cut_s: the boss's seconds for each kind within [4, 10] (first values, s2a-fix: the heavier piece the longer)
+      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7 },
+      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7 },
+      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4 },
+      { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10 },
     ],
+    // 2.10.1's "else an intermediate sold whole" names no thing: NOT NAMED here (a point for the lead, notes/s2a-fix.md):
+    // with every kind at tier 4, no lot comes at rung 3 before the plasma cutter. build-yard.py says so.
+    fallback: null,
   },
   // The crate, "the picking table" (2.10.2): no hold time (P2).
   crate: { share: 0.15, max: 12, sort_s: 3, u: 1.6 },
