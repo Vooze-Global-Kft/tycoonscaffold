@@ -294,7 +294,7 @@ function driveS(x: Ctx, path: { x: number; y: number }[], sp: { vy: number; vl: 
  * owner1 V3: a driver's trip speeds, fixed at its departure from `from`: inside the fence min(truck.yardV, his speed);
  * on the lane the speed that makes the trip's drive last what it did at his one speed (routeM's park-gate, gate-
  * weighbridge, weighbridge-floor and floor-park and the lane twice, at driverV), so the trip's total, at every level and
- * boost, is unchanged; at most truck.laneMaxF times his speed (a trip that starts far from the park may then last longer).
+ * boost, is unchanged, while the yard part alone takes less than that time (else the lane at truck.laneMaxF times his speed).
  */
 function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slot: number): { vy: number; vl: number } {
   const c = x.c;
@@ -313,7 +313,10 @@ function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slo
     at = end;
   }
   if (lane <= 0) return { vy, vl: v };
-  const laneT = Math.max(D - yard / vy, lane / (v * (c.truck.laneMaxF ?? 4)));
+  // The lane takes what the yard leaves of the drive's old time; only when the yard alone takes all of it (a very high
+  // level with the boost, or a truck left far from the park) is the lane at laneMaxF times his speed (the trip lasts longer).
+  const left = D - yard / vy;
+  const laneT = left > 1e-3 ? left : lane / (v * (c.truck.laneMaxF ?? 20));
   return { vy, vl: lane / laneT };
 }
 

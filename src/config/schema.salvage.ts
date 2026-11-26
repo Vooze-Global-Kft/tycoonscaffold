@@ -412,7 +412,7 @@ export const TruckSchema = z.object({
   bossYardV: z.number().positive().optional(),
   /** owner1 T3: seconds the BOSS's hook takes (the hired driver's stays handle_s). Absent: handle_s. */
   bossHandle_s: z.number().nonnegative().optional(),
-  /** owner1 V3: the lane's speed is at most laneMaxF times the driver's speed (a trip started far from the park may then last longer). */
+  /** owner1 V3: when the yard part of a trip alone takes its whole old drive time (a very high level with the boost, a truck left far from the park), the lane runs at laneMaxF times the driver's speed and the trip lasts longer. */
   laneMaxF: z.number().min(1).optional(),
 });
 export type TruckDef = z.infer<typeof TruckSchema>;

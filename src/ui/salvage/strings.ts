@@ -311,7 +311,7 @@ export const TEXT = {
   'goal.fetchTrial': 'Fetch the farm’s trial load',
   'goal.tipTrial': 'Tip it on the floor', // P14
   'goal.step.truck': 'Get in the truck', // owner1 T2
-  'goal.step.drive': 'Drive to {partner}', // partner: { name: partner id }
+  'goal.step.drive': 'Drive out to the load',
   'goal.step.hook': 'Keep still: hooking',
   'goal.step.weigh': 'Drive onto the weighbridge',
   'goal.step.tip': 'Tip it on the floor',

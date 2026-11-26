@@ -2888,7 +2888,7 @@
       "yardV": 4,
       "bossYardV": 4.5,
       "bossHandle_s": 4,
-      "laneMaxF": 4
+      "laneMaxF": 20
     },
     "machines": {
       "hand_stripper": {

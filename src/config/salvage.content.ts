@@ -1143,7 +1143,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // load nets a second of the yard's slowest step. 99: beyond the ladder, the first yard's rule (the skip full longest that
   // fits) everywhere: 16.8 (2) not met over the bots' days (notes/dispatch-engine2.md "After the check"); 1 switches it on.
   // owner1 (RULING-owner1 V3, T3): yardV / bossYardV inside the fence, the lane pays for it (bossV 9 -> 11 on the lane); the boss hooks in 4 s.
-  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 4 },
+  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 20 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },

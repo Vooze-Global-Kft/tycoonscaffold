@@ -1379,7 +1379,7 @@ export interface Goal {
   /** True for a goal with a Not now (skipGoal). */
   optional: boolean;
   /**
-   * owner1 T2: the step of a load the boss fetches himself (goals.ts loadStep): "Get in the truck", "Drive to {partner}",
+   * owner1 T2: the step of a load the boss fetches himself (goals.ts loadStep): "Get in the truck", "Drive out to the load",
    * "Keep still: hooking", "Drive onto the weighbridge", "Tip it on the floor"; the chevron (frame.chevron) points at
    * the same step. Absent: no load step (the goal's own line).
    */

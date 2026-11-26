@@ -380,7 +380,7 @@ export function loadStep(cfg: SalvageConfig, g: SalvageGame, goalDone?: string |
   const partner = goalPartner!;
   const beyond = s.presence.x > c.yard.width;
   const z = c.partners[partner] ? skipZone(c, partner, 0) : null;
-  return { text: { key: 'goal.step.drive' as TextKey, args: { partner: { name: partner } } }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
+  return { text: { key: 'goal.step.drive' as TextKey }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
 }
 
 /** The chevron's point in metres, or null (frame.ts: FrameTable.chevron). */
