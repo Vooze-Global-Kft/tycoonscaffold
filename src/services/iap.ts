@@ -103,7 +103,7 @@ type CustomerInfoListener = Parameters<RC['addCustomerInfoUpdateListener']>[0];
  * IapService: a development reload makes a new service, which first removes the listener the
  * previous one added, so an old store never hears the store again.
  */
-const NATIVE_SLOT = '__itfIapCustomerInfoListener';
+const NATIVE_SLOT = '__itfIapNativeListener';
 type Slot = { [NATIVE_SLOT]?: CustomerInfoListener };
 
 /** Counts simulated purchases, so two in one millisecond still get two ids. */

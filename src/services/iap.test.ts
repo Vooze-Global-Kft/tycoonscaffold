@@ -79,7 +79,7 @@ const pack = PRODUCTS[0] as never;
 afterEach(() => {
   vi.useRealTimers();
   delete (globalThis as { __DEV__?: boolean }).__DEV__;
-  delete (globalThis as Record<string, unknown>).__itfIapCustomerInfoListener;
+  delete (globalThis as Record<string, unknown>).__itfIapNativeListener;
 });
 const tx = (id: string, product: string, date: string) => ({ transactionIdentifier: id, productIdentifier: product, purchaseDate: date });
 

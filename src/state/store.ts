@@ -455,11 +455,12 @@ export const useGame = create<Store>((set, get, api) => {
     const n = (sheetsOpen.get(productId) ?? 1) - 1;
     if (n > 0) return void sheetsOpen.set(productId, n);
     sheetsOpen.delete(productId);
-    const txs = [...held.values()].filter((t) => t.productId === productId);
-    if (txs.length === 0) return;
-    for (const t of txs) held.delete(t.txId);
+    // Everything held whose product has no sheet open now (a purchase's own listing parks other products' too).
+    const txs = [...held.values()].filter((t) => !sheetsOpen.has(t.productId));
     const fresh = heldFresh && sheetsOpen.size === 0;
     if (sheetsOpen.size === 0) heldFresh = false;
+    if (txs.length === 0) return;
+    for (const t of txs) held.delete(t.txId);
     routeListing({ txs, fresh });
   };
 
