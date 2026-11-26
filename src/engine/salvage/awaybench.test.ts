@@ -63,6 +63,10 @@ describe('the away bench on the real content', () => {
     // (BENCH_STRICT=1 npx vitest run src/engine/salvage/awaybench.test.ts on a quiet machine: ruling 14.8). Inside
     // the whole suite, beside other workers, the same pass measured 237 to 260 ms, so there the limit is an alarm
     // for a pass that has become half as dear again, not the gate.
-    expect(best).toBeLessThanOrEqual(process.env.BENCH_STRICT ? 250 : 400);
+    // 26 Nov 13:30: from rung 3 the real content now opens stage 2's works layer (lots, the Yard sale, the van, plates),
+    // so this pass does more than the first yard's did: 277 to 320 ms alone, 430 to 460 ms beside other workers. Until
+    // the bots' engineer has measured stage 2's own bench (from r3 and r4) and the lead has set its gate, the limit in
+    // the suite is an alarm at 700 ms; BENCH_STRICT keeps the first yard's 250 ms for a content with stage 2 dark.
+    expect(best).toBeLessThanOrEqual(process.env.BENCH_STRICT ? 250 : 700);
   }, 600_000);
 });

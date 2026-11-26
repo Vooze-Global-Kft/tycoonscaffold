@@ -36,7 +36,7 @@ import { laneDrawEnd, laneGeo, laneSigns, mapDriveLine, mapNorth, type LaneGeo }
 import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
 
-export { laneDrawEnd, laneGeo, type LaneGeo };
+export { laneDrawEnd, laneGeo, mapDriveLine, type LaneGeo };
 
 export const ITEM = 12;
 export const L_DECAL = 0;
@@ -362,7 +362,7 @@ export interface RulesScene {
   solids: number[];
   /** CREW numbers each: role, pose, fx, fy, tx, ty, t0, t1, carrier (0 none, 1 sack, 2 trolley), carrier frame, phase (0 wait, 1 walkTo, 2 work, 3 walkBack), hidden, via x, via y (NaN none). */
   crew: number[];
-  /** owned, x, y, heading8, skip (0 none, 1 empty, 2 loaded), by (0 none, 1 boss, 2 driver), leg code or -1, t0, t1, hook share or -1, skip load frame or -1, path points. */
+  /** owned, x, y, heading8, skip (0 none, 1 empty, 2 loaded), by (0 none, 1 boss, 2 driver), leg code or -1, t0, t1, hook share or -1, skip load frame or -1, path points, the instant the leg's driving ends (NaN: at t1), the facing while standing (heading8, -1: the path's). */
   truck: number[];
   /** The leg's path: x, y per point (at most PATH_MAX). */
   truckPath: number[];
@@ -386,7 +386,7 @@ export const NO_SCENE: RulesScene = {
   items: [],
   solids: [],
   crew: [],
-  truck: [0, 0, 0, 0, 0, 0, -1, 0, 0, -1, -1, 0],
+  truck: [0, 0, 0, 0, 0, 0, -1, 0, 0, -1, -1, 0, NaN, -1],
   truckPath: [],
   flatbed: [0, 0, 0, 0, 0, 0, 0],
   flatbedPath: [],
@@ -651,15 +651,10 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   const loadState = tk.load?.state ?? (tk.skip === 'none' ? null : tk.skip);
   const loadPartner = tk.load?.partner ?? leg?.partner ?? f.skips.find((s) => s.state !== 'filling')?.partner ?? null;
   const skipFrame = loadState === 'trial' || loadState === 'full' ? skipLoadFrame(loadPartner ? partnerLook(c, loadPartner) : 0, loadState === 'trial') : -1;
-  let truckPath = flat(leg?.path);
-  if (leg && truckPath.length < 4) {
-    const site = lane?.sites.find((s) => s.id === leg.partner);
-    const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
-    truckPath = leg.from && leg.to ? [leg.from.x, leg.from.y, leg.to.x, leg.to.y] : [tk.x, tk.y, gate[0], gate[1], site ? site.x - 3.2 : gate[0] + 20, gate[1]];
-  }
   const line = mapDriveLine(c);
-  truckPath = viaDriveLine(truckPath, line, c.yard.width);
-  const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading ?? 0, loadState === null ? 0 : skipFrame >= 0 ? 2 : 1, tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? (LEG_CODE[leg.phase] ?? -1) : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, skipFrame, truckPath.length / 2];
+  const tl = tripLeg(c, tk, line);
+  const truckPath = tl.path;
+  const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading ?? 0, loadState === null ? 0 : skipFrame >= 0 ? 2 : 1, tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? (LEG_CODE[leg.phase] ?? -1) : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, skipFrame, truckPath.length / 2, tl.driveEnd, tl.face];
 
   // The merchant's flatbed and its path; the public's car; purchases arriving.
   const fbd = f.flatbed;
@@ -677,6 +672,86 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   for (const a of f.arrivals ?? []) arrivals.push(ARRIVAL_CODE[a.kind] ?? 0, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1);
 
   return { t: f.t, n, epoch: f.epoch ?? 0, items, solids, crew, truck, truckPath, flatbed, flatbedPath, car, arrivals, boss, cut: [], carried: f.load.pieces.length };
+}
+
+/**
+ * THE DRIVER'S TRUCK, ONE PHASE AT A TIME (the owner's review, 26 November, point 7: "trucks are
+ * sometimes speeding through the yard ... running people and the building over"). The frame's
+ * `truck.leg.path` is the WHOLE trip (park, gate, lane, skip) for every phase, reversed from `back` on,
+ * starting from wherever the rules last set the truck: the world drew the `park` phase (floor to park, a
+ * second or two) along the whole reversed trip, so the truck appeared at the partner's site and crossed the
+ * lane and the yard at 70 m/s; `weigh` and `tip` stood at the path's end, so the truck jumped from the
+ * gate to the bridge and from the bridge to the floor.
+ *
+ * Until the frame names the path each phase drives (requests.md [owner1-world] frame.ts: `leg.drive` and
+ * `leg.driveT1`, used here whenever present), the world draws each phase between the places the rules set
+ * the truck at (truck.ts driverLegEnd: out from where it stands to the skip, hook at the skip, back from
+ * the skip to the gate and on to the bridge, weigh on the bridge, tip from the bridge to the floor then
+ * tipping, park from the floor to the park; the boss's loaded truck that a driver finishes drives from
+ * where it stands), with the content's points and the drive line. Nothing is decided: the dates are the
+ * leg's, the places the content's; only the share of `tip` spent driving is the world's estimate (the
+ * bridge-to-floor run at the content's `truck.v`, at most half the phase). Pure.
+ *
+ * Returns the path (x, y per point), the instant its driving ends (NaN: at the leg's end) and the facing
+ * while standing (heading8, -1: the path's).
+ */
+export function tripLeg(c: SalvageContent, tk: R.FrameTruck, line: readonly number[]): { path: number[]; driveEnd: number; face: number } {
+  const leg = tk.leg;
+  if (!leg) return { path: [], driveEnd: NaN, face: -1 };
+  const W = c.yard.width;
+  const given = leg as typeof leg & { drive?: Pt[]; driveT1?: number };
+  if (Array.isArray(given.drive)) {
+    const p = flat(given.drive.length ? given.drive : [{ x: tk.x, y: tk.y }]);
+    return { path: p, driveEnd: typeof given.driveT1 === 'number' ? given.driveT1 : NaN, face: -1 };
+  }
+  const P = (id: string, d: Pt): Pt => {
+    const q = c.map.points[id];
+    return q ? { x: q[0], y: q[1] } : d;
+  };
+  const gate = P('gate', { x: W - 1, y: c.yard.depth / 2 });
+  const wb = P('weighbridge', gate);
+  const floor = P('floor', wb);
+  const park = P('park', { x: tk.x, y: tk.y });
+  const here = { x: tk.x, y: tk.y };
+  // The skip zone: where `out` goes to and the back phases come from (frame.ts tripTo).
+  const z = leg.phase === 'out' || leg.phase === 'walk' || leg.phase === 'hook' ? leg.to : leg.from;
+  const near = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y) < 1;
+  const fromSkip: Pt[] = [{ x: z.x, y: z.y }, { x: z.x, y: gate.y }, { x: gate.x + 2, y: gate.y }, gate];
+  let pts: Pt[];
+  let driveEnd = NaN;
+  let face = -1;
+  switch (leg.phase) {
+    case 'out':
+      pts = leg.path && leg.path.length >= 2 ? leg.path : [here, gate, { x: gate.x + 2, y: gate.y }, { x: z.x, y: gate.y }, { x: z.x, y: z.y }];
+      break;
+    case 'hook':
+      pts = [{ x: z.x, y: z.y }];
+      face = 2;
+      break;
+    case 'back':
+      // From the skip (the rules set the truck at the gate as it leaves the hook), else from where the boss left it.
+      pts = near(here, gate) ? [...fromSkip, wb] : [here, wb];
+      break;
+    case 'weigh':
+      pts = near(here, wb) ? [wb] : [here, wb];
+      face = 6;
+      break;
+    case 'tip': {
+      pts = [wb, floor];
+      const span = leg.t1 - leg.t0;
+      const len = Math.hypot(floor.x - wb.x, floor.y - wb.y);
+      driveEnd = leg.t0 + Math.min(span / 2, len / Math.max(0.1, c.truck.v));
+      break;
+    }
+    case 'park':
+      pts = [near(here, park) ? floor : here, park];
+      break;
+    default:
+      pts = [here];
+      face = tk.heading ?? 0;
+  }
+  const path = viaDriveLine(flat(pts), line, W);
+  return { path: path.length / 2 > PATH_MAX ? flat(pts) : path, driveEnd, face };
 }
 
 /**
@@ -890,6 +965,8 @@ export interface DrawList {
   order: Int32Array;
   /** The sort's scratch: band and sheet of each item (sortList). */
   sk: Float64Array;
+  /** The merge's scratch (sortRuns). */
+  tmp: Int32Array;
   n: number;
   cap: number;
   /** Offset of this list in the shared host-object pools. */
@@ -930,7 +1007,9 @@ export function personInto(L: DrawList, V: Float64Array, T: ActorTable, who: num
   let cc = -1;
   let cdx = 0;
   let cdy = 0;
-  if (cKind >= 0 && pose === P_PUSH) {
+  // The carrier is drawn in EVERY pose where it is pushed in front (the owner's review, point 3: drawn only
+  // in the push pose, the trolley vanished at each feed, cut or pick and came back between them: it flashed).
+  if (cKind >= 0) {
     cc = T.carrier[(cKind * 4 + cFrame) * 4 + h];
     const m = T.ahead[cKind];
     cdx = h === 1 ? m * 40 : h === 3 ? -m * 40 : 0;
@@ -1017,8 +1096,95 @@ export function sortList(L: DrawList): void {
   }
 }
 
+/** The sort's order of two items: band, then sheet (B before A), then key (./sortList). */
+function before(L: DrawList, a: number, b: number): boolean {
+  'worklet';
+  const sa = L.sk[a];
+  const sb = L.sk[b];
+  return sa < sb || (sa === sb && L.key[a] <= L.key[b]);
+}
+
+/**
+ * sortList for a frame whose list was filled in three runs (the owner's review, point 1: no work a phone
+ * cannot do sixty times a second): [0, a) and [a, b) are already in the sort's order (the map's statics and
+ * the rules' items, sorted once when they are built: `presortItems`; culling keeps a sorted run sorted), and
+ * only the actors [b, n) are sorted here, then the three runs are merged: O(n + actors²) instead of the
+ * insertion sort's O(n²) over every sprite on screen. The result is exactly sortList's (a test holds them
+ * equal).
+ */
+export function sortRuns(L: DrawList, a: number, b: number): void {
+  'worklet';
+  const o = L.order;
+  const n = L.n;
+  const sk = L.sk;
+  const tmp = L.tmp;
+  for (let i = 0; i < n; i++) {
+    o[i] = i;
+    const sheet = Math.floor(L.cell[i] / CELL_BASE);
+    sk[i] = Math.floor(L.key[i] / DEPTH_BAND) * 4 + (sheet === 1 ? 0 : sheet === 0 ? 1 : 2);
+  }
+  // A run that is not in order after all (a table not presorted) falls back to the whole insertion sort.
+  for (let i = 1; i < b; i++) {
+    if (i !== a && !before(L, i - 1, i)) {
+      sortList(L);
+      return;
+    }
+  }
+  for (let i = b + 1; i < n; i++) {
+    const v = o[i];
+    let j = i - 1;
+    while (j >= b && !before(L, o[j], v)) {
+      o[j + 1] = o[j];
+      j--;
+    }
+    o[j + 1] = v;
+  }
+  // Merge [0, a) and [a, b) into tmp[0, b), then tmp[0, b) and o[b, n) into o.
+  let i = 0;
+  let j = a;
+  let k = 0;
+  while (i < a && j < b) tmp[k++] = before(L, i, j) ? i++ : j++;
+  while (i < a) tmp[k++] = i++;
+  while (j < b) tmp[k++] = j++;
+  i = 0;
+  j = b;
+  k = 0;
+  // o[b, n) is read while o[0, ..) is written: copy the actors' order aside first (into tmp's tail).
+  for (let q = b; q < n; q++) tmp[q] = o[q];
+  while (i < b && j < n) o[k++] = before(L, tmp[i], tmp[j]) ? tmp[i++] : tmp[j++];
+  while (i < b) o[k++] = tmp[i++];
+  while (j < n) o[k++] = tmp[j++];
+}
+
+/**
+ * Items (ITEM numbers each) reordered once, where they are built, into the frame's sort order: decals
+ * first in their own order (they are drawn in list order), then the sorted ones by band, sheet and key
+ * (stable). The frame loop's `sortRuns` then merges them instead of sorting them. Pure.
+ */
+export function presortItems(items: number[]): number[] {
+  const n = Math.floor(items.length / ITEM);
+  const idx = Array.from({ length: n }, (_, i) => i);
+  const rank = (i: number) => {
+    const cell = items[i * ITEM + 2];
+    const sheet = Math.floor(cell / CELL_BASE);
+    return Math.floor(items[i * ITEM + 1] / DEPTH_BAND) * 4 + (sheet === 1 ? 0 : sheet === 0 ? 1 : 2);
+  };
+  const decal = (i: number) => items[i * ITEM] === L_DECAL;
+  idx.sort((p, q) => {
+    const dp = decal(p);
+    const dq = decal(q);
+    if (dp || dq) return dp && dq ? p - q : dp ? -1 : 1;
+    return rank(p) - rank(q) || items[p * ITEM + 1] - items[q * ITEM + 1] || p - q;
+  });
+  const out: number[] = new Array(items.length);
+  idx.forEach((i, k) => {
+    for (let m = 0; m < ITEM; m++) out[k * ITEM + m] = items[i * ITEM + m];
+  });
+  return out;
+}
+
 /** makeList for the UI thread. */
 export function makeListW(cap: number, base: number): DrawList {
   'worklet';
-  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), sk: new Float64Array(cap), n: 0, cap, base };
+  return { key: new Float64Array(cap), cell: new Float64Array(cap), sx: new Float64Array(cap), sy: new Float64Array(cap), k: new Float64Array(cap), tint: new Float64Array(cap), al: new Float64Array(cap), order: new Int32Array(cap), sk: new Float64Array(cap), tmp: new Int32Array(cap), n: 0, cap, base };
 }

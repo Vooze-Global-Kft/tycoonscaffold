@@ -37,7 +37,8 @@ import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, sortList, staticItems, type DrawList, type RulesScene } from './actors';
+import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, presortItems, sortRuns, staticItems, type DrawList, type RulesScene } from './actors';
+import { crewAt, legStart, makeClock, rulesClock, truckAt, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
@@ -266,7 +267,8 @@ export function useYardLoop(opts: {
   const baked = useMemo(() => {
     if (!art || !content) return null;
     const res = makeResolver(art.sheets);
-    const statics = staticItems(content, res, yard.props.filter((p) => p.id.startsWith('stress-')), yard.dressing);
+    // Presorted once (./actors.ts presortItems): the frame merges them instead of sorting them (sortRuns).
+    const statics = presortItems(staticItems(content, res, yard.props.filter((p) => p.id.startsWith('stress-')), yard.dressing));
     const T = actorTable(res, { hand: YARD.vestYardHand, cutter: YARD.vestCutter, driver: YARD.vestDriver });
     const images = art.sheets.map((s) => (s ? s.image : null));
     const rects = art.sheets.map((s) => (s ? s.rects : []));
@@ -362,7 +364,7 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2) };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), truckK: [NaN, NaN] };
         scratch.value = S;
       }
       const st = S.st;
@@ -377,12 +379,11 @@ export function useYardLoop(opts: {
       const clock = st[18];
       const Rv = rules.value;
       const out = S.out;
-      if (Rv !== S.lastR) {
-        S.lastR = Rv;
-        st[20] = info.timestamp;
-      }
-      // The rules' play time now: the frame's time plus what has passed since it came (at most a tick).
-      const tNow = Rv.t + Math.min(0.25, (info.timestamp - st[20]) / 1000);
+      const fresh = Rv !== S.lastR;
+      if (fresh) S.lastR = Rv;
+      // The rules' play time to draw at: a clock that runs at the display's rate, steered towards the tables
+      // as they come, never re-anchored by an ordinary tick and never frozen by a late one (./motion.ts).
+      const tNow = rulesClock(S.clk, fresh, Rv.t, Rv.epoch, info.timestamp, dt);
 
       // --- the stick: a direction and a share of full speed (none while an overlay is open) ---------------
       const s = stick.value;
@@ -582,7 +583,9 @@ export function useYardLoop(opts: {
       L.n = 0;
       let actors = 0;
       // The map, then the rules' things, pieces, machines, bays, skips and circles.
+      let runA = 0;
       for (let src = 0; src < 2; src++) {
+        if (src === 1) runA = L.n;
         const A = src === 0 ? statics : Rv.items;
         for (let o = 0; o + ITEM - 1 < A.length; o += ITEM) {
           const alt = A[o + 10];
@@ -590,6 +593,7 @@ export function useYardLoop(opts: {
           addTo(A[o] === L_DECAL ? D : L, V, A[o + 1], cell, A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9]);
         }
       }
+      const runB = L.n;
       if (T !== null) {
         const P = S.path;
         const o4 = S.o4;
@@ -599,19 +603,9 @@ export function useYardLoop(opts: {
           if (CR[o + 11] === 1) continue;
           const phase = CR[o + 10];
           const walking = phase === 1 || phase === 3;
-          let np = 2;
-          P[0] = CR[o + 2];
-          P[1] = CR[o + 3];
-          if (CR[o + 12] === CR[o + 12]) {
-            P[2] = CR[o + 12];
-            P[3] = CR[o + 13];
-            np = 3;
-          }
-          P[np * 2 - 2] = CR[o + 4];
-          P[np * 2 - 1] = CR[o + 5];
-          const span = CR[o + 7] - CR[o + 6];
-          const u = walking ? (span > 0 ? (tNow - CR[o + 6]) / span : 1) : 1;
-          along(o4, P, np, u);
+          const ci = Math.min(63, o / 14);
+          const u = crewAt(o4, P, CR, o, tNow, walking ? legStart(S.legK, ci, CR[o + 6], CR[o + 7], tNow, snap) : NaN);
+          const np = CR[o + 12] === CR[o + 12] ? 3 : 2;
           const carrier = CR[o + 8] > 0 ? CR[o + 8] - 1 : -1;
           let pose = CR[o + 1];
           // The pour side-on (as the boss's, above); else standing faces the camera.
@@ -623,7 +617,8 @@ export function useYardLoop(opts: {
           } else if (carrier >= 0 && pose === P_STAND) pose = P_PUSH;
           if (pose === P_PUSH && !walking) frame = 0;
           addTo(SHD, V, 0, T.shPerson, o4[0], o4[1], 0, 0, 1, -1, 1);
-          if (carrier >= 0 && pose === P_PUSH) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], o4[0], o4[1], 0, 0, 1, -1, 1);
+          // The carrier stays in every pose (owner's review point 3: it vanished while working, flashing).
+          if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], o4[0], o4[1], 0, 0, 1, -1, 1);
           personInto(L, V, T, 1, pose, frame, h, -1, carrier, CR[o + 9], T.vests[CR[o]] ?? -1, o4[0], o4[1], o4[1] + 0.25);
           actors++;
         }
@@ -763,28 +758,16 @@ export function useYardLoop(opts: {
           let ty = st[3];
           let h8 = heading8(st[4]);
           let hook = -1;
-          if (!driving && TR[6] >= 0) {
-            const leg = TR[6];
-            const span = TR[8] - TR[7];
-            const u = span > 0 ? Math.max(0, Math.min(1, (tNow - TR[7]) / span)) : 1;
-            const TP = Rv.truckPath;
-            const np = Math.min(TR[11], PATH_MAX);
-            for (let q = 0; q < np * 2; q++) P[q] = TP[q];
-            if ((leg === 0 || leg === 2 || leg === 6) && np >= 2) {
-              along(o4, P, np, u);
-              tx = o4[0];
-              ty = o4[1];
-              h8 = heading8(Math.atan2(o4[3], o4[2]));
-            } else if (leg === 1 || leg === 4) {
-              tx = np >= 1 ? P[np * 2 - 2] : TR[1];
-              ty = np >= 1 ? P[np * 2 - 1] : TR[2];
-              hook = leg === 1 ? (u < 0.5 ? 1 : 0) : u < 0.35 ? 2 : 3;
-            } else if (leg === 3) {
-              tx = np >= 1 ? P[np * 2 - 2] : pts.weighbridge[0];
-              ty = np >= 1 ? P[np * 2 - 1] : pts.weighbridge[1];
-              h8 = 0;
-            }
+          // The driver's trip: along this phase's path at the leg's dates (./motion.ts truckAt).
+          const t4 = S.t4;
+          if (!driving && truckAt(t4, S.tmp2, TR, Rv.truckPath, tNow, TR[6] >= 0 ? legStart(S.truckK, 0, TR[7], TR[12] === TR[12] ? TR[12] : TR[8], tNow, snap) : NaN)) {
+            tx = t4[0];
+            ty = t4[1];
+            h8 = t4[2];
+            hook = t4[3];
           }
+          // The facing turns through the eight headings, never flips (the boss's wheel turns it itself).
+          h8 = turnFacing(S.face, h8, clock, driving || snap || hook >= 0);
           const key = ty + 1;
           if (hook >= 0) {
             vehicleInto(L, SHD, V, T.truckHook[hook], T.shTruck[2], T.truckScale, tx, ty, key);
@@ -820,14 +803,14 @@ export function useYardLoop(opts: {
           } else if (carrier >= 0) pose = P_PUSH;
           if (h !== st[8] && !steering) st[8] = h;
           addTo(SHD, V, 0, T.shPerson, st[0], st[1], 0, 0, 1, -1, 1);
-          if (carrier >= 0 && pose === P_PUSH) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], st[0], st[1], 0, 0, 1, -1, 1);
+          if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], st[0], st[1], 0, 0, 1, -1, 1);
           personInto(L, V, T, 0, pose, frame, h, carrier < 0 ? B[1] : -1, carrier, B[2], -1, st[0], st[1], st[1] + 0.25);
           actors++;
         }
       }
 
       // --- one picture: decals, shadows, then the sorted list in runs ---------------------------------------
-      sortList(L);
+      sortRuns(L, runA, runB);
       let runs = 0;
       const picture = createPicture((cv) => {
         if (K === null) return;

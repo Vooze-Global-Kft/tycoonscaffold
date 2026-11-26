@@ -539,7 +539,7 @@ baseline, and the bots' report on the new engine (REPORT7) states it.
 **E43. The merchant's round is the same watched or not (RULING2.md 14.3).** It is never lengthened
 for time away.
 
-**E44. The driver fetches what pays best (RULING2.md section 16).** In the first yard as merged the
+**E44. The driver and the farm's skips (RULING2.md section 16; as it ended, 16.9: the yard hands' rule alone removed the fault and the driver keeps the first yard's rule).** In the first yard as merged the
 hired driver fetched the skip that had been full longest, and "Another skip" for the farm made the
 yard poorer once demolition was open (its light skips crowded out loads that net twice as much).
 From rung 3 he ranks partners by what a load nets and keeps the floor's room for the best; a
@@ -1916,3 +1916,22 @@ on the floor.) The lead rules:
     (6) For the bots' tuning, not this pass: a farm skip beyond the third adds nothing on any
     seed: no level a player can buy may add exactly nothing (a lower top level or a rising fill
     rate).
+
+16.9 **How the two purchase faults ended (13:35, after the one pass of fixes).** THE YARD HANDS' RULE
+    ALONE SHIPS (17.2 as built: while the tipping floor is more than half full a yard hand clears
+    it before he feeds a machine or empties its tray; a FULL tray keeps its place), from rung 1,
+    with rung 3 at 28.5 t. The hired driver keeps the first yard's rule (`truck.pickFromRung`
+    beyond the ladder); the rank of 16.5 is built and stays in the code as an option, not
+    shipped: on the same states it keeps what the hands' rule alone keeps and fixes the demolition
+    level, but it buys nothing the simpler rule does not, and a truck that stands beside a ready
+    skip is exactly what confuses a player (the owner's review, point 5). Measured as shipped on
+    fifteen seeds: against the old rules the yard keeps 11 to 18 % more on means; the purchase walk
+    of 17.1 passes every row on means (the farm level at minute 30: -0.9 %, one seed -5.4 %; the
+    bench at two cutters and two hands: -1.2 % at minute 60, -0.8 % at day 1: both accepted as at
+    the yard's noise, watched by the bots in every report); every beat of the first hour up to the
+    first pour is unchanged to the second; sales at minutes 55 to 60 reach §2,000 a minute on 5 of
+    15 seeds (none before). 16.6's line for the skip is not needed; the machine's reason (the yard
+    hands are clearing the floor first) is in the card's data for Phase C's words. Still owed, by
+    the join and the bots: rated income's terms for the van and the Yard sale (its medians are
+    0.90 to 0.92 from rung 3 until then); the three days on bots that play the stage (16.7); an
+    hour away is now 0.81 of an hour played (E19 asks at most 0.8: the bots' tuning looks at it).
