@@ -32,6 +32,14 @@ export interface ProductListing {
   txs: readonly Omit<ProductArrival, 'own'>[];
   /** Read from the network just now (the store's cache invalidated first); false for the listener's reports. */
   fresh: boolean;
+  /**
+   * The store's own time of this answer (ms; RevenueCat: customer info's requestDate), null when it
+   * could not be read. Never the device's clock (RULING2 15.12 a): a quote's 72 hours run from its
+   * `askedMs` to the requestMs of a FRESH listing. In the simulated store (Expo Go) the simulation's
+   * own clock. The shared layer passes it on and decides nothing with it. The shared store always sets
+   * it; absent (a listing built by hand) it reads as null.
+   */
+  requestMs?: number | null;
 }
 
 /** What the shared engine asks of a mode with its own rules. Every function is pure. */
@@ -105,7 +113,8 @@ export interface EngineMode {
    * was given) when this is that quote's own sheet's result: the id is new against that quote's
    * `known`, and it goes to THAT quote. `own` null: a later arrival (the listener, the check at start,
    * a listing read at Buy): an id not in the ledger goes to the OLDEST standing quote of the product
-   * whose `known` lacks it, and with no such quote it belongs to another save and is not granted.
+   * whose `known` lacks it (oldest: the order in which quotes were made, the list's order, never
+   * `atMs`; 15.12 d), and with no such quote it belongs to another save and is not granted.
    * Never granted: an id in the ledger, or in the chosen quote's `known`. No clock decides a grant
    * (15.1): `purchasedMs` is the store's date, kept as information only (null when the store's
    * date could not be read). Called only through meta.grantPurchase, possibly several times with the
@@ -115,9 +124,10 @@ export interface EngineMode {
   grantProduct?(cfg: GameConfig, state: GameState, arrival: ProductArrival): GameState;
   /**
    * After every listing of the store account's transactions has been handed over (each arrival
-   * through grantProduct first): the mode may withdraw standing quotes the listing shows nothing new
-   * for (15.6: only on a `fresh` listing, read from the network, at least 72 hours after the quote
-   * was made; `now` is the device's clock, which decides no grant). Called only with the grant route
+   * through grantProduct first): the mode may withdraw the quotes that still stand (15.6, 15.11 b,
+   * 15.12 a: only on a `fresh` listing, and only when its `requestMs`, the store's own time, is at least
+   * 72 hours after the quote's `askedMs`; never by `now`, the device's clock, which decides no grant
+   * and no withdrawal; a listing whose requestMs is null withdraws nothing). Called only with the grant route
    * (a `hoursOfIncome` product and grantProduct). The SAME object when nothing changes. Pure.
    */
   afterListing?(cfg: GameConfig, state: GameState, listing: ProductListing, now: number): GameState;

@@ -2,10 +2,12 @@
 /**
  * The shared shop seams of yard-stage2.md 2.15.4, 2.15.5 and 9.1 (`store-shared`), as RULING2 section 15
  * amends them (`store-fix`), mode-agnostic: a test double of a mode that follows section 15 to the letter
- * (quotes with their `known` ids and a state, OPEN or WAITING; a ledger by id; an own result to its own
- * quote; a later arrival to the OLDEST standing quote whose `known` lacks it; at most one open quote per
- * product; 24 hours of WAITING refuse a new Buy; a fresh listing withdraws a quote at least 72 hours
- * old that it shows nothing new for), on Pizza Empire's data with `hoursOfIncome` products and a look
+ * as 15.12 closes it (quotes with their `known` ids, `askedMs` and a state, OPEN or WAITING; a ledger by
+ * id; an own result to its own quote; a later arrival to the OLDEST standing quote whose `known` lacks
+ * it, oldest being the list's order, never atMs; a new Buy withdraws no older quote; at most 3 quotes of
+ * a product stand; 24 hours of WAITING on the device's clock refuse a new Buy, a clock earlier than the
+ * quote's atMs counting as elapsed; a quote still standing after a fresh listing whose store request
+ * time is at least 72 hours after its askedMs is withdrawn), on Pizza Empire's data with `hoursOfIncome` products and a look
  * added in memory. The real store runs under node with the native services replaced by stand-ins whose
  * purchase, listing and listener each test drives.
  *
@@ -15,7 +17,8 @@
  * quote; a look waiting for approval says so and appears when approved; the check at start reads a
  * fresh listing and runs once more after the listener; one subscription per JS context; the quote on
  * disk before the sheet; the games and modes without the seams as before; initOn and the age band.
- * The block "after the attack" holds store-attack-money's six tests (A1 to A3, B1 to B3), moved here.
+ * The block "after the attack" holds store-attack-money's six tests (A1 to A3, B1 to B3), moved here;
+ * the block "after the confirmation" holds ruling 15.12's cases (A to E).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import pizza from '../../games/pizza-empire/game.json';
@@ -37,6 +40,8 @@ const h = vi.hoisted(() => ({
   /** What the store's listing shows (every call of listing()). */
   txs: [] as StoreTransaction[],
   fresh: true,
+  /** The store's own clock in the listings it answers: null = the device's (Date.now()); 'none' = unreadable (requestMs null). */
+  storeAt: null as null | number | 'none',
   /** listing() answers null (the store cannot be asked). */
   unreachable: false,
   /** Awaited inside listing() before it reads `txs` (the n-th call), so a test can decide when a read answers. */
@@ -102,7 +107,7 @@ vi.mock('../services/iap', () => ({
     listing: async () => {
       const n = ++h.calls.listing;
       if (h.gate) await h.gate(n);
-      return h.unreachable ? null : { txs: [...h.txs], fresh: h.fresh };
+      return h.unreachable ? null : { txs: [...h.txs], fresh: h.fresh, requestMs: storeNow() };
     },
     onTransactions: (fn: (l: StoreListing) => void) => {
       h.calls.onTransactions++;
@@ -115,13 +120,18 @@ vi.mock('../services/iap', () => ({
   },
 }));
 vi.mock('../services/region', () => ({ detectRegion: async () => null }));
+/** The store's request time of an answer it gives now. */
+function storeNow(): number | null {
+  return h.storeAt === 'none' ? null : (h.storeAt ?? Date.now());
+}
 
-/** The double's own record in the save (RULING2 15.10: the contract's `{id, product, S, atMs, known, state}`). */
+/** The double's own record in the save (RULING2 15.12: the contract's `{id, product, S, atMs, askedMs, known, state}`). */
 interface Quote {
   id: string;
   product: string;
   S: number;
   atMs: number;
+  askedMs: number;
   known: string[];
   state: 'open' | 'waiting';
 }
@@ -136,18 +146,22 @@ const withShop = (g: GameState, shop: Shop) => ({ ...g, shop }) as GameState;
 
 const S_OF: Record<string, number> = { [PACK.id]: 7_200, [PACK5.id]: 18_000 };
 const S_QUOTE = S_OF[PACK.id];
+/** The rated income moves: a quote made later is worth `rate` times as much (S is frozen in each quote). */
+let rate = 1;
+/** iap.maxStanding (15.12 b). */
+const MAX_STANDING = 3;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const T0 = Date.UTC(2026, 10, 26, 12, 0, 0);
 const WITHDRAW: readonly QuoteOutcome[] = ['cancelled', 'declined', 'unavailable', 'unsaved'];
 
-/** The double's grant: section 15.5 to the letter. */
+/** The double's grant: section 15.5 to the letter; oldest is the list's order, never atMs (15.12 d). */
 function grant(s: GameState, a: ProductArrival): GameState {
   const shop = shopOf(s);
   if (shop.ledger.some((l) => l.txId === a.txId)) return s;
   const q = a.own
     ? shop.pending.find((p) => p.product === a.productId && p.atMs === a.own!.atMs && !p.known.includes(a.txId))
-    : [...shop.pending].sort((x, y) => x.atMs - y.atMs).find((p) => p.product === a.productId && !p.known.includes(a.txId));
+    : shop.pending.find((p) => p.product === a.productId && !p.known.includes(a.txId));
   if (!q) return s;
   return withShop({ ...s, cash: s.cash + q.S }, {
     ...shop,
@@ -156,12 +170,16 @@ function grant(s: GameState, a: ProductArrival): GameState {
   });
 }
 
-/** The double's 15.6 withdrawal: a fresh listing, a quote 72 h old or more, nothing new for it. */
-function sweep(s: GameState, l: ProductListing, now: number): GameState {
-  if (!l.fresh) return s;
+/**
+ * The double's withdrawal (15.11 b, 15.12 a): after a FRESH listing has been routed, every quote still
+ * standing whose askedMs is at least 72 hours before the listing's requestMs (the store's clock) goes.
+ * The device's clock (`now`) is never read; a listing without a request time withdraws nothing.
+ */
+function sweep(s: GameState, l: ProductListing, _now: number): GameState {
+  const at = l.requestMs;
+  if (!l.fresh || at == null) return s;
   const shop = shopOf(s);
-  const granted = new Set(shop.ledger.map((x) => x.txId));
-  const keep = shop.pending.filter((q) => now - q.atMs < 72 * HOUR || l.txs.some((t) => t.productId === q.product && !q.known.includes(t.txId) && !granted.has(t.txId)));
+  const keep = shop.pending.filter((q) => at - q.askedMs < 72 * HOUR);
   return keep.length === shop.pending.length ? s : withShop(s, { ...shop, pending: keep });
 }
 
@@ -189,12 +207,19 @@ function doubleMode(seams: Partial<EngineMode> = {}, withGrant = true): EngineMo
   return mode;
 }
 
-/** The double's quote (15.3, 15.6): refused for 24 h while a WAITING quote of the product stands; a new Buy withdraws an older OPEN one. */
-const quoteOf = (product: string) => (_c: unknown, g: GameState, now: number, known: readonly string[]) => {
+/**
+ * The double's quote (15.3, 15.6, 15.12 b, c): refused while MAX_STANDING quotes of the product stand, and
+ * for 24 hours of the device's clock while a WAITING one stands (a clock earlier than its atMs counts as
+ * elapsed); an older OPEN quote is never withdrawn (it keeps standing). Appended: the list's order is the
+ * order quotes were made in.
+ */
+const quoteOf = (product: string) => (_c: unknown, g: GameState, now: number, known: readonly string[], askedMs: number) => {
   const shop = shopOf(g);
-  if (shop.pending.some((p) => p.product === product && p.state === 'waiting' && now - p.atMs < DAY)) return g;
-  const pending = shop.pending.filter((p) => !(p.product === product && p.state === 'open'));
-  return withShop(g, { ...shop, pending: [...pending, { id: `q${now}`, product, S: S_OF[product], atMs: now, known: [...known], state: 'open' }] });
+  const mine = shop.pending.filter((p) => p.product === product);
+  if (mine.length >= MAX_STANDING) return g;
+  if (mine.some((p) => p.state === 'waiting' && now >= p.atMs && now - p.atMs < DAY)) return g;
+  const q: Quote = { id: `${product}:${now}`, product, S: S_OF[product] * rate, atMs: now, askedMs, known: [...known], state: 'open' };
+  return withShop(g, { ...shop, pending: [...shop.pending, q] });
 };
 const quote = quoteOf(PACK.id);
 const settled: [QuoteOutcome, string, number][] = [];
@@ -213,9 +238,9 @@ const onDisk = () => JSON.parse(h.storage.get(KEY)!) as WithShop;
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const tx = (txId: string, productId = PACK.id, purchasedMs: number | null = Date.now()): StoreTransaction => ({ productId, txId, purchasedMs });
 /** A paid sheet: the store's listing returned with it (the ids every later listing uses). */
-const paid = (listed: StoreTransaction[], txId = 'GPA.result'): PurchaseResult => ({ ok: true, txId, purchasedMs: Date.now(), listed });
+const paid = (listed: StoreTransaction[], txId = 'GPA.result'): PurchaseResult => ({ ok: true, txId, purchasedMs: Date.now(), listed, requestMs: storeNow() });
 /** The listener reports the account's listing (never fresh). */
-const deliver = (txs: StoreTransaction[]) => [...h.listeners].forEach((l) => l({ txs, fresh: false }));
+const deliver = (txs: StoreTransaction[]) => [...h.listeners].forEach((l) => l({ txs, fresh: false, requestMs: storeNow() }));
 const banners = (useGame: { getState(): { celebrations: { title: string; subtitle: string }[] } }) => useGame.getState().celebrations.map((c) => `${c.title}: ${c.subtitle}`);
 
 /** A fresh store module booted with `mode` on the given data, from the save in storage (if any). */
@@ -254,6 +279,8 @@ beforeEach(() => {
   h.purchases = [];
   h.txs = [];
   h.fresh = true;
+  h.storeAt = null;
+  rate = 1;
   h.unreachable = false;
   h.gate = null;
   h.live = false;
@@ -322,7 +349,7 @@ describe('the quote, the save and the sheet (B6, 15.3, 15.4)', () => {
     };
     await useGame.getState().buyQuoted(product, quote, settle);
     expect(seen).not.toBeNull();
-    expect(seen!.pending).toEqual([{ id: `q${T0}`, product: PACK.id, S: S_QUOTE, atMs: T0, known: ['old-1'], state: 'open' }]);
+    expect(seen!.pending).toEqual([{ id: `${PACK.id}:${T0}`, product: PACK.id, S: S_QUOTE, atMs: T0, askedMs: T0, known: ['old-1'], state: 'open' }]);
   });
 
   it('a real store that cannot be asked opens no sheet and makes no quote ("Nothing was charged")', async () => {
@@ -455,20 +482,7 @@ describe('approval later, kills, other saves, old quotes (15.5, 15.6)', () => {
     expect(shopOf(next.useGame.getState().game).pending.map((q) => q.known)).toEqual([['tx-before']]);
   });
 
-  it('at most one OPEN quote per product: a new Buy withdraws the one a kill left, and a purchase that did complete arrives at the newer quote', async () => {
-    const first = await boot(doubleMode());
-    const cash0 = first.useGame.getState().game.cash;
-    await killAtSheet(first.useGame, first.product);
-    const next = await boot(doubleMode());
-    vi.setSystemTime(T0 + HOUR);
-    h.purchase = async () => ({ ok: false, pending: true });
-    await next.useGame.getState().buyQuoted(next.product, quote, settle);
-    expect(shopOf(next.useGame.getState().game).pending.map((q) => q.atMs)).toEqual([T0 + HOUR]);
-    deliver([tx('tx-from-the-killed-sheet')]);
-    expect(next.useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
-  });
-
-  it('a fresh listing withdraws a standing quote 72 hours old that it shows nothing new for; the listener (not fresh) and a younger quote never', async () => {
+  it("a fresh listing whose store time is 72 hours after a standing quote's askedMs withdraws it; the listener (not fresh) and a younger quote never", async () => {
     const { useGame, product } = await boot(doubleMode());
     h.purchase = async () => ({ ok: false, pending: true });
     await useGame.getState().buyQuoted(product, quote, settle);
@@ -657,6 +671,102 @@ describe('after the attack (store-attack-money A1 to A3, B1 to B3, moved here)',
     expect(shopOf(useGame.getState().game).pending.map((q) => q.state)).toEqual(['waiting']);
     deliver([tx('o1_x')]);
     expect(useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
+  });
+});
+
+describe('after the confirmation (ruling 15.12)', () => {
+  it("A: a parent's approval waits, the player sets the device's clock three days forward, the game starts on a fresh listing only an hour later by the store's clock: the quote stands and the approval is granted at its S", async () => {
+    const { useGame, product } = await boot(doubleMode());
+    h.storeAt = T0 - 5 * 60_000; // the store's clock, a little behind the device's
+    h.purchase = async () => ({ ok: false, pending: true });
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('pending');
+    expect(shopOf(onDisk()).pending.map((q) => [q.atMs, q.askedMs]), "askedMs is the store's time of the listing read at Buy").toEqual([[T0, T0 - 5 * 60_000]]);
+    vi.setSystemTime(T0 + 3 * DAY + HOUR);
+    h.storeAt = T0 - 5 * 60_000 + HOUR;
+    const before = h.calls.listing;
+    const later = await boot(doubleMode());
+    expect(h.calls.listing - before, 'the check at start read the (fresh) listing twice').toBe(2);
+    expect(shopOf(later.useGame.getState().game).pending.map((q) => q.state), 'still standing').toEqual(['waiting']);
+    const cash0 = later.useGame.getState().game.cash;
+    deliver([tx('tx-parent-approved')]);
+    expect(later.useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
+    expect(shopOf(later.useGame.getState().game).ledger.map((l) => [l.txId, l.S, l.atMs])).toEqual([['tx-parent-approved', S_QUOTE, T0]]);
+  });
+
+  it("B: a sheet is paid and the app killed before the store lists it; a new Buy; that sheet is cancelled; the first payment then arrives: granted at the FIRST quote's S", async () => {
+    const first = await boot(doubleMode());
+    await killAtSheet(first.useGame, first.product);
+    const next = await boot(doubleMode());
+    const cash0 = next.useGame.getState().game.cash;
+    const at1 = shopOf(next.useGame.getState().game).pending[0].atMs; // the killed sheet's quote
+    vi.setSystemTime(T0 + HOUR);
+    rate = 2; // the second quote is worth twice as much
+    h.purchase = async () => ({ ok: false });
+    expect(await next.useGame.getState().buyQuoted(next.product, quote, settle)).toBe('cancelled');
+    expect(shopOf(next.useGame.getState().game).pending.map((q) => [q.atMs, q.state]), 'the first (open) quote still stands').toEqual([[at1, 'open']]);
+    deliver([tx('tx-paid-at-the-killed-sheet')]);
+    expect(next.useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
+    expect(shopOf(next.useGame.getState().game).ledger.map((l) => [l.txId, l.S, l.atMs])).toEqual([['tx-paid-at-the-killed-sheet', S_QUOTE, at1]]);
+  });
+
+  it('C: the clock was a year ahead when a waiting quote was made and is then set right: a new Buy of that pack is allowed at once', async () => {
+    vi.setSystemTime(T0 + 365 * DAY);
+    const { useGame, product } = await boot(doubleMode());
+    h.purchase = async () => ({ ok: false, pending: true });
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('pending');
+    vi.setSystemTime(T0 + HOUR);
+    const cash0 = useGame.getState().game.cash;
+    h.purchase = async () => paid([tx('tx-now')], 'tx-now');
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('granted');
+    expect(useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
+    expect(shopOf(useGame.getState().game).pending.map((q) => [q.atMs, q.state]), 'the waiting one keeps standing').toEqual([[T0 + 365 * DAY, 'waiting']]);
+  });
+
+  it('D: on a live store whose listing is not fresh, or carries no store time, Buy opens no sheet and no quote is made', async () => {
+    const { useGame, product } = await boot(doubleMode());
+    h.live = true;
+    h.fresh = false;
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('failed');
+    h.fresh = true;
+    h.storeAt = 'none';
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('failed');
+    expect(h.purchases).toEqual([]);
+    expect(shopOf(useGame.getState().game).pending).toEqual([]);
+    expect(settled, 'no quote, so nothing to settle').toEqual([]);
+    expect(banners(useGame)).toEqual(Array(2).fill('Store not reachable: The store cannot be reached. Nothing was charged.'));
+    h.storeAt = null;
+    h.purchase = async () => paid([tx('tx-live')], 'tx-live');
+    expect(await useGame.getState().buyQuoted(product, quote, settle), 'fresh and dated: sold').toBe('granted');
+  });
+
+  it('E: two standing quotes whose atMs are out of order because the clock was set back: an arrival goes to the one made first', async () => {
+    const { useGame, product } = await boot(doubleMode());
+    h.purchase = async () => ({ ok: false, pending: true });
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('pending');
+    vi.setSystemTime(T0 - 2 * DAY);
+    rate = 2;
+    expect(await useGame.getState().buyQuoted(product, quote, settle), 'a clock earlier than the waiting quote: its 24 hours count as elapsed').toBe('pending');
+    expect(shopOf(useGame.getState().game).pending.map((q) => q.atMs)).toEqual([T0, T0 - 2 * DAY]);
+    const cash0 = useGame.getState().game.cash;
+    deliver([tx('tx-first-approved')]);
+    expect(useGame.getState().game.cash).toBe(cash0 + S_QUOTE);
+    expect(shopOf(useGame.getState().game).ledger.map((l) => [l.txId, l.atMs])).toEqual([['tx-first-approved', T0]]);
+    expect(shopOf(useGame.getState().game).pending.map((q) => q.atMs)).toEqual([T0 - 2 * DAY]);
+  });
+
+  it('at most 3 quotes of a pack stand at once: a fourth Buy is refused with no sheet; another pack still sells', async () => {
+    const { useGame, product, p } = await boot(doubleMode());
+    h.storeAt = T0; // the store's clock: no 72 hours pass
+    h.purchase = async () => ({ ok: false, pending: true });
+    for (const at of [T0, T0 + 25 * HOUR, T0 + 50 * HOUR]) {
+      vi.setSystemTime(at);
+      expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('pending');
+    }
+    vi.setSystemTime(T0 + 75 * HOUR);
+    expect(await useGame.getState().buyQuoted(product, quote, settle)).toBe('refused');
+    expect(h.purchases).toHaveLength(3);
+    expect(shopOf(useGame.getState().game).pending).toHaveLength(3);
+    expect(await useGame.getState().buyQuoted(p(PACK5.id), quoteOf(PACK5.id), settle)).toBe('pending');
   });
 });
 

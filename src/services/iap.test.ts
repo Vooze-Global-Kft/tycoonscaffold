@@ -6,14 +6,19 @@
  * error that does not prove nothing was charged resolves unconfirmed (both keep the old failure word for
  * the games that read it); cancel is not a failure; the account's listing is read afresh (cache
  * invalidated first) and delivered again by one native listener per JS context; restore is unchanged;
- * without the module (Expo Go) a purchase is simulated with a made-up id that lists only itself.
+ * without the module (Expo Go) a purchase is simulated with a made-up id that lists only itself. Every
+ * listing carries the store's own request time (customer info's requestDate; null when unreadable, never
+ * the device's clock; the simulation's own clock in Expo Go), RULING2 15.12 a.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   module: true,
   purchase: null as null | (() => Promise<unknown>),
-  info: { nonSubscriptionTransactions: [] as { transactionIdentifier: string; productIdentifier: string; purchaseDate: string }[] },
+  info: { nonSubscriptionTransactions: [] as { transactionIdentifier: string; productIdentifier: string; purchaseDate: string }[] } as {
+    nonSubscriptionTransactions: { transactionIdentifier: string; productIdentifier: string; purchaseDate: string }[];
+    requestDate?: string;
+  },
   listener: null as null | ((info: unknown) => void),
   listens: 0,
   removed: [] as unknown[],
@@ -89,7 +94,7 @@ describe('purchase', () => {
     h.purchase = async () => ({
       productIdentifier: 'test_pack2',
       transaction: { transactionIdentifier: 'GPA.1', productIdentifier: 'test_pack2', purchaseDate: '2026-11-26T05:00:00Z' },
-      customerInfo: { nonSubscriptionTransactions: [tx('o1_old', 'test_pack2', '2026-11-20T05:00:00Z'), tx('o1_new', 'test_pack2', '2026-11-26T05:00:00Z')] },
+      customerInfo: { requestDate: '2026-11-26T05:00:02Z', nonSubscriptionTransactions: [tx('o1_old', 'test_pack2', '2026-11-20T05:00:00Z'), tx('o1_new', 'test_pack2', '2026-11-26T05:00:00Z')] },
     });
     expect(await iap.purchase(pack)).toEqual({
       ok: true,
@@ -99,13 +104,14 @@ describe('purchase', () => {
         { productId: 'test_pack2', txId: 'o1_old', purchasedMs: Date.parse('2026-11-20T05:00:00Z') },
         { productId: 'test_pack2', txId: 'o1_new', purchasedMs: Date.parse('2026-11-26T05:00:00Z') },
       ],
+      requestMs: Date.parse('2026-11-26T05:00:02Z'),
     });
   });
 
   it("no device time stands in for a store date it cannot read (15.8); no customer info: no listing", async () => {
     const iap = await service();
     h.purchase = async () => ({ productIdentifier: 'test_pack2', transaction: { transactionIdentifier: 'GPA.2', productIdentifier: 'test_pack2', purchaseDate: 'garbled' } });
-    expect(await iap.purchase(pack)).toEqual({ ok: true, txId: 'GPA.2', purchasedMs: null, listed: null });
+    expect(await iap.purchase(pack)).toEqual({ ok: true, txId: 'GPA.2', purchasedMs: null, listed: null, requestMs: null });
   });
 
   it('waiting for approval resolves pending; the failure word stays what the games without a grant route read before', async () => {
@@ -160,7 +166,7 @@ describe('purchase', () => {
     await vi.advanceTimersByTimeAsync(400);
     const r = await p;
     const sim = { productId: 'test_pack2', txId: expect.stringMatching(/^sim:test_pack2:\d+:\d+$/), purchasedMs: Date.UTC(2026, 10, 26, 6) + 400 };
-    expect(r).toEqual({ ok: true, txId: sim.txId, purchasedMs: sim.purchasedMs, listed: [sim] });
+    expect(r, "the simulation's own clock is its request time").toEqual({ ok: true, txId: sim.txId, purchasedMs: sim.purchasedMs, listed: [sim], requestMs: sim.purchasedMs });
     expect((r as { listed: { txId: string }[] }).listed[0].txId, 'the listing names the purchase by its own made-up id').toBe((r as { txId: string }).txId);
     const q = iap.purchase(pack);
     await vi.advanceTimersByTimeAsync(400);
@@ -177,7 +183,7 @@ describe('purchase', () => {
 describe('the listing, the listener and restore', () => {
   it('lists every completed non-subscription transaction (consumables included), read afresh; an unreadable date is null, a missing id left out', async () => {
     const iap = await service();
-    h.info = { nonSubscriptionTransactions: [tx('a', 'test_pack2', '2026-11-26T01:00:00Z'), tx('b', 'test_look', '2026-11-25T01:00:00Z'), tx('c', 'test_pack2', 'not a date'), tx('', 'test_pack2', '2026-11-26T01:00:00Z')] };
+    h.info = { requestDate: '2026-11-26T01:00:05Z', nonSubscriptionTransactions: [tx('a', 'test_pack2', '2026-11-26T01:00:00Z'), tx('b', 'test_look', '2026-11-25T01:00:00Z'), tx('c', 'test_pack2', 'not a date'), tx('', 'test_pack2', '2026-11-26T01:00:00Z')] };
     expect(await iap.listing()).toEqual({
       txs: [
         { productId: 'test_pack2', txId: 'a', purchasedMs: Date.parse('2026-11-26T01:00:00Z') },
@@ -185,10 +191,19 @@ describe('the listing, the listener and restore', () => {
         { productId: 'test_pack2', txId: 'c', purchasedMs: null },
       ],
       fresh: true,
+      requestMs: Date.parse('2026-11-26T01:00:05Z'),
     });
     expect(h.invalidations, 'the cache is invalidated before every read').toBe(1);
     expect(await iap.knownIds('test_pack2')).toEqual(['a', 'c']);
     expect(h.invalidations).toBe(2);
+  });
+
+  it("the store's request time is its own: an unreadable or missing requestDate is null, never the device's clock", async () => {
+    const iap = await service();
+    h.info = { requestDate: 'garbled', nonSubscriptionTransactions: [] };
+    expect(await iap.listing()).toEqual({ txs: [], fresh: true, requestMs: null });
+    h.info = { nonSubscriptionTransactions: [] };
+    expect((await iap.listing())!.requestMs).toBeNull();
   });
 
   it('a cache that cannot be invalidated gives a listing that is not fresh; a store that cannot be asked gives null', async () => {
@@ -207,8 +222,8 @@ describe('the listing, the listener and restore', () => {
     iap.onTransactions((t) => got.push(t));
     iap.onTransactions((t) => got.push(t));
     expect(h.listens).toBe(1);
-    h.listener!({ nonSubscriptionTransactions: [tx('late', 'test_pack2', '2026-11-26T09:00:00Z')] });
-    const one = { txs: [{ productId: 'test_pack2', txId: 'late', purchasedMs: Date.parse('2026-11-26T09:00:00Z') }], fresh: false };
+    h.listener!({ requestDate: '2026-11-26T09:00:07Z', nonSubscriptionTransactions: [tx('late', 'test_pack2', '2026-11-26T09:00:00Z')] });
+    const one = { txs: [{ productId: 'test_pack2', txId: 'late', purchasedMs: Date.parse('2026-11-26T09:00:00Z') }], fresh: false, requestMs: Date.parse('2026-11-26T09:00:07Z') };
     expect(got).toEqual([one, one]);
   });
 

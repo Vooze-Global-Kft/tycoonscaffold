@@ -45,7 +45,10 @@ export type PurchaseFailure = 'unavailable' | 'failed' | null;
  * when the store returned none); a grant by id reads the purchase from it (RULING2 15.2). `txId` and
  * `purchasedMs` are the purchase result's own transaction, for analytics only (on a store they may be
  * the store's id, not the listing's; '' and null when absent; no device time stands in for a store date).
- * A simulated purchase (Expo Go, development builds) lists only itself, with its made-up id.
+ * `requestMs` is the store's own time of the answer that carried `listed` (customer info's
+ * `requestDate`; null when it cannot be read; RULING2 15.12 a). A simulated purchase (Expo Go,
+ * development builds) lists only itself, with its made-up id, and its requestMs is the simulation's
+ * own clock (the device's: no money is involved there).
  * Not ok: cancelled (lastFailure null), refused or unavailable (lastFailure 'failed' / 'unavailable':
  * nothing was charged), `pending` (the store waits for an approval: a parent's Ask to Buy, a slow
  * payment method) or `unconfirmed` (any other store error: it does not prove that nothing was
@@ -54,7 +57,7 @@ export type PurchaseFailure = 'unavailable' | 'failed' | null;
  * they said before.
  */
 export type PurchaseResult =
-  | { ok: true; txId: string; purchasedMs: number | null; listed: StoreTransaction[] | null }
+  | { ok: true; txId: string; purchasedMs: number | null; listed: StoreTransaction[] | null; requestMs: number | null }
   | { ok: false; pending?: true; unconfirmed?: true };
 
 /** One completed non-subscription transaction the store reports. */
@@ -66,10 +69,16 @@ export interface StoreTransaction {
   purchasedMs: number | null;
 }
 
-/** The store account's transactions as one listing. `fresh`: read from the network just now (the cache invalidated first). */
+/**
+ * The store account's transactions as one listing. `fresh`: read from the network just now (the cache
+ * invalidated first). `requestMs`: the store's own time of this answer (RevenueCat: customer info's
+ * `requestDate`), null when it cannot be read; never the device's clock (RULING2 15.12 a: the 72 hours
+ * of a standing quote are measured on it, by the mode; the shared layer decides nothing with it).
+ */
 export interface StoreListing {
   txs: StoreTransaction[];
   fresh: boolean;
+  requestMs: number | null;
 }
 
 type RcTransaction = import('react-native-purchases').PurchasesStoreTransaction;
@@ -95,6 +104,12 @@ function toTransactions(list: readonly RcTransaction[] | undefined): StoreTransa
     out.push({ productId: t.productIdentifier, txId: t.transactionIdentifier, purchasedMs: Number.isFinite(dated) ? dated : null });
   }
   return out;
+}
+
+/** The store's own time of a customer-info answer (its `requestDate`), or null when it cannot be read. */
+function requestTime(info: { requestDate?: string } | null | undefined): number | null {
+  const at = info?.requestDate ? Date.parse(info.requestDate) : NaN;
+  return Number.isFinite(at) ? at : null;
 }
 
 type CustomerInfoListener = Parameters<RC['addCustomerInfoUpdateListener']>[0];
@@ -229,8 +244,9 @@ class IapService {
       analytics.log('iap_success_simulated', { product_id: product.id });
       const purchasedMs = Date.now();
       const txId = `sim:${product.id}:${purchasedMs}:${++simSeq}`;
-      // The simulated store lists nothing else and never delivers anything later.
-      return { ok: true, txId, purchasedMs, listed: [{ productId: product.id, txId, purchasedMs }] };
+      // The simulated store lists nothing else and never delivers anything later. Its request time is the
+      // simulation's own clock (the device's): no money is involved there.
+      return { ok: true, txId, purchasedMs, listed: [{ productId: product.id, txId, purchasedMs }], requestMs: purchasedMs };
     }
     if (!this.products.has(product.id)) await this.loadProducts().catch((e) => crash.record(e, 'iap.products'));
     const sp = this.products.get(product.id);
@@ -247,7 +263,7 @@ class IapService {
       // The listing returned with the purchase carries the ids every later listing uses (15.2); the
       // result's own transaction is kept for analytics only. No device time stands in for a store date.
       const listed = made?.customerInfo ? toTransactions(made.customerInfo.nonSubscriptionTransactions) : null;
-      return { ok: true, txId: t?.transactionIdentifier ?? '', purchasedMs: Number.isFinite(dated) ? dated : null, listed };
+      return { ok: true, txId: t?.transactionIdentifier ?? '', purchasedMs: Number.isFinite(dated) ? dated : null, listed, requestMs: requestTime(made?.customerInfo) };
     } catch (e: unknown) {
       const err = typeof e === 'object' && e !== null ? (e as { userCancelled?: boolean; code?: unknown }) : {};
       const cancelled = !!err.userCancelled;
@@ -271,7 +287,8 @@ class IapService {
    * The completed non-subscription transactions of this store account (consumables included), read
    * afresh: the store's cached customer info is invalidated first, so the answer comes from the
    * network (`fresh`; false when the invalidation failed and the answer may be the cache). null when
-   * the store cannot be asked (no purchase module: Expo Go, web; not configured; an error).
+   * the store cannot be asked (no purchase module: Expo Go, web; not configured; an error). `requestMs`:
+   * the store's own time of the answer (customer info's requestDate), null when it cannot be read.
    */
   async listing(): Promise<StoreListing | null> {
     if (!Purchases || !this.configured) return null;
@@ -284,7 +301,7 @@ class IapService {
     }
     try {
       const info = await Purchases.getCustomerInfo();
-      return { txs: toTransactions(info.nonSubscriptionTransactions), fresh };
+      return { txs: toTransactions(info.nonSubscriptionTransactions), fresh, requestMs: requestTime(info) };
     } catch (e) {
       crash.record(e, 'iap.listing');
       return null;
@@ -303,7 +320,7 @@ class IapService {
   /**
    * Calls `fn` with the account's listing every time the store reports a change (a purchase approved
    * hours later, one completed after the app was killed); `fresh` is false (the report may come from
-   * the store's cache). The same transaction comes again and again: the receiver grants by id once.
+   * the store's cache); `requestMs` is that report's own requestDate. The same transaction comes again and again: the receiver grants by id once.
    * Without the purchase module nothing is ever delivered. One native listener per JS context: a new
    * service (a development reload) removes the one an earlier service added. Returns an unsubscribe.
    */
@@ -311,7 +328,7 @@ class IapService {
     this.txListeners.add(fn);
     if (Purchases && this.configured && !this.listening) {
       const native: CustomerInfoListener = (info) => {
-        const listing: StoreListing = { txs: toTransactions(info.nonSubscriptionTransactions), fresh: false };
+        const listing: StoreListing = { txs: toTransactions(info.nonSubscriptionTransactions), fresh: false, requestMs: requestTime(info) };
         this.txListeners.forEach((l) => {
           try {
             l(listing);

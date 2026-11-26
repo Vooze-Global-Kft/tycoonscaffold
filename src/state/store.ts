@@ -151,8 +151,10 @@ interface Store {
   purchase(product: IapProduct): Promise<boolean>;
   /**
    * Sells a `hoursOfIncome` product with the mode's quote (yard-stage2.md 2.15.4, B6; RULING2 section 15):
-   * the store's listing is read afresh (a live store that cannot be asked opens no sheet) and handed
-   * over; `quote` adds the mode's quote with the product's `known` ids (same object: refused, no sheet);
+   * the store's listing is read afresh (a live store that cannot be asked, or whose listing is not fresh
+   * or has no request time of its own, opens no sheet: 15.12 e) and handed over; `quote` adds the mode's
+   * quote with the product's `known` ids and that listing's request time as `askedMs` (same object:
+   * refused, no sheet);
    * the save is written; only then the store's sheet opens, and that product's later arrivals are held
    * until it answers; paid, the id the purchase's listing shows new against `known` goes to the mode's
    * grantProduct as that quote's own; otherwise `settle` tells the mode the outcome of THAT quote.
@@ -232,7 +234,7 @@ async function once(key: string, fn: () => Promise<void>): Promise<void> {
  */
 function asPurchase(r: PurchaseResult | boolean): PurchaseResult {
   if (typeof r !== 'boolean') return r;
-  return r ? { ok: true, txId: '', purchasedMs: null, listed: null } : { ok: false };
+  return r ? { ok: true, txId: '', purchasedMs: null, listed: null, requestMs: null } : { ok: false };
 }
 
 /** Transaction ids a grant was seen to apply in this run of the app (buyQuoted tells "granted" from "paid, not granted"). */
@@ -276,9 +278,13 @@ function applyListing(cfg: GameConfig, game: GameState, l: StoreListing, now: nu
 
 /** Products whose store sheet is open on the grant route: their arrivals are held until it answers (RULING2 15.5). */
 const sheetsOpen = new Map<string, number>();
-/** What arrived for those products meanwhile (by id), and whether any of it came in a fresh listing. */
+/**
+ * What arrived for those products meanwhile (by id), whether any of it came in a fresh listing, and the
+ * store's request time of the latest fresh listing held (handed on with the replay, RULING2 15.12 a).
+ */
 const held = new Map<string, StoreTransaction>();
 let heldFresh = false;
+let heldRequestMs: number | null = null;
 
 /** The store's unsubscribe of the listener, kept per JS context so that a store made again (a development reload) removes the old one's (15.8). */
 const UNSUBSCRIBE_SLOT = '__itfStoreTxUnsubscribe';
@@ -311,10 +317,12 @@ export type QuoteOutcome = 'cancelled' | 'declined' | 'unavailable' | 'unsaved' 
 export const WITHDRAWING: readonly QuoteOutcome[] = ['cancelled', 'declined', 'unavailable', 'unsaved'];
 
 /**
- * The mode's quote: appends its quote of the product to the state with `atMs` = `now` and the ids the
- * store already lists for the product (`known`, RULING2 15.3), or returns the same object to refuse.
+ * The mode's quote: appends its quote of the product to the state with `atMs` = `now` (the device's
+ * clock), the ids the store already lists for the product (`known`, RULING2 15.3) and `askedMs`, the
+ * store's own request time of the fresh listing that supplied `known` (15.12 a: the quote keeps it as
+ * its askedMs; in the simulated store, the simulation's own clock), or returns the same object to refuse.
  */
-export type QuoteFn = (cfg: GameConfig, game: GameState, now: number, known: readonly string[]) => GameState;
+export type QuoteFn = (cfg: GameConfig, game: GameState, now: number, known: readonly string[], askedMs: number) => GameState;
 /** Tells the mode what became of the quote made at `q.atMs` (only that one; if it no longer stands, the same object). */
 export type SettleFn = (cfg: GameConfig, game: GameState, outcome: QuoteOutcome, q: { product: string; atMs: number }) => GameState;
 
@@ -431,8 +439,9 @@ export const useGame = create<Store>((set, get, api) => {
     let listing = l;
     if (sheetsOpen.size > 0) {
       for (const t of l.txs) if (sheetsOpen.has(t.productId)) held.set(t.txId, t);
+      if (l.fresh) heldRequestMs = l.requestMs;
       heldFresh = heldFresh || l.fresh;
-      listing = { txs: l.txs.filter((t) => !sheetsOpen.has(t.productId)), fresh: false };
+      listing = { txs: l.txs.filter((t) => !sheetsOpen.has(t.productId)), fresh: false, requestMs: l.requestMs };
     }
     const before = get().game;
     let granted = 0;
@@ -458,10 +467,14 @@ export const useGame = create<Store>((set, get, api) => {
     // Everything held whose product has no sheet open now (a purchase's own listing parks other products' too).
     const txs = [...held.values()].filter((t) => !sheetsOpen.has(t.productId));
     const fresh = heldFresh && sheetsOpen.size === 0;
-    if (sheetsOpen.size === 0) heldFresh = false;
+    const requestMs = fresh ? heldRequestMs : null;
+    if (sheetsOpen.size === 0) {
+      heldFresh = false;
+      heldRequestMs = null;
+    }
     if (txs.length === 0) return;
     for (const t of txs) held.delete(t.txId);
-    routeListing({ txs, fresh });
+    routeListing({ txs, fresh, requestMs });
   };
 
   const waitingBanner = () => {
@@ -1269,25 +1282,30 @@ export const useGame = create<Store>((set, get, api) => {
       let holding = false;
       try {
         // 15.3: what the store already lists for this product, read afresh, and handed over first (an arrival
-        // for an older quote is granted before this quote exists). A real store that cannot be asked: no sheet.
+        // for an older quote is granted before this quote exists). A real store that cannot be asked, or whose
+        // answer is not fresh (the cache could not be cleared and read anew) or carries no request time of its
+        // own: no quote, no sheet (15.3, 15.12 e).
         let l: StoreListing | null = null;
         try {
           l = await iap.listing();
         } catch (e) {
           crash.record(e, 'iap.listing');
         }
-        if (!l && iap.live) {
+        if (l) routeListing(l);
+        if (iap.live && (!l || !l.fresh || l.requestMs == null)) {
           unreachableBanner();
           return 'failed';
         }
-        if (l) routeListing(l);
         const known = (l?.txs ?? []).filter((t) => t.productId === product.id).map((t) => t.txId);
         const atMs = Date.now();
+        // The store's own time of that listing (15.12 a). The simulated store (Expo Go: no listing, no money)
+        // is always fresh, and its clock is the simulation's own, the device's.
+        const askedMs = l?.requestMs ?? atMs;
         const before = get().game;
         // From the quote on, this product's arrivals wait for the sheet's answer (15.5).
         holdArrivals(product.id);
         holding = true;
-        const quoted = safe('mode.quote', () => quote(cfg, before, atMs, known), before);
+        const quoted = safe('mode.quote', () => quote(cfg, before, atMs, known, askedMs), before);
         if (quoted === before) {
           fx.play('ui_denied');
           return 'refused';
