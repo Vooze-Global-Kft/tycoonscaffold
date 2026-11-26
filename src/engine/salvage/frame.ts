@@ -7,6 +7,9 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { dayWord, priceOf, sellAmount, sellOn } from './board';
+import { frameMoney } from './frameMoney';
+import { frameWorks } from './frameWorks';
+import { contentAt } from './layer';
 import { lineAmount } from './money';
 import { tierOf } from './content';
 import { skipLabelOf } from './cards';
@@ -427,7 +430,12 @@ export function frameCfg(cfg: import('./types').SalvageConfig, g: SalvageGame): 
   if (!byCfg) FRAMES.set(g.salvage, (byCfg = new WeakMap()));
   const hit = byCfg.get(cfg.salvage);
   if (hit && hit.cash === g.cash) return hit.f;
-  const f = frameOf(cfg.salvage, g);
+  // s2a-fix: the content the state reads (layer.ts contentAt: the works layer joined once the works opened), and
+  // stage 2's fields added by their owners' files (the dispatcher, the lead's ruling of 26 Nov 09:50; stubs add nothing).
+  const c = contentAt(cfg.salvage, g.salvage);
+  const f = frameOf(c, g);
+  frameWorks(c, g, f);
+  frameMoney(c, g, f);
   byCfg.set(cfg.salvage, { cash: g.cash, f });
   return f;
 }

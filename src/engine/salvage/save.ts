@@ -238,6 +238,16 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   const fresh2 = Object.fromEntries(STAGE2_KEYS.map((k) => [k, fresh[k]])) as Stage2Fields;
   const v = (raw as { v?: unknown }).v;
   Object.assign(s, typeof v === 'number' && v >= 3 ? repairStage2(raw, fresh2, t) : fresh2);
+  // A NEWER layout (the lead's ruling 4): the raw save kept aside untouched (a copy, without a copy it held itself).
+  if (typeof v === 'number' && v > 3) {
+    const { newerSave: _nested, ...rest } = raw as Partial<SalvageState>;
+    void _nested;
+    s.newerSave = { v, raw: JSON.parse(JSON.stringify(rest)) };
+  } else if (v === 3 && (raw as Partial<SalvageState>).newerSave) {
+    const n = (raw as Partial<SalvageState>).newerSave!;
+    if (typeof n === 'object' && n && typeof n.v === 'number' && Number.isFinite(n.v) && n.v > 3) s.newerSave = { v: n.v, raw: n.raw };
+    else delete s.newerSave;
+  }
   // The plates a save holds: those the content knows (with `works` in the content), levels within the plate's top.
   const plates = c.works?.plates;
   if (plates) {

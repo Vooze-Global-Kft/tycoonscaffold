@@ -7,6 +7,9 @@
  */
 import { nextGoal } from './goals';
 import { priceOf } from './board';
+import { onAwayClosed, onSeen } from './actionsMoney';
+import { buyWorks, levelWorks } from './actionsWorks';
+import { contentAt } from './layer';
 import { asideOf, bayOf, freeOf } from './bays';
 import { begin, count, finish, spend } from './clock';
 import { newCrew } from './crew';
@@ -99,7 +102,10 @@ function shopItem(cfg: SalvageConfig, key: ShopKey) {
 
 /** Buy a tool, carrier, machine, the truck, a recipe or the Night watch at the price the card showed. */
 export function buy(cfg: SalvageConfig, g: SalvageGame, item: ShopKey, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  const it = shopItem(cfg, item);
+  // The content the state reads (layer.ts contentAt, s2a-fix): the works layer's items once the works opened.
+  const it = shopItem({ ...cfg, salvage: contentAt(cfg.salvage, g.salvage) }, item);
+  // Stage 2 (s2a-fix, the dispatcher): a plate is the works' (actionsWorks.ts buyWorks, through works.ts orderPlate).
+  if (it?.kind === 'works') return buyWorks(cfg, g, item, shownPrice, clock, events);
   if (!it || it.kind === 'crew') return refuse(g, events, 'nothing');
   const ch = buyCheck(cfg, g, item);
   const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'buy', item, price }));
@@ -138,6 +144,8 @@ export function hire(cfg: SalvageConfig, g: SalvageGame, role: CrewRole, shownPr
 
 /** Buy the next level of a crew member, a machine or a partner (another skip in rotation) at the price shown. */
 export function level(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
+  // Stage 2 (s2a-fix, the dispatcher): a plate's level and the Yard sale's room are the works' (actionsWorks.ts).
+  if (target.kind === 'plate' || target.kind === 'reuse') return levelWorks(cfg, g, target, shownPrice, clock, events);
   const ch = levelCheck(cfg, g, target);
   const r = checked(g, events, ch, shownPrice, (price) => ({ act: 'level', target, price }));
   if (r) return r;
@@ -304,20 +312,20 @@ export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: 
 
 /** The screen saw a place's label or opened a card (every "first time" text reads `seen`). Same object when already seen. */
 export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind }, clock: number): SalvageGame {
-  void cfg;
   void clock;
   const s = g.salvage;
   const addPlace = seen.place !== undefined && !s.seen.places.includes(seen.place);
   const addCard = seen.card !== undefined && !s.seen.cards.includes(seen.card);
-  if (!addPlace && !addCard) return g;
-  return { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } };
+  // Stage 2 (s2a-fix): the money's part of a sighting (the lender's letter, actionsMoney.ts onSeen; the stub returns the game as it is).
+  if (!addPlace && !addCard) return onSeen(cfg, g, seen);
+  return onSeen(cfg, { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } }, seen);
 }
 
 /** The away card's OK: the card goes (its money was paid when computed). */
 export function ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame {
-  void cfg;
   if (!g.salvage.away) return g;
   const counts = { ...(g.salvage.counts ?? {}) };
   counts.away = (counts.away ?? 0) + 1;
-  return { ...g, salvage: { ...g.salvage, away: null, counts } };
+  // Stage 2 (s2a-fix): what closing the card starts (iap.sessions2At, the away bonus: actionsMoney.ts onAwayClosed; the stub returns the game as it is).
+  return onAwayClosed(cfg, { ...g, salvage: { ...g.salvage, away: null, counts } }, g.salvage.away);
 }

@@ -15,7 +15,8 @@ export function Help({ data, onClose }: CardViewProps) {
   const c = useContent();
   useSeenOnClose('help');
   const lessons = helpLessons(c as never);
-  const glossary = (c as { text?: { glossary?: { term: string; line: string }[] } }).text?.glossary ?? [];
+  // The rules give the terms of the yard's rung (cardOf's help card, s2a-fix: stage 2's terms from rung 3); the content's whole list only for an older card.
+  const glossary = data.glossary ?? (c as { text?: { glossary?: { term: string; line: string }[] } }).text?.glossary ?? [];
   return (
     <Panel title={data.title} onClose={onClose}>
       <SectionHead t={{ key: 'help.lessons' }} />

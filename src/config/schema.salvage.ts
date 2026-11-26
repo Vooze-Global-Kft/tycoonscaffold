@@ -741,7 +741,7 @@ const ForkliftSchema = z.object({ load: z.number().positive(), v: z.number().pos
 /** Delivered lots, "oversize pieces" (2.10.1): yard seconds between arrivals, at most `max` waiting, μ minutes of I by rung, the boss's cut seconds [min, max], the kinds. */
 const LotKindSchema = z.object({
   obj: id,
-  /** s2a-fix: the boss's seconds to cut this kind (within lots.cut_s; absent: the range's least). */
+  /** The boss's seconds to cut this kind (the lead's ruling 6: per kind, within lots.cut_s; a content check asks it of every kind). Optional only so that a content frozen before it still parses. */
   cut_s: z.number().positive().optional(),
   /** The named partner whose lorry brings it (a register id: partner.boatyard, partner.garage, ...). */
   from: z.string(),
@@ -753,9 +753,8 @@ const LotsSchema = z.object({
   max: z.number().int().positive(),
   mu_min: z.array(z.number().positive().nullable()),
   cut_s: z.tuple([z.number().positive(), z.number().positive()]),
+  /** The lead's ruling 6 (26 Nov 09:50): no fallback thing; while no kind can be drawn (before the plasma cutter, or before a line) lots WAIT for one the yard can open. */
   kinds: z.array(LotKindSchema).min(1),
-  /** s2a-fix (2.10.1 "else an intermediate sold whole"): the thing a lot is when no kind can be drawn (an object of tier at most 3 with a whole grade); null: none named (a point for the lead: then no lot comes at rung 3 before the plasma cutter). */
-  fallback: z.object({ obj: id }).nullable().optional(),
 });
 /** The crate, "the picking table" (2.10.2): share of a tip by hash, things it holds, seconds a thing, the factor on its prepared value. No hold time (P2). */
 const CrateSchema = z.object({ share: z.number().min(0).max(1), max: z.number().int().positive(), sort_s: z.number().positive(), u: z.number().positive() });
@@ -947,7 +946,8 @@ const SalvageObject = z.object({
     .object({
       lessons: z.record(z.string(), z.object({ ticket: z.string(), help: z.string() })).default({}),
       partners: z.record(z.string(), z.object({ card: z.string(), line: z.string() })).default({}),
-      glossary: z.array(z.object({ term: z.string(), line: z.string() })).default([]),
+      /** `fromRung` (s2a-fix, the lead's ruling 7 of 26 Nov 09:50): the rung from which Help lists the term (stage 2's terms from 3; absent: 1). */
+      glossary: z.array(z.object({ term: z.string(), line: z.string(), fromRung: z.number().int().min(1).optional() })).default([]),
     })
     .optional(),
 }).superRefine((s, ctx) => {
@@ -1361,7 +1361,7 @@ export function lintStage2(s0: SalvageContent): string[] {
  * (e) A station plate's (the depollution bay's) out and waste are its object's pieces, shell and waste by
  *     mass, and it is fed by the forklift (feedBy 'forklift'): one definition of a car's yield.
  * (f) The ladder's tonnes and the ceilings rise rung by rung; iap.packsOff is the fixed list.
- * (g) Lots: a kind's cut_s lies within lots.cut_s; the fallback, when named, is a tier <= 3 thing sold whole.
+ * (g) Lots: every kind has its own cut_s within lots.cut_s (no fallback thing: lots wait, the lead's ruling 6).
  */
 export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] {
   const out: string[] = [];
@@ -1470,16 +1470,10 @@ export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] 
   if (s.lots) {
     for (const k of s.lots.kinds) if (!(k.from in s.partners) && s.names[k.from] === undefined) out.push(`lots.kinds.${k.obj}.from "${k.from}" is neither a partner nor a register id (scripts/content/yard/names.json)`);
     const [lo, hi] = s.lots.cut_s;
-    for (const k of s.lots.kinds) if (k.cut_s !== undefined && (k.cut_s < lo || k.cut_s > hi)) out.push(`lots.kinds.${k.obj}.cut_s ${k.cut_s} is outside lots.cut_s [${lo}, ${hi}]`);
-    const f = s.lots.fallback;
-    if (f) {
-      const o = O[f.obj];
-      if (!o) out.push(`lots.fallback "${f.obj}" is not an object`);
-      else {
-        if (Math.max(o.tier, ...(o.pieceTiers ?? [])) > 3) out.push(`lots.fallback "${f.obj}" needs tier ${o.tier}: the fallback is what comes before the plasma cutter (at most 3)`);
-        if (!o.whole) out.push(`lots.fallback "${f.obj}" has no whole grade (an intermediate sold whole, 2.10.1)`);
-        if (unsafe(f.obj)) out.push(`lots.fallback "${f.obj}" is a battery or an undrained car (T1)`);
-      }
+    for (const k of s.lots.kinds) {
+      if (k.cut_s === undefined) out.push(`lots.kinds.${k.obj} has no cut_s (the boss's seconds are per kind, within lots.cut_s: the lead's ruling 6)`);
+      else if (k.cut_s < lo || k.cut_s > hi) out.push(`lots.kinds.${k.obj}.cut_s ${k.cut_s} is outside lots.cut_s [${lo}, ${hi}]`);
+      if (unsafe(k.obj)) out.push(`lots.kinds.${k.obj} is a battery or an undrained car (T1)`);
     }
   }
   return out;

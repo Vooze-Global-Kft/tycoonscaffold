@@ -701,6 +701,12 @@ export interface SalvageState {
    * `quote#` (the last pending quote's number, ./state2.ts `quoteId`).
    */
   counts?: Record<string, number>;
+  /**
+   * s2a-fix (the lead's ruling 4 of 26 Nov 09:50): a save of a NEWER layout (an over-the-air rollback of the
+   * app) is loaded as layout 3, and the raw save it came from is kept here untouched (one copy: a nested one
+   * is not kept), so that the newer build can take it back. Absent on every other save; no rule reads it.
+   */
+  newerSave?: { v: number; raw: unknown };
 
   // ---------------------------------------------------------------- v3: stage 2 (2.18). Made fresh by ./state2.ts.
   /** Every works plate bought (absent until bought), by plate id. The first yard's `machines` stay as they are; both are read through `station(s, id)` (2.5.3). */
@@ -1108,6 +1114,8 @@ export interface CardData {
   title: Txt;
   /** Lines under the title (the rota's "Site licence · metal dealer", a machine's status, the deal's terms). */
   lead: Txt[];
+  /** Help (kind 'help'; s2a-fix, the lead's ruling 7): the glossary's terms the yard's rung shows (content text.glossary, `fromRung` at most the rung), in order. */
+  glossary?: { term: string; line: string }[];
   /** Tabs of the office panel (Rota, Partners, Process board, v3 Agreements), with the open one (refs are `{kind:'office', tab}`; v3 the process board's pages). */
   tabs?: { ref: CardRef; title: Txt; open: boolean }[];
   rows: CardRow[];

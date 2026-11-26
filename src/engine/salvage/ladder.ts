@@ -6,6 +6,7 @@
  * refusal a card shows are the ones the action applies (shown equals applied); the action adds only
  * `priceUpdated` (shown ≠ the check's price) and the change itself.
  */
+import { contentAt } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
@@ -122,9 +123,11 @@ function ceilingRefusal(cfg: SalvageConfig, g: SalvageGame, after: SalvageGame):
 
 /** The price a card shows for a shop item now, or null when it is not for sale (owned, on its way, gated, unknown). */
 export function shopPrice(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): number | null {
-  const it = shopItem(cfg.salvage, item);
-  if (!it || owns(cfg.salvage, g, item) || arriving(g, item)) return null;
-  if (!gateMet(cfg.salvage, g, it.gate)) return null;
+  // The content the state reads (layer.ts contentAt, s2a-fix): the works layer's items once the works opened.
+  const c = contentAt(cfg.salvage, g.salvage);
+  const it = shopItem(c, item);
+  if (!it || owns(c, g, item) || arriving(g, item)) return null;
+  if (!gateMet(c, g, it.gate)) return null;
   return roundMoney(it.price);
 }
 
@@ -333,6 +336,20 @@ function levelled(g: SalvageGame, target: LevelTarget): SalvageGame {
   if (target.kind === 'reuse') return { ...g, salvage: { ...s, reuse: { ...s.reuse, level: s.reuse.level + 1 } } };
   const p = s.partners[target.partner];
   return { ...g, salvage: { ...s, partners: { ...s.partners, [target.partner]: { ...p, level: p.level + 1 } } } };
+}
+
+/**
+ * A WORKS PLATE'S LEVEL PRICE (2.6.4, 2.11; s2a-fix, the lead's ruling 1 of 26 Nov 09:50): rules-money's one
+ * function for rules-works. The rule: the first yard's level rule (the level's added rated income at full
+ * feed times the payback hours) with tau capped at the rung's (`tau_h[rung - 1]`), never below `levels.floor`;
+ * null when the plate is not owned, not running or at its top level. PHASE A STUB: null (no plate exists).
+ */
+export function plateLevelPrice(cfg: SalvageConfig, g: SalvageGame, plate: string): number | null {
+  void cfg;
+  void plate;
+  const w = g.salvage.works[plate];
+  if (!w) return null;
+  return null;
 }
 
 /** A check's refusal as a printable line (refusal.<key> with its arguments), or null. */

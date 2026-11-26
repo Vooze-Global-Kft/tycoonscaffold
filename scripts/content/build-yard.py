@@ -409,10 +409,7 @@ def warnings(s, game):
     else:
         out.append('(3) plate prices not checked: bots/plates.json (the payback rule\'s table, 2.6.4) does not exist yet: %d plates at first values' % len(plates))
     # (14) for the away caps: now a refusal of the schema (s2a-fix: away.ts runLongerOf stops at the stage's top rung)
-    # 2.10.1's fallback lot (s2a-fix): none named, so no lot comes at rung 3 before the plasma cutter (a point for the lead)
-    lots = s.get('lots') or {}
-    if lots and not lots.get('fallback'):
-        out.append('(13) lots.fallback is not named: every lot kind needs the plasma cutter (tier 4), so at rung 3 before it no lot can come (2.10.1 "else an intermediate sold whole" names no thing; the lead\'s point, notes/s2a-fix.md)')
+    # 2.10.1's fallback lot: none (the lead's ruling 6 of 26 Nov 09:50: lots wait for a kind the yard can open)
     # (4) and (11): what the bots measure
     out.append('(4) theta_r against each metal\'s sources at a person\'s pace: not measured (the bots, Phase B); the tool part of B4 is lintStage2\'s')
     out.append('(11) each plate\'s ΔI at its planned moment above 0: not measured (the bots, Phase B); the +5 % at p̄ is lintStage2\'s')

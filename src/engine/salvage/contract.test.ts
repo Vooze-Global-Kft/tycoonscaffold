@@ -262,6 +262,13 @@ describe('2.20 the save: layout 3 accepts layout 2 (the first test written: the 
       expect(back.salvage.v).toBe(3);
       expect(back.salvage.things.length).toBe(g.salvage.things.length);
       expect((back.salvage as unknown as { book: unknown }).book).toEqual({ pages: 3 });
+      // the lead's ruling 4: the raw save kept aside untouched, once
+      expect(back.salvage.newerSave?.v).toBe(v);
+      expect((back.salvage.newerSave?.raw as { v: number; book: unknown }).book).toEqual({ pages: 3 });
+      expect((back.salvage.newerSave?.raw as { t: number }).t).toBe(g.salvage.t);
+      const again = reconcileSalvage(cfg3, base3(), rt(back), FIXTURE_NOW).salvage;
+      expect(again.newerSave?.v).toBe(v);
+      expect((again.newerSave?.raw as { newerSave?: unknown }).newerSave).toBeUndefined();
     }
     for (const v of [1, '3', null, undefined, Number.NaN, Infinity]) {
       const raw = rt(g) as unknown as { salvage: Record<string, unknown> };

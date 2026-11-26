@@ -4264,8 +4264,7 @@
           ],
           "cut_s": 10
         }
-      ],
-      "fallback": null
+      ]
     },
     "crate": {
       "share": 0.15,
@@ -5751,6 +5750,7 @@
         },
         {
           "term": "Analyser",
+          "fromRung": 3,
           "line": "A hand-held instrument that names a metal's alloy in seconds."
         },
         {
@@ -5759,10 +5759,12 @@
         },
         {
           "term": "Bag-house filter",
+          "fromRung": 3,
           "line": "Fabric filters that catch the dust in a furnace's fumes."
         },
         {
           "term": "Bale",
+          "fromRung": 3,
           "line": "Light iron pressed into a dense block for loading."
         },
         {
@@ -5791,6 +5793,7 @@
         },
         {
           "term": "Commissioning",
+          "fromRung": 3,
           "line": "Starting a new machine for the first time."
         },
         {
@@ -5803,6 +5806,7 @@
         },
         {
           "term": "Depollution bay",
+          "fromRung": 3,
           "line": "Where a car's fluids, battery and airbags are taken out."
         },
         {
@@ -5811,6 +5815,7 @@
         },
         {
           "term": "Eddy current",
+          "fromRung": 3,
           "line": "A spinning magnet that throws non-ferrous metal out of a stream."
         },
         {
@@ -5867,6 +5872,7 @@
         },
         {
           "term": "Oversize piece",
+          "fromRung": 3,
           "line": "A large piece a partner delivers that only you can cut."
         },
         {
@@ -5875,6 +5881,7 @@
         },
         {
           "term": "Picking table",
+          "fromRung": 3,
           "line": "Where a person sorts by hand what a machine would sort less well."
         },
         {
@@ -5887,14 +5894,17 @@
         },
         {
           "term": "Salt flux",
+          "fromRung": 3,
           "line": "Salt that covers molten aluminium in a rotary furnace."
         },
         {
           "term": "Sensor sorter",
+          "fromRung": 3,
           "line": "A machine that sorts metals by sight with jets of air."
         },
         {
           "term": "Shred",
+          "fromRung": 3,
           "line": "Fist-sized pieces of steel from a shredder."
         },
         {
@@ -5915,6 +5925,7 @@
         },
         {
           "term": "Twitch",
+          "fromRung": 3,
           "line": "Shredded aluminium sorted from zorba."
         },
         {
@@ -5923,6 +5934,7 @@
         },
         {
           "term": "Zorba",
+          "fromRung": 3,
           "line": "The mixed non-ferrous metal from a shredder."
         }
       ]

@@ -94,7 +94,7 @@ describe('5.2: each check refuses a broken content', () => {
   refuses('a ceiling that falls', (c) => (c.ceilings_t_h[4] = 10), 'ceilings_t_h[4] (rung 5) 10 t/h falls');
   refuses('packsOff without one country of the fixed list', (c) => ((c.iap as Any).packsOff = (c.iap as Any).packsOff.filter((x: string) => x !== 'DE')), 'iap.packsOff is not the fixed list');
   refuses('a lot kind cut outside lots.cut_s', (c) => ((c.lots as Any).kinds[0].cut_s = 30), 'is outside lots.cut_s');
-  refuses('a lot fallback that needs the plasma cutter', (c) => ((c.lots as Any).fallback = { obj: 'casing' }), 'the fallback is what comes before the plasma cutter');
+  refuses('a lot kind without its own cut_s', (c) => delete (c.lots as Any).kinds[0].cut_s, 'has no cut_s');
   refuses('a lot from an unknown sender', (c) => ((c.lots as Any).kinds[0].from = 'partner.nope'), 'neither a partner nor a register id');
   refuses('a bridge partner that opens with a plate', (c) => (layer(c).partners['partner.garage'].opens = 'baler'), 'is a plate: the bridge partners open with a vehicle');
   refuses('(14) an away-cap list shorter than ladder.topRung', (c) => (c.awayCapByRung_h = [0.5, 2, 4]), 'awayCapByRung_h has 3 entries; ladder.topRung 5');

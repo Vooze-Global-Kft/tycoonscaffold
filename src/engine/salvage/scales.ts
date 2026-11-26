@@ -2,6 +2,7 @@
  * The platform scale's weigh-in (yard-stage1.md 2.2, E17's one rounding rule; 4.4 item 5's lesson
  * pacing). Owner: rules-sim. The weighbridge's skip weigh-in is truck.ts's.
  */
+import { assayGrade } from './assay';
 import { priceOf } from './board';
 import { bayOf, reserveOnWeighIn } from './bays';
 import { count, heard, printTicket, ticketBase, dayAt, priceAt, type Ctx, numberBays } from './clock';
@@ -89,7 +90,17 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number,
   // `at`: the ticket's own instant (a grouped run's load, 2.1, lands at the run's end with the ticket and
   // the day's prices of its own drop, as its leg would have printed them); everything else happens at t.
   const day = dayAt(x, at);
-  const { lines, trueByGrade } = linesOf(x, pieces, day);
+  // Stage 2 (2.5.2; s2a-fix, the critic's finding 3 (e)): the analyser's grade of each piece (assay.ts assayGrade;
+  // the stub answers the piece's own grade, so the same array goes on and nothing is allocated).
+  let graded: readonly Piece[] = pieces;
+  for (let i = 0; i < pieces.length; i++) {
+    const gr = assayGrade(x, pieces[i]);
+    if (gr !== pieces[i].grade) {
+      if (graded === pieces) graded = pieces.slice();
+      (graded as Piece[])[i] = { ...pieces[i], grade: gr };
+    }
+  }
+  const { lines, trueByGrade } = linesOf(x, graded, day);
   for (const l of lines) {
     const b = bayOf(x, l.grade);
     b.g += l.g;

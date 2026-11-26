@@ -10,6 +10,9 @@
  * - `lotArrive(x, t)` at that instant: the lot set down, `nextAt` = max(nextAt, t) + period, or null when
  *   the arrival makes `lots.max` (B9).
  * Cutting a lot is the boss's act (`lot`, 2.18), not a dated event of the queue.
+ * THE LEAD'S RULING 6 (26 Nov 09:50): there is no fallback thing. While no kind can be drawn (every kind of
+ * lots.kinds needs the plasma cutter, or a line the yard does not own) the lots WAIT for a kind the yard can
+ * open; each kind's cut seconds are its own (`lots.kinds[].cut_s`).
  *
  * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
  * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is

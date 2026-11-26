@@ -65,8 +65,8 @@ const PLATES: Plates = {
     // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
     // out whole: the battery, four wheels, the loom, the converter, the drained shell: the elv object's pieces, shell and waste by mass
     // (lintStage2More (e) holds the two equal: one definition of a car's yield)
-    out: { elv: [["pbb", 0.015], ["alw", 0.036], ["tcab", 0.004], ["conv", 0.0015], ["cbody", 0.8]] },
-    waste: { elv: [["carrier", 0.1435]] }, // fluids and tyres, in sealed drums, to a licensed waste carrier
+    // out and waste: DERIVED from the elv object below (stationYield; the lead's ruling 6): fluids and tyres, in sealed drums, to a licensed waste carrier
+    out: {}, waste: {},
     lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 2000, permit: "card.rota.permitElv",
   },
   granulator: {
@@ -326,6 +326,20 @@ const WORKS_LAYER: WorksLayerInput = {
   // the new bays' capacities, kg (first values, content2: "no bay full before the next sitting", 2.22)
   bays: { shred: 40000, lib: 20000, zorba: 10000, znh: 5000, ssu: 5000, cug: 3000, pp: 3000, pbp: 10000, ss: 5000, twitch: 5000, bzs: 3000, bzi: 3000, bzd: 1000, pbi: 10000, dust: 1000, pbb: 5000 },
 };
+
+/**
+ * A station's yield is its object's (the lead's ruling 6 of 26 Nov 09:50; lintStage2More (e) checks it): the whole
+ * pieces by grade, the shell weighed whole, the rest (fluids and tyres) to a licensed waste carrier, as shares of the
+ * object's mass. One definition of a car's yield: the elv object.
+ */
+function stationYield(oid: string): { out: Record<string, [string, number][]>; waste: Record<string, [string, number][]> } {
+  const o = WORKS_LAYER.objects![oid]!;
+  const by = new Map<string, number>();
+  for (const p of o.pieces) by.set(p[0], (by.get(p[0]) ?? 0) + (p[1] * p[2]) / o.gross_g);
+  if (o.shell) by.set(o.shell.grade, (by.get(o.shell.grade) ?? 0) + o.shell.g / o.gross_g);
+  return { out: { [oid]: [...by.entries()] }, waste: { [oid]: [["carrier", o.waste_g / o.gross_g]] } };
+}
+Object.assign(PLATES.depollution, stationYield("elv"));
 
 export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
@@ -1526,15 +1540,14 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     cut_s: [4, 10],
     kinds: [
       // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
-      // cut_s: the boss's seconds for each kind within [4, 10] (first values, s2a-fix: the heavier piece the longer)
+      // cut_s: the boss's seconds for each kind within [4, 10] (the lead's ruling 6: per kind; first values, s2a-fix: the heavier piece the longer)
       { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7 },
       { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7 },
       { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4 },
       { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10 },
     ],
-    // 2.10.1's "else an intermediate sold whole" names no thing: NOT NAMED here (a point for the lead, notes/s2a-fix.md):
-    // with every kind at tier 4, no lot comes at rung 3 before the plasma cutter. build-yard.py says so.
-    fallback: null,
+    // The lead's ruling 6 (26 Nov 09:50): no fallback thing ("else an intermediate sold whole" is withdrawn): while no kind
+    // can be drawn (every kind is tier 4: before the plasma cutter) the lots WAIT for one the yard can open.
   },
   // The crate, "the picking table" (2.10.2): no hold time (P2).
   crate: { share: 0.15, max: 12, sort_s: 3, u: 1.6 },

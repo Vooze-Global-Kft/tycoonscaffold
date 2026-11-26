@@ -7,6 +7,7 @@
  */
 import { cardOfMoney, MONEY_CARD_KINDS } from './cardsMoney';
 import { cardOfWorks, WORKS_CARD_KINDS } from './cardsWorks';
+import { contentAt } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
@@ -609,7 +610,9 @@ export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: nu
       return { ...base, kind: 'settings', shape: 'panel', title: { key: 'title.settings' }, legal: { key: 'line.fictional' } };
     case 'help': {
       const lessons = Object.entries(c.lessons).map(([grade, key]) => row(`lesson.${grade}`, { key: 'title.place', args: { place: { grade } } }, { key: key as TextKey }, null, 'info'));
-      return { ...base, kind: 'help', shape: 'panel', title: { key: 'title.help' }, lead: [{ key: 'line.shortened' }], rows: lessons, legal: { key: 'line.fictional' } };
+      // The glossary's terms of the yard's rung (s2a-fix, the lead's ruling 7: stage 2's from rung 3; the first yard's Help is unchanged below it).
+      const glossary = (c.text?.glossary ?? []).filter((e) => (e.fromRung ?? 1) <= s.ladder.rung).map((e) => ({ term: e.term, line: e.line }));
+      return { ...base, kind: 'help', shape: 'panel', title: { key: 'title.help' }, lead: [{ key: 'line.shortened' }], rows: lessons, legal: { key: 'line.fictional' }, glossary };
     }
     // Stage 2's kinds (dispatched above; listed here so the switch stays exhaustive).
     case 'works':
@@ -630,7 +633,9 @@ export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: nu
 
 /** Facade `cardOf(cfg, g, ref, now)`. */
 export function cardOfCfg(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx?: CardContext): CardData {
-  return cardOf(cfg, g, ref, now, ctx);
+  // The content the state reads (layer.ts contentAt, s2a-fix): the same config until the works open.
+  const c = contentAt(cfg.salvage, g.salvage);
+  return cardOf(c === cfg.salvage ? cfg : { ...cfg, salvage: c }, g, ref, now, ctx);
 }
 
 // ============================================================================ the top bar (4.1)
