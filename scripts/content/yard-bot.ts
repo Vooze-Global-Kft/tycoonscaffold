@@ -217,17 +217,70 @@ function walkRow(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: str
   return { at, rung: g.salvage.ladder.rung, G: Math.round(b0.G), noise: (walkG(noise, g, b0.h).G - b0.G) / b0.G, rows };
 }
 
+/**
+ * REPORT8, ruling 17.1 at stage 2 (--walk2): walkRow's walk on a stage-2 state, with the shop read at the state (the works
+ * layer's items, the plates) and every owned plate's level one step up; the return's unread card put aside first.
+ */
+function walk2Row(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: string) {
+  const flat = { ...base.salvage, board: { ...base.salvage.board, a: 0 } };
+  const cfg = seededCfg({ ...base, salvage: flat } as R.SalvageConfig, seed);
+  const noise = seededCfg({ ...base, salvage: { ...flat, crew: { ...flat.crew, cutter: { ...flat.crew.cutter, share: flat.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig, seed);
+  const g = landed(cfg, { ...g0, cash: 1e12, salvage: { ...g0.salvage, away: null } } as R.SalvageGame);
+  const b0 = walkG(cfg, g);
+  const t = g.salvage.t;
+  const steps: [string, () => R.SalvageGame][] = [];
+  for (const role of ['hand', 'cutter', 'driver'] as const) {
+    const ck = hireCheck(cfg, g, role);
+    if (ck.price !== null && !ck.refusal) steps.push([`hire ${role}`, () => R.hire(cfg, g, role, ck.price!, t)]);
+  }
+  const roles = new Set<string>();
+  for (const m of g.salvage.crew) {
+    if (roles.has(m.role)) continue; // one of each role (the cheapest step is the first of its kind)
+    const ck = levelCheck(cfg, g, { kind: 'crew', id: m.id });
+    if (ck.price !== null && !ck.refusal) { roles.add(m.role); steps.push([`level ${m.role}`, () => R.level(cfg, g, { kind: 'crew', id: m.id }, ck.price!, t)]); }
+  }
+  for (const id of ['stripper', 'bench', 'crucible'] as const) {
+    const ck = levelCheck(cfg, g, { kind: 'machine', machine: id });
+    if (ck.price !== null && !ck.refusal) steps.push([`level ${id}`, () => R.level(cfg, g, { kind: 'machine', machine: id }, ck.price!, t)]);
+  }
+  for (const pid of Object.keys(g.salvage.partners)) {
+    const ck = levelCheck(cfg, g, { kind: 'partner', partner: pid });
+    if (ck.price !== null && !ck.refusal) steps.push([`level ${pid}`, () => R.level(cfg, g, { kind: 'partner', partner: pid }, ck.price!, t)]);
+  }
+  for (const pid of Object.keys(g.salvage.works)) {
+    const ck = levelCheck(cfg, g, { kind: 'plate', plate: pid } as never);
+    if (ck.price !== null && !ck.refusal) steps.push([`level plate ${pid}`, () => R.level(cfg, g, { kind: 'plate', plate: pid } as never, ck.price!, t)]);
+  }
+  const seen = new Set<string>();
+  for (const it of [...contentAt(cfg.salvage, g.salvage).shop, ...cfg.salvage.dayOneList]) {
+    if (it.kind === 'crew' || seen.has(it.key)) continue;
+    seen.add(it.key);
+    const ck = buyCheck(cfg, g, it.key as never);
+    if (ck.price !== null && !ck.refusal) steps.push([`buy ${it.key}`, () => R.buy(cfg, g, it.key as never, ck.price!, t)]);
+  }
+  const rows: { step: string; d: number }[] = [];
+  for (const [name, f] of steps) {
+    try {
+      const h = landed(cfg, { ...f(), cash: 1e12 } as R.SalvageGame);
+      rows.push({ step: name, d: (walkG(cfg, h, b0.h).G - b0.G) / b0.G });
+    } catch (e) {
+      rows.push({ step: `${name} (threw: ${String((e as Error).message).slice(0, 60)})`, d: NaN });
+    }
+  }
+  return { at, rung: g.salvage.ladder.rung, G: Math.round(b0.G), noise: (walkG(noise, g, b0.h).G - b0.G) / b0.G, rows };
+}
+
 /** 9. THE PURCHASE WALK (RULING2.md 17.1): per moment and step, the mean change of G over the seeds (a seed's several crew of one role averaged), the worst seed, and the noise floor. */
 function walkSection(L: string[], all: Summary[]): void {
   type W = { at: string; rung: number; G: number; noise: number; rows: { step: string; d: number }[] };
-  const runs = all.filter((r) => r.spec.kind === 'walk');
+  const runs = all.filter((r) => r.spec.kind === 'walk' || (r.spec.kind === 'stage2' && ((r.extra.walk as unknown[] | undefined) ?? []).length > 0));
   if (!runs.length) return;
   L.push('');
   L.push(`9. THE PURCHASE WALK (RULING2.md 17.1; ${runs.length} seeds): every purchase, hire and level one step up by hand; the change in G (a capped absence at usual prices, stock counted); gate: mean not below -1 %, no seed below -4 %`);
   const pc = (v: number) => `${v >= 0 ? '+' : ''}${(100 * v).toFixed(2)} %`;
   let fails = 0;
   let n = 0;
-  for (const at of ['m30', 'm60', 'm90', 'day1', 'day3']) {
+  for (const at of ['m30', 'm60', 'm90', 'day1', 'day3', 'r3s1', 'r4entry']) {
     const ws = runs.map((r) => ({ seed: r.spec.seed, w: ((r.extra.walk as W[]) ?? []).find((q) => q.at === at) })).filter((q) => q.w);
     if (!ws.length) continue;
     const nz = ws.map((q) => q.w!.noise);
@@ -377,6 +430,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const nohandStates: R.SalvageGame[] = [];
   let n0 = b.rec.purchases.length;
   const returns: { g: R.SalvageGame; bought: string[] }[] = [];
+  const walk2: ReturnType<typeof walk2Row>[] = [];
   for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
     newSitting(b);
     const cash0 = b.g.cash;
@@ -392,6 +446,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
+    if (arg('walk2') && which === 'normal' && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
     sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)) } : {}) });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
@@ -451,7 +506,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { fin, s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -520,6 +575,198 @@ function report2(all: Summary[], seeds: number[]): string {
   return L.join('\n');
 }
 
+/**
+ * REPORT8 (content2-bots, the measurement): the table of yard-stage2.md 9.2 from the stage-2 runs: rungs in their bands, I
+ * against G at the named moments on both boards, planning ahead on means, the bank, ads, the Yard sale and the van, the
+ * plates' payback, a purchase every sitting, cash against 2 tau, the hand's worth, E19, packs, steel-max, the lead cut, and
+ * a tick against a jump. Every figure is read from the runs' summaries (so `--from` prints it again without playing).
+ */
+function report8(all: Summary[], tauH: (number | null)[]): string {
+  const L: string[] = [];
+  const runs = all.filter((r) => r.spec.kind === 'stage2');
+  const by = (bot: Bot2) => runs.filter((r) => r.spec.bot === bot).sort((a, b) => a.spec.seed - b.spec.seed);
+  const SS = (r: Summary) => r.extra.sittings as Sitting2[];
+  const pc = (v: number) => `${v >= 0 ? '+' : ''}${(100 * v).toFixed(1)} %`;
+  const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, v) => a + v, 0) / xs.length : NaN);
+  const sitAt = (r: Summary, rung: number) => SS(r).find((x) => x.rung >= rung)?.n ?? null;
+  L.push(`REPORT8 TABLE (yard-stage2.md 9.2; ${runs.length} stage-2 runs; bots ${[...new Set(runs.map((r) => r.spec.bot))].join(', ')})`);
+  // T1. rungs
+  L.push('');
+  L.push('T1. RUNG 4 AT DAY 2 TO 3 (sittings 4 to 6), RUNG 5 AT DAY 4 TO 6 (sittings 8 to 12): per bot, the sitting of each per seed and the count in band');
+  for (const bot of [...new Set(runs.map((r) => r.spec.bot!))]) {
+    const rs = by(bot);
+    const s4 = rs.map((r) => sitAt(r, 4));
+    const s5 = rs.map((r) => sitAt(r, 5));
+    const in4 = s4.filter((x) => x !== null && x >= 4 && x <= 6).length;
+    const in5 = s5.filter((x) => x !== null && x >= 8 && x <= 12).length;
+    L.push(`   ${String(bot).padEnd(9)} n ${pad(rs.length, 2)}  rung 4 at ${s4.map((x) => x ?? '-').join(' ')}  (${in4}/${rs.length} in band, median day ${f2(med(s4.filter((x): x is number => x !== null)) / 2)})   rung 5 at ${s5.map((x) => x ?? '-').join(' ')}  (${in5}/${rs.length} in band${s5.some((x) => x === null) ? `; not reached on ${s5.filter((x) => x === null).length}, end ${rs.filter((_, i) => s5[i] === null).map((r) => `${r.extra.supplied_t} t ${r.extra.materials} mat`).join(', ')}` : ''})`);
+  }
+  // T2. I against G
+  L.push('');
+  L.push('T2. RATED INCOME I AGAINST G (14.10; G a capped absence at usual prices from the sitting\'s return, I at the same state; gate per moment: median 0.95-1.05, 13 of 15 in 0.88-1.12, none outside 0.80-1.25)');
+  for (const bot of ['normal', 'flat'] as Bot2[]) {
+    const rs = by(bot).filter((r) => SS(r).some((x) => x.G !== undefined));
+    if (!rs.length) continue;
+    L.push(`   ${bot === 'flat' ? 'PLAYED WITH PRICES FLAT (board.a 0)' : 'PLAYED WITH THE NORMAL BOARD'}, ${rs.length} seeds`);
+    const moments: [string, (r: Summary) => { I?: number; Iback?: number; G?: number } | null][] = [
+      ['r3 entry (sitting 1)', (r) => SS(r)[0] ?? null],
+      ['r3 last purchase', (r) => [...SS(r)].reverse().find((x) => x.rung === 3 && x.bought > 0) ?? null],
+      ['r4 entry', (r) => SS(r).find((x) => x.rung >= 4) ?? null],
+      ['day 3 (sitting 6)', (r) => SS(r)[5] ?? null],
+      ['r4 last purchase', (r) => [...SS(r)].reverse().find((x) => x.rung === 4 && x.bought > 0) ?? null],
+      ['r5 entry (run end)', (r) => { const f = r.extra.fin as { G: number; I: number; rung: number } | null; return f && f.rung >= 5 ? f : null; }],
+    ];
+    for (const [name, get] of moments) {
+      const q = rs.map((r) => { const x = get(r) as { I?: number; Iback?: number; G?: number } | null; return x && x.G ? (x.Iback ?? x.I ?? 0) / x.G : null; }).filter((v): v is number => v !== null);
+      if (!q.length) { L.push(`     ${name.padEnd(20)} no state`); continue; }
+      const m = med(q);
+      const within = q.filter((v) => v >= 0.88 && v <= 1.12).length;
+      const out = q.filter((v) => v < 0.8 || v > 1.25).length;
+      const ok = m >= 0.95 && m <= 1.05 && within >= Math.ceil((13 / 15) * q.length) && out === 0;
+      L.push(`     ${name.padEnd(20)} n ${pad(q.length, 2)}  I/G median ${f2(m)}  ${within}/${q.length} in 0.88-1.12  min ${f2(Math.min(...q))} max ${f2(Math.max(...q))}  ${out} outside: ${ok ? 'met' : 'MISSED'}   [${q.map((v) => v.toFixed(2)).join(' ')}]`);
+    }
+  }
+  // T3. planning ahead
+  const nb = by('normal');
+  const cmp = (bot: Bot2, n: number, f: (x: Sitting2) => number) => {
+    const xs: number[] = [];
+    for (const r of by(bot)) {
+      const o = nb.find((q) => q.spec.seed === r.spec.seed);
+      const a = SS(r)[n - 1];
+      const b0 = o && SS(o)[n - 1];
+      if (a && b0 && f(b0)) xs.push(f(a) / f(b0) - 1);
+    }
+    return xs;
+  };
+  if (by('behind').length) {
+    L.push('');
+    L.push('T3. PLANNING AHEAD (14.9): ahead true (normal) against false (behind), the MEAN over seeds of (true / false - 1) ... printed as false against true; the noise floor (cutters x (1 + 1e-9)) beside; gate: within 2 % for lifetime earnings and 5 % for supplied');
+    for (const [day, n] of [['day 1', 2], ['day 3', 6]] as const) {
+      for (const [what, f] of [['lifetime earnings', (x: Sitting2) => x.Lend], ['supplied t', (x: Sitting2) => x.t]] as const) {
+        const d = cmp('behind', n, f);
+        const z = cmp('noise', n, f);
+        const sd = Math.sqrt(mean(d.map((v) => (v - mean(d)) ** 2)) / Math.max(1, d.length - 1));
+        const lim = what === 'supplied t' ? 0.05 : 0.02;
+        L.push(`   ${day} ${what.padEnd(18)} n ${pad(d.length, 2)}  false vs true mean ${pc(mean(d))} (s.e. ${(100 * sd).toFixed(1)} %; worst ${pc(Math.min(...d))}, best ${pc(Math.max(...d))})  noise mean ${pc(mean(z))} (n ${z.length}): ${Math.abs(mean(d)) <= lim ? 'met' : 'MISSED'}`);
+      }
+    }
+  }
+  // T4. bank
+  const al = by('always');
+  if (al.length) {
+    L.push('');
+    L.push('T4. THE BANK (2.14; LEAD L1, L5): first offer within the first two sittings of rung 3 (12 of 15); every loan; the first repaid before rung 4 on every seed, with the hours PLAYED (aim about 4) and of the yard RUNNING (about 7); rung 5 at most a tenth sooner than never-financing');
+    const firstOk: number[] = [];
+    for (const bot of ['normal', 'always'] as Bot2[]) {
+      for (const r of by(bot)) {
+        const s2 = r.extra.s2 as Bot['rec']['s2'];
+        const ss = SS(r);
+        const sitOf = (t: number) => Math.max(1, ss.findIndex((x) => x.h * 3600 >= t) + 1 || ss.length);
+        // hours played to yard second t: the first hour, then 0.25 h a sitting whose play began before t (partly)
+        const played = (t: number) => { let h = 1; for (const x of ss) { const end = x.h * 3600; const st = end - 900; if (t >= end) h += 0.25; else if (t > st) h += (t - st) / 3600; } return h; };
+        const o = s2.offers[0];
+        if (bot === 'always' && o) firstOk.push(sitOf(o.t) <= 2 ? 1 : 0);
+        if (bot === 'always' && !o) firstOk.push(0);
+        const loans = s2.loans.map((l) => { const rp = s2.repaid.find((q) => q.plate === l.plate && q.t >= l.t); return `${l.plate} §${l.P} (F ${l.F}) s${sitOf(l.t)}${rp ? ` repaid s${sitOf(rp.t)}: ${(played(rp.t) - played(l.t)).toFixed(1)} h played, ${((rp.t - l.t) / 3600).toFixed(1)} h running${r.rungs[4] !== undefined ? (rp.t < r.rungs[4] ? ', before rung 4' : ', AFTER rung 4') : ''}` : ' NOT repaid'}`; });
+        const share = Math.max(0, ...ss.map((x, i) => { const dl = x.Lback - (i ? ss[i - 1].Lend : x.Lback); return x.awayBank > 0 ? x.awayBank / (dl + x.awayBank) : 0; }));
+        L.push(`   ${String(bot).padEnd(7)} s${pad(r.spec.seed, 3)}: letter s${s2.letter !== undefined ? sitOf(s2.letter) : '-'}; offers ${s2.offers.length}${o ? ` (first ${o.plate} §${o.P} at sitting ${sitOf(o.t)})` : ''}; ${loans.length ? `loans ${loans.join('; ')}` : 'no loan'}; bank's largest share of an absence's earnings ${(100 * share).toFixed(1)} %; rung 5 at ${r.rungs[5] !== undefined ? `${(r.rungs[5] / 3600).toFixed(1)} h` : '-'}`);
+      }
+    }
+    L.push(`   first offer within two sittings of rung 3 (always bot): ${firstOk.reduce((a, v) => a + v, 0)}/${firstOk.length} (aim 12 of 15)`);
+    const sooner = al.map((r) => { const o = nb.find((q) => q.spec.seed === r.spec.seed); return o?.rungs[5] && r.rungs[5] ? 1 - r.rungs[5] / o.rungs[5] : NaN; }).filter(Number.isFinite);
+    if (sooner.length) L.push(`   rung 5 sooner with every loan than never: median ${pc(med(sooner))}, max ${pc(Math.max(...sooner))} (aim at most +10 %)`);
+    const rep4 = al.filter((r) => { const s2 = r.extra.s2 as Bot['rec']['s2']; return s2.loans.length && (!s2.repaid[0] || r.rungs[4] === undefined || s2.repaid[0].t >= r.rungs[4]); }).length;
+    L.push(`   first loan NOT repaid before rung 4: ${rep4} of ${al.filter((r) => (r.extra.s2 as Bot['rec']['s2']).loans.length).length} runs with a loan (gate: none)`);
+  }
+  // T5. ads, Yard sale and van shares of a day; E19
+  L.push('');
+  L.push("T5. SHARES OF A DAY'S EARNINGS (lifetime earnings over two sittings): ad rewards (aim at most 4 %, ads bot); the Yard sale and the van (2 to 5 %, never over 8 %, normal bot): per day 1..7, median over seeds [max]");
+  const perDay = (r: Summary, part: (x: Sitting2, s2: Bot['rec']['s2'], t0: number, t1: number) => number) => {
+    const ss = SS(r);
+    const s2 = r.extra.s2 as Bot['rec']['s2'];
+    const out: number[] = [];
+    for (let d = 0; 2 * d + 1 < ss.length; d++) {
+      const a = d ? ss[2 * d - 1] : null;
+      const b2 = ss[2 * d + 1];
+      const L0 = a ? a.Lend : 0;
+      const t0 = a ? a.h * 3600 : 0;
+      let num = 0;
+      for (const x of [ss[2 * d], b2]) num += part(x, s2, t0, b2.h * 3600);
+      out.push(num / Math.max(1, b2.Lend - L0));
+    }
+    return out;
+  };
+  const dayRow = (name: string, rs: Summary[], part: Parameters<typeof perDay>[1], hi: number) => {
+    if (!rs.length) return;
+    const rows = rs.map((r) => perDay(r, part));
+    const days = Math.max(...rows.map((x) => x.length));
+    const cells: string[] = [];
+    let over = 0;
+    for (let d = 0; d < days; d++) {
+      const v = rows.map((x) => x[d]).filter((y) => y !== undefined);
+      over += v.filter((y) => y > hi).length;
+      cells.push(`d${d + 1} ${(100 * med(v)).toFixed(1)} [${(100 * Math.max(...v)).toFixed(1)}]`);
+    }
+    L.push(`   ${name.padEnd(22)} ${cells.join('  ')}   (${over} seed-days over ${(100 * hi).toFixed(0)} %)`);
+  };
+  const live = (s2: Bot['rec']['s2'], key: 'ads' | 'rackSold', x: Sitting2) => (s2[key] as { t: number; amount?: number; money?: number }[]).filter((q) => q.t > x.h * 3600 - 900 && q.t <= x.h * 3600 + 1).reduce((a, q) => a + (q.amount ?? q.money ?? 0), 0);
+  dayRow('ads (ads bot)', by('ads'), (x, s2) => live(s2, 'ads', x), 0.04);
+  dayRow('Yard sale + van (normal)', nb, (x, s2) => x.rack + x.van + live(s2, 'rackSold', x), 0.08);
+  dayRow('  of it the van', nb, (x) => x.van, 0.08);
+  dayRow('Yard sale + van (racker)', by('racker'), (x, s2) => x.rack + x.van + live(s2, 'rackSold', x), 0.08);
+  // E19
+  const e19 = nb.flatMap((r) => SS(r).map((x, i) => ({ rung: x.rung, awayH: (x.Lback - (i ? SS(r)[i - 1].Lend : x.Lback)) / Math.max(1e-9, x.ranH), playH: (x.Lend - x.Lback) / 0.25 })).filter((q, i) => i > 0));
+  for (const rung of [3, 4]) {
+    const q = e19.filter((x) => x.rung === rung && x.playH > 0).map((x) => x.awayH / x.playH);
+    if (q.length) L.push(`   E19 rung ${rung}: an hour away / an hour played (earnings), median ${f2(med(q))} over ${q.length} sittings, min ${f2(Math.min(...q))} max ${f2(Math.max(...q))} (aim 0.3 to 0.8)`);
+  }
+  // T6. purchases and cash
+  L.push('');
+  L.push('T6. A USEFUL PURCHASE EVERY SITTING; CASH AT A SITTING\'S END AT MOST 2 TAU_r OF INCOME (tau_h by rung; income = G at that return)');
+  for (const bot of [...new Set(runs.map((r) => r.spec.bot!))]) {
+    const rs = by(bot);
+    const dry = rs.map((r) => SS(r).filter((x) => x.bought === 0).length);
+    const tot = rs.map((r) => SS(r).length);
+    L.push(`   ${String(bot).padEnd(9)} sittings without a purchase: ${dry.reduce((a, v) => a + v, 0)} of ${tot.reduce((a, v) => a + v, 0)} (per seed ${dry.join(' ')})`);
+  }
+  for (const r of [...nb, ...by('flat')]) {
+    const bad = SS(r).filter((x) => x.G && tauH[x.rung - 1] && x.cash > 2 * (tauH[x.rung - 1] as number) * x.G).map((x) => `s${x.n} ${(x.cash / ((tauH[x.rung - 1] as number) * x.G!)).toFixed(1)} tau`);
+    if (bad.length) L.push(`   ${r.spec.bot}/s${r.spec.seed}: cash over 2 tau at ${bad.join(', ')}`);
+  }
+  // T7. the hand's worth; packs; steel-max; the lead cut; no hand
+  L.push('');
+  L.push("T7. THE HAND'S WORTH (normal against the card manager, lifetime earnings at sittings 4 and 8: aim at least 1.2); PACKS (rung times against off, the buyer's lead); STEEL-MAX; THE LEAD CUT");
+  for (const n of [4, 8]) {
+    const q = by('manager').map((r) => { const o = nb.find((x) => x.spec.seed === r.spec.seed); const a = o && SS(o)[n - 1]; const m = SS(r)[n - 1]; return a && m ? a.Lend / m.Lend : NaN; }).filter(Number.isFinite);
+    if (q.length) L.push(`   normal / manager at sitting ${n}: median ${f2(med(q))}, min ${f2(Math.min(...q))} (${q.length} seeds)`);
+  }
+  for (const r of by('packs')) {
+    const o = nb.find((x) => x.spec.seed === r.spec.seed);
+    const s2 = r.extra.s2 as Bot['rec']['s2'];
+    const lead = (k: number) => (o?.rungs[k] !== undefined && r.rungs[k] !== undefined ? `${((o!.rungs[k] - r.rungs[k]) / 3600).toFixed(1)} h of the yard's clock (${(sitAt(o!, k)! - sitAt(r, k)!) / 2} days)` : '-');
+    L.push(`   packs s${r.spec.seed}: ${s2.packs.length} packs §${Math.round(s2.packs.reduce((a, p) => a + p.S, 0))}; lead at rung 5 ${lead(5)}`);
+  }
+  for (const bot of ['steelMax', 'leadCut', 'slow', 'brisk'] as Bot2[]) for (const r of by(bot)) L.push(`   ${bot} s${r.spec.seed}: ends rung ${r.extra.rung} at ${r.extra.supplied_t} t, ${r.extra.materials} materials, goal ${r.extra.lastGoal}, ${SS(r).length} sittings`);
+  // T8. plates
+  const pl = runs.filter((r) => Object.keys((r.extra.plates as Record<string, unknown>) ?? {}).length);
+  if (pl.length) {
+    L.push('');
+    L.push('T8. THE PLATES\' PAYBACK (2.6.4; aim 0.8 to 1.5 tau_r): at each plate\'s planned moment, price / dG in hours (G at usual prices with the plate bought, set down, started and a heat poured, against without), in tau of its rung; dI beside');
+    const ids = [...new Set(pl.flatMap((r) => Object.keys(r.extra.plates as Record<string, unknown>)))];
+    for (const id of ids) {
+      const xs = pl.map((r) => (r.extra.plates as Record<string, { rung: number; dI: number; dG?: number; price?: number; G?: number }>)[id]).filter(Boolean);
+      const pay = xs.map((x) => (x.dG && x.dG > 0 && x.price ? x.price / x.dG / ((tauH[Math.max(2, x.rung - 1)] as number) || 1) : Infinity));
+      L.push(`   ${id.padEnd(12)} n ${xs.length}  price §${xs[0]?.price}  dG ${xs.map((x) => x.dG).join(' ')}  (of G ${xs.map((x) => x.G).join(' ')})  dI ${xs.map((x) => x.dI).join(' ')}  payback ${pay.map((v) => (Number.isFinite(v) ? v.toFixed(2) : 'never')).join(' ')} tau`);
+    }
+  }
+  // T9. tick against jump
+  const tj = runs.filter((r) => r.spec.gate);
+  L.push('');
+  L.push(`T9. A TICK AGAINST A JUMP (a minute of 0.1 s ticks against one jump, at sittings 1 to 5, 8 and 12 of the normal bot): ${tj.length} runs, ${tj.reduce((a, r) => a + SS(r).filter((x) => x.n <= 5 || [8, 12].includes(x.n)).length, 0)} checks, ${tj.reduce((a, r) => a + ((r.extra.s2 as Bot['rec']['s2']).gate ?? []).length, 0)} differ`);
+  return L.join('\n');
+}
+
 let gameHash = '';
 /** The first parts' key: the game file and bot.ts only (the rules' files are not hashed: empty the cache when they change). */
 let snapHash = '';
@@ -535,17 +782,24 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): void {
   const W = c.works!;
   const rows: Record<string, unknown> = {};
   for (const pid of Object.keys(W.plates)) {
-    const xs = all.map((r) => (r.extra.plates as Record<string, { at_h: number; rung: number; dI: number; I: number; bought: boolean }> | undefined)?.[pid]).filter((x): x is { at_h: number; rung: number; dI: number; I: number; bought: boolean } => !!x);
+    type P = { at_h: number; rung: number; dI: number; I: number; bought: boolean; dG?: number; G?: number };
+    const xs = all.map((r) => (r.extra.plates as Record<string, P> | undefined)?.[pid]).filter((x): x is P => !!x);
     if (!xs.length) continue;
     const gateR = Number(String(W.plates[pid].gate).replace('rung', '')) || 3;
     const tau = c.tau_h?.[gateR - 1] ?? 0;
     const dI = med(xs.map((x) => x.dI));
-    rows[pid] = { dI, I: med(xs.map((x) => x.I)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.max(W.floor, Math.round(tau * dI)), seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: xs.map((x) => x.dI) };
+    // RULING2.md 19.1: the price reads what the yard earns, measured: dE = the MEAN over seeds of dG (G at usual prices, a
+    // capped absence, with the plate bought against without), price = max(works.floor, tau_r x dE) to three figures.
+    const dEs = xs.map((x) => x.dG ?? 0);
+    const dE = Math.round(dEs.reduce((a, v) => a + v, 0) / dEs.length);
+    const raw = Math.max(W.floor, tau * dE);
+    const p10 = 10 ** Math.max(0, Math.floor(Math.log10(raw)) - 2);
+    rows[pid] = { dE, dI, I: med(xs.map((x) => x.I)), G: med(xs.map((x) => x.G ?? 0)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.round(raw / p10) * p10, seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: dEs, perSeedI: xs.map((x) => x.dI) };
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
   const out = write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : path.join(os.tmpdir(), `yard-plates-${process.pid}.json`));
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dI: § an hour of rated income the plate adds at its planned moment on the normal bots\' yards (median of seeds); price: max(works.floor, tau_r x dI).', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows }, null, 1)}\n`);
+  fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dE (RULING2.md 19.1): § an hour the yard earns more at usual prices with the plate (bought, set down, started up, a heat poured) than without, at its planned moment on the normal bots\' yards, mean of seeds; price: max(works.floor, tau_r x dE) to three figures; dI beside (rated income, not read).', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows }, null, 1)}\n`);
   process.stderr.write(`wrote ${out}\n`);
 }
 
@@ -1126,11 +1380,16 @@ async function main(): Promise<void> {
       const [i, n] = sh.split('/').map(Number);
       specs2 = specs2.filter((_, k) => k % n === i);
     }
-    const all2 = await runAll(gameFile, specs2, Number(arg('jobs', '2')));
+    // --from a.json,b.json: print the report again from runs already made (no play).
+    const from = arg('from');
+    const all2 = from ? from.split(',').flatMap((f) => JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')) as Summary[]) : await runAll(gameFile, specs2, Number(arg('jobs', '2')));
     if (arg('plates')) writePlates(all2, gameFile, arg('plates') === 'write');
     const json2 = arg('json');
     if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
-    process.stdout.write(`${report2(all2, seeds)}\n`);
+    const seeds2 = from ? [...new Set(all2.map((r) => r.spec.seed))].sort((a, b) => a - b) : seeds;
+    const W2: string[] = [];
+    walkSection(W2, all2);
+    process.stdout.write(`${report2(all2, seeds2)}\n\n${report8(all2, (loadCfg(gameFile).salvage as unknown as { tau_h: (number | null)[] }).tau_h)}\n${W2.join('\n')}\n`);
     process.exit(all2.some((r) => r.broken.length || ((r.extra.s2 as Bot['rec']['s2'])?.gate ?? []).length) ? 2 : 0);
   }
   const only = (arg('only', 'beats,hand,away,days,nohand,gate,income,walk') ?? '').split(',');

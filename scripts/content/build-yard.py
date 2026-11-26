@@ -435,12 +435,14 @@ def warnings(s, game):
         for pid, p in plates.items():
             row = (tab.get('plates') or tab).get(pid)
             r = int(str(p['gate']).replace('rung', '') or 3)
-            if not row or 'dI' not in row:
-                out.append('(3) bots/plates.json has no ΔI for plate %s' % pid)
+            # RULING2.md 19.1: the measured gain dE (what the yard earns more an hour), else the old ΔI
+            gain = None if not row else row.get('dE', row.get('dI'))
+            if gain is None:
+                out.append('(3) bots/plates.json has no dE for plate %s' % pid)
                 continue
-            want = max(W['floor'], (tau[r - 1] or 0) * row['dI'])
+            want = max(W['floor'], (tau[r - 1] or 0) * gain)
             if abs(p['price'] - want) > max(1, 0.01 * want):
-                out.append('(3) works.plates.%s.price §%s is not max(works.floor, tau_%d x ΔI) = §%.0f' % (pid, p['price'], r, want))
+                out.append('(3) works.plates.%s.price §%s is not max(works.floor, tau_%d x dE) = §%.0f' % (pid, p['price'], r, want))
     else:
         out.append('(3) plate prices not checked: bots/plates.json (the payback rule\'s table, 2.6.4) does not exist yet: %d plates at first values' % len(plates))
     # (14) for the away caps: now a refusal of the schema (s2a-fix: away.ts runLongerOf stops at the stage's top rung)
