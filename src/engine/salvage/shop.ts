@@ -249,7 +249,7 @@ export function settleState(cfg: SalvageConfig, g: SalvageGame, outcome: QuoteOu
     events?.push({ type: 'quoteWithdrawn', product: q.product, atMs: q.atMs, why });
     return { ...g, salvage: { ...s, iap: { ...s.iap, pending: s.iap.pending.filter((_, k) => k !== i) } } };
   }
-  const wait = outcome === 'unconfirmed' ? 'unconfirmed' : 'pending';
+  const wait: 'pending' | 'unconfirmed' = outcome === 'unconfirmed' ? 'unconfirmed' : 'pending';
   const cur = s.iap.pending[i];
   if (cur.state === 'waiting' && cur.wait === wait) return g;
   const pending = s.iap.pending.map((p, k) => (k === i ? { ...p, state: 'waiting' as const, wait } : p));
