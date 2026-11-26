@@ -8,6 +8,7 @@ import type { GameConfig } from './schema';
 import { HaulSchema, lintHaul } from './schema.haul';
 import { MergeSchema, lintMerge } from './schema.merge';
 import { DecreeSchema, lintDecree } from './schema.decree';
+import { SalvageSchema, lintSalvage } from './schema.salvage';
 
 /**
  * Cross-field checks zod can't express per field. Returns a list of problems. `artIcons`: the
@@ -61,6 +62,8 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
 
   if (cfg.mode !== 'merge' && cfg.merge) problems.push('there is a "merge" block but mode is not "merge"');
   if (cfg.mode !== 'decree' && cfg.decree) problems.push('there is a "decree" block but mode is not "decree"');
+  if (cfg.mode !== 'salvage' && cfg.salvage) problems.push('there is a "salvage" block but mode is not "salvage"');
+  if (cfg.mode !== 'salvage' && cfg.app.orientation === 'landscape') problems.push('app.orientation "landscape" needs a mode that lays itself out in landscape (salvage)');
   // --- haul mode (spec section 2 header, errata 8) ---
   if (cfg.mode === 'haul') {
     // The shared schema keeps the haul block opaque (its schema is the haul mode's): parse it here.
@@ -99,6 +102,17 @@ export function lintGameConfig(cfg: GameConfig, artIcons: readonly string[] = ar
     if (cfg.upgrades.length > 0) problems.push('a decree game has no upgrades');
     if (Object.keys(cfg.cast).length > 0) problems.push('a decree game has no "cast": its people are drawn by the mode (spec 7.3)');
     if (cfg.meta.missions.templates.length > 0) problems.push('a decree game has no missions (spec 5: cut on purpose)');
+  } else if (cfg.mode === 'salvage') {
+    // --- salvage mode (the scrapyard, docs/design/yard-ground.md; the rules: yard-design.md): opaque in the shared schema too ---
+    if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
+    const salvage = cfg.salvage ? SalvageSchema.safeParse(cfg.salvage) : null;
+    if (!salvage) problems.push('mode is "salvage" but there is no "salvage" block');
+    else if (!salvage.success) problems.push(...salvage.error.issues.map((i) => `salvage.${i.path.join('.')}: ${i.message}`));
+    else problems.push(...lintSalvage(salvage.data).map((m) => `salvage: ${m}`));
+    if (cfg.app.orientation !== 'landscape') problems.push('a salvage game is laid out in landscape: set app.orientation "landscape"');
+    if (cfg.economy.prestige.bonusPerPoint !== 0) problems.push('economy.prestige.bonusPerPoint must be 0 in a salvage game (no run reset is designed yet)');
+    if (cfg.businesses.length > 0) problems.push('a salvage game has no businesses');
+    if (cfg.upgrades.length > 0) problems.push('a salvage game has no upgrades');
   } else {
     if (cfg.haul) problems.push('there is a "haul" block but mode is not "haul"');
     if (cfg.businesses.length === 0) problems.push('a sim or classic game needs at least one business');

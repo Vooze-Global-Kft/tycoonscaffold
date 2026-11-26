@@ -1,0 +1,32 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_SIMULATION",
+        "GAMES_CASUAL"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "Scrap to Ingot",
+        "subtitle": "Scrapyard & Metal Tycoon",
+        "description": "Take over Cinder Lane Yard, a small licensed scrapyard full of old stock, and steer your worker with one thumb. Stop beside a washing machine and it comes apart, piece by piece: light iron panels, a whole motor, a counterweight for the rubble skip.\n\nEvery load goes on the platform scale and into its bay by grade, at the day's posted price. The price board shows each grade's price today, the days before it and one plain word: low day, usual or high day. Hold any bay for a better day. The flatbed from Tollbridge Metals collects every bay you have not held and pays by transfer.\n\nThe yard came with an old hand stripper and a bundle of cable. Strip it and bare bright copper comes off the spool, worth many times the iron. Further on, a small crucible under its extraction hood melts brass taps into brass ingots.\n\nBuy better tools and wheeled carriers: a sledgehammer and angle grinder for cast iron, and a cutting torch for steel beams, tanks certified empty and the depolluted end-of-life car that came in from Cottle Demolition with its paperwork. Buy a hook-lift truck and fetch loads from Hob's Farm Clearance and Cottle Demolition. Every load is labelled with what is in it and its price before you hook it, and the weighbridge prints gross, tare and net.\n\nHire a yard hand, a cutter and a driver. Each takes over one step of the work, so the yard keeps earning while you are away, for a few hours.\n\nFrom the first minute the industry table ranks your yard against rival firms by tonnes supplied, under one aim: the largest full metal recycling and resource supplier. The rival firms are simulated.\n\nEvery firm, place and price in the game is invented. Prices keep the trade's true proportions. No real money goes into or comes out of anything in the game.",
+        "keywords": [
+          "idle",
+          "scrap metal",
+          "crucible",
+          "ingot",
+          "copper",
+          "furnace",
+          "weighbridge",
+          "metal recycling",
+          "cable stripping"
+        ],
+        "promoText": "Take over Cinder Lane Yard, a small licensed yard full of old stock. Steer your worker with one thumb and take a washing machine apart, piece by piece.",
+        "privacyPolicyUrl": "https://example.com/scrap-to-ingot/privacy"
+      }
+    }
+  }
+}

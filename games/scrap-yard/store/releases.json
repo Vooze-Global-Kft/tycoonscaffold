@@ -1,0 +1,7 @@
+{
+  "_comment": "Release log and release notes (fingerprint dimension 19; read by scripts/lib/fingerprint.ts and scripts/sync.ts). Owner: the wiring step until the store step of the release. Add a submission line, by hand, the day a build goes to a store: {\"version\", \"store\": \"apple\" | \"google\", \"date\": ISO, \"build\", \"scan\": the scan-binary.ts output file}. The first submission must be at least 14 days after Proudly Adequate's latest one (yard-design.md 1.2, row 19). The 1.0.0 note is the first yard's placeholder for the owner's phone test, in the game's voice (weighbridge-plain), promising nothing a later stage brings.",
+  "releaseNotes": {
+    "1.0.0": "The gate is open. Take the washer apart, put it on the scale, and the flatbed collects on its round."
+  },
+  "submissions": []
+}

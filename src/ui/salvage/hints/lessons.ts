@@ -1,0 +1,91 @@
+/**
+ * The lesson line of a weigh-in ticket (yard-stage1.md 4.4 item 5, 5.5): in the first five minutes a
+ * lesson shows only on a VALUE JUMP; the value grades (copper, brass, the converter: content `valueLessons`)
+ * always count as one on their first weigh-in (P2); the others wait for the grade's next weigh-in after that. Asked by the hud's ticket (requests.md, [hud] to hints).
+ *
+ * Since the contract's fix pass the rules pace lessons inside the weigh-in (types.ts `lessonsSeen`), so a
+ * ticket's `lesson` is already paced and `lessonFor` prints it. `lessonPaced` is the same rule written
+ * once as a pure function of the ticket history: the rules engineers may call it, the tests pin it, and
+ * `lessonFor` uses it as a GUARD only (it never adds a lesson the rules did not give, so the two can
+ * never both decide).
+ */
+import * as R from '../../../engine/salvage';
+import { teachOf } from './teach';
+
+type WeighIn = Extract<R.Ticket, { kind: 'weighIn' }>;
+
+function isWeighIn(t: R.Ticket): t is WeighIn {
+  return t.kind === 'weighIn';
+}
+
+/** Usual price of a grade (0 when unknown). */
+function pbar(cfg: R.SalvageConfig, grade: string): number {
+  return cfg.salvage.grades[grade]?.pbar ?? 0;
+}
+
+/** The value grades whose lesson ALWAYS shows on their first boss weigh-in (content `valueLessons`, P2). */
+export function valueGrades(cfg: R.SalvageConfig): readonly string[] {
+  return (cfg.salvage as { valueLessons?: readonly string[] }).valueLessons ?? ['bb', 'brs', 'conv'];
+}
+
+/**
+ * Whether a grade's line on this weigh-in is a value jump: a value grade (content `valueLessons`) always
+ * is (P2: whatever was weighed before, even on the first ticket); another grade when its usual price is at
+ * least `teach.jumpRatio` times every usual price on the weigh-ins before it.
+ */
+export function isValueJump(cfg: R.SalvageConfig, grade: string, before: readonly R.Ticket[]): boolean {
+  if (valueGrades(cfg).includes(grade)) return true;
+  const t = teachOf(cfg);
+  let top = 0;
+  for (const tk of before) if (isWeighIn(tk)) for (const l of tk.lines) top = Math.max(top, pbar(cfg, l.grade));
+  if (top <= 0) return false;
+  return pbar(cfg, grade) >= t.jumpRatio * top;
+}
+
+/** The rule on one ticket, given the grades whose lesson was shown already (scales.ts lessonFor's twin). */
+function pick(cfg: R.SalvageConfig, ticket: WeighIn, before: readonly R.Ticket[], seen: ReadonlySet<string>): { grade: string; key: R.TextKey } | null {
+  if ((ticket as { by?: string }).by !== undefined && (ticket as { by?: string }).by !== 'boss') return null;
+  const quiet = teachOf(cfg).lessonQuietS;
+  const lessons = cfg.salvage.lessons as Record<string, string>;
+  const grades = [...new Set(ticket.lines.map((l) => l.grade))].sort((a, b) => pbar(cfg, b) - pbar(cfg, a));
+  for (const grade of grades) {
+    const key = lessons[grade];
+    if (!key || seen.has(grade)) continue;
+    if (ticket.at >= quiet || isValueJump(cfg, grade, before)) return { grade, key: key as R.TextKey };
+  }
+  return null;
+}
+
+/**
+ * The pacing rule as a pure function: the lesson this weigh-in may carry, given the tickets printed
+ * before it (oldest first). Only the boss's weigh-ins carry lessons. A value grade (`valueLessons`: bare
+ * bright, brass, the converter) gets its lesson on its first weigh-in whatever came before; another grade
+ * on its first weigh-in if that is a value jump or comes after `teach.lessonQuietS`, else on its first
+ * weigh-in after them. At most one lesson a ticket (the dearest grade first); never twice. The earlier
+ * tickets are replayed through the same rule, so a grade passed over for a dearer one keeps its lesson.
+ */
+export function lessonPaced(cfg: R.SalvageConfig, ticket: R.Ticket, before: readonly R.Ticket[]): { grade: string; key: R.TextKey } | null {
+  if (!isWeighIn(ticket)) return null;
+  const earlier = before.filter((x) => x.no < ticket.no);
+  const seen = new Set<string>();
+  earlier.forEach((tk, i) => {
+    if (!isWeighIn(tk)) return;
+    const got = pick(cfg, tk, earlier.slice(0, i), seen);
+    if (got) seen.add(got.grade);
+  });
+  return pick(cfg, ticket, earlier, seen);
+}
+
+/**
+ * The lesson line the hud prints on this ticket, or null: the rules' lesson, unless the pacing rule says
+ * this ticket may not carry it (a guard against a rules stage that does not pace yet).
+ */
+export function lessonFor(cfg: R.SalvageConfig, g: R.SalvageGame, ticket: R.Ticket): R.TextKey | null {
+  if (!isWeighIn(ticket) || !ticket.lesson) return null;
+  const history = g.salvage?.tickets ?? [];
+  const paced = lessonPaced(cfg, ticket, history);
+  // The history holds the last 50 tickets: with fewer than that, a disagreement is real; beyond, trust the rules.
+  if (history.length < 50 && paced && paced.key !== ticket.lesson) return ticket.lesson;
+  if (history.length < 50 && !paced && ticket.at < teachOf(cfg).lessonQuietS) return null;
+  return ticket.lesson;
+}

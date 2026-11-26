@@ -26,6 +26,9 @@ const MODE_FOLDERS = {
   // High Office (docs/design/office-design.md 9.2): the decree rules, their schema (its runtime deck names
   // "Dithering-on-the-Dawdle", "Bus Spotters' Society", ...), fixtures and generated content, as merge's.
   decree: ['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/config/schema.decree.ts', 'src/config/decree.content.ts'],
+  // The scrapyard (docs/design/yard-ground.md; the rules come with docs/design/yard-design.md): the salvage
+  // rules, their schema, fixtures and content, the walkable yard and its screens, as decree's.
+  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
 };
 
 /**
@@ -107,7 +110,7 @@ const CLASSIFIED_ROOT = 'src';
  * fx catalogue holds every event's description; the art icon list names every mode's icons; the
  * game-data lint's messages name every mode's things.
  */
-const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/services/fx/catalog.merge.ts', 'src/services/fx/catalog.decree.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
+const NODE_ONLY = ['src/services/fx/catalog.ts', 'src/services/fx/catalog.haul.ts', 'src/services/fx/catalog.merge.ts', 'src/services/fx/catalog.decree.ts', 'src/services/fx/catalog.salvage.ts', 'src/config/artIcons.ts', 'src/config/lint.ts'];
 
 /**
  * Words that name a thing of a mode's theme. The bundle check fails on a string literal in a
@@ -133,6 +136,9 @@ const THEME_WORDS = {
   // High Office (office-design.md 9.2): each word only where `--words` finds no literal of it in shared or
   // family files. Not "decree": the mode id itself is a shared literal (src/config/schema.ts), and names no thing a player reads.
   decree: ['mayor', 'governor', 'ministry', 'ward', 'gossip', 'scandal', 'boycott', 'dibs'],
+  // The scrapyard (yard-ground.md): each word only where `--words` finds no literal of it in shared or family
+  // files. Not "salvage": the mode id itself is a shared literal (src/config/schema.ts), and names no thing a player reads.
+  salvage: ['scrapyard', 'scrap', 'wreck', 'ingot', 'furnace', 'smelter', 'shredder', 'baler', 'forklift'],
 };
 
 /** npm packages that only these modes may bundle (three.js and the GL view are the classic 3D asteroid's). */
@@ -205,6 +211,26 @@ const WEB_ONLY = [
   'src/ui/decree/hud/fontScale.web.ts',
   'src/ui/decree/sheets/dev.web.ts',
   'src/ui/decree/views/dev.web.ts',
+  // The scrapyard's preview tools (yard-ground.md): the review screens, the presets, the development panel
+  // and its address switches (phones take each file's plain twin).
+  'src/modes/salvage/presets.web.ts',
+  'src/modes/salvage/devViews.web.ts',
+  // The salvage rules' frozen test content and states and the balance bot (yard-stage1.md section 9, hour 0).
+  'src/engine/fixtures/salvage.ts',
+  'src/engine/salvage/bot.ts',
+  'src/engine/salvage/director.ts',
+  'src/ui/salvage/dev/DevPanel.web.tsx',
+  'src/ui/salvage/dev/switches.web.ts',
+  // The loading animation's preview switches (lt=, ltitle=, lrm=, lready=, lseen=; the frame log).
+  'src/ui/salvage/loading/dev.web.ts',
+  // The first yard's screens' preview switches (requests.md, 25 November): the overlays' ?card= and
+  // ?fontScale=, the world labels' fontScale= and fxdemo=, the hud's ?fontScale=1.3 and ?hudDemo=.
+  'src/ui/salvage/overlays/devOpen.web.ts',
+  'src/ui/salvage/world/labelsDev.web.ts',
+  'src/ui/salvage/hud/fontScale.web.ts',
+  'src/ui/salvage/hud/dev.web.ts',
+  // The hints' scripted thumb of the preview (?autoplay=opening&route=1|2); phones take autoplay.tsx (null).
+  'src/ui/salvage/hints/autoplay.web.tsx',
 ];
 
 /**
@@ -221,6 +247,7 @@ const WEB_ONLY_STRINGS = [
   { text: 'haulFixtures' },
   { text: 'mergeFixtures' },
   { text: 'decreeFixtures' },
+  { text: 'SALVAGE_TEST_RAW' },
   // The page address's switches are read only by the .web.ts tools (src/dev/devtools.web.ts,
   // src/ui/haul/dev.web.ts); a library's own use (node_modules) is not counted. Haul only: the
   // first game's files keep their own web-guarded readers (they do not change). Shipped code only

@@ -80,6 +80,16 @@ function decreeGame(g: GameConfig): { read: string; readExists: boolean } | null
   return { read, readExists: fs.existsSync(path.join(games.ROOT, read)) };
 }
 
+/**
+ * A salvage game (the scrapyard, yard-design.md 7.6 and 7.7, yard-stage1.md 10): no chests, boxes,
+ * missions or daily reward; adults in safety gear drawn in code (the boss and the crew); its rating answers
+ * wait for the stages that bring other players, ads and purchases, so they are written by hand as pending
+ * between the hand-written markers and never claimed by sync.
+ */
+function salvageGame(g: GameConfig): boolean {
+  return g.mode === 'salvage';
+}
+
 /** The markers of RATING-NOTES.md's hand-written block (a decree game only; sync never writes inside them). */
 const HAND_BEGIN = '<!-- BEGIN hand-written answers: kept by npm run sync, edit only between these two lines -->';
 const HAND_END = '<!-- END hand-written answers -->';
@@ -98,6 +108,7 @@ function ratingNotes(g: GameConfig): string {
   const m = g.meta;
   const gift = mergeGift(g);
   const decree = decreeGame(g);
+  const salvage = salvageGame(g);
   const products = g.monetization.iap.products;
   const ads = g.monetization.ads;
   const sellsRandom = m.chestsForSale;
@@ -129,7 +140,7 @@ function ratingNotes(g: GameConfig): string {
           `| Random items (chests) | 1 kind: gift boxes (a paper bag of ${gift.slots} slots${gift.lanternSlots ? `, ${gift.lanternSlots.slots} after lantern ${gift.lanternSlots.n}` : ''}) with random contents, earned one every ${gift.every} filled tickets (merge.gift.every); the odds and the coin amount are shown before a box is opened |`,
           `| Random items SOLD (money or any currency) | No: gift boxes are only earned by filling tickets; no purchase and no ad gives one |`,
         ]
-      : decree
+      : decree || salvage
       ? [
           `| Random items (chests) | None: no chests, boxes or random rewards of any kind |`,
           `| Random items SOLD (money or any currency) | No |`,
@@ -139,7 +150,7 @@ function ratingNotes(g: GameConfig): string {
           `| Random items SOLD (money or ${g.strings.gemName}) | ${sellsRandom ? `**Yes** (meta.chestsForSale; switched off in ${m.chestSalesBlockedIn.join(', ')})` : 'No: chests are only earned (timer, missions, rewarded ads)'} |`,
         ]),
     `| Time-limited offers | ${m.deals.some((d) => d.durationHours) ? 'Yes, with real end times of 48 h or more that never return' : 'No'} |`,
-    `| Daily rewards | ${gift || decree ? 'No' : 'Yes'} |`,
+    `| Daily rewards | ${gift || decree || salvage ? 'No' : 'Yes'} |`,
     `| Chat, user-generated content, web browsing, location | No |`,
     `| Simulated gambling (casino games) | No |`,
   );
@@ -164,6 +175,12 @@ function ratingNotes(g: GameConfig): string {
           '- The game draws people in code: about 48 editorial-cartoon busts of adults (officials, club',
           '  spokespeople, lobbyists, clerks) and six player faces; no children, school, soldier, police, clergy',
           '  or uniform (office-design.md 7.3). Keep "kids" and "for children" wording out of the store text.',
+        ]
+      : salvage
+      ? [
+          '- The game draws people in code: a yard boss and crew, adults in hard hats, hi-vis vests, gloves and',
+          '  boots (a face shield when cutting, an aluminised apron at every pour); nobody hurt or unsafe; no',
+          '  children (yard-design.md 11). Keep "kids" and "for children" wording out of the store text.',
         ]
       : Object.keys(g.cast).length
       ? [
@@ -193,6 +210,20 @@ function ratingNotes(g: GameConfig): string {
     );
     // This game's own answers (the satire questions, the declarations, the territories) are written by hand
     // between the two markers below; sync keeps that block as it finds it and writes everything around it.
+    L.push('', HAND_BEGIN, keptHandWritten(g.id), HAND_END);
+  }
+  if (salvage) {
+    h('Pending: the rating answers wait for the stages that decide them (yard-design.md 7.7)');
+    L.push(
+      '- **Every answer in this file is PENDING.** They are this config\'s defaults, not decided answers: the listing, the',
+      '  ads, the purchases and the online part (boards, other players\' yards, companies of up to 30) come in',
+      '  later stages, and the design expects Apple 13+ and PEGI 3 to 7 / ESRB E once they exist (7.7). Nothing',
+      '  here may be entered in a console before the hand-written block says it is decided.',
+      '- Simulated money only (L4): the posted price board, the exchanges and the listing are simulations; no real',
+      '  money goes into or out of a price, a share or another player; nothing reads as gambling or trading.',
+      '- Typed text: none. Names a player sees are generated from curated lists (7.6); report and block come with',
+      '  the online stage.',
+    );
     L.push('', HAND_BEGIN, keptHandWritten(g.id), HAND_END);
   }
 
@@ -253,6 +284,7 @@ function ratingNotes(g: GameConfig): string {
       : []),
     ...(gift ? ['6. Answer Play\'s "could appeal to children" question and decide the age band (M17: the owner\'s).'] : []),
     ...(decree ? [`6. The owner (or someone the owner names) reads the game and ${decree.read} before submitting (D9).`] : []),
+    ...(salvage ? ['6. Decide every pending answer above (the hand-written block) before the first submission.'] : []),
     ...(sellsRandom
       ? [
           '6. Paid random items: switch chest sales off for the storefronts in meta.chestSalesBlockedIn (the app',
@@ -260,7 +292,7 @@ function ratingNotes(g: GameConfig): string {
           '   both descriptions (sync adds it).',
         ]
       : []),
-    `${sellsRandom || gift || decree ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
+    `${sellsRandom || gift || decree || salvage ? 7 : 6}. Release one game at a time from one account, each with its own art, sounds, numbers and`,
     '   listing text: both stores remove families of near-identical apps, and take related accounts with',
     '   them (policy.md 4). `npm run validate` catches shared tables and near-identical descriptions,',
     '   not shared art.',

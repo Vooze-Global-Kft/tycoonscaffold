@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * What the sim, classic, haul, merge and decree entries hand the shared code (src/modes/contract.ts). Every reader of
+ * What the sim, classic, haul, merge, decree and salvage entries hand the shared code (src/modes/contract.ts). Every reader of
  * these pieces falls back quietly when one is missing (GameIcon draws ❔, the card window stays
  * empty, the tutorial shows no hand), so nothing else would notice a key dropped while editing an
  * entry: Pizza Empire would lose its glove or its portraits on the phone with every check green.
@@ -71,6 +71,10 @@ vi.mock('./decree/fx', () => ({ listenDecreeEvents: vi.fn(), playDecreeEvents: v
 vi.mock('../ui/decree/art/devViews', () => ({ artDevViews: { 'decree-art': s.named('DecreeArtGallery') } }));
 vi.mock('../ui/decree/art/DecreeIcon', () => ({ DecreeIcon: s.named('DecreeIcon'), DECREE_ICON_PREFIXES: ['art:', 'face:'] }));
 vi.mock('../ui/decree/PenPointer', () => ({ PenPointer: s.named('PenPointer'), decreeHints: { ask: () => [], name: 'decreeHints' } }));
+// The salvage entry's drawn pieces (Skia, react-native).
+vi.mock('../ui/salvage/SalvageShell', () => ({ SalvageShell: s.named('SalvageShell') }));
+vi.mock('../ui/salvage/Loading', () => ({ SalvageLoading: s.named('SalvageLoading') }));
+vi.mock('../ui/salvage/world/AtlasView', () => ({ AtlasView: s.named('AtlasView') }));
 
 const nameOf = (c: unknown) => (c as { displayName?: string } | undefined)?.displayName;
 const read = (file: string) => fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -312,5 +316,55 @@ describe('App.tsx', () => {
     expect(install).toBeLessThan(app.indexOf('export default function App'));
     expect(app).toMatch(/^import \{ modeEntry \} from '\.\.\/generated\/mode';$/m);
     expect(app).toMatch(/^import \{ installMode \} from '\.\.\/modes\/contract';$/m);
+  });
+});
+
+describe('the salvage entry (the scrapyard, docs/design/yard-ground.md, yard-stage1.md)', () => {
+  it('hands over its own shell, its loading animation, the rules with the two time-away seams and its shared sound keys, and nothing else', async () => {
+    const { default: salvage } = await import('./salvage');
+    const { salvageEngineMode } = await import('../engine/salvageMode');
+    expect(salvage.id).toBe('salvage');
+    expect(nameOf(salvage.Shell)).toBe('SalvageShell');
+    expect(nameOf(salvage.Loading)).toBe('SalvageLoading');
+    expect(salvage.engine).toBe(salvageEngineMode);
+    expect(salvage.engine?.id).toBe('salvage');
+    expect(salvage.engine?.saveTag, 'the first yard\'s layout (yard-stage1.md 2.13)').toBe('salvage1');
+    expect(salvage.engine?.paysOnCompute, 'paid when computed (BRIEF lesson 5)').toBe(true);
+    expect(salvage.engine?.catchUpSeconds, 'every absence through the away rules').toBe(0);
+    expect(salvage.parts).toBeUndefined();
+    expect(salvage.hints).toBeUndefined();
+    expect(salvage.artIcons).toBeUndefined();
+    // The salvage key for each shared key the store and the kit play (the sound package's table), each a key of the salvage catalogue.
+    const { SALVAGE_SHARED_SOUNDS } = await import('./salvage/soundKeys');
+    const { FX } = await import('../services/fx/catalog.salvage');
+    expect(salvage.soundKeys).toBe(SALVAGE_SHARED_SOUNDS);
+    for (const key of Object.values(SALVAGE_SHARED_SOUNDS)) expect(Object.keys(FX), 'every shared key maps to a key of the salvage table').toContain(key);
+    // One listener plays the rules' events: the shell's event pump (src/ui/salvage/hud/pump.ts); the entry subscribes nothing.
+    expect(read('salvage/index.tsx')).not.toMatch(/^import \{[^}]*\b(fx|modeEvents)\b|\.subscribe\(/m);
+    // Phones (this file's resolution of ./presets): no presets.
+    expect(salvage.presets).toBeUndefined();
+  });
+
+  it('ships its presets and its review screens on the web only', async () => {
+    expect((await import('./salvage/presets')).salvagePreset).toBeUndefined();
+    expect(typeof (await import('./salvage/presets.web')).salvagePreset).toBe('function');
+    expect(read('salvage/index.tsx')).toMatch(/import \{ salvagePreset \} from '\.\/presets';/);
+    expect((await import('./salvage/devViews')).devViews).toBeUndefined();
+    const web = (await import('./salvage/devViews.web')).devViews!;
+    expect(Object.fromEntries(Object.entries(web).map(([k, v]) => [k, nameOf(v)]))).toEqual({ loading: 'SalvageLoading', 'yard-atlas': 'AtlasView' });
+    expect(read('salvage/index.tsx')).toMatch(/import \{ devViews \} from '\.\/devViews';/);
+  });
+
+  it('installs its engine for salvage configs only', async () => {
+    const { default: salvage } = await import('./salvage');
+    const { default: sim } = await import('./sim');
+    const { installMode } = await import('./contract');
+    const { engineFor, installedEngine } = await import('../engine/mode');
+    installMode(salvage);
+    expect(installedEngine()).toBe(salvage.engine);
+    expect(engineFor({ mode: 'salvage' } as GameConfig)).toBe(salvage.engine);
+    expect(engineFor({ mode: 'decree' } as GameConfig)).toBeNull();
+    installMode(sim);
+    expect(installedEngine()).toBeNull();
   });
 });

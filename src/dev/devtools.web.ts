@@ -2,6 +2,9 @@
  * Development switches for the web build, read from the page address:
  *
  *   ?preset=fresh|early|mid|late   start from a prepared game state (see presets.web.ts)
+ *   ?preset=m5|m15|m30|back        the salvage mode's names (the scrapyard's frozen states,
+ *                                  src/engine/fixtures/salvage.ts): aliases of early, mid (m15 and m30)
+ *                                  and late (PRESET_ALIASES), so another game takes them as those
  *   &speed=10                      run the simulation this many times faster
  *   &tab=<tab>                     the tab shell's tab (sim and classic; the names are the store's Tab type)
  *   &modal=missions|settings       open a dialog
@@ -29,7 +32,7 @@ import { Platform } from 'react-native';
 import * as M from '../engine/meta';
 import { applyProductNow, useGame, type Tab } from '../state/store';
 import { ads } from '../services/ads';
-import { PRESETS, buildPreset, type PresetName } from './presets';
+import { PRESETS, PRESET_ALIASES, buildPreset, type PresetName } from './presets';
 
 /** The tab shell's tabs, for `&tab=` (the store's Tab type). */
 const TABS: readonly Tab[] = ['home', 'staff', 'upgrades', 'empire', 'shop'];
@@ -107,7 +110,8 @@ function applyNow(): void {
   const now = Date.now();
   const { cfg } = useGame.getState();
 
-  const preset = q.get('preset') as PresetName | null;
+  const asked = q.get('preset');
+  const preset = (asked && Object.prototype.hasOwnProperty.call(PRESET_ALIASES, asked) ? PRESET_ALIASES[asked] : asked) as PresetName | null;
   if (preset && (PRESETS as readonly string[]).includes(preset)) {
     let game = buildPreset(cfg, preset, now);
     if (q.get('story') === '1') game = { ...game, storySeen: [] };

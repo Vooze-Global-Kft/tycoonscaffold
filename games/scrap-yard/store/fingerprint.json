@@ -1,0 +1,80 @@
+{
+  "_notes": [
+    "Declared on 25 November 2026 by the wiring step of the first yard from docs/design/yard-design.md 1.2 (the 19 dimensions against the four games) and section 14 (D16: the process board is the progression screen; D19). Four words joined the closed vocabularies of scripts/lib/fingerprint.ts and docs/design/research/spam.md section 4 for this game: core_verb steer, production_topology separation-tree, main_screen_layout three-quarter-world, money_moment graded-lot-sale (their definitions are written beside them in both files).",
+    "What the first yard (stage 1, docs/design/yard-stage1.md) shows of each declared value, so that a reader can tell a value seen in the build from one the later stages bring: steer (the stick walks the worker across a yard three screens wide; walking into the truck drives it), separation-tree (a washing machine splits into light-iron panels, a whole motor and a counterweight to the rubble skip; the stripper splits cable into copper and PVC; the crucible a charge into ingot and dross), three-quarter-world (the oblique yard, the camera leading, the lane beyond the gate), graded-lot-sale (weigh-in tickets by grade into bays, Hold on every bay, the merchant's flatbed collecting every bay not held on its round, the posted board with its day word), tech-tree (the process board's first branch: strippers, motor bench, crucible; in play the first hour is led by the goal list, the rungs and the table's rank, so a reviewer may read it as a goal ladder: the dimension-13 person confirms it), prestige none, humans (the boss and three crew roles), art flat-vector in hi-vis-and-rust, voice weighbridge-plain. Dimensions 11 and 12 declare only what this build contains (fix pass, finding S6, 25 November 2026): events rung-sign and posted-price-step; systems crews, partners, price-board, industry-table, process-board and missions (the goal list on the clipboard, the 'missions' of Pizza Empire and Orbit Haulers, declared openly). The later stages' ids (events delivered-lot, pattern-week, consignment-arrival, company-order-week; systems exchanges, dispatch, territories, valuation, companies) are added when the build that has them is submitted. REVIEW-NOTES.md names the kinships openly (crews are the other games' managers, ministers and minders; the goal list is their missions; the supply deal is near Orbit Haulers' contract board).",
+    "Dimension 15 (character_kind humans) is the SAME as Pizza Empire and Proudly Adequate, accepted by ruling 11: the plan is 18 of 19 against those two and 19 of 19 against Orbit Haulers and Lantern Row, and nothing counts until measured.",
+    "human: one check per game (scripts/lib/fingerprint.ts reads human.<dimension> as a map keyed by the other game's id). value, by and date are left empty on purpose: the person who looks writes the verdict ('own' for dimension 7, 'different' for 13), their name and the date. Until 'by' is filled the dimension reads pending. Dimension 7 waits for the store set (the house's first landscape screenshots, yard-design.md 11) beside the four sets; the icon alone was approved at 60 px by the lead on 25 November (look/icon-final-60.png in the shared notes). Dimension 13 waits for the rota, the posted price board, the process board, the industry table and the clipboard in the web preview (GAME=scrap-yard, port 8304), set beside Pizza Empire's upgrade list, Orbit Haulers' star map and contract board, Lantern Row's ladder book and Proudly Adequate's ledger.",
+    "Dimension 8 stays pending until the lead runs npm run check:bundle -- --export after the last content write; dimension 19 until the first submission is logged in releases.json (at least 14 days after Proudly Adequate's).",
+    "Kinship with Orbit Haulers' contract board (fix pass, finding S5): the supply deal (a foundry co-op takes one grade a day for a few days at a locked price) is related to Orbit Haulers' contract board ('the furnace wants copper'). It differs: one grade a day from the yard's own bays, the price locked when signed, nothing charged for a short day, no departure, no timer that pays; it is offered once rung 2 is reached and is optional. 'foundry' and 'smelter' are kept out of the store keywords."
+  ],
+  "core_verb": "steer",
+  "production_topology": "separation-tree",
+  "money_moment": "graded-lot-sale",
+  "main_screen_layout": "three-quarter-world",
+  "progression_structure": "tech-tree",
+  "prestige_model": "none",
+  "active_skills_events": [
+    "rung-sign",
+    "posted-price-step"
+  ],
+  "meta_systems": [
+    "crews",
+    "partners",
+    "price-board",
+    "industry-table",
+    "process-board",
+    "missions"
+  ],
+  "art_style": {
+    "style": "flat-vector",
+    "palette": "hi-vis-and-rust"
+  },
+  "character_kind": "humans",
+  "voice": "weighbridge-plain",
+  "human": {
+    "icon_and_screenshot_template": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "high-office": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    },
+    "meta_screen_layouts": {
+      "pizza-empire": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "space-miner": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "night-market": {
+        "value": "",
+        "by": "",
+        "date": ""
+      },
+      "high-office": {
+        "value": "",
+        "by": "",
+        "date": ""
+      }
+    }
+  }
+}

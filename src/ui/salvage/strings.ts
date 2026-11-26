@@ -1,0 +1,579 @@
+/**
+ * Every word the salvage screens show (AGENTS.md: one file per mode; the fingerprint and the voice
+ * check read it). Owner: package 9, strings and the text check (yard-stage1.md section 9); a new key is
+ * ONE request to it (the key list is src/engine/salvage/textKeys.ts `TEXT_KEYS`, also the strings
+ * package's, and `TEXT` below must define exactly those keys: the typecheck holds both sides).
+ *
+ * Words follow yard-stage1.md section 5 (the voice of 5.6: short plain sentences in the trade's words; no
+ * puns, no exclamation marks, no promises). Holes:
+ * - `{arg}` filled from a Txt's typed arguments, numbers ONLY through the rules' formatters
+ *   (src/engine/salvage.ts fmtMoney, fmtPrice, fmtMass, fmtDuration, fmtRank, fmtPct);
+ * - `{id}` with a register id (homeYard, merchant, foundry, partnerFarm, rival.1, ...) filled from the
+ *   game's `salvage.names` (written by the build script from scripts/content/yard/names.json, read by
+ *   kind and name through `NAME_SELECTORS`; never a name written here, D13, S21);
+ * - `{grade|short}`: a `{ grade }` argument printed as the grade's short name (tickets and bay chips;
+ *   text.json grades.<id>.short, ≤ 15 characters), its name where the content has no short one.
+ * `say(txt, content)` is the one function that turns a Txt into words.
+ */
+import * as R from '../../engine/salvage';
+import type { SalvageContent } from '../../engine/salvage';
+
+/** The texts by key, grouped by the package that shows them. */
+export const TEXT = {
+  // --- package 4: the top bar, the goal card, the one button (4.1) ---
+  cash: '{x}',
+  rankChip: '{rank} of {n} · next {rival} {t}',
+  rankChipShort: '{rank} · next {rival}',
+  rankChipToNext: '{rank} · {t} to next',
+  rankChipTop: '{rank} of {n}',
+  carry: '{a} / {b} kg',
+  loadFull: 'Load full',
+  open: 'Open',
+  stepOut: 'Step out',
+  carryDriving: '{kg}', // hud: the carry chip while driving, after the skip pictogram (the lead's ruling 2, 15:55); kg = { mass_g, step: 'bridge' }
+  goalProgress: '{a} / {b}',
+  turnSideways: 'Turn your phone sideways',
+  turnSidewaysBody: 'This game is played in landscape.',
+  menu: 'Menu',
+  close: 'Close',
+  ok: 'OK',
+  cashDebit: '−{x} · {partner}', // P12: under the cash counter at a hook; x: money (positive), partner: { name }
+  passedToast: 'You passed {rival} · {rank} of {n}', // P16: rival { name: rival.<n>.chip }, rank { rank }, n { n }
+
+  // --- package 3: place names (5.2, at most 18 characters) ---
+  'place.rack': 'Tool rack',
+  'place.office': 'Office',
+  'place.scalehouse': 'Scale house',
+  'place.scale': 'Platform scale',
+  'place.weighbridge': 'Weighbridge',
+  'place.noticeboard': 'Notice board',
+  'place.dropoff': 'Public drop-off',
+  'place.rubble': 'Rubble skip',
+  'place.floor': 'Tipping floor',
+  'place.park': 'Truck park',
+  'place.stripper': 'Stripper pad',
+  'place.bench': 'Motor bench',
+  'place.crucible': 'Crucible',
+  'place.stock': 'Old stock',
+  'place.backfield': 'Back field',
+  'place.bays': 'Bays',
+  'place.merchant': '{merchant}',
+  'place.lane': '{homeLane}',
+  'place.bridge': 'Bridge',
+
+  // --- packages 3 and 4: chips (4.2, 4.4) ---
+  'chip.bay': '{grade|short} {kg} · today {x}',
+  'chip.bayHeld': '{grade|short} {kg} · held · {x}', // rules-book L10/W4: a held bay's first line, x = what Sell pays now
+  'chip.bayKg': '{grade|short} {kg}', // rules-book: a bay with nothing free to sell (all reserved)
+  'chip.bayKgHeld': '{grade|short} {kg} · held',
+  'chip.held': 'held',
+  'chip.lowDay': 'low day',
+  'chip.highDay': 'high day',
+  'chip.reservedDeal': 'For the foundry {a} / {b}',
+  'chip.forCrucible': 'For the crucible {a} / {b}',
+  'chip.padlock': '{why}',
+  'chip.padlockPrice': '{why} · {x}',
+  'chip.crewWeighIn': '{role} · {kg} in',
+  'chip.lotSold': 'Lot sold · {x}',
+  'chip.certifiedEmpty': 'certified empty',
+  'chip.bridgeLimit': 'Weight limit 7.5 t',
+  'chip.needsTorchGate': 'Needs a cutting torch',
+  'chip.count': '{what} · {n}',
+
+  // --- package 4: card titles (4.3) ---
+  'title.rack': 'Tool rack',
+  'title.rota': 'Rota',
+  'title.partners': 'Partners',
+  'title.processBoard': 'Process board',
+  'title.machine': '{machine}',
+  'title.board': 'Price board',
+  'title.skip': '{partner}',
+  'title.deal': 'Supply deal',
+  'title.table': 'Industry table',
+  'title.away': 'While you were away',
+  'title.rung': '{homeYard}',
+  'title.clipboard': 'Clipboard',
+  'title.settings': 'Settings',
+  'title.help': 'Help',
+  'title.place': '{place}',
+
+  // --- package 4: card rows and buttons (4.3, 5.2) ---
+  'card.buy': 'Buy {x}',
+  'card.hire': 'Hire {x}',
+  'card.level': 'Level up {x}',
+  'card.owned': 'Owned',
+  'card.cameWithYard': 'Came with the yard',
+  'card.sell': 'Sell {x}',
+  'card.hold': 'Hold',
+  'card.sign': 'Sign',
+  'card.notNow': 'Not now',
+  'card.fromBays': 'Take from bays',
+  'card.poursIn': 'Pours in {t}',
+  'card.readyToPour': 'Ready to pour',
+  'card.heelAsk': 'Pour the heel as a short ingot?',
+  'card.working': 'Working',
+  'card.trayFull': 'Tray full',
+  'card.waitingFor': 'Waiting for {grade}',
+  'card.idle': 'Idle',
+  'card.levelOnBoard': 'Level on the process board',
+  'card.inOut': '{in} → {out}',
+  'card.inOut2': '{in} → {a}, {b}', // rules-book W7: every output, largest first
+  'card.inOut3': '{in} → {a}, {b}, {c}',
+  'card.charge': '{a} / {b}',
+  'card.heel': 'Heel {kg}',
+  'card.recipe': '{recipe}',
+  'card.siteLicence': 'Site licence · metal dealer',
+  'card.drivesRate': 'Fetches a load in {t}',
+  'card.opensAt': 'Opens at {t} supplied',
+  'card.nightWatch': 'Runs while away: {a} h → {b} h', // a, b: { n } hours (cards.ts passes n); W20: no 'cap'
+  'card.dealTerms': '{grade}: {kg} a day for {n} days at {p}/kg, locked at signing',
+  'card.dealDaysLeft': '{n} days left',
+  'card.dealReserve': 'Reserved {a} / {b}',
+  'card.dealTrust': 'Trust {n} / 100',
+  'card.dealLast': 'Last delivery {kg}',
+  'card.skipState': '{partner} · full',
+  'card.skipLine': '{thing} × {n} · {kg}',
+  'card.skipNet': 'Net {kg}',
+  'card.skipPrice': '{x}',
+  'card.businessCard': '{contact} · {partner}',
+  'card.converterPaid': 'Paid on assay: platinum {pt}, palladium {pd}, rhodium {rh}, less fees',
+  'card.notBottleneck': 'Not the bottleneck now', // E19: the state line; no absolute rate on a row (W5)
+  'card.keptForLoad': 'Kept for the next load: {x}',
+  'card.empty': '',
+  // W5: no absolute rates on a row in this stage
+  'card.carriesTrip': 'Carries {kg} a trip', // kg: { mass_g }
+  'card.cutsBest': 'Cuts with the yard’s best tool',
+  'card.levelFaster': '+{pct} faster', // pct: { pct } (0.25 → "25 %")
+  'card.skipMore': 'Adds a skip at {partner}', // W5; partner: { name } (the ruling's 'One more skip filling at' does not fit 285 pt at 1.3)
+  'card.runsItself': 'Runs by itself',
+  'card.levelOpensAt': 'Level up opens at {t} supplied', // P18; t: { tonnes_g }
+  // W18: buttons name the action, rows name the state
+  'card.use': 'Use',
+  'card.start': 'Start',
+  'card.stop': 'Stop',
+
+  // --- package 4: items, roles and effect lines (≤ 38) ---
+  'item.sack': 'Sack truck',
+  'item.trolley': 'Flat trolley',
+  'item.frame': 'Carry frame',
+  'item.spanners': 'Spanners and bolt cutters',
+  'item.sledge': 'Sledgehammer and grinder',
+  'item.torch': 'Cutting torch',
+  'item.truck': 'Hook-lift truck',
+  'item.handStripper': 'Hand stripper',
+  'item.stripper': 'Powered stripper',
+  'item.bench': 'Motor bench',
+  'item.crucible': 'Crucible',
+  'item.brass': 'Brass recipe',
+  'item.alu': 'Aluminium recipe',
+  'item.night': 'Night watch',
+  'role.hand': 'Yard hand',
+  'role.cutter': 'Cutter',
+  'role.driver': 'Driver',
+  'effect.sack': 'Moves a washer in one trip',
+  'effect.trolley': 'Moves a radiator in one trip',
+  'effect.sledge': 'Breaks cast iron; cuts sheet faster',
+  'effect.torch': 'Cuts thick steel; frees converters', // W9 (the ruling's 41 characters do not fit the 38 of 4.6)
+  'effect.truck': 'Fetches partners’ loads',
+  'effect.stripper': 'Strips heavy cable to copper',
+  'effect.bench': 'Takes motors apart: copper, steel, alu',
+  'effect.crucible': 'Melts brass solids into ingots',
+  'effect.alu': 'Melts cast aluminium into ingots',
+  'effect.night': 'Earns for longer while you are away',
+  'effect.hand': 'Carries to the scale and the hoppers',
+  'effect.cutter': 'Cuts what waits at the drop-off',
+  'effect.driver': 'Fetches full loads with the truck',
+
+  // --- package 4: the price board (4.4) ---
+  'board.head': 'Market day {date} (UTC) · next prices in {t}',
+  'board.usual': 'usual',
+  'board.lowDay': 'low day',
+  'board.highDay': 'high day',
+  'board.firstHint': '{grade}: a low day. Holding is free.',
+  'board.heldUntil': 'Held until a high day, two days at most',
+  'board.sellTotal': 'Sell {x}',
+
+  // --- package 4: the process board (4.5) ---
+  'plate.handStripper': 'Hand stripper',
+  'plate.stripper': 'Powered stripper',
+  'plate.bench': 'Motor bench',
+  'plate.crucible': 'Crucible',
+  'plate.brass': 'Brass recipe',
+  'plate.alu': 'Aluminium recipe',
+  'plate.bronze': 'Bronze',
+  'plate.lead': 'Lead',
+  'plate.lithium': 'Lithium',
+  'plate.pgm': 'Platinum group and iridium',
+  'plate.tungsten': 'Tungsten',
+  'plate.owned': 'Level {n}',
+  'plate.price': '{x}',
+  'plate.levelPrice': 'Next {x}',
+  'plate.locked': '{why}',
+
+  // --- package 4: the industry table and the rung sign (2.11) ---
+  'table.headline': 'The largest full metal recycling and resource supplier',
+  'table.simulated': 'simulated',
+  'table.rivalsSimulated': 'Rival firms (simulated)',
+  'table.rung': '{t} supplied · {r} materials',
+  'table.rungGate': 'Opens at {t} supplied',
+  'table.range': '{n} materials',
+  'table.you': '{homeYard}',
+  'table.rungSign': '{homeYard} · {t} supplied',
+  'table.rungOpens': '{what}',
+
+  // --- package 4: the away card (4.4) ---
+  'away.head': 'Away {t} · the yard ran {c}', // R6/W20: t: { secs } the absence, c: { secs } what the yard ran
+  'away.line': '{grade|short} {kg} · {x}',
+  'away.supplied': '{t} supplied · {x} (already in your account)',
+  'away.loads': '{n} loads fetched',
+  'away.deliveries': '{n} deliveries to {foundry}', // one line per delivery: ticket.dealDelivery
+  'away.passed': 'You passed {rival}.',
+  'away.passedN': 'You passed {n} firms.', // desk2 (4c): at a large font scale, two or more rivals on one line
+  'away.hintCutter': 'A cutter keeps the yard working while you are away (Office)',
+  'away.hintHand': 'A yard hand carries to the scale while you are away (Office)',
+  'away.nothing': 'Nothing was weighed out.',
+  // P3: what was applied, in this order
+  'away.sales': 'Sales {x}',
+  'away.bought': '{n} loads bought · −{x}', // x: money (positive)
+  'away.boughtFrom': '{partner}: {n} loads bought · −{x}',
+  'away.net': 'Net +{x} (already in your account)',
+  'away.netLoss': 'Net −{x} (taken from your account)', // x positive, when spent > sales
+  'away.unsold': 'In the bays, not yet sold: {x}', // join3: x money, the stock the time away left unsold (today's price)
+  'away.next': 'Next: {goal}', // goal: { text: goal.* }
+  'away.longerRung': 'From the next rung it runs up to {c}', // c: { secs }
+  'away.longerNight': 'With the night watch it runs up to {c}', // c: { secs }
+
+  // --- packages 3 and 4: tickets and slips (2.2) ---
+  'ticket.weighInHead': '{homeYard} · No. {n}',
+  'ticket.gradeToday': '{p}/kg',
+  'ticket.todaysValue': 'today’s value {x}',
+  'ticket.weighInLegal': 'Weighed into bays · not yet sold',
+  'ticket.dropOffSlip': '{thing} · signed in · gate drop-off',
+  'ticket.skipHead': '{partner} · {load}',
+  'ticket.trial': 'trial load',
+  'ticket.grossTareNet': 'Gross {a} · Tare {b} · Net {c}',
+  'ticket.partnerLegal': 'Seller ID checked · paid by transfer',
+  'ticket.collectionHead': '{homeYard} · ticket {n}',
+  'ticket.gradeAmount': '{grade|short} {kg} {x}', // the clipboard's ticket history (overlays-b)
+  'ticket.paid': 'Paid {x}', // money IN only (collections, deal deliveries)
+  'ticket.boughtFor': 'Bought for {x}', // P12/S3: the skip weigh-in, money OUT
+  'ticket.lotSoldTo': 'Lot sold to {merchant}',
+  'ticket.weighedOut': 'weighed out · paid by transfer',
+  'ticket.dealDelivery': '{foundry} · {kg} cast iron · {x}',
+  'ticket.more': '+ {n} more',
+  'ticket.fromCar': 'from car ref. {ref}',
+  'ticket.certifiedEmpty': 'certified empty',
+  'ticket.date': '{date}',
+
+  // --- package 4: lines (5.2) ---
+  'line.portal': 'Every load checked. Every seller identified. Payment by transfer only.',
+  'line.crewAway': 'The yard now earns while you are away.',
+  'line.backfield': 'Back field · the works are being built here',
+  'line.fictional': 'All prices, exchanges and shares are fictional and have no real-world value. Nothing in this game is financial advice.',
+  'line.shortened': 'Building costs and times are shortened so the business grows in days, not decades; metal prices keep their true proportions.',
+  'line.carName': 'End-of-life car from {partnerDemolition} · depolluted · treatment record ref. {ref}',
+
+  // --- package 4: the clipboard and Settings (4.3) ---
+  'clip.goals': 'Goals',
+  'clip.places': 'Places',
+  'clip.tickets': 'Tickets',
+  'clip.settings': 'Settings',
+  'clip.sound': 'Sound',
+  'clip.music': 'Music',
+  'clip.haptics': 'Haptics',
+  'clip.help': 'Help',
+  'clip.privacy': 'Privacy',
+  'clip.version': 'Version {v}',
+  'clip.restart': 'Start the yard again',
+  'clip.restartConfirm': 'Start again from the first morning? Everything in this yard is lost.',
+  'clip.glossary': 'Glossary',
+
+  // --- package 8: goals (5.3, at most 30 characters, 1.3's order) ---
+  'goal.takeWasher': 'Take the washer apart',
+  'goal.weighIt': 'Weigh it on the scale',
+  'goal.stripCable': 'Strip the cable',
+  'goal.weighCopper': 'Weigh the copper',
+  'goal.buySack': 'Buy the sack truck',
+  'goal.takeAWasher': 'Take a washer apart',
+  'goal.hireHand': 'Hire a yard hand',
+  'goal.workDropoff': 'Clear the public drop-off',
+  'goal.buySledge': 'Buy the hammer and grinder',
+  'goal.breakRadiators': 'Break up the radiators',
+  'goal.buyTruck': 'Buy the hook-lift truck',
+  'goal.fetchTrial': 'Fetch the farm’s trial load',
+  'goal.tipTrial': 'Tip it on the floor', // P14
+  'goal.buyBench': 'Buy the motor bench',
+  'goal.breakMotor': 'Break a motor on the bench',
+  'goal.supplyRung2': 'Supply {t} ({r} materials)',
+  'goal.hireCutter': 'Hire a cutter',
+  'goal.signDeal': 'Sign the foundry deal',
+  'goal.buyTrolley': 'Buy the flat trolley',
+  'goal.buyStripper': 'Buy the powered stripper',
+  'goal.buyCrucible': 'Buy the crucible',
+  'goal.chargeCrucible': 'Charge the crucible',
+  'goal.pourFirst': 'Pour your first ingot',
+  'goal.hireDriver': 'Hire a driver',
+  'goal.buyTorch': 'Buy the cutting torch',
+  'goal.cutCar': 'Strip the car for the shredder',
+  'goal.fetchDemolition': 'Fetch the demolition load',
+  'goal.buyNight': 'Buy the night watch',
+  'goal.supplyRung3': 'Supply {t} ({r} materials)',
+  'goal.hireHand2': 'Hire a second yard hand',
+  'goal.hireCutter2': 'Hire a second cutter',
+  'goal.finishDeal': 'Finish the foundry deal',
+  'goal.passRival': 'Pass {rival}',
+  'goal.visitBackfield': 'Visit the back field',
+
+  // --- package 8 and the tickets: lessons (5.5, one line of at most 48; no fixed multiples) ---
+  'lesson.li': 'Light iron: thin steel from appliances.',
+  'lesson.drum': 'Stainless drum: sold here with light iron.',
+  'lesson.mot': 'A whole motor: copper inside steel.',
+  'lesson.cab': 'Cable is paid on the copper it yields.',
+  'lesson.bb': 'Bare bright pays {n} times light iron today.',
+  'lesson.no2': 'No.2 copper: coated, tinned or soldered.',
+  'lesson.brs': 'Brass is copper and zinc.',
+  'lesson.alw': 'Clean alloy wheels: tyres and weights off.',
+  'lesson.alcast': 'Motor end caps are cast aluminium.',
+  'lesson.ci': 'Cast iron breaks. Foundries remelt it.',
+  'lesson.hms': 'HMS: thick steel cut to furnace size.',
+  'lesson.hmsu': 'Uncut steel pays less. Cut to size, it is HMS.',
+  'lesson.cbody': 'Car bodies go to a shredder.',
+  'lesson.bri': 'An ingot pays more than the scrap it came from.',
+  'lesson.dross': 'Dross: the skimmed crust, still holding metal.',
+  'lesson.ali': 'The crucible casts cast aluminium into ingot.',
+  'lesson.conv': 'From depolluted car ref. {ref}. Paid on assay.',
+
+  // --- every package: refusals (5.4) ---
+  'refusal.cash': 'Not enough cash: {x} more',
+  'refusal.owned': 'Owned',
+  'refusal.rung': 'Opens at {t} supplied',
+  'refusal.ceiling': 'Capacity {c} t/h · grows at {t}',
+  'refusal.tool2': 'Needs the hammer and grinder',
+  'refusal.tool3': 'Needs a cutting torch',
+  'refusal.tooHeavy': 'Too heavy to lift: {kg}',
+  'refusal.topLevel': 'Top level',
+  'refusal.noPlace': 'No free place on the rota',
+  'refusal.filling': 'Filling · full in {t}',
+  'refusal.loadCash': 'Needs {x} more for this load',
+  'refusal.floor': 'Tipping floor needs {kg} free',
+  'refusal.weighFirst': 'Weigh it in first',
+  'refusal.heatRunning': 'Wait for the heat to pour',
+  'refusal.noTruck': 'Opens with the hook-lift truck',
+  'refusal.noTorch': 'Opens with the cutting torch',
+  'refusal.nothing': 'This would change nothing',
+  'refusal.priceUpdated': 'Price updated: {a} → {b}',
+  'refusal.confirmHeel': 'Pour the heel as a short ingot?',
+  'refusal.notBuilt': 'Not available',
+
+  // --- added by the contract's fix pass (25 November): keys moved from TEXT_PENDING and the attacks' new keys; strings owns them from here ---
+  rankChipPassed: '{rank} of {n} · passed {rival}',
+  'place.board': 'Price board',
+  'place.stillages': 'Stillages',
+  'chip.aside': 'Set aside {kg} · {x}',
+  'card.levelN': 'Level {n}',
+  'card.levelFromTo': 'Level {n} → {m}',
+  'card.onItsWay': 'On its way',
+  'card.on': 'On',
+  'card.off': 'Off',
+  'card.firstPour': 'Ready to pour · it waits for you',
+  'card.heating': 'Heating',
+  'card.cooling': 'Cooling',
+  'card.handOnly': 'Turns while you stand at it',
+  'card.hopper': 'Hopper · {grade|short} × {n} · {kg}', // overlays-a: the next input and what waits
+  'card.tray': 'Tray · {grade|short} {kg}',
+  'card.crewRow': '{name} · level {n}', // name: { name: crew.<n> }
+  'card.dealNoCharge': 'A short day costs nothing. Trust falls a little.',
+  'card.dealDone': 'All deliveries made',
+  'card.skipsInRotation': 'Skips in rotation: {n}',
+  'card.skipTrial': '{partner} · trial load',
+  'card.skipFilling': '{partner} · filling', // a skip in rotation that is not full yet (its state line is refusal.filling)
+  'card.skipReady': 'Full · ready to hook',
+  'card.skipOnTruck': 'On the truck',
+  'card.anotherSkip': 'Another skip · {x}', // overlays-a: the partner wall's row (5.2)
+  'card.partnerLine': '{line}', // line: { text } from text.json partners.<id>.line once it is in the content
+  'item.skip': 'Another skip',
+  'effect.frame': 'A hand load on your back',
+  'effect.spanners': 'Takes apart washers and bikes',
+  'effect.handStripper': 'Strips cable while you stand at it',
+  'effect.brass': 'Melts brass solids into brass ingots',
+  'board.stock': 'In the bay {kg}',
+  'board.today': 'Today {p}',
+  'board.usualPrice': 'usual {p}',
+  'plate.needsCrucible': 'Needs the crucible',
+  'plate.atRung': 'At {t} supplied',
+  'table.next': 'Next: {rival} · {t} to go', // rival: { name: rival.<n>.chip }
+  'table.locked': 'Opens at {t} supplied · {r} materials',
+  'table.nextRung': 'Next: opens at {t} supplied · {r} materials', // W13a
+  'opens.rung2': 'The cutting torch, a radiation portal and a supply deal',
+  'opens.rung3': 'Yard capacity {c} t/h',
+  'clip.privacyLine': 'Your yard is saved on this phone. There is no account.',
+  'clip.restartYes': 'Start again',
+  'clip.restartNo': 'Keep my yard',
+  // overlays-b, fix pass (first wordings; the words fixer owns them)
+  'board.empty': 'Grades appear here once weighed in',
+  'table.mine': 'You: {t} supplied · {r} materials',
+  'table.lockedBare': '{t} supplied',
+  'help.lessons': 'What the tickets taught',
+  'help.glossary': 'Words of the trade',
+  'help.about': 'About this game',
+  'goal.buyAlu': 'Buy the aluminium recipe',
+  'goal.widen': 'Buy next: {item}', // item: { text: item.* | role.* | item.skip }
+  'goal.widenLevel': 'Level up: {item}', // item: { text: role.* | item.* }
+  'advice.buy': 'Next: {item} · {x}', // x: money
+  'advice.level': '{item} level {n} · {x}', // n: the next level
+  'refusal.earmark': '{x} is kept for the load on its way',
+  'refusal.notOwned': 'Buy it first',
+  'refusal.stopFirst': 'Stop the truck first',
+  // E25's gate by another item owned (moved from TEXT_PENDING by rules-sim with REFUSAL_KEYS' needsItem, 17:10)
+  'refusal.needsItem': 'Opens with: {item}', // item: { text: item.* }
+} as const satisfies Record<R.TextKey, string>;
+
+// The other direction: every key of TEXT is a TextKey (an extra key fails here).
+const _noExtra: Record<keyof typeof TEXT, R.TextKey> = Object.fromEntries(Object.keys(TEXT).map((k) => [k, k])) as Record<keyof typeof TEXT, R.TextKey>;
+void _noExtra;
+
+/**
+ * Words written for keys that are not yet in the key list (requested in requests.md from the rules
+ * lead, `[strings] TEXT_KEYS`). Nothing reads this block: when a key lands in the list, its text moves
+ * into TEXT above and leaves here. `check.ts --all` checks it like TEXT (fit, voice, names).
+ * Holes are the arguments the caller passes; the comment says which formatter fills each.
+ */
+export const TEXT_PENDING: Record<string, string> = {};
+
+// ================================================================================================ names
+
+/**
+ * The register ids of yard-stage1.md 5.1 and how each is found in scripts/content/yard/names.json
+ * (the names desk's; read only, never copied) when the register has no `byId` table: a live entry
+ * (verdict neither "changed" nor "rejected") by its `kind`, and where several share a kind, by a trade
+ * word in the name or by tonnes. Since version 3 the register carries ids and `byId`, which win.
+ */
+export const NAME_SELECTORS: Record<string, { kind: string; prefix?: boolean; word?: string; contactOf?: string }> = {
+  title: { kind: 'title (working)' },
+  currency: { kind: 'currency', prefix: true },
+  homeYard: { kind: 'the home yard' },
+  homeLane: { kind: 'home lane' },
+  homeTown: { kind: 'home town' },
+  homeDistrict: { kind: 'home district' },
+  partnerFarm: { kind: 'local partner (supplier)', word: 'Farm' },
+  partnerDemolition: { kind: 'local partner (supplier)', word: 'Demolition' },
+  farmContact: { kind: 'partner contact', prefix: true, contactOf: 'partnerFarm' },
+  demolitionContact: { kind: 'partner contact', prefix: true, contactOf: 'partnerDemolition' },
+  foundry: { kind: "local partner (stage 1's supply deal)" },
+  // merchant: the register has no stage-1 merchant yet (notes/contract.md).
+};
+/** Rivals: the live entries whose kind starts with this, in the order of their tonnes (rival.1 smallest). */
+export const RIVAL_KIND = 'rival firm (simulated)';
+
+interface RegisterEntry {
+  name: string;
+  kind: string;
+  verdict?: string;
+  id?: string;
+  current?: boolean;
+  chip?: string;
+  /** A short form for chips (the merchant's `short`), landing as `<id>.short`. */
+  short?: string;
+}
+
+const live = (e: RegisterEntry) => !/^(changed|rejected)/.test(e.verdict ?? '');
+
+/** Tonnes in a rival's kind ("rival firm (simulated), 1.25 Mt"), for their order. */
+function tonnesOf(kind: string): number {
+  const m = /,\s*([\d.]+)\s*(t|kt|Mt)\b/.exec(kind);
+  if (!m) return Infinity;
+  return Number(m[1]) * (m[2] === 'Mt' ? 1e6 : m[2] === 'kt' ? 1e3 : 1);
+}
+
+/**
+ * Names by register id (the build script and tests call it; the app reads `salvage.names`). The
+ * register's own `byId` table (version 3 on) is the source; each current entry's `chip` (≤ 14
+ * characters) lands as `<id>.chip`, a `short` as `<id>.short`. A register without ids is read by kind and name (NAME_SELECTORS).
+ */
+export function namesFromRegister(register: { names: RegisterEntry[]; byId?: Record<string, string> }): Record<string, string> {
+  if (register.byId && Object.keys(register.byId).length) {
+    const out: Record<string, string> = { ...register.byId };
+    for (const e of register.names) {
+      if (e.id && e.current && e.chip) out[`${e.id}.chip`] = e.chip;
+      if (e.id && e.current && e.short) out[`${e.id}.short`] = e.short;
+    }
+    return out;
+  }
+  const entries = register.names.filter(live);
+  const out: Record<string, string> = {};
+  for (const [id, sel] of Object.entries(NAME_SELECTORS)) {
+    if (sel.contactOf) continue;
+    const hit = entries.find((e) => (sel.prefix ? e.kind.startsWith(sel.kind) : e.kind === sel.kind) && (!sel.word || e.name.includes(sel.word)));
+    if (hit) out[id] = hit.name;
+  }
+  for (const [id, sel] of Object.entries(NAME_SELECTORS)) {
+    if (!sel.contactOf || !out[sel.contactOf]) continue;
+    const hit = entries.find((e) => e.kind === `${sel.kind} (${out[sel.contactOf!]})`);
+    if (hit) out[id] = hit.name;
+  }
+  entries
+    .filter((e) => e.kind.startsWith(RIVAL_KIND))
+    .sort((a, b) => tonnesOf(a.kind) - tonnesOf(b.kind))
+    .forEach((e, i) => (out[`rival.${i + 1}`] = e.name));
+  return out;
+}
+
+// ================================================================================================ say
+
+type Content = Pick<SalvageContent, 'names' | 'grades' | 'objects'>;
+
+/** One argument as text (numbers only through the rules' formatters). */
+function argText(a: R.TxtArg, c: Content): string {
+  // W11: a ticket keeps its hundredths ({ exact }, rules-book's fmtMoneyExact); bars, cards and labels use { money }.
+  if ('exact' in a) return R.fmtMoneyExact((a as { exact: number }).exact);
+  if ('money' in a) return R.fmtMoney(a.money);
+  if ('price' in a) return R.fmtPrice(a.price);
+  if ('mass_g' in a) return R.fmtMass(a.mass_g, a.step, a.ferrous);
+  if ('tonnes_g' in a) return R.fmtTonnes(a.tonnes_g);
+  if ('kg_g' in a) return R.fmtKg(a.kg_g);
+  if ('rate_g_h' in a) return R.fmtRate(a.rate_g_h);
+  if ('day' in a) return R.fmtDay(a.day, (c as { board?: { epochMs: number } }).board?.epochMs ?? 0);
+  if ('hours' in a) return R.fmtHours(a.hours);
+  if ('n' in a) return String(a.n);
+  if ('rank' in a) return R.fmtRank(a.rank);
+  if ('secs' in a) return R.fmtDuration(a.secs);
+  if ('pct' in a) return R.fmtPct(a.pct);
+  if ('name' in a) return c.names[a.name] ?? a.name;
+  if ('grade' in a) return c.grades[a.grade]?.name ?? a.grade;
+  if ('thing' in a) return c.objects[a.thing]?.name ?? a.thing;
+  if ('ref' in a) return a.ref;
+  return say({ key: a.text }, c);
+}
+
+/** Fills `{hole}`s: a Txt argument first, else an invented name by register id, else the hole stays. */
+export function fill(text: string, args: R.TxtArgs | undefined, c: Content): string {
+  return text.replace(/\{([A-Za-z0-9_.]+)(\|short)?\}/g, (whole, h: string, short?: string) => {
+    const a = args?.[h];
+    if (short && a && 'grade' in a) {
+      const g = c.grades[a.grade] as { name?: string; short?: string } | undefined;
+      return g?.short ?? g?.name ?? a.grade;
+    }
+    if (a) return argText(a, c);
+    const n = c.names[h];
+    return n ?? whole;
+  });
+}
+
+/** THE function that turns a printed line into words. */
+export function say(t: R.Txt, c: Content): string {
+  return fill(TEXT[t.key], t.args, c);
+}
+
+// ================================================================================================ the ground work's
+
+/** Labels the placeholder atlas draws on its boxes (src/ui/salvage/world/atlas.ts, the art director's; they go with the placeholders). */
+export const WORLD_LABELS = {
+  wreck: 'WRECK',
+  machine: 'MACHINE',
+  truck: 'TRUCK',
+} as const;
+
+/** The loading curtain's accessibility label (src/ui/salvage/loading/LoadingStage.tsx); the ground work's placeholder words are gone (no screen reads them). */
+export const S = {
+  loading: 'Loading the yard…',
+} as const;

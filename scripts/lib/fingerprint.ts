@@ -63,11 +63,22 @@ export const DIMENSIONS: Dimension[] = [
 
 /** The closed vocabularies of spam.md section 4 (errata 7: sets, palette and voice are free kebab-case ids). */
 export const VOCABULARY: Record<string, readonly string[]> = {
-  core_verb: ['tap-target', 'hold', 'drag/route', 'swipe/aim', 'place/arrange', 'idle-only'],
-  production_topology: ['linear-chain-with-transport', 'parallel-generators', 'vertical-shaft', 'spatial-grid', 'network-routes', 'single-node'],
-  money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect'],
+  // steer: one thumb moves an avatar or a vehicle continuously through a world with a floating stick; work
+  // happens by stopping next to things; nothing is tapped, dragged onto or swiped at (the scrapyard,
+  // yard-design.md 1.2).
+  core_verb: ['tap-target', 'hold', 'drag/route', 'swipe/aim', 'place/arrange', 'idle-only', 'steer'],
+  // separation-tree: one input object splits into graded outputs and by-products that go to different
+  // places, and machines split them further: the reverse of an assembly chain, not a network of routes
+  // (the scrapyard, yard-design.md 1.2).
+  production_topology: ['linear-chain-with-transport', 'parallel-generators', 'vertical-shaft', 'spatial-grid', 'network-routes', 'single-node', 'separation-tree'],
+  // graded-lot-sale: material is weighed in by grade into bays and leaves as lots of one grade, collected by
+  // a named merchant or dealer at a price posted once a market day; any bay may be held for a better day;
+  // no customer, departure, completed order or timer pays (the scrapyard, yard-design.md 1.2).
+  money_moment: ['customer-pays', 'sale-at-depot', 'contract-complete', 'auto-tick', 'tap-collect', 'graded-lot-sale'],
   // grid-board: a fixed board of cells as the whole play surface, no camera (Night Market, market-design.md 1.2).
-  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board'],
+  // three-quarter-world: a scrolling world several screens wide in three-quarter oblique view, followed by a
+  // camera, in landscape (the scrapyard, yard-design.md 1.2).
+  main_screen_layout: ['side-cross-section', 'top-down-map', 'isometric-room', 'single-object-focus', 'card-list', 'grid-board', 'three-quarter-world'],
   // office-ladder: a short fixed ladder of offices, each entered only by winning a vote at the end of a term of
   // decisions; a lost vote repeats the term in place; the top office continues as repeated terms (High Office,
   // office-design.md 1.2). Not location-levels (offices are never bought), endless-single or seasons.
@@ -187,12 +198,23 @@ const pct = (x: number) => `${Math.round(x * 100)} %`;
 /** Two lists hold the same values the same number of times, in any order. */
 export const sameMultiset = (x: readonly string[], y: readonly string[]) => x.length === y.length && [...x].sort().join('\u0000') === [...y].sort().join('\u0000');
 
-/** Problems with one declared fingerprint (values outside the closed vocabularies). */
+/**
+ * The value a game's fingerprint.json holds while its design has not decided the dimension yet (a new
+ * game's ground work, before its specification exists). A placeholder value is not a vocabulary error:
+ * its dimension counts as pending, so the everyday check stays answerable and the release check (which
+ * needs every dimension known) fails on it.
+ */
+export const PLACEHOLDER = 'PLACEHOLDER';
+/** A declared value (a string or a list) that is still the placeholder. */
+export const isPlaceholder = (v: unknown): boolean => v === PLACEHOLDER || (Array.isArray(v) && v.includes(PLACEHOLDER));
+
+/** Problems with one declared fingerprint (values outside the closed vocabularies; placeholder values are pending, not problems). */
 export function declaredProblems(d: DeclaredFingerprint | null): string[] {
   if (!d) return ['no store/fingerprint.json'];
   const out: string[] = [];
   for (const [key, vocab] of Object.entries(VOCABULARY)) {
     const v = key === 'art_style' ? d.art_style?.style : (d as unknown as Record<string, string>)[key];
+    if (isPlaceholder(v)) continue;
     if (!vocab.includes(v)) out.push(`fingerprint.${key} "${v}" is not one of ${vocab.join(', ')}`);
   }
   for (const key of ['active_skills_events', 'meta_systems'] as const) if (!Array.isArray(d[key])) out.push(`fingerprint.${key} must be a list`);
@@ -216,11 +238,15 @@ export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | nul
   for (const [g, d] of [[A, da], [B, db]] as const) for (const p of declaredProblems(d)) problems.push(`${g.id}: ${p}`);
   const sameMode = A.mode === B.mode;
   const push = (n: number, status: Status, a: string, b: string, note?: string) => rows.push({ dim: DIMENSIONS[n - 1], status, a, b, note });
+  // A dimension either game still declares as the placeholder is pending (its design decides it).
+  const placeholderOf = (...vs: unknown[]) => vs.some(isPlaceholder);
+  const PENDING_NOTE = 'placeholder: the design decides it (store/fingerprint.json)';
   const declaredEq = (n: number, key: keyof DeclaredFingerprint) => {
     const a = String(da?.[key] ?? '');
     const b = String(db?.[key] ?? '');
     // Measured over declared: two games of one mode share its screens and rules, whatever they declare.
     if (sameMode && n <= 4) return push(n, 'same', a, b, `both are "${A.mode}" games`);
+    if (placeholderOf(da?.[key], db?.[key])) return push(n, 'pending', a, b, PENDING_NOTE);
     push(n, a && b && a !== b ? 'differs' : 'same', a, b);
   };
   declaredEq(1, 'core_verb');
@@ -256,16 +282,19 @@ export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | nul
   declaredEq(9, 'progression_structure');
   declaredEq(10, 'prestige_model');
   const skills = jaccard(da?.active_skills_events ?? [], db?.active_skills_events ?? []);
-  push(11, skills < 0.5 ? 'differs' : 'same', (da?.active_skills_events ?? []).join(','), (db?.active_skills_events ?? []).join(','), `Jaccard ${skills.toFixed(2)}`);
+  if (placeholderOf(da?.active_skills_events, db?.active_skills_events)) push(11, 'pending', (da?.active_skills_events ?? []).join(','), (db?.active_skills_events ?? []).join(','), PENDING_NOTE);
+  else push(11, skills < 0.5 ? 'differs' : 'same', (da?.active_skills_events ?? []).join(','), (db?.active_skills_events ?? []).join(','), `Jaccard ${skills.toFixed(2)}`);
   const metaA = da?.meta_systems ?? [];
   const metaB = db?.meta_systems ?? [];
   const meta = jaccard(metaA, metaB);
   const unique = metaA.some((m) => !metaB.includes(m)) || metaB.some((m) => !metaA.includes(m));
-  push(12, meta < 0.7 || unique ? 'differs' : 'same', metaA.join(','), metaB.join(','), `Jaccard ${meta.toFixed(2)}${unique ? ', a unique system' : ''}`);
+  if (placeholderOf(metaA, metaB)) push(12, 'pending', metaA.join(','), metaB.join(','), PENDING_NOTE);
+  else push(12, meta < 0.7 || unique ? 'differs' : 'same', metaA.join(','), metaB.join(','), `Jaccard ${meta.toFixed(2)}${unique ? ', a unique system' : ''}`);
   human(13, 'meta_screen_layouts', 'different');
   const sa = da?.art_style;
   const sb = db?.art_style;
-  push(14, sa && sb && (sa.style !== sb.style || sa.palette !== sb.palette) ? 'differs' : 'same', `${sa?.style}/${sa?.palette}`, `${sb?.style}/${sb?.palette}`);
+  if (placeholderOf(sa?.style, sa?.palette, sb?.style, sb?.palette)) push(14, 'pending', `${sa?.style}/${sa?.palette}`, `${sb?.style}/${sb?.palette}`, PENDING_NOTE);
+  else push(14, sa && sb && (sa.style !== sb.style || sa.palette !== sb.palette) ? 'differs' : 'same', `${sa?.style}/${sa?.palette}`, `${sb?.style}/${sb?.palette}`);
   declaredEq(15, 'character_kind');
 
   const soundShare = sharedShare(A.soundHashes, B.soundHashes);
@@ -285,7 +314,9 @@ export function comparePair(A: GameFacts, B: GameFacts, audio?: AudioScore | nul
   const strA = A.strings.filter((s) => !labels.has(s));
   const strB = B.strings.filter((s) => !labels.has(s));
   const strShare = Math.max(sharedShare(strA, strB), sharedShare(strB, strA));
-  push(17, da?.voice && db?.voice && da.voice !== db.voice && strShare < 0.05 ? 'differs' : 'same', da?.voice ?? '', db?.voice ?? '', `${pct(strShare)} of strings shared`);
+  // A placeholder voice is pending unless the strings already share too much (that would fail whatever the voice).
+  if (placeholderOf(da?.voice, db?.voice) && strShare < 0.05) push(17, 'pending', da?.voice ?? '', db?.voice ?? '', `${pct(strShare)} of strings shared; voice ${PENDING_NOTE}`);
+  else push(17, da?.voice && db?.voice && da.voice !== db.voice && strShare < 0.05 ? 'differs' : 'same', da?.voice ?? '', db?.voice ?? '', `${pct(strShare)} of strings shared`);
 
   const kw = jaccard(A.store.keywords.map((k) => k.toLowerCase()), B.store.keywords.map((k) => k.toLowerCase()));
   push(18, kw < 0.3 ? 'differs' : 'same', A.store.keywords.join(','), B.store.keywords.join(','), `Jaccard ${kw.toFixed(2)}`);

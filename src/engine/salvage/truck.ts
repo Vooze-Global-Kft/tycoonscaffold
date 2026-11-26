@@ -1,0 +1,377 @@
+/**
+ * The hook-lift truck (yard-stage1.md 2.7, 2.12 "Driver"): driven by the boss (entered by walking into
+ * it, left with Step out) or by the driver on a trip of dated phases (walk, out, hook, back, weigh, tip,
+ * park). Hook: in the skip zone with the skip full, cash for its price and floor room for all of it, a
+ * ring of handle_s, then the price is paid and an empty skip goes down. A load that cannot be tipped is
+ * never paid for. Weigh-in on the weighbridge (gross, tare, net), then tip onto the tipping floor.
+ * Owner: rules-sim.
+ */
+import { capOf } from './bays';
+import { boostFactor, count, printTicket, spend, standingFor, ticketBase, type Ctx } from './clock';
+import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './content';
+import { atPlace } from './machines';
+import { resolveGrams, roundMoney } from './money';
+import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
+import { pointOf, skipZone } from './positions';
+import { floorMass_g, floorSlot } from './things';
+import type { CrewMember, RefusalKey, TxtArgs } from './types';
+import type { SalvageContent } from '../../config/schema.salvage';
+
+/**
+ * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
+ * object (a pure function of the content): the hook's floor check runs at every instant the idle driver
+ * waits for room (finding R3), and walking the piece specs each time was a fifth of an away pass.
+ */
+const REMAIN = new WeakMap<SalvageContent, Map<string, number[]>>();
+function remainingRows(c: SalvageContent): Map<string, number[]> {
+  let byObj = REMAIN.get(c);
+  if (!byObj) REMAIN.set(c, (byObj = new Map()));
+  return byObj;
+}
+function remainingRow(c: SalvageContent, byObj: Map<string, number[]>, obj: string): number[] {
+  let row = byObj.get(obj);
+  if (!row) {
+    const o = c.objects[obj];
+    const n = o ? pieceCount(c, obj) : 0;
+    row = new Array(n + 1).fill(0);
+    if (o) {
+      row[n] = o.waste_g;
+      for (let k = n - 1; k >= 0; k--) row[k] = row[k + 1] + (pieceSpec(c, obj, k)?.g ?? 0);
+    } else row = [];
+    byObj.set(obj, row);
+  }
+  return row;
+}
+
+/** Grams on the tipping floor: things.ts floorMass_g exactly, with the per-thing sum memoised (R3). */
+export function floorGrams(x: Ctx): number {
+  const byObj = remainingRows(x.c);
+  let g = 0;
+  const things = x.s.things;
+  for (let i = 0; i < things.length; i++) {
+    const th = things[i];
+    if (th.at.at !== 'floor') continue;
+    const row = remainingRow(x.c, byObj, th.obj);
+    if (row.length) g += row[th.cut < 0 ? 0 : th.cut >= row.length ? row.length - 1 : th.cut];
+  }
+  const pieces = x.s.pieces;
+  for (let i = 0; i < pieces.length; i++) if (pieces[i].pile === 'floor') g += pieces[i].g;
+  return g;
+}
+void floorMass_g;
+
+void capOf;
+
+/** The partner whose skip zone (any slot) the point lies in, or null. */
+function zoneAt(x: Ctx, px: number, py: number): string | null {
+  for (const [id, ps] of Object.entries(x.s.partners)) {
+    if (!x.c.partners[id]) continue;
+    const n = Math.max(1, ps.skips.length);
+    for (let slot = 0; slot < n; slot++) {
+      const z = skipZone(x.c, id, slot);
+      const m = x.c.truck.radius + x.c.reach.place;
+      if (Math.abs(px - z.x) <= z.w / 2 + m && Math.abs(py - z.y) <= z.d / 2 + m) return id;
+    }
+  }
+  return null;
+}
+
+/** Why the truck cannot hook a partner's skip now (2.7's label reasons), or null. `earmark` counts the driver's held cash. */
+export function hookRefusal(x: Ctx, partner: string, forDriver = false, floor?: { g: number | null }): RefusalKey | null {
+  const ps = x.s.partners[partner];
+  if (!ps?.open) return 'noTruck';
+  if (x.s.truck.skip) return 'nothing';
+  const sk = fullestSkip(x, partner);
+  if (!sk) return 'filling';
+  const held = forDriver ? 0 : (x.s.truck.earmark?.money ?? 0);
+  if (sk.price > x.cash - held + 1e-9) return 'loadCash';
+  const heldFloor = forDriver ? 0 : (x.s.truck.earmark?.floor_g ?? 0);
+  // The floor's grams once per caller (the idle driver asks for every partner at one instant, R3).
+  let fg: number;
+  if (floor) fg = floor.g ??= floorGrams(x);
+  else fg = floorGrams(x);
+  if (fg + heldFloor + sk.mass_g > x.c.floorRoom_kg * 1000) return 'floor';
+  return null;
+}
+
+/** The hook is done (boss or driver): pay, take the skip, an empty skip goes down. */
+function hookNow(x: Ctx, partner: string, by: 'boss' | 'driver', t: number): boolean {
+  const sk = fullestSkip(x, partner);
+  if (!sk) return false;
+  const tr = x.s.truck;
+  tr.earmark = null;
+  spend(x, sk.price);
+  if (x.away) {
+    const b = (x.away.bought[partner] ??= { n: 0, spent: 0 });
+    b.n += 1;
+    b.spent = roundMoney(b.spent + sk.price);
+  }
+  tr.skip = { partner, slot: sk.slot, contents: { ...sk.contents }, mass_g: sk.mass_g, price: sk.price, trial: sk.trial, weighed: false };
+  const ps = x.s.partners[partner];
+  if (sk.trial) ps.trialUsed = true;
+  x.ev.push({ type: 'hook', partner, slot: sk.slot, price: sk.price, by });
+  setSkipDown(x, partner, sk.slot, t);
+  return true;
+}
+
+/** The weighbridge's skip ticket (2.2): gross and tare each rounded to the bridge step, net their difference. */
+function bridgeWeigh(x: Ctx, t: number): void {
+  const tr = x.s.truck;
+  const sk = tr.skip;
+  if (!sk || sk.weighed) return;
+  const tare = resolveGrams(((x.c.truck.tare_kg ?? 0) + (x.c.truck.skipTare_kg ?? 0)) * 1000, 'bridge');
+  const gross = resolveGrams(tare + sk.mass_g, 'bridge');
+  const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'skipWeighIn' as const, partner: sk.partner, trial: sk.trial, gross_g: gross, tare_g: tare, net_g: gross - tare, paid: sk.price, things: Object.entries(sk.contents).map(([obj, n]) => ({ obj, n })) });
+  sk.weighed = true;
+  x.ev.push({ type: 'bridgeWeighIn', ticket });
+}
+
+/** Tip onto the floor: every thing of the skip on a floor slot (uids f<n>). */
+function tipNow(x: Ctx, t: number): void {
+  const tr = x.s.truck;
+  const sk = tr.skip;
+  if (!sk) return;
+  let things = 0;
+  for (const [obj, n] of Object.entries(sk.contents)) {
+    for (let i = 0; i < n; i++) {
+      const k = (x.s.counts!.floorThings ?? 0) + 1;
+      x.s.counts!.floorThings = k;
+      x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot: floorSlot(x) }, cut: 0, progress: 0, by: null });
+      things++;
+    }
+  }
+  tr.skip = null;
+  count(x, `fetched:${sk.partner}`);
+  if (x.away) x.away.loads += 1;
+  x.ev.push({ type: 'tip', partner: sk.partner, things });
+  void t;
+}
+
+/** The boss drives (2.7): the truck goes where he drives it; hook, weigh and tip by standing still at their places. */
+export function truckBossStep(x: Ctx, t: number): void {
+  const s = x.s;
+  const p = s.presence;
+  const tr = s.truck;
+  tr.x = p.x;
+  tr.y = p.y;
+  if (p.heading !== undefined) tr.heading = p.heading;
+  const a = s.act;
+  const still = !p.moving;
+  if (a.endsAt !== null && (a.kind === 'hook' || a.kind === 'weigh' || a.kind === 'tip')) {
+    if (still) return;
+    // Moving restarts the ring.
+    tr.hookSince = null;
+    s.act = { kind: 'drive', target: null, since: t, endsAt: null };
+  }
+  if (!still) {
+    if (s.act.target) s.act = { kind: 'drive', target: null, since: t, endsAt: null };
+    return;
+  }
+  const stood = standingFor(x, t);
+  if (stood < x.c.feel.workDelay) return;
+  const zone = zoneAt(x, p.x, p.y);
+  if (zone && !tr.skip) {
+    const why = hookRefusal(x, zone);
+    if (why) {
+      if (s.act.target !== `refused.${zone}`) {
+        const sk = fullestSkip(x, zone);
+        const args: TxtArgs = why === 'loadCash' && sk ? { x: { money: sk.price - x.cash } } : why === 'floor' && sk ? { kg: { mass_g: sk.mass_g } } : {};
+        x.ev.push({ type: 'refused', key: why, args, retry: null });
+        s.act = { kind: 'drive', target: `refused.${zone}`, since: t, endsAt: null };
+      }
+      return;
+    }
+    const sk = fullestSkip(x, zone)!;
+    tr.hookSince = t;
+    s.act = { kind: 'hook', target: zone, since: t, endsAt: t + x.c.truck.handle_s };
+    x.ev.push({ type: 'hookRing', partner: zone, slot: sk.slot, t0: t, t1: t + x.c.truck.handle_s });
+    return;
+  }
+  if (tr.skip && !tr.skip.weighed && atPlace(x, 'weighbridge', p.x, p.y, x.c.reach.place + x.c.truck.radius)) {
+    s.act = { kind: 'weigh', target: 'weighbridge', since: t, endsAt: t + x.c.weigh_s };
+    return;
+  }
+  if (tr.skip && atPlace(x, 'floor', p.x, p.y, x.c.reach.place + x.c.truck.radius)) {
+    if (!tr.skip.weighed) {
+      if (s.act.target !== 'refused.floor') {
+        x.ev.push({ type: 'refused', key: 'weighFirst', args: {}, retry: null });
+        s.act = { kind: 'drive', target: 'refused.floor', since: t, endsAt: null };
+      }
+      return;
+    }
+    s.act = { kind: 'tip', target: 'floor', since: t, endsAt: t + x.c.truck.handle_s };
+  }
+}
+
+/** A boss act of the truck ends. */
+export function truckBossActEnd(x: Ctx, kind: string, t: number): void {
+  const s = x.s;
+  if (kind === 'hook' && s.act.target) {
+    if (!hookRefusal(x, s.act.target)) hookNow(x, s.act.target, 'boss', t);
+  } else if (kind === 'weigh') bridgeWeigh(x, t);
+  else if (kind === 'tip') tipNow(x, t);
+  s.truck.hookSince = null;
+  s.act = { kind: s.truck.by === 'boss' ? 'drive' : 'none', target: null, since: t, endsAt: null };
+}
+
+/** Step out (2.15): the truck's stopped place and heading become state. */
+export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number } | null, t: number): void {
+  const tr = x.s.truck;
+  if (at) {
+    tr.x = at.x;
+    tr.y = at.y;
+    tr.heading = at.heading;
+  }
+  tr.by = null;
+  tr.hookSince = null;
+  // Entering is disarmed until he has walked away from it (hand.ts bossStep; the world's rule, 17:30).
+  x.s.counts!['truck:out'] = 1;
+  x.s.act = { kind: 'none', target: null, since: t, endsAt: null };
+  x.ev.push({ type: 'leaveTruck' });
+}
+
+// ---------------------------------------------------------------------------------------- the driver
+
+/** The driver's level factor F (E31a: his whole round, driving and handling, is shortened by it). */
+function driverF(x: Ctx): number {
+  return driverRoundF(x.c, x.s.crew.find((m) => m.role === 'driver')?.level ?? 1);
+}
+
+/** The driver's truck speed, m/s: truck.v × driverFactor × F × the foreman's boost. */
+function driverV(x: Ctx): number {
+  return x.c.truck.v * x.c.truck.driverFactor * driverF(x) * boostFactor(x, x.s.t);
+}
+
+const pt = (x: Ctx, id: string) => pointOf(x.c, id);
+
+/** May the idle driver depart now (2.12)? The partner whose skip has been full longest, cash and room allowing; earmarked at departure. */
+export function driverDepart(x: Ctx, t: number): boolean {
+  const s = x.s;
+  const tr = s.truck;
+  const d = s.crew.find((m) => m.role === 'driver' && m.job === 'idle' && m.phase === 'wait' && m.t1 <= t + 1e-6);
+  if (!d || !tr.owned || tr.by !== null || tr.trip || s.arriving.some((a) => a.item === 'truck')) return false;
+  // R2: a loaded truck the boss left (Step out with a skip on it): the driver walks to it and finishes the
+  // weigh-in and the tip (live and away), as driverTakesOver does for a truck the boss was driving.
+  if (tr.skip) return driverFinishes(x, d, t);
+  let best: { partner: string; fullAt: number; price: number; mass: number } | null = null;
+  const floor = { g: null as number | null };
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const sk = fullestSkip(x, id);
+    if (!sk || hookRefusal(x, id, false, floor)) continue;
+    if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+  }
+  if (!best) return false;
+  const sk = fullestSkip(x, best.partner)!;
+  tr.earmark = { money: best.price, floor_g: best.mass };
+  const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
+  const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
+  tr.trip = { partner: best.partner, slot: sk.slot, phase: 'walk', t0: t, endsAt: t + walk };
+  d.job = 'drive';
+  d.phase = 'wait';
+  d.from = { xy: [from.x, from.y] };
+  d.to = { truck: true };
+  d.t0 = t;
+  d.t1 = t;
+  tr.by = 'driver';
+  x.ev.push({ type: 'crewLeg', id: d.id, job: 'drive', from: d.from, to: d.to, t0: t, t1: t + walk });
+  return true;
+}
+
+/** R2: the idle driver takes a loaded, parked truck: walk to it, drive to the weighbridge (or, weighed, on to the floor). */
+function driverFinishes(x: Ctx, d: CrewMember, t: number): boolean {
+  const tr = x.s.truck;
+  const sk = tr.skip;
+  if (!sk) return false;
+  const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
+  const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
+  const drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
+  tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive };
+  tr.earmark = null;
+  d.job = 'drive';
+  d.phase = 'wait';
+  d.from = { xy: [from.x, from.y] };
+  d.to = { truck: true };
+  d.t0 = t;
+  d.t1 = t;
+  tr.by = 'driver';
+  x.ev.push({ type: 'crewLeg', id: d.id, job: 'drive', from: d.from, to: d.to, t0: t, t1: t + walk });
+  return true;
+}
+
+/** The driver's trip changes phase at t (truck.trip.endsAt). */
+export function driverLegEnd(x: Ctx, t: number): void {
+  const s = x.s;
+  const tr = s.truck;
+  const trip = tr.trip;
+  if (!trip) return;
+  const v = driverV(x);
+  const F = driverF(x);
+  const gate = pt(x, 'gate');
+  const z = skipZone(x.c, trip.partner, trip.slot);
+  const next = (phase: typeof trip.phase, dur: number, at?: { x: number; y: number }) => {
+    if (at) {
+      tr.x = at.x;
+      tr.y = at.y;
+    }
+    trip.phase = phase;
+    trip.t0 = t;
+    trip.endsAt = t + Math.max(0, dur);
+  };
+  switch (trip.phase) {
+    case 'walk':
+      next('out', (routeM(x.c, 'park', 'gate', { x: tr.x, y: tr.y }, gate) + laneM(x.c, trip.partner)) / v);
+      return;
+    case 'out':
+      next('hook', x.c.truck.handle_s / F, { x: z.x, y: z.y });
+      return;
+    case 'hook': {
+      // The earmark guaranteed the price and the room; a skip taken meanwhile (it cannot be) ends the trip empty.
+      if (!hookNow(x, trip.partner, 'driver', t)) tr.earmark = null;
+      next('back', (laneM(x.c, trip.partner) + routeM(x.c, 'gate', 'weighbridge')) / v, { x: gate.x, y: gate.y });
+      return;
+    }
+    case 'back':
+      next('weigh', x.c.weigh_s / F, pt(x, 'weighbridge'));
+      return;
+    case 'weigh':
+      bridgeWeigh(x, t);
+      next('tip', routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s / F, pt(x, 'floor'));
+      return;
+    case 'tip':
+      tipNow(x, t);
+      next('park', routeM(x.c, 'floor', 'park') / v, pt(x, 'floor'));
+      return;
+    case 'park': {
+      const park = pt(x, 'park');
+      tr.x = park.x;
+      tr.y = park.y;
+      tr.trip = null;
+      tr.by = null;
+      const d = s.crew.find((m) => m.role === 'driver');
+      if (d) {
+        d.job = 'idle';
+        d.phase = 'wait';
+        d.from = { xy: [park.x, park.y] };
+        d.to = { xy: [park.x, park.y] };
+        d.t0 = t;
+        d.t1 = t;
+      }
+    }
+  }
+}
+
+/** The boss left a loaded truck when going away (2.16): the driver (when hired) finishes the weigh-in and the tip. */
+export function driverTakesOver(x: Ctx, t: number): void {
+  const tr = x.s.truck;
+  if (tr.by !== 'boss') return;
+  tr.by = null;
+  x.s.act = { kind: 'none', target: null, since: t, endsAt: null };
+  const d = x.s.crew.find((m) => m.role === 'driver');
+  if (!d || !tr.skip) return;
+  tr.by = 'driver';
+  d.job = 'drive';
+  tr.trip = { partner: tr.skip.partner, slot: tr.skip.slot, phase: tr.skip.weighed ? 'weigh' : 'back', t0: t, endsAt: t + legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x) };
+}
+
+void contentsMass_g;

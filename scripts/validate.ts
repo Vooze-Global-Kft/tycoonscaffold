@@ -461,6 +461,18 @@ function staleScreenshots(id: string, mode: string): string[] {
   ];
 }
 
+/**
+ * The salvage hook (the scrapyard; docs/design/yard-ground.md). Additive: it runs only for a game of mode
+ * "salvage". While the game.json is the ground work's placeholder (`salvage.skeletonPlaceholder: true`) it
+ * says so as a warning (since the first yard's contract: the frozen test content stands in for the tuned
+ * numbers until the content script writes them). The rules engineers replace it with the specification's
+ * checks (docs/design/yard-design.md, yard-stage1.md).
+ */
+function salvageChecks(g: GameConfig, warnings: string[]): void {
+  if ((g.salvage as { skeletonPlaceholder?: unknown } | undefined)?.skeletonPlaceholder === true)
+    warnings.push('placeholder: the salvage block of game.json is still the frozen test content (salvage.skeletonPlaceholder): no tuned numbers or bot yet; scripts/content/build-yard.py writes the real block (docs/design/yard-stage1.md 2.17)');
+}
+
 for (const id of ids) {
   const g = parsed.get(id);
   if (!g) {
@@ -615,6 +627,10 @@ for (const id of ids) {
   // --- a decree game (office-design.md 7.8, 8.1, 8.3; decisions D7 and D8): the satire lint and the bot ---
   else if (g.mode === 'decree') {
     decreeChecks(id, g, runSim, problems, warnings);
+  }
+  // --- a salvage game (the scrapyard): only the ground work's placeholder exists (docs/design/yard-ground.md) ---
+  else if (g.mode === 'salvage') {
+    salvageChecks(g, warnings);
   }
   // --- pacing: the same bot as `npm run simulate`, two simulated hours ---
   else if (runSim && problems.length === 0) {
