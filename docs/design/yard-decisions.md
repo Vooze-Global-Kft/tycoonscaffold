@@ -2312,3 +2312,36 @@ now on:
     the phone, a test shows that at `release.stage` 1 none of it shows or runs (no product asked of
     the store, no row, no ad start that differs from the first yard's); else the build script
     writes both only at stage 2.
+
+### 20. Engine step 3 (26 November, late evening): time away cheaper, not one result changed; what it did not reach
+
+Built under one rule (no state, event or away card differs, bit for bit) with a recorded baseline of
+results as its gate, then checked by an engineer who wrote none of it, on states the builder did not
+pick (the old engine, commit aeda1dd, beside the new, each in its own process).
+- RESULTS: the builder's checker: 0 differences over 135 cases and 1,566 computations; the
+  checker's own: 0 differences over 137 cases, 1,684 computations, 144,324 comparison points
+  (other seeds and hands, the instants around rungs, purchases and pours, awkward absences, an
+  absence cut in two by a save, three in a row against one, every frozen state of both stages, an
+  hour of live play); no cache could be made stale; no test or number was touched.
+- COST (node CPU; builder / checker): stage 2, six hours at rung 4 with seven plates: 2,719 to
+  1,180 ms / 2,933 to 1,455 ms (2.0 to 2.3 times cheaper); the rung-3 entry 588 to 422 ms; the
+  first yard's six hours 282 to 377 ms before, 250 to 277 ms after; a tick unchanged.
+- WHAT WAS SAVED: the magnet crane's departure skipped while it provably would again move nothing;
+  a route's answer kept for one transition; smaller exact savings in the crew, the things, the
+  partners, the positions, the truck and the board.
+20.1 THE AIMS STAND AS AIMS (150 ms for the first yard's six hours, 400 ms for stage 2's heaviest
+    rung) and were not reached: the first yard's profile is flat (each of a dozen functions scans
+    things and pieces at every departure and landing, 2 to 5 % each).
+20.2 THE BENCH'S LIMITS stay as they are (BENCH_STRICT 250 ms on the first yard's minute 60, the
+    suite's alarm at 700 ms: an alarm under load, not a measure). Stage 2 gets its own strict limit
+    when step 4 lands, set from its measured table.
+20.3 STAGE 2 DOES NOT GO TO A PHONE WITH A PASS THAT COSTS OVER A SECOND IN NODE. ENGINE STEP 4, THE
+    INDEX, is built before stage 2's screens are merged: things by place and pieces by pile kept
+    beside the state for one transition (about twenty places move a thing or a piece: a version
+    counter bumped at each, checked by the memo's verify mode), a thing by its id through the same
+    index, the idle driver's ranking kept as the crane's no-move is; under the same rule and the
+    same gate (the recorded baseline, then an independent check against the old engine). It is
+    built in its own working copy so that the bots' measurements never run on a half-built engine.
+20.4 The first yard on the owner's phone: the counting card covers today's quarter of a second in
+    node (half a second to a second and a half on a phone). Steps 3 and 4 reach the phone with the
+    next update that is merged, after ruling 19.9's test.
