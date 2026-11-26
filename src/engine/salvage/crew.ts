@@ -5,7 +5,7 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, type Ctx } from './clock';
-import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
+import { cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
@@ -73,25 +73,47 @@ export function newCrew(x: Ctx, role: CrewMember['role'], t: number): CrewMember
 
 const pileOrder = (p: GroundPiece) => (p.pile.startsWith('circle.') ? 0 : p.pile === 'dropoff' ? 1 : p.pile === 'floor' ? 2 : 3);
 
-/** Pick from a set of pieces best first while they fit `room` grams. */
+/**
+ * Pick from a set of pieces best first while they fit `room` grams (byValue's order: value per kilogram,
+ * then heavier, then uid). Without sorting them all: walking the sorted list and taking each piece that
+ * still fits is the same as taking, again and again, the best remaining piece that fits (a piece too heavy
+ * for the room left stays too heavy: the room only shrinks), so the result and its order are the same.
+ */
 function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
   const out: GroundPiece[] = [];
-  // byValue's order, with each grade's value per kilogram looked up once (the same comparison).
+  const n = pieces.length;
+  if (!n) return out;
+  const val = new Array<number>(n);
   const v = new Map<string, number>();
-  const val = (g: string) => {
+  for (let i = 0; i < n; i++) {
+    const g = pieces[i].grade;
     let q = v.get(g);
     if (q === undefined) v.set(g, (q = vpk(x.c, g)));
-    return q;
-  };
-  const sorted = [...pieces].sort((a, b) => val(b.grade) - val(a.grade) || b.g - a.g || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
-  void byValue;
-  for (const p of sorted) {
-    if (p.g <= room) {
-      out.push(p);
-      room -= p.g;
-    }
+    val[i] = q;
   }
-  return out;
+  const taken = new Uint8Array(n);
+  for (;;) {
+    let best = -1;
+    for (let i = 0; i < n; i++) {
+      if (taken[i]) continue;
+      const p = pieces[i];
+      if (p.g > room) {
+        taken[i] = 1;
+        continue;
+      }
+      if (best < 0) {
+        best = i;
+        continue;
+      }
+      const b = pieces[best];
+      const d = val[i] - val[best] || p.g - b.g;
+      if (d > 0 || (d === 0 && p.uid < b.uid)) best = i;
+    }
+    if (best < 0) return out;
+    taken[best] = 1;
+    out.push(pieces[best]);
+    room -= pieces[best].g;
+  }
 }
 
 /**
@@ -400,10 +422,14 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
       }
       continue;
     }
-    const gp = s.pieces.find((p) => p.uid === c && p.claim === m.id);
-    if (gp) {
-      const p = takeFromPile(x, c);
-      if (p) load.push(p);
+    // takeFromPile's piece, found once (the claimed one of this uid).
+    const gi = s.pieces.findIndex((p) => p.uid === c);
+    if (gi >= 0 && s.pieces[gi].claim === m.id) {
+      const q = s.pieces[gi];
+      s.pieces.splice(gi, 1);
+      const p: Piece = { uid: q.uid, grade: q.grade, g: q.g, from: q.from, spec: q.spec };
+      if (q.whole) p.whole = q.whole;
+      load.push(p);
       continue;
     }
     const th = thingOf(x, c);
@@ -591,6 +617,16 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
       };
     }
     case 'whole': {
+      // E4's whole thing goes while no cutter is hired, or (the drop-off) while every place is taken by a
+      // thing nobody has claimed: once one is claimed the place is as good as free, so a leg-by-leg hand
+      // would go elsewhere next (the drop-off arrives again, the cutter cuts it).
+      const noCutter = !s.crew.some((q) => q.role === 'cutter');
+      if (!noCutter) {
+        if (kind.where !== 'dropoff') return null;
+        let free = 0;
+        for (const th of s.things) if (th.at.at === 'dropoff' && !th.by) free++;
+        if (free < x.c.dropoff.places) return null;
+      }
       const th = wholeAt(x, kind.where, cap);
       if (!th) return null;
       return { spot: { thing: th.uid }, grade: x.c.objects[th.obj]?.whole ?? null, g: x.c.objects[th.obj]?.gross_g ?? 0, take: () => ((th.by = m.id), [th.uid]) };
