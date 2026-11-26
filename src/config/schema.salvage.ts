@@ -333,7 +333,26 @@ const MapObject = z
     /** BUILD: the world layer of each place (keyed by point id; w, d default from `footprints`). */
     places: z.record(id, PlaceSchema).default({}),
     /** BUILD (optional): a partner's skip zone size, metres (default 6 × 4), by partner id. */
-    sites: z.record(id, z.object({ w: z.number().positive(), d: z.number().positive() })).default({}),
+    sites: z
+      .record(
+        id,
+        z.object({
+          w: z.number().positive(),
+          d: z.number().positive(),
+          /** owner1-fix (finding 3): the site's sign board, metres along the lane from the site's x (negative: before it, towards the gate); the world draws the sign there. */
+          sign: z.number().optional(),
+        }),
+      )
+      .default({}),
+    /**
+     * owner1-fix (finding 3, the lead's ruling "the whole site is the stop"): with it, a truck the boss stands still
+     * anywhere on a partner's site hooks: from this many metres before the site's sign to this many past its last
+     * skip, across the lane's width and the skips' bed (positions.ts siteRect). Absent: the skip zone alone (the first
+     * yard's rule, frozen test contents).
+     */
+    siteStop_m: z.number().nonnegative().optional(),
+    /** owner1-fix (finding 3): the boss's truck standing still outside a site but within this many metres of it: the goal's step reads "Pull up to the skip". */
+    siteNear_m: z.number().nonnegative().optional(),
     /** BUILD (optional): the chalk circles, [x, y, r] metres (default: two west of the scale). */
     circles: z.array(z.tuple([z.number(), z.number(), z.number().positive()])).default([]),
     /** The lane's asphalt width, metres (the world's). */
@@ -455,6 +474,8 @@ export const CrewSchema = z.object({
     maxlev: z.number().int().positive(),
     /** owner1 H1: cut pieces in a heap's bed farther than this from the boss (metres) are the yard hands' to carry. Absent: never (2.6 "never from the heaps"). */
     leaveM: z.number().nonnegative().optional(),
+    /** owner1-fix (finding 5): with leaveM, what lies within leaveM of the boss stays his only while he moved or worked within this many seconds (and his load has room for it). Absent: no time limit. */
+    leaveS: z.number().nonnegative().optional(),
   }),
   /** Cutter: share of the tool's power, +lev a level, cap of that share, top level. */
   cutter: z.object({ share: z.number().positive(), lev: z.number().nonnegative(), cap: z.number().positive(), maxlev: z.number().int().positive() }),

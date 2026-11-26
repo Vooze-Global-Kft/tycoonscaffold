@@ -5,7 +5,7 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, heard, type Ctx } from './clock';
-import { owner1Rules, cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
+import { carrierCap_g, owner1Rules, cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, defOf, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
@@ -163,7 +163,35 @@ function heapFree(x: Ctx, p: GroundPiece, inYard: boolean, at: (uid: string) => 
   if (!inYard) return true;
   if (isCable(x, p.grade)) return false;
   const pp = piecePos(x.c, p.pile, p.k, at);
-  return Math.hypot(pp.x - x.s.presence.x, pp.y - x.s.presence.y) > ((x.c.crew.hand as { leaveM?: number }).leaveM ?? 0) + 1e-9;
+  return !bossKeeps(x, pp, p.g);
+}
+
+/**
+ * owner1-fix (finding 5, the lead's ruling "the helper carries unless the boss is about to"): something lying at `pp` of
+ * `g` grams that a yard hand may carry is the boss's (in the yard) ONLY while all three hold: he is within
+ * `crew.hand.leaveM` of it, his load has room for it, and he moved or worked within the last `crew.hand.leaveS`
+ * (a content without leaveS: the first two only). A read of the state at x.s.t (the presence's standingFor, his act,
+ * the foreman's last work).
+ */
+/** finding 5: the room a whole workable thing needs in the boss's load: he cuts it, so its next piece's grams (its whole gross when it has none). */
+function roomFor(c: Ctx['c'], th: ThingState): number {
+  return pieceSpec(c, th.obj, th.cut)?.g ?? c.objects[th.obj]?.gross_g ?? 0;
+}
+
+export function bossKeeps(x: Ctx, pp: { x: number; y: number }, g: number): boolean {
+  const h = x.c.crew.hand as { leaveM?: number; leaveS?: number };
+  if (Math.hypot(pp.x - x.s.presence.x, pp.y - x.s.presence.y) > (h.leaveM ?? 0) + 1e-9) return false;
+  if (h.leaveS === undefined) return true;
+  let load = 0;
+  for (const q of x.s.load) load += q.g;
+  if (carrierCap_g(x.c, x.s) - load < g - 1e-9) return false;
+  const t = x.s.t;
+  const p = x.s.presence;
+  const stood = p.moving ? 0 : p.standingFor + Math.max(0, t - x.s.presenceAt);
+  if (stood <= h.leaveS + 1e-9) return true;
+  const k = x.s.act.kind;
+  if (k !== 'none' && k !== 'drive') return true;
+  return t - (x.s.foreman?.lastWorkAt ?? -Infinity) <= h.leaveS + 1e-9;
 }
 
 /** H3: the powered stripper takes a loose cable bundle (owned, with room in its hopper) while the boss is in the yard. */
@@ -310,8 +338,12 @@ function heapStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolean
     }
   }
   if (inYard) {
+    // owner1-fix (finding 5): the boss keeps a whole thing at the drop-off only while bossKeeps holds (leaveS in the
+    // content); the first review's rule (beyond reach.sight) on a content without it.
+    const leaveS = (x.c.crew.hand as { leaveS?: number }).leaveS !== undefined;
     const th = wholeAt(x, m, t, 'dropoff', cap, (q) => {
       const tp = thingPos(x.c, q.at);
+      if (leaveS) return !bossKeeps(x, tp, roomFor(x.c, q));
       return Math.hypot(tp.x - s.presence.x, tp.y - s.presence.y) > x.c.reach.sight + 1e-9;
     });
     if (th) {
@@ -1557,7 +1589,8 @@ export function idleWhyOf(c: Ctx['c'], s: Ctx['s'], m: CrewMember, live = true):
     if (!o) continue;
     if (th.at.at === 'dropoff' && inYard && o.whole && th.cut === 0 && (o.tier ?? 0) > 0) {
       const tp = thingPos(c, th.at);
-      if (Math.hypot(tp.x - s.presence.x, tp.y - s.presence.y) <= c.reach.sight + 1e-9) return { why: 'yours' };
+      const leaveS = (c.crew.hand as { leaveS?: number }).leaveS !== undefined;
+      if (leaveS ? bossKeeps(x, tp, roomFor(c, th)) : Math.hypot(tp.x - s.presence.x, tp.y - s.presence.y) <= c.reach.sight + 1e-9) return { why: 'yours' };
     }
     if ((o.tier ?? 0) === 0 && inYard && (th.at.at === 'dropoff' || th.at.at === 'floor')) {
       const sp = pieceSpec(c, th.obj, th.cut);

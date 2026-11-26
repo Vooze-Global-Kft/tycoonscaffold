@@ -172,7 +172,7 @@ export function skipTicket(c: SalvageContent, g: SalvageGame, s: { partner: stri
   const round = (x: number) => Math.floor(Math.max(0, x) / step + 0.5 + 1e-9) * step;
   const gross_g = round(s.tare_g + s.load_g);
   const tare_g = round(s.tare_g);
-  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'skipWeighIn'), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
+  return { ...base(g.salvage.ticketNo, at, day), series: nextSeries(g, 'skipWeighIn'), kind: 'skipWeighIn', partner: s.partner, trial: s.trial, ...(s.trial && s.paid <= 0 ? { free: true } : {}), gross_g, tare_g, net_g: gross_g - tare_g, paid: roundMoney(s.paid), things: Object.entries(s.contents).map(([obj, n]) => ({ obj, n })) };
 }
 
 /** A supply-deal delivery (2.9): grams resolved down to 0.1 kg at the locked price. */

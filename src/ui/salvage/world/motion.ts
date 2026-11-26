@@ -384,3 +384,237 @@ export function bossDriveV(x: number, W: number, yardV: number, laneV: number): 
   const u = Math.min(1, (x - W) / GATE_EASE_M);
   return yardV + (laneV - yardV) * u * u * (3 - 2 * u);
 }
+
+// =====================================================================================================
+// 5. THE PICTURED VEHICLES' PLACES (the frame loop draws them; the tests replay them): the merchant's
+//    flatbed on its round, the public's car, a purchase arriving. Moved here unchanged from ./frameLoop.ts
+//    (owner1 play 2) so that the people's step aside and its test read the very places the frame draws.
+// =====================================================================================================
+
+/**
+ * The merchant's flatbed while away (phase 2): along its dated drive-line path out, the same way back at the
+ * round's end (owner1 V3), or evenly at FEEL's vehicle speed when the path has no dates. FB the scene's
+ * flatbed numbers, FP its path, FA its dates, P a scratch path of PATH_MAX points. out = [x, y, dx, dy];
+ * returns false while it is out of sight.
+ */
+export function flatbedAway(out: number[], tmp: number[], P: number[], FB: number[], FP: number[], FA: number[], tNow: number, vehicleV: number): boolean {
+  'worklet';
+  const np = Math.min(FB[6], PATH_MAX_PTS);
+  for (let q = 0; q < np * 2; q++) P[q] = FP[q];
+  if (np >= 2 && FA.length >= np) {
+    const span = FA[np - 1] - FA[0];
+    if (tNow < FA[np - 1]) alongFacing(out, tmp, P, np, timedShare(P, np, FA, 0, tNow));
+    else if (tNow > FB[2] - span) {
+      alongFacing(out, tmp, P, np, timedShare(P, np, FA, 0, FA[0] + (FB[2] - tNow)));
+      out[2] = -out[2];
+      out[3] = -out[3];
+    } else return false;
+    return true;
+  }
+  if (np < 2) return false;
+  const len = pathLen(P, np);
+  const drive = Math.min((FB[2] - FB[1]) / 2, len / vehicleV);
+  const since = tNow - FB[1];
+  const left = FB[2] - tNow;
+  if (since < drive) along(out, P, np, since / drive);
+  else if (left < drive) {
+    along(out, P, np, left / drive);
+    out[2] = -out[2];
+    out[3] = -out[3];
+  } else return false;
+  return true;
+}
+
+/** The public's car: in through the gate (gx, gy), standing at the drop-off, out again. CA the scene's car numbers; false: not drawn. */
+export function carAt(out: number[], P: number[], CA: number[], gx: number, gy: number, tNow: number, vehicleV: number): boolean {
+  'worklet';
+  if (CA[0] !== 1) return false;
+  P[0] = CA[1];
+  P[1] = CA[2];
+  P[2] = gx;
+  P[3] = gy;
+  P[4] = CA[3];
+  P[5] = CA[4];
+  const len = pathLen(P, 3);
+  const drive = Math.min((CA[6] - CA[5]) / 2, len / vehicleV);
+  const since = tNow - CA[5];
+  const left = CA[6] - tNow;
+  if (since < drive) along(out, P, 3, since / drive);
+  else if (left < drive) {
+    along(out, P, 3, left / drive);
+    out[2] = -out[2];
+    out[3] = -out[3];
+  } else {
+    out[0] = CA[3];
+    out[1] = CA[4];
+    out[2] = -1;
+    out[3] = 0;
+  }
+  return !(since < 0 || left < 0);
+}
+
+/**
+ * A purchase arriving (ARRIVAL numbers from `o` of AR): along the frame's dated path to its stop and set
+ * down there (owner1 V4), else between from and to. out = [x, y]; returns the 4-heading to draw.
+ * P a scratch path, TA a scratch of PATH_MAX dates.
+ */
+export function arrivalAt(out: number[], tmp: number[], P: number[], TA: number[], AR: number[], o: number, AP: number[], AT: number[], tNow: number): number {
+  'worklet';
+  const ph = AR[o + 1];
+  const span = AR[o + 7] - AR[o + 6];
+  const u = span > 0 ? Math.max(0, Math.min(1, (tNow - AR[o + 6]) / span)) : 1;
+  out[0] = AR[o + 4];
+  out[1] = AR[o + 5];
+  let h4 = 1;
+  const anp = Math.min(AR[o + 8] ?? 0, PATH_MAX_PTS);
+  if (anp >= 2) {
+    const p0 = AR[o + 9];
+    for (let q = 0; q < anp * 2; q++) P[q] = AP[p0 * 2 + q];
+    for (let q = 0; q < anp; q++) TA[q] = AT[p0 + q];
+    alongFacing(out, tmp, P, anp, ph === 1 ? 1 : timedShare(P, anp, TA, 0, tNow));
+    if (ph === 1) {
+      out[0] = P[anp * 2 - 2];
+      out[1] = P[anp * 2 - 1];
+    } else {
+      const dx = out[2];
+      const dy = out[3];
+      h4 = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : dy > 0 ? 0 : 2;
+    }
+  } else if (ph !== 1) {
+    const k = ph === 0 ? u : 1 - u;
+    out[0] = AR[o + 2] + (AR[o + 4] - AR[o + 2]) * k;
+    out[1] = AR[o + 3] + (AR[o + 5] - AR[o + 3]) * k;
+    const dx = (AR[o + 4] - AR[o + 2]) * (ph === 0 ? 1 : -1);
+    const dy = (AR[o + 5] - AR[o + 3]) * (ph === 0 ? 1 : -1);
+    h4 = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : dy > 0 ? 0 : 2;
+  }
+  return h4;
+}
+
+// =====================================================================================================
+// 6. PEOPLE STEP ASIDE (owner1 play 2, the lead's ruling: "on the screen only; dated legs stay dated").
+//    While a moving vehicle's drawn body (its footprint, plus ASIDE_PAD_M either side, swept over the next
+//    ASIDE_AHEAD_S of its motion) would cover a person's place, that person is DRAWN stepped off its path to
+//    the nearer side, eased out and back, by at most ASIDE_MAX_M. His rules place is untouched.
+// =====================================================================================================
+
+/** Numbers per vehicle body: x, y, ux, uy (unit facing as drawn), half length, half width, vx, vy (m/s). */
+export const VB_STRIDE = 8;
+export const ASIDE_PAD_M = 0.4;
+export const ASIDE_AHEAD_S = 1;
+export const ASIDE_MAX_M = 1.6;
+/** Time constant of the step aside (out and back), seconds. */
+export const ASIDE_EASE_S = 0.12;
+/** Below this speed (m/s) a vehicle stands: nobody steps aside from it. */
+export const MOVING_V = 0.3;
+/** Vehicle slots of the previous-place memory: the truck, the flatbed, the van, its trailer, four arrivals. */
+export const VB_SLOTS = 8;
+
+/** The unit facing of an 8-heading (0 s, 2 e, 4 n, 6 w; y south): writes ux, uy into out[0], out[1]. */
+export function facing8(out: number[], h8: number): void {
+  'worklet';
+  const a = Math.PI / 2 - (h8 * Math.PI) / 4;
+  out[0] = Math.cos(a);
+  out[1] = Math.sin(a);
+}
+
+/**
+ * Appends a vehicle's drawn body to VB (n bodies in it) with its speed from its place in the previous frame
+ * (PV, two numbers per slot; NaN: not drawn then). Returns the new count. `back` shifts the body's centre that
+ * many metres behind (x, y) along the facing (the van's trailer).
+ */
+export function bodyInto(VB: number[] | Float64Array, n: number, PV: Float64Array, slot: number, x: number, y: number, ux: number, uy: number, halfL: number, halfW: number, dt: number, back: number): number {
+  'worklet';
+  const cx = x - ux * back;
+  const cy = y - uy * back;
+  const px = PV[slot * 2];
+  const py = PV[slot * 2 + 1];
+  PV[slot * 2] = cx;
+  PV[slot * 2 + 1] = cy;
+  const o = n * VB_STRIDE;
+  if (o + VB_STRIDE > VB.length) return n;
+  VB[o] = cx;
+  VB[o + 1] = cy;
+  VB[o + 2] = ux;
+  VB[o + 3] = uy;
+  VB[o + 4] = halfL;
+  VB[o + 5] = halfW;
+  VB[o + 6] = px === px && dt > 0 ? (cx - px) / dt : 0;
+  VB[o + 7] = py === py && dt > 0 ? (cy - py) / dt : 0;
+  return n + 1;
+}
+
+/**
+ * Where a person whose RULES place is (px, py) should be drawn offset to, given the moving bodies VB: writes
+ * the target offset (metres) into out[0], out[1]. The path is the vehicle's MOTION (its velocity), the body
+ * is its drawn footprint seen along that motion; the person goes to the side of the path he is DRAWN on now
+ * (rules place plus the current offset ox, oy), so somebody crossing the path never flips through the body.
+ * Pure.
+ */
+export function asideTarget(out: number[], px: number, py: number, VB: number[] | Float64Array, n: number, ox0 = 0, oy0 = 0): void {
+  'worklet';
+  let ox = 0;
+  let oy = 0;
+  for (let i = 0; i < n; i++) {
+    const o = i * VB_STRIDE;
+    const vx = VB[o + 6];
+    const vy = VB[o + 7];
+    const sp = Math.sqrt(vx * vx + vy * vy);
+    if (sp < MOVING_V) continue;
+    // The motion's frame: p along it, q across it (q = (-py, px)).
+    const mx = vx / sp;
+    const my = vy / sp;
+    const ux = VB[o + 2];
+    const uy = VB[o + 3];
+    const hl = VB[o + 4];
+    const hw = VB[o + 5];
+    // The footprint's half extents along and across the motion (a box turned to its facing).
+    const ua = ux * mx + uy * my;
+    const ub = -ux * my + uy * mx;
+    const ea = hl * Math.abs(ua) + hw * Math.abs(ub) + ASIDE_PAD_M;
+    const eb = hl * Math.abs(ub) + hw * Math.abs(ua) + ASIDE_PAD_M;
+    const dx = px - VB[o];
+    const dy = py - VB[o + 1];
+    const a = dx * mx + dy * my;
+    const b = -dx * my + dy * mx;
+    if (a <= -ea || a >= ea + sp * ASIDE_AHEAD_S || b <= -eb || b >= eb) continue;
+    // To the side he is drawn on now.
+    const bDrawn = b + (-ox0 * my + oy0 * mx);
+    const db = bDrawn < 0 ? -eb - b : eb - b;
+    ox += -my * db;
+    oy += mx * db;
+  }
+  const m = Math.sqrt(ox * ox + oy * oy);
+  if (m > ASIDE_MAX_M) {
+    ox *= ASIDE_MAX_M / m;
+    oy *= ASIDE_MAX_M / m;
+  }
+  out[0] = ox;
+  out[1] = oy;
+}
+
+/**
+ * One person's drawn place this frame: the rules place (px, py) plus the eased step aside (OFF holds the
+ * offset of slot i, two numbers). out[0], out[1] = the drawn place. `snap` sets the offset at once.
+ */
+export function stepAside(out: number[], OFF: Float64Array, i: number, px: number, py: number, VB: number[] | Float64Array, n: number, dt: number, snap: boolean): void {
+  'worklet';
+  asideTarget(out, px, py, VB, n, OFF[i * 2], OFF[i * 2 + 1]);
+  const e = snap ? 1 : 1 - Math.exp(-dt / ASIDE_EASE_S);
+  const ox = OFF[i * 2] + (out[0] - OFF[i * 2]) * e;
+  const oy = OFF[i * 2 + 1] + (out[1] - OFF[i * 2 + 1]) * e;
+  OFF[i * 2] = ox;
+  OFF[i * 2 + 1] = oy;
+  out[0] = px + ox;
+  out[1] = py + oy;
+}
+
+/** Is (px, py) inside the drawn body o of VB (its footprint as drawn, no pad)? Pure (the test's measure). */
+export function insideBody(VB: number[] | Float64Array, o: number, px: number, py: number): boolean {
+  'worklet';
+  const dx = px - VB[o];
+  const dy = py - VB[o + 1];
+  const a = dx * VB[o + 2] + dy * VB[o + 3];
+  const b = -dx * VB[o + 3] + dy * VB[o + 2];
+  return Math.abs(a) < VB[o + 4] && Math.abs(b) < VB[o + 5];
+}

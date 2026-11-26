@@ -507,6 +507,23 @@ export function skipZone(c: SalvageContent, partner: PartnerId, slot: number): {
   return { x: gate.x + lane + slot * (site.w + 1), y: gate.y - site.d / 2 - 1, w: site.w, d: site.d };
 }
 
+/**
+ * owner1-fix (finding 3, "the whole site is the stop"): a partner's site as the boss's truck stop, with `slots` skips
+ * in its rotation: from `map.siteStop_m` before its sign (`map.sites.<id>.sign`, metres along the lane from the site's
+ * x) to `siteStop_m` past its last skip zone; north to the skips' bed, south to the lane's far edge. Null when the
+ * content has no `siteStop_m` (the skip zone alone stays the stop).
+ */
+export function siteRect(c: SalvageContent, partner: PartnerId, slots: number): { x0: number; y0: number; x1: number; y1: number } | null {
+  const pad = c.map.siteStop_m;
+  if (pad === undefined || !c.partners[partner]) return null;
+  const gate = pointOf(c, 'gate');
+  const z0 = skipZone(c, partner, 0);
+  const zn = skipZone(c, partner, Math.max(0, slots - 1));
+  const sign = c.map.sites[partner]?.sign ?? -z0.w / 2;
+  const half = (c.map.laneWidth ?? 6) / 2;
+  return { x0: Math.min(z0.x - z0.w / 2, z0.x + sign) - pad, x1: zn.x + zn.w / 2 + pad, y0: z0.y - z0.d / 2, y1: gate.y + half };
+}
+
 /** The drive from the truck's park (or a point) through the gate to a partner's skip zone: the path's waypoints, metres. */
 export function lanePath(c: SalvageContent, from: { x: number; y: number }, partner: PartnerId, slot = 0): { x: number; y: number }[] {
   const gate = pointOf(c, 'gate');

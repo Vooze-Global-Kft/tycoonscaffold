@@ -12,7 +12,7 @@ import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './cont
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
-import { drivePath, pathSplit, pointOf, skipZone, stopOf, tripPhaseEnd } from './positions';
+import { drivePath, pathSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
@@ -71,6 +71,12 @@ function zoneAt(x: Ctx, px: number, py: number): string | null {
   for (const [id, ps] of Object.entries(x.s.partners)) {
     if (!x.c.partners[id]) continue;
     const n = Math.max(1, ps.skips.length);
+    // owner1-fix (finding 3): the whole site is the stop (positions.ts siteRect), when the content says so.
+    const site = siteRect(x.c, id, n);
+    if (site) {
+      if (px >= site.x0 - 1e-9 && px <= site.x1 + 1e-9 && py >= site.y0 - 1e-9 && py <= site.y1 + 1e-9) return id;
+      continue;
+    }
     for (let slot = 0; slot < n; slot++) {
       const z = skipZone(x.c, id, slot);
       const m = x.c.truck.radius + x.c.reach.place;
@@ -125,7 +131,7 @@ function bridgeWeigh(x: Ctx, t: number): void {
   if (!sk || sk.weighed) return;
   const tare = resolveGrams(((x.c.truck.tare_kg ?? 0) + (x.c.truck.skipTare_kg ?? 0)) * 1000, 'bridge');
   const gross = resolveGrams(tare + sk.mass_g, 'bridge');
-  const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'skipWeighIn' as const, partner: sk.partner, trial: sk.trial, gross_g: gross, tare_g: tare, net_g: gross - tare, paid: sk.price, things: Object.entries(sk.contents).map(([obj, n]) => ({ obj, n })) });
+  const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'skipWeighIn' as const, partner: sk.partner, trial: sk.trial, ...(sk.trial && sk.price <= 0 ? { free: true } : {}), gross_g: gross, tare_g: tare, net_g: gross - tare, paid: sk.price, things: Object.entries(sk.contents).map(([obj, n]) => ({ obj, n })) });
   sk.weighed = true;
   x.ev.push({ type: 'bridgeWeighIn', ticket });
 }

@@ -140,6 +140,7 @@ export const TEXT = {
   'card.dealLast': 'Last delivery {kg}',
   'card.skipState': '{partner} · full',
   'card.skipLine': '{thing} × {n} · {kg}',
+  'card.skipFree': 'Free trial load', // owner1-fix finding 10: SkipLabel.free
   'card.skipNet': 'Net {kg}',
   'card.skipPrice': '{x}',
   'card.businessCard': '{contact} · {partner}',
@@ -265,6 +266,7 @@ export const TEXT = {
   'ticket.gradeAmount': '{grade|short} {kg} {x}', // the clipboard's ticket history (overlays-b)
   'ticket.paid': 'Paid {x}', // money IN only (collections, deal deliveries)
   'ticket.boughtFor': 'Bought for {x}', // P12/S3: the skip weigh-in, money OUT
+  'ticket.freeTrial': "Free: the farm's trial", // owner1-fix finding 10: skipWeighIn ticket.free (instead of Bought for)
   'ticket.lotSoldTo': 'Lot sold to {merchant}',
   'ticket.weighedOut': 'weighed out · paid by transfer',
   'ticket.dealDelivery': '{foundry} · {kg} cast iron · {x}',
@@ -315,6 +317,7 @@ export const TEXT = {
   'goal.step.hook': 'Keep still: hooking',
   'goal.step.weigh': 'Drive onto the weighbridge',
   'goal.step.tip': 'Tip it on the floor',
+  'goal.step.pullUp': 'Pull up to the skip', // owner1-fix finding 3
   'goal.buyBench': 'Buy the motor bench',
   'goal.breakMotor': 'Break a motor on the bench',
   'goal.supplyRung2': 'Supply {t} ({r} materials)',

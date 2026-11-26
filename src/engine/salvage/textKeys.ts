@@ -76,6 +76,8 @@ export const TEXT_KEYS = {
     'card.dealDone',
     'card.skipState',
     'card.skipLine',
+    // owner1-fix (finding 10): a free trial load's skip label (SkipLabel.free)
+    'card.skipFree',
     'card.skipNet',
     'card.skipPrice',
     'card.skipsInRotation',
@@ -156,7 +158,7 @@ export const TEXT_KEYS = {
   /** Package 4: the away card (4.4). */
   away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.heldSold', 'away.next', 'away.longerRung', 'away.longerNight', 'away.bank', 'away.repaid', 'away.rack', 'away.van', 'away.lots', 'away.lotOne', 'away.labelAway', 'away.labelRan', 'away.labelSold', 'away.labelBought', 'away.labelNet', 'away.time', 'away.grade', 'away.kg', 'away.amount', 'away.cost', 'away.netUp', 'away.netDown', 'away.inAccount', 'away.fromAccount', 'away.salesTotal', 'away.partner', 'away.loadsN', 'away.loadOne', 'away.dealName', 'away.rackName', 'away.vanName', 'away.thingsN', 'away.thingOne', 'away.bankName'],
   /** Packages 3 and 4: tickets and slips (2.2). */
-  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date', 'ticket.bankSplit', 'ticket.rackHead', 'ticket.rackSale', 'ticket.vanCollection', 'ticket.vanLine', 'ticket.crateLot', 'ticket.note.analysed', 'ticket.note.drained', 'ticket.cod'],
+  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.freeTrial', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date', 'ticket.bankSplit', 'ticket.rackHead', 'ticket.rackSale', 'ticket.vanCollection', 'ticket.vanLine', 'ticket.crateLot', 'ticket.note.analysed', 'ticket.note.drained', 'ticket.cod'],
   /** Package 4: lines of 5.2. */
   line: ['line.portal', 'line.crewAway', 'line.backfield', 'line.fictional', 'line.shortened', 'line.carName'],
   /** Package 4: the clipboard, Settings and Help (4.3). */
@@ -182,6 +184,8 @@ export const TEXT_KEYS = {
     'goal.step.hook',
     'goal.step.weigh',
     'goal.step.tip',
+    // owner1-fix (finding 3): standing still near a partner's site, outside it
+    'goal.step.pullUp',
     'goal.buyBench',
     'goal.breakMotor',
     'goal.supplyRung2',

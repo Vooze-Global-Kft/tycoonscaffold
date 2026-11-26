@@ -15,7 +15,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { advice, cardForItem } from './advice';
 import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
-import { pointOf, skipZone, stopOf } from './positions';
+import { pointOf, siteRect, skipZone, stopOf } from './positions';
 import { owner1Rules } from './content';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
@@ -380,6 +380,24 @@ export function loadStep(cfg: SalvageConfig, g: SalvageGame, goalDone?: string |
   const partner = goalPartner!;
   const beyond = s.presence.x > c.yard.width;
   const z = c.partners[partner] ? skipZone(c, partner, 0) : null;
+  // owner1-fix (finding 3): standing still outside an open partner's site but within map.siteNear_m of it: "Pull up to
+  // the skip", the chevron on that partner's skip (inside the site the hook starts by itself).
+  if (beyond && !s.presence.moving && c.map.siteNear_m !== undefined) {
+    const px = s.presence.x;
+    const py = s.presence.y;
+    for (const [pid, ps] of Object.entries(s.partners)) {
+      if (!ps.open || !c.partners[pid]) continue;
+      const r = siteRect(c, pid, Math.max(1, ps.skips.length));
+      if (!r) continue;
+      const dx = Math.max(r.x0 - px, 0, px - r.x1);
+      const dy = Math.max(r.y0 - py, 0, py - r.y1);
+      const d = Math.hypot(dx, dy);
+      if (d > 1e-9 && d <= c.map.siteNear_m + 1e-9) {
+        const zz = skipZone(c, pid, 0);
+        return { text: { key: 'goal.step.pullUp' as TextKey }, target: { x: zz.x, y: zz.y, id: `skip.${pid}` } };
+      }
+    }
+  }
   return { text: { key: 'goal.step.drive' as TextKey }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
 }
 

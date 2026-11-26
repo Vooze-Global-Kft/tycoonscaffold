@@ -316,6 +316,8 @@ export function skipLabelOf(c: SalvageContent, g: SalvageGame, partner: string, 
   const lab: SkipLabel = { partner, slot, state, net_g: sk.mass_g, things, price: sk.price, refusal, fullInS, fullAt: sk.fullAt };
   // RULING2.md 16.6: the reason a ready skip stands (the words are Phase C's).
   if (!refusal && state !== 'filling' && keptForBetter(c, g, partner)) lab.kept = true;
+  // owner1-fix (finding 10): a free trial load says free (the screens print card.skipFree, not §0.00).
+  if (sk.trial && sk.price <= 0) lab.free = true;
   return lab;
 }
 

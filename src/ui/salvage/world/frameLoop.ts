@@ -37,8 +37,8 @@ import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, presortItems, sortRuns, staticItems, type DrawList, type RulesScene } from './actors';
-import { alongFacing, bossDriveV, crewAt, legStart, makeClock, rulesClock, timedShare, truckAt, truckFrom, turnFacing } from './motion';
+import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, actorTable, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
+import { VB_SLOTS, VB_STRIDE, arrivalAt, bodyInto, bossDriveV, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
@@ -148,6 +148,12 @@ interface DrawKit {
   images: (SkImage | null)[];
   rects: number[][];
   dens: number[];
+  /** owner1 play 1: the roofs (actors.ts roofTable), each static item's roof (-1 none), a person's drawn box. */
+  roofs: number[];
+  roofOf: number[];
+  PB: number[];
+  /** owner1 play 2: half length and half width of the truck, the flatbed, the van, its trailer (metres, the manifest's footprints). */
+  VD: number[];
 }
 
 /** A vehicle sprite and its shadow. */
@@ -279,7 +285,15 @@ export function useYardLoop(opts: {
     const images = art.sheets.map((s) => (s ? s.image : null));
     const rects = art.sheets.map((s) => (s ? s.rects : []));
     const dens = art.sheets.map((s) => (s ? s.density : 1));
-    return { statics, T, images, rects, dens };
+    const roofs = roofTable(content, statics, res, yard.tilt);
+    const roofOf = new Array(Math.floor(statics.length / ITEM)).fill(-1);
+    for (let r = 0; r * ROOF < roofs.length; r++) roofOf[roofs[r * ROOF + 5]] = r;
+    const half = (id: string, w: number, d: number) => {
+      const f = entryOf(id)?.footprint;
+      return [(f?.w ?? w) / 2, (f?.d ?? d) / 2];
+    };
+    const VD = [...half('vehicle.truck', 4.6, 2), ...half('vehicle.flatbed', 4.6, 2), ...half('vehicle.van', 3.4, 1.8), ...half('vehicle.trailer', 1.6, 1.3)];
+    return { statics, T, images, rects, dens, roofs, roofOf, PB: personBox(), VD };
   }, [art, content, yard]);
 
   // H8: the pools, the statics and the sheets live in ONE shared value, set once per bake, so the frame
@@ -374,12 +388,13 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN] };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN], vb: new Float64Array(12 * VB_STRIDE), pv: new Float64Array(VB_SLOTS * 2).fill(NaN), aside: new Float64Array(128), f2: [0, 0, 0, 0], roofL: new Int32Array(16).fill(-1), roofA: new Float64Array(16).fill(1) };
         scratch.value = S;
       }
       const st = S.st;
       const K = draw.value;
       const statics = K !== null ? K.statics : NO_ITEMS;
+      const roofOf = K !== null ? K.roofOf : NO_ITEMS;
       const T = K !== null ? K.T : null;
       const ctv = ctl.value;
       const steer = ctv.steer === 1;
@@ -607,50 +622,19 @@ export function useYardLoop(opts: {
         for (let o = 0; o + ITEM - 1 < A.length; o += ITEM) {
           const alt = A[o + 10];
           const cell = alt >= 0 && Math.floor(clock / A[o + 11]) % 2 === 1 ? alt : A[o + 2];
+          const n0 = L.n;
           addTo(A[o] === L_DECAL ? D : L, V, A[o + 1], cell, A[o + 3], A[o + 4], A[o + 5], A[o + 6], A[o + 7], A[o + 8], A[o + 9]);
+          // owner1 play 1: where each roof landed in the list this frame (-1: off screen), for its ink below.
+          if (src === 0) {
+            const r = roofOf[o / ITEM];
+            if (r >= 0 && r < 16) S.roofL[r] = L.n > n0 ? n0 : -1;
+          }
         }
       }
       const runB = L.n;
       if (T !== null) {
         const P = S.path;
         const o4 = S.o4;
-        // The crew: each member walked along the leg the rules gave (from, to, t0, t1), never anywhere else.
-        const CR = Rv.crew;
-        const XY: number[] = new Array(Math.floor(CR.length / 14) * 2).fill(NaN);
-        for (let o = 0; o + 13 < CR.length; o += 14) {
-          if (CR[o + 11] === 1) continue;
-          const phase = CR[o + 10];
-          const walking = phase === 1 || phase === 3;
-          const ci = Math.min(63, o / 14);
-          const u = crewAt(o4, P, CR, o, tNow, walking ? legStart(S.legK, ci, CR[o + 6], CR[o + 7], tNow, snap) : NaN);
-          const np = CR[o + 12] === CR[o + 12] ? 3 : 2;
-          const carrier = CR[o + 8] > 0 ? CR[o + 8] - 1 : -1;
-          let pose = CR[o + 1];
-          // The pour side-on (as the boss's, above); else standing faces the camera.
-          const h = walking ? heading4(o4[2], o4[3]) : pose === P_POUR && B[6] === B[6] ? (B[6] >= o4[0] ? 1 : 3) : 0;
-          let frame = Math.floor(clock / FEEL.workFrameS) % POSE_FRAMES[pose];
-          if (walking) {
-            pose = carrier >= 0 ? P_PUSH : P_WALK;
-            frame = Math.floor((Math.max(0, Math.min(1, u)) * pathLen(P, np)) / FEEL.strideM) % 4;
-          } else if (carrier >= 0 && pose === P_STAND) pose = P_PUSH;
-          if (pose === P_PUSH && !walking) frame = 0;
-          addTo(SHD, V, 0, T.shPerson, o4[0], o4[1], 0, 0, 1, -1, 1);
-          // The carrier stays in every pose (owner's review point 3: it vanished while working, flashing).
-          if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], o4[0], o4[1], 0, 0, 1, -1, 1);
-          personInto(L, V, T, 1, pose, frame, h, -1, carrier, CR[o + 9], T.vests[CR[o]] ?? -1, o4[0], o4[1], o4[1] + 0.25);
-          XY[(o / 14) * 2] = o4[0];
-          XY[(o / 14) * 2 + 1] = o4[1];
-          actors++;
-        }
-        // owner1 phone 4: only when someone moved by more than a centimetre (or the crew changed).
-        const pXY = crewXY.value;
-        let moved = pXY.length !== XY.length;
-        for (let i = 0; !moved && i < XY.length; i++) {
-          const a = XY[i];
-          const p = pXY[i];
-          moved = a === a ? !(p === p) || Math.abs(a - p) > MOVE_EPS_M : p === p;
-        }
-        if (moved) crewXY.value = XY;
         // Stress actors (`actors=N`): pictures only, between places.
         for (let hi = 0; hi < hPts.length; hi++) {
           const pts = hPts[hi];
@@ -668,6 +652,14 @@ export function useYardLoop(opts: {
           personInto(L, V, T, 1, moving ? P_WALK : P_STAND, moving ? Math.floor(dist / FEEL.strideM) % 4 : 0, h, -1, -1, 0, T.vests[hi % 3], o4[0], o4[1], o4[1] + 0.25);
           actors++;
         }
+        // owner1 play 2: every vehicle drawn this frame leaves its drawn body (with its speed) in VB; the crew
+        // below step aside from the moving ones (on the screen only).
+        const VB = S.vb;
+        const PV = S.pv;
+        const VD = K !== null ? K.VD : NO_ITEMS;
+        const f2 = S.f2;
+        let nvb = 0;
+        let seen = 0;
         // The merchant's flatbed: at its stand (facing east), loading with its crane, away on its round.
         const FB = Rv.flatbed;
         if (FB[3] !== 0 || FB[4] !== 0) {
@@ -677,32 +669,8 @@ export function useYardLoop(opts: {
           let h4 = 1;
           let show = true;
           if (ph === 2) {
-            const FP = Rv.flatbedPath;
-            const FA = Rv.flatbedAt;
-            const np = Math.min(FB[6], PATH_MAX);
-            for (let q = 0; q < np * 2; q++) P[q] = FP[q];
-            if (np >= 2 && FA.length >= np) {
-              // owner1 V3: out along the drive line at the dates the rules give, back the same way at the round's end.
-              const out = FA[np - 1] - FA[0];
-              if (tNow < FA[np - 1]) alongFacing(o4, S.tmp2, P, np, timedShare(P, np, FA, 0, tNow));
-              else if (tNow > FB[2] - out) {
-                alongFacing(o4, S.tmp2, P, np, timedShare(P, np, FA, 0, FA[0] + (FB[2] - tNow)));
-                o4[2] = -o4[2];
-                o4[3] = -o4[3];
-              } else show = false;
-            } else {
-              const len = pathLen(P, np);
-              const drive = Math.min((FB[2] - FB[1]) / 2, len / FEEL.vehicleV);
-              const since = tNow - FB[1];
-              const left = FB[2] - tNow;
-              if (np < 2) show = false;
-              else if (since < drive) along(o4, P, np, since / drive);
-              else if (left < drive) {
-                along(o4, P, np, left / drive);
-                o4[2] = -o4[2];
-                o4[3] = -o4[3];
-              } else show = false;
-            }
+            // owner1 V3: out along the drive line at the dates the rules give, back the same way at the round's end (./motion.ts flatbedAway).
+            show = flatbedAway(o4, S.tmp2, P, FB, Rv.flatbedPath, Rv.flatbedAt, tNow, FEEL.vehicleV);
             fx2 = o4[0];
             fy2 = o4[1];
             h4 = heading4(o4[2], o4[3]);
@@ -720,48 +688,30 @@ export function useYardLoop(opts: {
               addTo(L, V, key, T.flatbed[h4], fx2, fy2, 0, 0, T.vehicleScale, -1, 1);
               if (FB[5] > 0 && ph === 2) addTo(L, V, key + 1e-4, T.cargo[FB[5] - 1], fx2, fy2, T.cargoOff[h4 * 2], T.cargoOff[h4 * 2 + 1], T.flatbedWorkScale, -1, 1);
             }
+            facing8(f2, h4 * 2);
+            nvb = bodyInto(VB, nvb, PV, 1, fx2, fy2, f2[0], f2[1], VD[2], VD[3], dt, 0);
+            seen |= 2;
             actors++;
           }
         }
-        // The public's car and trailer: in through the gate, standing at the drop-off, out again.
+        // The public's car and trailer: in through the gate, standing at the drop-off, out again (./motion.ts carAt).
         const CA = Rv.car;
-        if (CA[0] === 1) {
-          P[0] = CA[1];
-          P[1] = CA[2];
-          P[2] = pts.gate[0];
-          P[3] = pts.gate[1];
-          P[4] = CA[3];
-          P[5] = CA[4];
-          const len = pathLen(P, 3);
-          const drive = Math.min((CA[6] - CA[5]) / 2, len / FEEL.vehicleV);
-          const since = tNow - CA[5];
-          const left = CA[6] - tNow;
-          let show = true;
-          if (since < drive) along(o4, P, 3, since / drive);
-          else if (left < drive) {
-            along(o4, P, 3, left / drive);
-            o4[2] = -o4[2];
-            o4[3] = -o4[3];
-          } else {
-            o4[0] = CA[3];
-            o4[1] = CA[4];
-            o4[2] = -1;
-            o4[3] = 0;
-          }
-          if (since < 0 || left < 0) show = false;
-          if (show) {
-            const h4 = heading4(o4[2], o4[3]);
-            const tdx = h4 === 1 ? -2.75 * 40 : h4 === 3 ? 2.75 * 40 : 0;
-            const tdy = h4 === 0 ? -2.75 * 28 : h4 === 2 ? 2.75 * 28 : 0;
-            addTo(SHD, V, 0, T.shVan[h4], o4[0], o4[1], 0, 0, 1, -1, 1);
-            addTo(SHD, V, 0, T.shTrailer[h4], o4[0], o4[1], 0, 0, 1, -1, 1);
-            const north = h4 === 2;
-            addTo(L, V, o4[1] + (north ? 0.9 : 0.89), T.trailer[h4], o4[0], o4[1], tdx, tdy, T.vehicleScale, -1, 1);
-            addTo(L, V, o4[1] + (north ? 0.89 : 0.9), T.van[h4], o4[0], o4[1], 0, 0, T.vehicleScale, -1, 1);
-            actors++;
-          }
+        if (carAt(o4, P, CA, pts.gate[0], pts.gate[1], tNow, FEEL.vehicleV)) {
+          const h4 = heading4(o4[2], o4[3]);
+          const tdx = h4 === 1 ? -2.75 * 40 : h4 === 3 ? 2.75 * 40 : 0;
+          const tdy = h4 === 0 ? -2.75 * 28 : h4 === 2 ? 2.75 * 28 : 0;
+          addTo(SHD, V, 0, T.shVan[h4], o4[0], o4[1], 0, 0, 1, -1, 1);
+          addTo(SHD, V, 0, T.shTrailer[h4], o4[0], o4[1], 0, 0, 1, -1, 1);
+          const north = h4 === 2;
+          addTo(L, V, o4[1] + (north ? 0.9 : 0.89), T.trailer[h4], o4[0], o4[1], tdx, tdy, T.vehicleScale, -1, 1);
+          addTo(L, V, o4[1] + (north ? 0.89 : 0.9), T.van[h4], o4[0], o4[1], 0, 0, T.vehicleScale, -1, 1);
+          facing8(f2, h4 * 2);
+          nvb = bodyInto(VB, nvb, PV, 2, o4[0], o4[1], f2[0], f2[1], VD[4], VD[5], dt, 0);
+          nvb = bodyInto(VB, nvb, PV, 3, o4[0], o4[1], f2[0], f2[1], VD[6], VD[7], dt, 2.75);
+          seen |= 12;
+          actors++;
         }
-        // Purchases on their way: the van to the rack, the machine flatbed's crane over a pad.
+        // Purchases on their way: the van to the rack, the machine flatbed's crane over a pad (./motion.ts arrivalAt).
         const AR = Rv.arrivals;
         for (let o = 0; o + ARRIVAL - 1 < AR.length; o += ARRIVAL) {
           const kind = AR[o];
@@ -769,29 +719,9 @@ export function useYardLoop(opts: {
           const ph = AR[o + 1];
           const span = AR[o + 7] - AR[o + 6];
           const u = span > 0 ? Math.max(0, Math.min(1, (tNow - AR[o + 6]) / span)) : 1;
-          let ax = AR[o + 4];
-          let ay = AR[o + 5];
-          let h4 = 1;
-          const anp = Math.min(AR[o + 8] ?? 0, PATH_MAX);
-          if (anp >= 2) {
-            // owner1 V4: along the drive line at the frame's dates to the stop, and set down THERE (no jump).
-            const p0 = AR[o + 9];
-            const AP = Rv.arrivalPath;
-            for (let q = 0; q < anp * 2; q++) P[q] = AP[p0 * 2 + q];
-            const AT = Rv.arrivalAt;
-            for (let q = 0; q < anp; q++) S.tA[q] = AT[p0 + q];
-            alongFacing(o4, S.tmp2, P, anp, ph === 1 ? 1 : timedShare(P, anp, S.tA, 0, tNow));
-            ax = ph === 1 ? P[anp * 2 - 2] : o4[0];
-            ay = ph === 1 ? P[anp * 2 - 1] : o4[1];
-            h4 = ph === 1 ? 1 : heading4(o4[2], o4[3]);
-          } else if (ph !== 1) {
-            const k = ph === 0 ? u : 1 - u;
-            ax = AR[o + 2] + (AR[o + 4] - AR[o + 2]) * k;
-            ay = AR[o + 3] + (AR[o + 5] - AR[o + 3]) * k;
-            const dx = (AR[o + 4] - AR[o + 2]) * (ph === 0 ? 1 : -1);
-            const dy = (AR[o + 5] - AR[o + 3]) * (ph === 0 ? 1 : -1);
-            h4 = heading4(dx, dy);
-          }
+          const h4 = arrivalAt(o4, S.tmp2, P, S.tA, AR, o, Rv.arrivalPath, Rv.arrivalAt, tNow);
+          const ax = o4[0];
+          const ay = o4[1];
           if (kind === 0) {
             addTo(SHD, V, 0, T.shVan[h4], ax, ay, 0, 0, 1, -1, 1);
             addTo(L, V, ay + 0.9, T.van[h4], ax, ay, 0, 0, T.vehicleScale, -1, 1);
@@ -802,6 +732,10 @@ export function useYardLoop(opts: {
               addTo(L, V, ay + 1 + 2e-4, T.crane[Math.min(2, Math.floor(u * 3))], ax, ay, 0, 0, T.flatbedWorkScale, -1, 1);
             } else addTo(L, V, ay + 1, T.flatbed[h4], ax, ay, 0, 0, T.vehicleScale, -1, 1);
           }
+          const slot = 4 + Math.min(3, o / ARRIVAL);
+          facing8(f2, (ph === 1 ? 1 : h4) * 2);
+          nvb = bodyInto(VB, nvb, PV, slot, ax, ay, f2[0], f2[1], kind === 0 ? VD[4] : VD[2], kind === 0 ? VD[5] : VD[3], dt, 0);
+          seen |= 1 << slot;
           actors++;
         }
         // The truck: driven by the boss (here), on the driver's trip (pictured from its leg), or parked.
@@ -834,8 +768,64 @@ export function useYardLoop(opts: {
             vehicleInto(L, SHD, V, T.truck[h8], T.shTruck[h8], T.truckScale, tx, ty, key);
             if (TR[10] >= 0) addTo(L, V, key + 1e-4, T.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
           }
+          // The boss's own truck faces where he steers it (st[4]); the driver's as drawn.
+          if (driving) {
+            f2[0] = Math.cos(st[4]);
+            f2[1] = Math.sin(st[4]);
+          } else facing8(f2, h8);
+          nvb = bodyInto(VB, nvb, PV, 0, tx, ty, f2[0], f2[1], VD[0], VD[1], dt, 0);
+          seen |= 1;
           actors++;
         }
+        // A vehicle not drawn this frame has no previous place for the next one.
+        for (let q = 0; q < VB_SLOTS; q++) {
+          if ((seen & (1 << q)) === 0) {
+            PV[q * 2] = NaN;
+            PV[q * 2 + 1] = NaN;
+          }
+        }
+        // The crew: each member walked along the leg the rules gave (from, to, t0, t1), never anywhere else
+        // (drawn after the vehicles: they step aside from the moving ones).
+        const CR = Rv.crew;
+        const XY: number[] = new Array(Math.floor(CR.length / 14) * 2).fill(NaN);
+        for (let o = 0; o + 13 < CR.length; o += 14) {
+          if (CR[o + 11] === 1) continue;
+          const phase = CR[o + 10];
+          const walking = phase === 1 || phase === 3;
+          const ci = Math.min(63, o / 14);
+          const u = crewAt(o4, P, CR, o, tNow, walking ? legStart(S.legK, ci, CR[o + 6], CR[o + 7], tNow, snap) : NaN);
+          // owner1 play 2: drawn stepped aside from a moving vehicle's path (the rules' place is untouched).
+          stepAside(f2, S.aside, ci, o4[0], o4[1], VB, nvb, dt, snap);
+          o4[0] = f2[0];
+          o4[1] = f2[1];
+          const np = CR[o + 12] === CR[o + 12] ? 3 : 2;
+          const carrier = CR[o + 8] > 0 ? CR[o + 8] - 1 : -1;
+          let pose = CR[o + 1];
+          // The pour side-on (as the boss's, above); else standing faces the camera.
+          const h = walking ? heading4(o4[2], o4[3]) : pose === P_POUR && B[6] === B[6] ? (B[6] >= o4[0] ? 1 : 3) : 0;
+          let frame = Math.floor(clock / FEEL.workFrameS) % POSE_FRAMES[pose];
+          if (walking) {
+            pose = carrier >= 0 ? P_PUSH : P_WALK;
+            frame = Math.floor((Math.max(0, Math.min(1, u)) * pathLen(P, np)) / FEEL.strideM) % 4;
+          } else if (carrier >= 0 && pose === P_STAND) pose = P_PUSH;
+          if (pose === P_PUSH && !walking) frame = 0;
+          addTo(SHD, V, 0, T.shPerson, o4[0], o4[1], 0, 0, 1, -1, 1);
+          // The carrier stays in every pose (owner's review point 3: it vanished while working, flashing).
+          if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], o4[0], o4[1], 0, 0, 1, -1, 1);
+          personInto(L, V, T, 1, pose, frame, h, -1, carrier, CR[o + 9], T.vests[CR[o]] ?? -1, o4[0], o4[1], o4[1] + 0.25);
+          XY[(o / 14) * 2] = o4[0];
+          XY[(o / 14) * 2 + 1] = o4[1];
+          actors++;
+        }
+        // owner1 phone 4: only when someone moved by more than a centimetre (or the crew changed).
+        const pXY = crewXY.value;
+        let moved = pXY.length !== XY.length;
+        for (let i = 0; !moved && i < XY.length; i++) {
+          const a = XY[i];
+          const p = pXY[i];
+          moved = a === a ? !(p === p) || Math.abs(a - p) > MOVE_EPS_M : p === p;
+        }
+        if (moved) crewXY.value = XY;
         // The boss, on foot: walking or pushing, working by tool, pouring, standing; his hand load on his back.
         if (st[5] === 0) {
           const carrier = B[0] > 0 ? B[0] - 1 : -1;
@@ -860,6 +850,21 @@ export function useYardLoop(opts: {
           if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], st[0], st[1], 0, 0, 1, -1, 1);
           personInto(L, V, T, 0, pose, frame, h, carrier < 0 ? B[1] : -1, carrier, B[2], -1, st[0], st[1], st[1] + 0.25);
           actors++;
+        }
+        // owner1 play 1: A PLAYER ALWAYS SEES HIMSELF. A roof under which the boss on foot (or a crew member)
+        // stands as drawn is drawn see-through (about a third of its ink), eased over a fifth of a second.
+        if (K !== null) {
+          const RF = K.roofs;
+          for (let r = 0; r * ROOF < RF.length && r < 16; r++) {
+            let covered = st[5] === 0 && underRoof(RF, r, st[0], st[1], st[1] + 0.25, tilt, K.PB);
+            for (let i = 0; !covered && i + 1 < XY.length; i += 2) {
+              if (XY[i] === XY[i]) covered = underRoof(RF, r, XY[i], XY[i + 1], XY[i + 1] + 0.25, tilt, K.PB);
+            }
+            const a = roofInk(S.roofA[r], covered, dt);
+            S.roofA[r] = a;
+            const li = S.roofL[r];
+            if (li >= 0 && li < L.n) L.al[li] = L.al[li] * a;
+          }
         }
       }
 

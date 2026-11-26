@@ -987,7 +987,7 @@ export type Ticket =
   /** A household drop-off signed in at the gate: "{thing} · signed in · gate drop-off". */
   | (TicketBase & { kind: 'dropOffSlip'; thing: ObjectId })
   /** A partner's skip over the weighbridge: gross, tare (the truck's stored tare plus the empty skip), net, the price paid. */
-  | (TicketBase & { kind: 'skipWeighIn'; partner: PartnerId; trial: boolean; gross_g: number; tare_g: number; net_g: number; paid: number; things: { obj: ObjectId; n: number }[] })
+  | (TicketBase & { kind: 'skipWeighIn'; partner: PartnerId; trial: boolean; /** owner1-fix (finding 10): a trial load that cost nothing; the ticket prints ticket.freeTrial instead of ticket.boughtFor. Absent = false. */ free?: boolean; gross_g: number; tare_g: number; net_g: number; paid: number; things: { obj: ObjectId; n: number }[] })
   /**
    * The merchant's collection: lines with amounts, "Paid §x", the buyer named. `withBoss` false: none of
    * the lot was weighed in by the boss, and the screen shows the one-line chip at the cab ("Lot sold ·
@@ -1247,6 +1247,8 @@ export interface SkipLabel {
   refusal: Txt | null;
   fullInS: number | null;
   fullAt: number;
+  /** owner1-fix (finding 10): a trial load that costs nothing; the label prints card.skipFree ("Free trial load") instead of its price. Absent = false. */
+  free?: boolean;
   /** RULING2.md 16.6 (engine2-dispatch): the hired driver keeps the floor's room for a better load and leaves this ready skip standing (truck.ts keptForBetter). Absent = false. */
   kept?: boolean;
 }

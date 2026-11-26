@@ -27,7 +27,7 @@
  */
 import type { SalvageContent } from '../../../config/schema.salvage';
 import type * as R from '../../../engine/salvage';
-import { MANIFEST, mirrorOf, type ManifestEntry } from '../art/manifest';
+import { MANIFEST, cellBounds, mirrorOf, type ManifestEntry } from '../art/manifest';
 import { CARRIER_FRAMES, HAND_FAMILIES, carrierFrameOf, handFamilyOf } from '../art/manifest/people';
 import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
 import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf, thingLookTint } from '../art/manifest/things';
@@ -660,7 +660,8 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     sprite(items, res, 'vehicle.skip', s.x, s.y);
     if (s.state !== 'filling') sprite(items, res, 'vehicle.skip.load', s.x, s.y, { frame: skipLoadFrame(partnerLook(c, s.partner), s.state === 'trial'), key: s.y + 0.876, dy: -0.95 * 40 * Math.sqrt(1 - 0.49) });
   }
-  for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y);
+  // owner1 play 13: an EMPTY chalk circle (no thing, no piece inside it) is drawn faint, a quarter of its ink.
+  for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y, { alpha: circleFilled(f, ci) ? 1 : CHALK_EMPTY_ALPHA });
   for (const fx of f.fixtures ?? []) sprite(items, res, fx.sprite, fx.x, fx.y);
   // One list, presorted (./frameLoop.ts merges it, sortRuns), reused whole while its parts are the same.
   const last = LAST_ITEMS.get(c);
@@ -826,6 +827,94 @@ function machineItems(out: number[], res: Resolver, m: R.FrameMachine, t: number
       for (let k = 0; k < Math.min(4, m.ingots.n); k++) sprite(out, res, id2, x + 1.1 + 0.3 * k, y + 1.0, { frame: fi });
     }
   }
+}
+
+/** owner1 play 13: the ink of an empty chalk circle (a quarter). */
+export const CHALK_EMPTY_ALPHA = 0.25;
+
+/** Does anything (a whole thing or a piece) lie inside a chalk circle of the frame? */
+export function circleFilled(f: Pick<R.FrameTable, 'things' | 'pieces'>, ci: { x: number; y: number; r: number }): boolean {
+  const r = (ci.r ?? 0.8) + 0.2;
+  const inside = (p: { x: number; y: number }) => (p.x - ci.x) * (p.x - ci.x) + (p.y - ci.y) * (p.y - ci.y) <= r * r;
+  return f.things.some(inside) || f.pieces.some(inside);
+}
+
+// =====================================================================================================
+// owner1 play 1: A PLAYER ALWAYS SEES HIMSELF. The places drawn with a roof or canopy (the office, the tool
+// rack, the scale house, the notice boards) are drawn see-through while the boss (or a crew member) stands
+// where the roof as drawn covers him. Built once per bake from the content's places and the manifest's own
+// bounds; the frame loop asks `underRoof` each frame and eases the roof's ink.
+// =====================================================================================================
+
+/** Manifest ids of the places that carry a roof or canopy a person can stand under or behind. */
+export const ROOFED_IDS: readonly string[] = ['plant.portacabin', 'plant.toolrack', 'plant.scalehouse', 'plant.sign.posts', 'plant.board.notice'];
+/** Numbers per roof: x0, x1, y0, y1 of its drawn box (metres across, metres x tilt down the screen), its sort key, its static item's index. */
+export const ROOF = 6;
+/** A roof's ink while somebody stands under it (about a third) and the seconds its ink takes to change. */
+export const ROOF_SEE = 1 / 3;
+export const ROOF_EASE_S = 0.2;
+/** The share of a person's drawn box a roof must cover before it turns see-through. */
+export const ROOF_COVER = 0.2;
+/** The sort's depth band (= DEPTH_BAND below; declared here because a worklet captures what is defined before it; a test holds them equal). */
+export const ROOF_BAND = 0.25;
+
+/** A person's drawn box round his feet: x0, x1, y0, y1 in the same units as a roof's (the boss standing, the manifest's bounds). */
+export function personBox(): number[] {
+  const e = entryOf('person.boss.stand');
+  const b = e ? cellBounds(e, 0) : { x: -16, y: -56, w: 32, h: 60 };
+  const s = (e?.drawScale ?? 1) / 40;
+  return [b.x * s, (b.x + b.w) * s, b.y * s, (b.y + b.h) * s];
+}
+
+/** The roofs of the map, matched to their items in `statics` (the presorted staticItems). */
+export function roofTable(c: SalvageContent, statics: readonly number[], res: Resolver, tilt: number): number[] {
+  const out: number[] = [];
+  for (const [id, pl] of Object.entries(c.map.places)) {
+    if (!ROOFED_IDS.includes(pl.sprite)) continue;
+    const pt = c.map.points[id];
+    const e = entryOf(pl.sprite);
+    if (!pt || !e) continue;
+    const cell = res(pl.sprite, 0, 0);
+    let idx = -1;
+    for (let i = 0; i * ITEM < statics.length; i++) {
+      const o = i * ITEM;
+      if (statics[o + 2] === cell && statics[o + 3] === pt[0] && statics[o + 4] === pt[1]) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) continue;
+    const b = cellBounds(e, 0);
+    const s = (e.drawScale ?? 1) / 40;
+    out.push(pt[0] + b.x * s, pt[0] + (b.x + b.w) * s, pt[1] * tilt + b.y * s, pt[1] * tilt + (b.y + b.h) * s, statics[idx * ITEM + 1], idx);
+  }
+  return out;
+}
+
+/**
+ * Is a person standing at (px, py) (sorted at `pkey`) covered by roof r: the roof is drawn after him (a later
+ * depth band) and its drawn box covers at least ROOF_COVER of his? PB = personBox().
+ */
+export function underRoof(RF: readonly number[], r: number, px: number, py: number, pkey: number, tilt: number, PB: readonly number[]): boolean {
+  'worklet';
+  const o = r * ROOF;
+  if (Math.floor(RF[o + 4] / ROOF_BAND) <= Math.floor(pkey / ROOF_BAND)) return false;
+  const x0 = px + PB[0];
+  const x1 = px + PB[1];
+  const y0 = py * tilt + PB[2];
+  const y1 = py * tilt + PB[3];
+  const w = Math.min(x1, RF[o + 1]) - Math.max(x0, RF[o]);
+  const h = Math.min(y1, RF[o + 3]) - Math.max(y0, RF[o + 2]);
+  if (w <= 0 || h <= 0) return false;
+  return w * h >= ROOF_COVER * (x1 - x0) * (y1 - y0);
+}
+
+/** One frame of a roof's ink: towards ROOF_SEE while covered, back to 1, at a constant rate over ROOF_EASE_S. */
+export function roofInk(a: number, covered: boolean, dt: number): number {
+  'worklet';
+  const want = covered ? ROOF_SEE : 1;
+  const step = ((1 - ROOF_SEE) * dt) / ROOF_EASE_S;
+  return a < want ? Math.min(want, a + step) : Math.max(want, a - step);
 }
 
 /** The x of the container wall (the props of kind 'wall'), or null. */
