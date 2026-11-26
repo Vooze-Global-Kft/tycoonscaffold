@@ -102,11 +102,13 @@ export interface GoalValues {
   share: number | null;
   next: string | null;
   advice: string | null;
+  /** owner1 T2: the step of a load the boss fetches himself ("Drive onto the weighbridge"), the line under the goal while present. */
+  step: string | null;
 }
 
 /** The goal card's lines from the facade's `nextGoal` (with its meter and next line) and `advice`. */
 export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, now: number): GoalValues {
-  if (!g?.salvage) return { goal: null, progress: null, share: null, next: null, advice: null };
+  if (!g?.salvage) return { goal: null, progress: null, share: null, next: null, advice: null, step: null };
   const c = cfg.salvage;
   const goal = R.nextGoal(cfg, g);
   const adv = R.advice(cfg, g, now);
@@ -118,7 +120,19 @@ export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, n
     share: meter ? Math.max(0, Math.min(1, meter.share)) : null,
     next: goal?.next ? say(goal.next, c) : null,
     advice: adv ? say(adv.line, c) : null,
+    step: goal?.step ? say(goal.step, c) : null,
   };
+}
+
+/**
+ * owner1 T4: the words of the refusal the boss's act holds now (FrameBoss.refusal: "Needs §x more for this
+ * load", "Weigh it in first"), or null. The frame is the rules' (memoised on the state's identity, so the
+ * world's own call and this one share it); only asked while the act is `refused.*`.
+ */
+export function heldRefusal(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): string | null {
+  if (!g?.salvage || !(g.salvage.act.target ?? '').startsWith('refused.')) return null;
+  const t = R.frame(cfg, g).boss.refusal;
+  return t ? say(t, cfg.salvage) : null;
 }
 
 /** The toast's words for an event, or null (pure; ./hud.test.ts). */

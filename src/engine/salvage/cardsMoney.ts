@@ -265,11 +265,13 @@ export function moneyOver(cfg: SalvageConfig, g: SalvageGame, card: CardData, no
   const out: CardData = { ...card, showsDebt };
   if (showsDebt) return out;
   const rows = card.rows.filter((r) => !r.id.startsWith(MONEY_ROW));
+  // owner1 S1: a build of release.stage 1 has no shop (its content carries no `iap`): no Shop row anywhere.
+  const shopRow = shopReachable(g) && !!iapDef(cfg.salvage);
   if (card.kind === 'rota') {
-    out.rows = shopReachable(g) ? [...rows, navRow('shop', { key: 'card.shop.row' }, { kind: 'shop' })] : rows;
+    out.rows = shopRow ? [...rows, navRow('shop', { key: 'card.shop.row' }, { kind: 'shop' })] : rows;
   } else if (card.kind === 'settings') {
     const add: CardRow[] = [];
-    if (shopReachable(g)) add.push(navRow('shop', { key: 'card.shop.row' }, { kind: 'shop' }));
+    if (shopRow) add.push(navRow('shop', { key: 'card.shop.row' }, { kind: 'shop' }));
     if (packsSwitchShown(cfg, g, ctx)) {
       const hidden = !!g.salvage.iap.hidden;
       const name: Txt = { key: hidden ? 'clip.packsHidden' : 'clip.packsShown' };

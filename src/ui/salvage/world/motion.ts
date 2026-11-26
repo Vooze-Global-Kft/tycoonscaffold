@@ -17,7 +17,9 @@
  *    recent tables (a table can come late, never early), so a busy thread does not slow the actors.
  * 2. THE DRIVER'S TRUCK ALONG ITS LEG (`truckAt`): a position on the leg's path at the leg's dates, a
  *    facing from the path ahead and behind (a corner turns through the art's in-between headings), the hook
- *    and tip frames standing.
+ *    and tip frames standing. Since the rules date every point of a phase's own path (frame.ts V1: `leg.at`,
+ *    inside the fence at most truck.yardV, the lane faster), the truck passes each point at ITS date
+ *    (`timedShare`): never faster than the rules' speed on that stretch, never along another phase's path.
  * 3. A CREW MEMBER ALONG HIS LEG (`crewAt`).
  * 4. A FACING THAT TURNS (`turnFacing`): a pictured vehicle whose wanted heading changes steps through the
  *    eight headings one at a time, STEP_S apart, so a turn reads as a turn and never as a flip.
@@ -168,11 +170,12 @@ const LEG_PARK = 6;
  *   hook: the hook frames at the skip; weigh: standing on the bridge (driving there first when the path
  *   has two points); walk: standing where it is (the driver walks to it).
  */
-export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[], tNow: number, from = NaN): boolean {
+export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[], tNow: number, from = NaN, TA: number[] = NO_TIMES): boolean {
   'worklet';
   const leg = TR[6];
   if (leg < 0) return false;
-  const np = Math.min(TR[11], 8);
+  const np = Math.min(TR[11], PATH_MAX_PTS);
+  if (np >= 1 && TA.length >= np) return truckTimed(out, tmp, TR, TP, TA, np, tNow, from);
   const t0 = from === from ? Math.max(TR[7], from) : TR[7];
   const t1 = TR[8];
   const driveEnd = TR[12] === TR[12] && TR[12] !== undefined ? Math.min(t1, TR[12]) : t1;
@@ -214,6 +217,103 @@ export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[]
     const u = span > 0 ? (tNow - driveEnd) / span : 1;
     out[3] = u < 0.35 ? 2 : 3;
   } else if (leg === LEG_WALK || leg === LEG_WEIGH) out[3] = -1;
+  return true;
+}
+
+/** No dated points (a frame without `leg.at`: the leg is drawn evenly from t0 to its drive's end). */
+const NO_TIMES: number[] = [];
+/** At most this many points of a vehicle's path (./actors.ts PATH_MAX). */
+const PATH_MAX_PTS = 12;
+
+/**
+ * The share of a polyline's LENGTH reached at time `tau` when its points are passed at the dates
+ * TT[ti], TT[ti + 1], ... (the rules' `at`): before the first date it stands at the first point, after the last
+ * at the last; between two dates it moves evenly along that segment. Pure.
+ */
+export function timedShare(pts: number[], np: number, TT: number[], ti: number, tau: number): number {
+  'worklet';
+  if (np < 2) return 1;
+  const total = pathLen(pts, np);
+  if (!(total > 0)) return tau >= TT[ti + np - 1] ? 1 : 0;
+  let s = 0;
+  for (let i = 1; i < np; i++) {
+    const sx = pts[i * 2] - pts[i * 2 - 2];
+    const sy = pts[i * 2 + 1] - pts[i * 2 - 1];
+    const sl = Math.sqrt(sx * sx + sy * sy);
+    const ta = TT[ti + i - 1];
+    const tb = TT[ti + i];
+    if (tau < tb) {
+      const k = tb > ta ? Math.max(0, (tau - ta) / (tb - ta)) : 0;
+      return (s + sl * Math.min(1, k)) / total;
+    }
+    s += sl;
+  }
+  return 1;
+}
+
+/**
+ * The time to read a dated path at when its start was first seen late (`from` after its first date: the
+ * same warp as `legStart`, the last date kept). Pure.
+ */
+export function warpTau(tNow: number, from: number, a0: number, aN: number): number {
+  'worklet';
+  if (!(from === from) || from <= a0 || aN <= from) return tNow;
+  if (tNow <= from) return a0;
+  return a0 + ((tNow - from) * (aN - a0)) / (aN - from);
+}
+
+/**
+ * Where the driver's truck's leg is drawn from (`legStart` for a truck, keyed by the leg's start AND its
+ * phase: two phases may share a date, e.g. weigh's last point and tip's first). `TA` the dated points (or
+ * none: the leg's t0). K = [leg t0, drawn from, phase]. Returns NaN when the truck is on no leg.
+ */
+export function truckFrom(K: number[], TR: number[], TA: number[], tNow: number, snap: boolean): number {
+  'worklet';
+  if (TR[6] < 0) return NaN;
+  const np = Math.min(TR[11], PATH_MAX_PTS);
+  const timed = np >= 1 && TA.length >= np;
+  if (K[0] !== TR[7] || K[2] !== TR[6]) {
+    K[0] = TR[7];
+    K[2] = TR[6];
+    const a0 = timed ? TA[0] : TR[7];
+    const end = timed ? TA[np - 1] : TR[12] === TR[12] ? TR[12] : TR[8];
+    const late = tNow - a0;
+    K[1] = !snap && late > 0 && late < LATE_MAX_S && end - tNow > late ? tNow : a0;
+  }
+  return K[1];
+}
+
+/** truckAt on a dated path (frame.ts V1): see `truckAt`. out[2] is NaN while it stands on a one-point phase with no facing of its own (keep the shown one). */
+function truckTimed(out: number[], tmp: number[], TR: number[], TP: number[], TA: number[], np: number, tNow: number, from: number): boolean {
+  'worklet';
+  const leg = TR[6];
+  const t0 = TR[7];
+  const t1 = TR[8];
+  const a0 = TA[0];
+  const aN = TA[np - 1];
+  const tau = warpTau(tNow, from, a0, aN);
+  const face = TR[13] !== undefined && TR[13] >= 0 ? TR[13] : NaN;
+  out[3] = -1;
+  if (np >= 2 && tau < aN) {
+    alongFacing(tmp, out, TP, np, timedShare(TP, np, TA, 0, tau));
+    out[0] = tmp[0];
+    out[1] = tmp[1];
+    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
+    return true;
+  }
+  if (np >= 2) {
+    alongFacing(tmp, out, TP, np, 1);
+    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
+  } else out[2] = face;
+  out[0] = TP[np * 2 - 2];
+  out[1] = TP[np * 2 - 1];
+  if (leg === LEG_HOOK) {
+    const span = t1 - t0;
+    out[3] = (span > 0 ? (tNow - t0) / span : 1) < 0.5 ? 1 : 0;
+  } else if (leg === LEG_TIP) {
+    const span = t1 - aN;
+    out[3] = (span > 0 ? (tNow - aN) / span : 1) < 0.35 ? 2 : 3;
+  }
   return true;
 }
 
@@ -269,4 +369,20 @@ export function turnFacing(F: number[], want: number, clock: number, snap: boole
   F[0] = (((F[0] + (d <= 4 ? 1 : -1)) % 8) + 8) % 8;
   F[1] = clock;
   return F[0];
+}
+
+/** Metres past the fence over which the boss's truck's top speed eases from bossYardV to bossV (about a second at their mean). */
+export const GATE_EASE_M = 8;
+
+/**
+ * The boss's truck's top speed at x (owner1 V3): bossYardV inside the fence (x at most the yard's width),
+ * bossV on the lane from GATE_EASE_M past it, eased between (smoothstep over the distance: driving out it
+ * gathers pace over about a second, driving in it slows over the same stretch and is at the yard's pace at
+ * the gate). Pure; the frame loop calls it each frame.
+ */
+export function bossDriveV(x: number, W: number, yardV: number, laneV: number): number {
+  'worklet';
+  if (x <= W) return yardV;
+  const u = Math.min(1, (x - W) / GATE_EASE_M);
+  return yardV + (laneV - yardV) * u * u * (3 - 2 * u);
 }

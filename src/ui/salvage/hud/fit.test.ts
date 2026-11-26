@@ -161,3 +161,46 @@ describe('the opened goal card\'s lines are whole at their widest', () => {
         expect(bad).toEqual([]);
       });
 });
+
+// owner1 T2 (screens1 n6): the load's step stands under the goal at the opened lines' size, on ONE line.
+describe('the goal\'s load step is one whole line under the goal', () => {
+  const keys = (Object.keys(TEXT) as (keyof typeof TEXT)[]).filter((k) => /^goal\.step\./.test(k));
+  it('has the five steps', () => expect(keys.length).toBeGreaterThanOrEqual(5));
+  for (const p of PHONES)
+    for (const fs of SCALES)
+      it(`${p.name} at font scale ${fs}`, () => {
+        const L = hudLayout(p.w, p.h, p.i, fs);
+        const line = fitText(`${wide('goal.fetchTrial')}  99.99 t / 99.99 t`, L.goalW - GOAL_CHROME, L.rows.goal - 4, 12, L.s).pt;
+        for (const k of keys) {
+          const sub = goalSubPt([wide(k), wide('goal.supplyRung2')], line, L);
+          expect(sub.lines, k).toBe(1);
+          expect(measureW(wide(k), sub.pt), k).toBeLessThanOrEqual(L.goalW - GOAL_CHROME);
+        }
+      });
+});
+
+// owner1 T4 (screens1 n7): the held refusal's tag left of the one button: whole at its widest (the figure at
+// its widest), in the button's row (below every ticket and toast), right of the stick's half, clear of the disc.
+import { TAG_CHROME, TAG_GAP, refusalTag } from './metrics';
+
+describe('the held refusal\'s tag is whole and in its place', () => {
+  const keys = ['refusal.loadCash', 'refusal.floor', 'refusal.weighFirst', 'refusal.filling', 'refusal.noTruck'].filter((k) => k in TEXT) as (keyof typeof TEXT)[];
+  it('knows the held refusals', () => expect(keys).toEqual(expect.arrayContaining(['refusal.loadCash', 'refusal.floor', 'refusal.weighFirst'])));
+  for (const p of PHONES)
+    for (const fs of SCALES)
+      it(`${p.name} at font scale ${fs}`, () => {
+        const L = hudLayout(p.w, p.h, p.i, fs);
+        for (const k of keys) {
+          const text = wide(k);
+          const b = refusalTag(text, L);
+          expect(b.cut, `${k} "${text}"`).toBe(false);
+          expect(b.pt).toBeGreaterThanOrEqual(MIN_PT);
+          for (const l of b.lines) expect(measureW(l, b.pt) + TAG_CHROME, `${k} "${l}"`).toBeLessThanOrEqual(b.w + 0.01);
+          expect(b.lines.join(' ')).toBe(text);
+          expect(b.x).toBeGreaterThanOrEqual(p.w / 2);
+          expect(b.x + b.w).toBeLessThanOrEqual(L.button.x - TAG_GAP);
+          expect(b.y).toBeGreaterThanOrEqual(L.bottomY);
+          expect(b.y + b.h).toBeLessThanOrEqual(p.h);
+        }
+      });
+});

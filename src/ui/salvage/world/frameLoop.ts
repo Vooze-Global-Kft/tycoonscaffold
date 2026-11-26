@@ -38,12 +38,13 @@ import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
 import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, actorTable, addTo, along, heading4, heading8, makeListW, makeResolver, pathLen, personInto, presortItems, sortRuns, staticItems, type DrawList, type RulesScene } from './actors';
-import { crewAt, legStart, makeClock, rulesClock, truckAt, turnFacing } from './motion';
+import { alongFacing, bossDriveV, crewAt, legStart, makeClock, rulesClock, timedShare, truckAt, truckFrom, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
 import { DEAD, STICK_R, presenceStep, stick } from './stick';
 import { useYardArt, type YardArt } from './useYard';
+import { rulesItems } from './useRulesTable';
 import type { SpriteSheet } from './atlas';
 import type { YardLayout } from './yard';
 
@@ -347,6 +348,8 @@ export function useYardLoop(opts: {
   const north = yard.northFace;
   const wallY = yard.north ?? NaN;
   const bossV = content && typeof (content.truck as { bossV?: unknown }).bossV === 'number' ? (content.truck as unknown as { bossV: number }).bossV : motion.drive;
+  // owner1 V3: the boss's truck inside the fence at most truck.bossYardV (absent: bossV everywhere).
+  const bossYardV = content && typeof (content.truck as { bossYardV?: unknown }).bossYardV === 'number' ? Math.min(bossV, (content.truck as unknown as { bossYardV: number }).bossYardV) : bossV;
 
   const onFrame = useCallback(
     (info: FrameInfo) => {
@@ -364,7 +367,7 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), truckK: [NaN, NaN] };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN] };
         scratch.value = S;
       }
       const st = S.st;
@@ -423,7 +426,7 @@ export function useYardLoop(opts: {
         }
       }
       const driving = st[5] === 1;
-      const speed = driving ? bossV : motion.walk;
+      const speed = driving ? bossDriveV(st[2], YW, bossYardV, bossV) : motion.walk;
       const vx = ux * speed;
       const vy = uy * speed;
       st[16] = vx;
@@ -586,7 +589,7 @@ export function useYardLoop(opts: {
       let runA = 0;
       for (let src = 0; src < 2; src++) {
         if (src === 1) runA = L.n;
-        const A = src === 0 ? statics : Rv.items;
+        const A = src === 0 ? statics : rulesItems.value;
         for (let o = 0; o + ITEM - 1 < A.length; o += ITEM) {
           const alt = A[o + 10];
           const cell = alt >= 0 && Math.floor(clock / A[o + 11]) % 2 === 1 ? alt : A[o + 2];
@@ -649,19 +652,31 @@ export function useYardLoop(opts: {
           let show = true;
           if (ph === 2) {
             const FP = Rv.flatbedPath;
+            const FA = Rv.flatbedAt;
             const np = Math.min(FB[6], PATH_MAX);
             for (let q = 0; q < np * 2; q++) P[q] = FP[q];
-            const len = pathLen(P, np);
-            const drive = Math.min((FB[2] - FB[1]) / 2, len / FEEL.vehicleV);
-            const since = tNow - FB[1];
-            const left = FB[2] - tNow;
-            if (np < 2) show = false;
-            else if (since < drive) along(o4, P, np, since / drive);
-            else if (left < drive) {
-              along(o4, P, np, left / drive);
-              o4[2] = -o4[2];
-              o4[3] = -o4[3];
-            } else show = false;
+            if (np >= 2 && FA.length >= np) {
+              // owner1 V3: out along the drive line at the dates the rules give, back the same way at the round's end.
+              const out = FA[np - 1] - FA[0];
+              if (tNow < FA[np - 1]) alongFacing(o4, S.tmp2, P, np, timedShare(P, np, FA, 0, tNow));
+              else if (tNow > FB[2] - out) {
+                alongFacing(o4, S.tmp2, P, np, timedShare(P, np, FA, 0, FA[0] + (FB[2] - tNow)));
+                o4[2] = -o4[2];
+                o4[3] = -o4[3];
+              } else show = false;
+            } else {
+              const len = pathLen(P, np);
+              const drive = Math.min((FB[2] - FB[1]) / 2, len / FEEL.vehicleV);
+              const since = tNow - FB[1];
+              const left = FB[2] - tNow;
+              if (np < 2) show = false;
+              else if (since < drive) along(o4, P, np, since / drive);
+              else if (left < drive) {
+                along(o4, P, np, left / drive);
+                o4[2] = -o4[2];
+                o4[3] = -o4[3];
+              } else show = false;
+            }
             fx2 = o4[0];
             fy2 = o4[1];
             h4 = heading4(o4[2], o4[3]);
@@ -731,7 +746,19 @@ export function useYardLoop(opts: {
           let ax = AR[o + 4];
           let ay = AR[o + 5];
           let h4 = 1;
-          if (ph !== 1) {
+          const anp = Math.min(AR[o + 8] ?? 0, PATH_MAX);
+          if (anp >= 2) {
+            // owner1 V4: along the drive line at the frame's dates to the stop, and set down THERE (no jump).
+            const p0 = AR[o + 9];
+            const AP = Rv.arrivalPath;
+            for (let q = 0; q < anp * 2; q++) P[q] = AP[p0 * 2 + q];
+            const AT = Rv.arrivalAt;
+            for (let q = 0; q < anp; q++) S.tA[q] = AT[p0 + q];
+            alongFacing(o4, S.tmp2, P, anp, ph === 1 ? 1 : timedShare(P, anp, S.tA, 0, tNow));
+            ax = ph === 1 ? P[anp * 2 - 2] : o4[0];
+            ay = ph === 1 ? P[anp * 2 - 1] : o4[1];
+            h4 = ph === 1 ? 1 : heading4(o4[2], o4[3]);
+          } else if (ph !== 1) {
             const k = ph === 0 ? u : 1 - u;
             ax = AR[o + 2] + (AR[o + 4] - AR[o + 2]) * k;
             ay = AR[o + 3] + (AR[o + 5] - AR[o + 3]) * k;
@@ -760,10 +787,11 @@ export function useYardLoop(opts: {
           let hook = -1;
           // The driver's trip: along this phase's path at the leg's dates (./motion.ts truckAt).
           const t4 = S.t4;
-          if (!driving && truckAt(t4, S.tmp2, TR, Rv.truckPath, tNow, TR[6] >= 0 ? legStart(S.truckK, 0, TR[7], TR[12] === TR[12] ? TR[12] : TR[8], tNow, snap) : NaN)) {
+          if (!driving && truckAt(t4, S.tmp2, TR, Rv.truckPath, tNow, truckFrom(S.truckK, TR, Rv.truckAt, tNow, snap), Rv.truckAt)) {
             tx = t4[0];
             ty = t4[1];
-            h8 = t4[2];
+            // A one-point phase (weigh) keeps the facing it arrived with.
+            h8 = t4[2] === t4[2] ? t4[2] : S.face[0] === S.face[0] ? S.face[0] : TR[3];
             hook = t4[3];
           }
           // The facing turns through the eight headings, never flips (the boss's wheel turns it itself).
@@ -857,7 +885,7 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
+    [draw, ctl, motion, bossV, bossYardV, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {

@@ -242,6 +242,13 @@ describe('the machine cards as printed (L14, W7, W5, W18) and the rota (P18)', (
     expect(r.row.line?.key).toBe('card.levelOpensAt');
     expect(memberRow({ id: 'hand.next', name: { key: 'role.hand' }, line: { key: 'refusal.rung', args: {} }, button: null, icon: null, extra: null }).padlock).toBe(true);
   });
+  it('owner1 H6: a waiting member\'s row carries the rules\' why as its state line, and only a member\'s', () => {
+    const why = { key: 'card.crewWhy.uncut' } as const;
+    expect(memberRow({ id: 'c1', name: { key: 'card.crewRow', args: {} }, line: null, button: null, icon: null, extra: null, why }).why).toEqual(why);
+    expect(memberRow({ id: 'c1', name: { key: 'card.crewRow', args: {} }, line: { key: 'refusal.rung', args: {} }, button: null, icon: null, extra: null, why }).why).toEqual(why);
+    expect(memberRow({ id: 'c1', name: { key: 'card.crewRow', args: {} }, line: null, button: null, icon: null, extra: null }).why).toBeNull();
+    expect(memberRow({ id: 'hand.next', name: { key: 'role.hand' }, line: null, button: null, icon: null, extra: null, why }).why).toBeNull();
+  });
   it('a scroll shows more below until its end', () => {
     expect(moreBelow(500, 300, 0)).toBe(true);
     expect(moreBelow(500, 300, 200)).toBe(false);

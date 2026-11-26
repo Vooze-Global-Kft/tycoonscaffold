@@ -4,7 +4,10 @@
  * speeding through the yard"). Frozen test content; the frame loop's own worklets (./motion.ts,
  * ./actors.ts) called as the UI thread calls them, frame by frame.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { SalvageSchema } from '../../../config/schema.salvage';
 
 vi.mock('react-native', () => ({ Platform: { OS: 'web' }, PixelRatio: { get: () => 3 } }));
 vi.mock('@shopify/react-native-skia', () => ({ Skia: {}, ClipOp: { Intersect: 1 }, PaintStyle: {}, StrokeCap: {}, StrokeJoin: {}, BlendMode: {}, TileMode: {}, FillType: {}, PathOp: {} }));
@@ -139,28 +142,31 @@ describe('point 1: an actor moves at the display\'s rate, from the leg\'s dates'
 });
 
 describe('point 7, the drawing side: the driver\'s truck drives each phase of its trip, never jumping', () => {
-  it('a whole trip (out, hook, back, weigh, tip, park) drawn at 60 frames a second: no frame moves it more than a vehicle can', () => {
-    const fx = F.FIXTURE_STATES.m30 as unknown as { salvage: import('../../../engine/salvage').SalvageState };
-    let g = { cash: 1e7, stats: { playSeconds: 0 }, lifetimeEarnings: 0, salvage: structuredClone(fx.salvage) } as unknown as import('../../../engine/salvage').SalvageGame;
+  // The game's own content (the review's rules: every phase dated by the rules, frame.ts V1 / V3).
+  const GAME = SalvageSchema.parse(JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../games/scrap-yard/game.json'), 'utf8')).salvage);
+  const gcfg = { mode: 'salvage', salvage: GAME } as unknown as import('../../../engine/salvage').SalvageConfig;
+  const gyard = yardLayout(GAME);
+  const W = GAME.yard.width;
+
+  /** The m30 state played on the game's content, ticked at 10 a second for `seconds`, drawn at 60 frames a second. */
+  function playTrips(seconds: number, each: (f: { x: number; y: number; h: number; leg: number; table: ReturnType<typeof rulesTable>; tNow: number }) => void) {
+    const played = F.playedOn(gcfg);
+    let g = { cash: 1e7, stats: { playSeconds: 0 }, lifetimeEarnings: 0, salvage: structuredClone(played.games.m30.salvage) } as unknown as import('../../../engine/salvage').SalvageGame;
     expect(g.salvage.crew.some((m) => m.role === 'driver')).toBe(true);
     const C = M.makeClock();
     const t4 = [0, 0, 0, 0];
     const tmp = [0, 0, 0, 0];
     const F8 = [NaN, 0];
-    const K = [NaN, NaN];
-    let table = rulesTable(yard, R.frame(cfg, g), content, () => 1, 0);
+    const K = [NaN, NaN, NaN];
+    let table = rulesTable(gyard, R.frame(gcfg, g), GAME, () => 1, 0);
     let last: unknown = null;
-    let prev: [number, number] | null = null;
-    let worst = 0;
-    const phases = new Set<number>();
-    const headings: number[] = [];
     let nextTick = 0;
-    for (let f = 0; f < 60 * 120; f++) {
+    for (let f = 0; f < 60 * seconds; f++) {
       const now = f * FRAME_MS;
       if (now >= nextTick) {
-        g = R.setPresence(cfg, g, { x: 10, y: 10, driving: false, moving: false, standingFor: 0, heading: 0 } as never, g.salvage.t);
-        g = R.tick(cfg, g, 0.1, F.FIXTURE_NOW + nextTick).game;
-        table = rulesTable(yard, R.frame(cfg, g), content, () => 1, f);
+        g = R.setPresence(gcfg, g, { x: 10, y: 10, driving: false, moving: false, standingFor: 0, heading: 0 } as never, g.salvage.t);
+        g = R.tick(gcfg, g, 0.1, F.FIXTURE_NOW + nextTick).game;
+        table = rulesTable(gyard, R.frame(gcfg, g), GAME, () => 1, f);
         nextTick += 100;
       }
       const fresh = table !== last;
@@ -170,52 +176,124 @@ describe('point 7, the drawing side: the driver\'s truck drives each phase of it
       let x = TR[1];
       let y = TR[2];
       let h = TR[3];
-      if (M.truckAt(t4, tmp, TR, table.truckPath, tNow, TR[6] >= 0 ? M.legStart(K, 0, TR[7], TR[12] === TR[12] ? TR[12] : TR[8], tNow, false) : NaN)) {
+      let leg = -1;
+      if (M.truckAt(t4, tmp, TR, table.truckPath, tNow, M.truckFrom(K, TR, table.truckAt, tNow, false), table.truckAt)) {
         x = t4[0];
         y = t4[1];
-        h = t4[2];
-        phases.add(TR[6]);
+        h = t4[2] === t4[2] ? t4[2] : F8[0] === F8[0] ? F8[0] : TR[3];
+        leg = TR[6];
       }
-      headings.push(M.turnFacing(F8, h, f / 60, false));
-      if (prev) worst = Math.max(worst, Math.hypot(x - prev[0], y - prev[1]));
-      prev = [x, y];
+      each({ x, y, h: M.turnFacing(F8, h, f / 60, false), leg, table, tNow });
     }
-    // Every phase of the trip was drawn.
+  }
+
+  it('two whole trips (out, hook, back, weigh, tip, park) drawn at 60 frames a second: continuous, never faster than the rules date it, at most truck.yardV inside the fence', () => {
+    let prev: { x: number; y: number; h: number } | null = null;
+    let worst = 0;
+    let worstYard = 0;
+    let worstSwitch = 0;
+    let prevLeg = -2;
+    const phases = new Set<number>();
+    let tooFast = 0;
+    playTrips(150, ({ x, y, h, leg, table }) => {
+      if (leg >= 0) phases.add(leg);
+      if (prev) {
+        const d = Math.hypot(x - prev.x, y - prev.y);
+        worst = Math.max(worst, d);
+        if (x <= W && prev.x <= W) worstYard = Math.max(worstYard, d * 60);
+        if (leg !== prevLeg) worstSwitch = Math.max(worstSwitch, d);
+        // Never faster than the fastest stretch of this phase as the rules date it (+15 %: a leg seen late).
+        const TA = table.truckAt;
+        const TP = table.truckPath;
+        let vmax = 0;
+        for (let i = 1; i < TA.length; i++) if (TA[i] > TA[i - 1]) vmax = Math.max(vmax, Math.hypot(TP[i * 2] - TP[i * 2 - 2], TP[i * 2 + 1] - TP[i * 2 - 1]) / (TA[i] - TA[i - 1]));
+        if (leg >= 0 && d * 60 > vmax * 1.15 + 0.05 && leg === prevLeg) tooFast++;
+        const dh = (((h - prev.h) % 8) + 8) % 8;
+        expect(Math.min(dh, 8 - dh)).toBeLessThanOrEqual(1);
+      }
+      prevLeg = leg;
+      prev = { x, y, h };
+    });
     for (const p of [0, 1, 2, 3, 4, 6]) expect(phases.has(p), `leg ${p}`).toBe(true);
-    // The fastest leg (the lane at the content's truck.v) is under 20 m/s: a third of a metre a frame. The
-    // old drawing jumped 11 m (gate to bridge), 7 m (bridge to floor) and 120 m (the park phase from the site).
-    expect(worst).toBeLessThan(20 / 60);
-    // The facing never jumps more than one of the eight headings from one frame to the next.
-    for (let i = 1; i < headings.length; i++) {
-      const d = (((headings[i] - headings[i - 1]) % 8) + 8) % 8;
-      expect(Math.min(d, 8 - d)).toBeLessThanOrEqual(1);
-    }
+    // The whole trip is dated: every frame of the review's table had the dates.
+    expect(tooFast).toBe(0);
+    // No drawn jump over half a metre at a phase switch (the old drawing: 11 m, 7 m, 120 m).
+    expect(worstSwitch).toBeLessThan(0.5);
+    // Inside the fence at most truck.yardV (4 m/s; +15 % for a leg first seen late).
+    expect(worstYard).toBeLessThanOrEqual((GAME.truck.yardV ?? 4) * 1.15);
+    // On the lane the rules' own lane speed (under 30 m/s: half a metre a frame).
+    expect(worst).toBeLessThan(0.5);
   });
 
-  it('each phase\'s path runs between the places the rules set the truck at', () => {
-    const gate = content.map.points.gate;
-    const wb = content.map.points.weighbridge;
-    const floor = content.map.points.floor;
-    const park = content.map.points.park;
-    const z = { x: gate[0] + 50, y: gate[1] - 3 };
-    const leg = (phase: string, at: number[], t0 = 0, t1 = 10) => ({ owned: true, x: at[0], y: at[1], heading: 2, by: 'driver', load: null, skip: 'none', hookSpan: null, hook: null, leg: { phase, partner: 'p', t0, t1, from: phase === 'out' ? { x: park[0], y: park[1] } : z, to: phase === 'out' ? z : { x: park[0], y: park[1] }, path: [] } }) as unknown as import('../../../engine/salvage').FrameTruck;
-    const line = A.mapDriveLine(content);
-    const ends = (p: number[]) => [p[0], p[1], p[p.length - 2], p[p.length - 1]].map((v) => Math.round(v * 10) / 10);
-    expect(ends(A.tripLeg(content, leg('back', gate), line).path)).toEqual(ends([z.x, z.y, wb[0], wb[1]]));
-    expect(ends(A.tripLeg(content, leg('tip', floor), line).path)).toEqual(ends([wb[0], wb[1], floor[0], floor[1]]));
-    expect(ends(A.tripLeg(content, leg('park', floor), line).path)).toEqual(ends([floor[0], floor[1], park[0], park[1]]));
-    expect(A.tripLeg(content, leg('weigh', wb), line).path).toEqual([wb[0], wb[1]]);
-    const tip = A.tripLeg(content, leg('tip', floor, 100, 112), line);
-    expect(tip.driveEnd).toBeGreaterThan(100);
-    expect(tip.driveEnd).toBeLessThanOrEqual(106);
-    // A frame that names the phase's own path wins (requests.md [owner1-world] frame.ts leg.drive).
-    const given = leg('back', gate);
-    (given.leg as unknown as { drive: { x: number; y: number }[]; driveT1: number }).drive = [{ x: 1, y: 2 }, { x: 3, y: 4 }];
-    (given.leg as unknown as { driveT1: number }).driveT1 = 5;
-    expect(A.tripLeg(content, given, line)).toEqual({ path: [1, 2, 3, 4], driveEnd: 5, face: -1 });
+  it('each phase is drawn along the frame\'s own path at its dates (the stand-in is gone)', () => {
+    const tk = (leg: Record<string, unknown>) => ({ owned: true, x: 1, y: 2, heading: 2, by: 'driver', load: null, skip: 'none', hookSpan: null, hook: null, leg }) as unknown as import('../../../engine/salvage').FrameTruck;
+    const line = A.mapDriveLine(GAME);
+    const back = A.tripLeg(GAME, tk({ phase: 'back', partner: 'p', t0: 10, t1: 30, from: { x: 1, y: 2 }, to: { x: 5, y: 2 }, path: [{ x: 1, y: 2 }, { x: 3, y: 2 }, { x: 5, y: 2 }], at: [12, 20, 30] }), line);
+    expect(back).toEqual({ path: [1, 2, 3, 2, 5, 2], at: [12, 20, 30], driveEnd: 30, face: -1 });
+    const hook = A.tripLeg(GAME, tk({ phase: 'hook', partner: 'p', t0: 10, t1: 14, from: { x: 1, y: 2 }, to: { x: 1, y: 2 }, path: [{ x: 1, y: 2 }], at: [10] }), line);
+    expect(hook.face).toBe(2);
+    // Piecewise: 2 m in 8 s, then 2 m in 10 s; standing at the first point before its date.
+    const TR = [1, 1, 2, 0, 0, 2, 2, 10, 30, -1, -1, 3, 30, -1];
+    const o = [0, 0, 0, 0];
+    const tmp = [0, 0, 0, 0];
+    M.truckAt(o, tmp, TR, back.path, 11, NaN, back.at);
+    expect(o[0]).toBeCloseTo(1);
+    M.truckAt(o, tmp, TR, back.path, 16, NaN, back.at);
+    expect(o[0]).toBeCloseTo(2);
+    M.truckAt(o, tmp, TR, back.path, 25, NaN, back.at);
+    expect(o[0]).toBeCloseTo(4);
+    M.truckAt(o, tmp, TR, back.path, 40, NaN, back.at);
+    expect(o[0]).toBeCloseTo(5);
+    // A one-point phase standing with no facing of its own keeps the shown one (NaN).
+    const TRw = [1, 1, 2, 0, 0, 2, 3, 10, 11, -1, -1, 1, 11, -1];
+    M.truckAt(o, tmp, TRw, [7, 8], 10.5, NaN, [11]);
+    expect([o[0], o[1]]).toEqual([7, 8]);
+    expect(Number.isNaN(o[2])).toBe(true);
+  });
+
+  it('the boss\'s own truck: at most truck.bossYardV inside the fence, truck.bossV on the lane, eased over about a second past the gate', async () => {
+    const { bossDriveV, GATE_EASE_M } = M;
+    const vy = GAME.truck.bossYardV!;
+    const vl = GAME.truck.bossV!;
+    expect(bossDriveV(W - 5, W, vy, vl)).toBe(vy);
+    expect(bossDriveV(W, W, vy, vl)).toBe(vy);
+    expect(bossDriveV(W + GATE_EASE_M, W, vy, vl)).toBe(vl);
+    // Driving out at the top speed from the gate: the pace grows smoothly, no step over 0.2 m/s a frame, in about a second.
+    let x = W;
+    let v = bossDriveV(x, W, vy, vl);
+    let t = 0;
+    while (v < vl - 1e-6 && t < 5) {
+      x += v / 60;
+      const nv = bossDriveV(x, W, vy, vl);
+      expect(nv - v).toBeLessThan(0.2);
+      v = nv;
+      t += 1 / 60;
+    }
+    expect(t).toBeGreaterThan(0.7);
+    expect(t).toBeLessThan(1.8);
+  });
+
+  it('a purchase arrives along the frame\'s path to its stop and sets down there: no jump', () => {
+    const a = { item: 'x', kind: 'van', place: 'rack', from: { x: 80, y: 20 }, to: { x: 30, y: 30 }, span: { t0: 0, t1: 20 }, phase: 'in', path: [{ x: 80, y: 20 }, { x: 60, y: 20 }, { x: 40, y: 25 }], at: [0, 5, 14], stop: { x: 40, y: 25 } };
+    const f = R.frame(gcfg, { cash: 0, stats: { playSeconds: 0 }, salvage: R.freshSalvage(gcfg, 0) } as unknown as import('../../../engine/salvage').SalvageGame);
+    const sc = A.rulesScene(GAME, { ...f, arrivals: [a] } as never, () => 1);
+    expect(sc.arrivals.slice(8, 10)).toEqual([3, 0]);
+    expect(sc.arrivalPath).toEqual([80, 20, 60, 20, 40, 25]);
+    expect(sc.arrivalAt).toEqual([0, 5, 14]);
+    const sd = A.rulesScene(GAME, { ...f, arrivals: [{ ...a, phase: 'setDown' }] } as never, () => 1);
+    // The set-down stands at the path's last point (the stop), where the drive ended.
+    expect(sd.arrivalPath.slice(-2)).toEqual([40, 25]);
+    expect(M.timedShare(sc.arrivalPath, 3, sc.arrivalAt, 0, 14)).toBe(1);
+    expect(M.timedShare(sc.arrivalPath, 3, sc.arrivalAt, 0, 2.5)).toBeCloseTo(10 / (20 + Math.hypot(20, 5)));
   });
 
   it('a leg first seen late is drawn from its start, its end date kept (no jump forward at a leg change)', () => {
+    // The truck's own: keyed by its start and phase (weigh's last date is tip's first).
+    const KT = [NaN, NaN, NaN];
+    expect(M.truckFrom(KT, [1, 0, 0, 0, 0, 2, 3, 10, 11, -1, -1, 1, 11, -1], [11], 10.05, false)).toBe(11);
+    expect(M.truckFrom(KT, [1, 0, 0, 0, 0, 2, 4, 11, 20, -1, -1, 2, 11.7, -1], [11, 11.7], 11.08, false)).toBe(11.08);
+    expect(M.warpTau(11.08, 11.08, 11, 11.7)).toBe(11);
+    expect(M.warpTau(11.7, 11.08, 11, 11.7)).toBeCloseTo(11.7);
     const K = [NaN, NaN];
     // Seen 0.08 s late: drawn from the frame that saw it.
     expect(M.legStart(K, 0, 10, 20, 10.08, false)).toBe(10.08);

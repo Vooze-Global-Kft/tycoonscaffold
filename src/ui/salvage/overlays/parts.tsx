@@ -198,7 +198,7 @@ export function useRowNote(row: string): Txt | null {
  * (11 pt, at most 38 characters), and at the right the button, an Owned tag, or nothing; a refusal under
  * it when its button was refused. `padlock` prints the effect line as a padlock condition.
  */
-export function Row({ row, padlock, tag, onPress }: { row: CardRow; padlock?: boolean; tag?: Txt | null; onPress?: () => void }) {
+export function Row({ row, padlock, tag, why, onPress }: { row: CardRow; padlock?: boolean; tag?: Txt | null; why?: Txt | null; onPress?: () => void }) {
   const { layout } = useFrame();
   const note = useRowNote(row.id);
   const body = (
@@ -207,6 +207,8 @@ export function Row({ row, padlock, tag, onPress }: { row: CardRow; padlock?: bo
         <Line t={row.name} size="name" bold lines={2} />
         {row.line ? padlock ? <PadlockLine t={row.line} /> : <Line t={row.line} size="line" colour={INK.soft} lines={2} /> : null}
         {row.extra ? <Line t={row.extra} size="line" colour={INK.soft} lines={2} /> : null}
+        {/* owner1 H6 (screens1 n8): a waiting worker's state line ("Waiting for cut pieces"), in the row's quiet ink. */}
+        {why ? <Line t={why} size="line" colour={INK.soft} lines={2} style={styles.why} /> : null}
       </View>
       {row.button ? <BuyButton button={row.button} row={row.id} /> : tag ? <OwnedTag t={tag} /> : null}
     </View>
@@ -277,6 +279,7 @@ export const styles = StyleSheet.create({
   close: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
   closeGlyph: { color: INK.ink, fontWeight: '700' },
   rowWrap: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: INK.rule },
+  why: { fontStyle: 'italic' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 10 },
   rowText: { flex: 1, minWidth: 0, justifyContent: 'center' },
   buy: { paddingHorizontal: 10, borderRadius: 8, backgroundColor: INK.hivis, borderWidth: 1.3, borderColor: INK.ink, alignItems: 'center', justifyContent: 'center' },

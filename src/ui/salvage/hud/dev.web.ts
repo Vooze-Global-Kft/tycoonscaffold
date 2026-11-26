@@ -39,6 +39,27 @@ export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | 
     const t = setTimeout(() => useSalvageUi.getState().setDriving(true), 600);
     return () => clearTimeout(t);
   }
+  // owner1-fix-hud: `?hudDemo=refusal` (or `refusal=cash`) holds the boss's act at a refusal (`refused.floor`:
+  // "Weigh it in first"; `cash`: the first partner's skip, its figure from the rules) and the button in its truck
+  // form, re-applied every second, so the tag by the one button can be looked at. A SAMPLE of the state, never saved.
+  if (m === 'refusal' || m === 'refusal=cash') {
+    const target = m === 'refusal' ? 'refused.floor' : `refused.${Object.keys(cfg.salvage.partners ?? {})[0] ?? 'floor'}`;
+    const hold = () => {
+      useSalvageUi.getState().setDriving(true);
+      useGame.setState((st) => {
+        const gg = st.game as R.SalvageGame;
+        if (!gg?.salvage || gg.salvage.act.target === target) return {};
+        const cash = m === 'refusal' ? gg.cash : 0;
+        return { game: { ...gg, cash, salvage: { ...gg.salvage, act: { kind: 'drive', target, since: gg.salvage.t, endsAt: null } } } as unknown as typeof st.game };
+      });
+    };
+    const t = setTimeout(hold, 600);
+    const every = setInterval(hold, 1000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(every);
+    };
+  }
   let n = 900;
   const fire = () => {
     const now = Date.now();

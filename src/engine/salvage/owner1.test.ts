@@ -357,6 +357,11 @@ describe('the switch (S1, S2): stage 2 stays dark at release.stage 1', () => {
     expect(C.stage2).toBeUndefined();
     expect(C.ladder.topRung).toBeUndefined();
     expect(C2.works).toBeDefined();
+    // From the second session the rota offers no Shop row at stage 1 (it does at stage 2, where the content has a shop).
+    const g = startGame(cfg, NOW);
+    const g2 = { ...g, salvage: { ...g.salvage, iap: { ...g.salvage.iap, sessions2At: NOW } } } as SalvageGame;
+    expect(R.cardOf(cfg, g2, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(false);
+    expect(R.cardOf(cfg2, g2, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(true);
   });
 
   it('S2: the first half hour at stage 1 equals stage 2 bit for bit (below rung 3); three days at stage 1 touch no stage-2 state; that save opens the works at stage 2 live', () => {

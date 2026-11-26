@@ -201,6 +201,54 @@ export function goalSubPt(texts: string[], linePt: number, L: Pick<HudLayout, 'g
   return { pt: Math.max(MIN_PT, pt), lines };
 }
 
+/**
+ * owner1 T4 (screens1 n7): the paper tag left of the one button that holds a refusal while it holds
+ * ("Needs §1,234.50 more for this load"). It stands in the button's row (below `bottomY`, so it never meets a
+ * ticket or a toast, which keep above it), right of the screen's middle (the stick's half is the left one),
+ * clear of the disc by TAG_GAP, centred on the disc's height. The text is the bar text's 13 pt × s down to
+ * MIN_PT, one line first, then two; TAG_CHROME is what the view draws beside the words (the hi-vis band 5,
+ * paddings 10 and 16 with the punched hole, the two 1.3 pt edges).
+ */
+export const TAG_CHROME = 34;
+export const TAG_GAP = 10;
+export const TAG_PAD_Y = 12;
+
+export interface TagBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  pt: number;
+  /** The words as printed: one line, or two broken between words (the break whose longer line is the shortest). */
+  lines: string[];
+  cut: boolean;
+}
+
+export function refusalTag(text: string, L: Pick<HudLayout, 'width' | 'height' | 'bottomY' | 'button' | 's'>): TagBox {
+  const right = L.button.x - TAG_GAP;
+  const left = Math.ceil(L.width / 2) + 8;
+  const room = Math.max(0, right - left);
+  const rowH = L.height - L.bottomY;
+  const fit = fitText(text, room - TAG_CHROME, rowH - TAG_PAD_Y, 13, L.s, true);
+  let lines = [text];
+  if (fit.lines === 2) {
+    const words = text.split(' ');
+    let best = Infinity;
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(' ');
+      const b = words.slice(i).join(' ');
+      const wi = Math.max(measureW(a, fit.pt), measureW(b, fit.pt));
+      if (wi < best) [best, lines] = [wi, [a, b]];
+    }
+  }
+  const lh = lines.length === 2 ? Math.floor(fit.pt * LINE_TIGHT) : Math.ceil(fit.pt * LINE_EM);
+  const h = lh * lines.length + TAG_PAD_Y;
+  const w = Math.min(room, Math.ceil(Math.max(...lines.map((l) => measureW(l, fit.pt))) + TAG_CHROME));
+  const cy = L.button.y + L.button.size / 2;
+  const y = Math.max(L.bottomY + 2, Math.min(L.height - h - 2, Math.round(cy - h / 2)));
+  return { x: right - w, y, w, h, pt: fit.pt, lines, cut: fit.cut };
+}
+
 /** The one button's disc edge (OneButton.tsx: a 2 pt ink border) and the air kept inside it. */
 export const DISC_EDGE = 2;
 export const DISC_AIR = 1;

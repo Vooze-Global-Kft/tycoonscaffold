@@ -344,9 +344,9 @@ export const ARRIVAL_PHASE: Record<string, number> = { in: 0, setDown: 1, out: 2
 /** Numbers per crew member in RulesScene.crew. */
 export const CREW = 14;
 /** Numbers per arrival in RulesScene.arrivals. */
-export const ARRIVAL = 8;
-/** At most this many points of a vehicle's path. */
-export const PATH_MAX = 8;
+export const ARRIVAL = 10;
+/** At most this many points of a vehicle's path (./motion.ts PATH_MAX_PTS; the frame loop's scratch path holds as many). */
+export const PATH_MAX = 12;
 
 /**
  * What the rules decided, for the UI thread (one shared value, ./useRulesTable.ts). Nothing in it is
@@ -366,13 +366,20 @@ export interface RulesScene {
   truck: number[];
   /** The leg's path: x, y per point (at most PATH_MAX). */
   truckPath: number[];
+  /** owner1 V1: the yard second the truck passes each point of truckPath (the frame's `leg.at`); empty: drawn evenly over the leg. */
+  truckAt: number[];
   /** phase code, t0, t1, x, y, cargo (0 none, 1 part, 2 full), path points. */
   flatbed: number[];
   flatbedPath: number[];
+  /** owner1 V3: the yard second the flatbed passes each point of flatbedPath going out (the frame's `at`); empty: the old even drive. */
+  flatbedAt: number[];
   /** on, from x, from y, to x, to y, t0, t1 (the public's car and trailer). */
   car: number[];
-  /** ARRIVAL numbers each: kind code, phase code, from x, from y, to x, to y, t0, t1. */
+  /** ARRIVAL numbers each: kind code, phase code, from x, from y, to x, to y, t0, t1, path points (0: straight from from to to), first point in arrivalPath. */
   arrivals: number[];
+  /** owner1 V4: the arrivals' paths along the drive line to their stop (x, y per point) and the yard second each is passed. */
+  arrivalPath: number[];
+  arrivalAt: number[];
   /** carrier (0 frame, 1 sack, 2 trolley), hand family or -1, carrier frame, the rules' pose (P_*, -1 drive), target x, y (NaN none), pour x, y (NaN none), pieces carried, x, y, heading4. */
   boss: number[];
   cut: number[];
@@ -388,10 +395,14 @@ export const NO_SCENE: RulesScene = {
   crew: [],
   truck: [0, 0, 0, 0, 0, 0, -1, 0, 0, -1, -1, 0, NaN, -1],
   truckPath: [],
+  truckAt: [],
   flatbed: [0, 0, 0, 0, 0, 0, 0],
   flatbedPath: [],
+  flatbedAt: [],
   car: [0, 0, 0, 0, 0, 0, 0],
   arrivals: [],
+  arrivalPath: [],
+  arrivalAt: [],
   boss: [0, -1, 0, P_STAND, NaN, NaN, NaN, NaN, 0, NaN, NaN, 0],
   cut: [],
   carried: 0,
@@ -441,6 +452,17 @@ const skipLoadFrame = (look: number, trial: boolean) => SKIP_LOAD_FRAMES.indexOf
 
 type Pt = { x: number; y: number };
 const flat = (pts: readonly Pt[] | undefined): number[] => (pts ?? []).slice(0, PATH_MAX).flatMap((p) => [p.x, p.y]);
+
+/**
+ * A dated path the frame gives (points and the second each is passed) as the scene packs it: at most PATH_MAX
+ * points (a longer one keeps its first PATH_MAX - 1 and its last, with their dates), or null when the dates do
+ * not match the points. Pure.
+ */
+export function datedPath(pts: readonly Pt[] | undefined, at: readonly number[] | undefined): { path: number[]; at: number[] } | null {
+  if (!pts || !at || pts.length < 1 || at.length !== pts.length || !at.every((v) => Number.isFinite(v))) return null;
+  const keep = pts.length > PATH_MAX ? [...pts.keys()].filter((i) => i < PATH_MAX - 1 || i === pts.length - 1) : [...pts.keys()];
+  return { path: keep.flatMap((i) => [pts[i].x, pts[i].y]), at: keep.map((i) => at[i]) };
+}
 
 /** The nearest point of a polyline [x0, y0, ...] to (x, y): its x, y and its place along the line (segment index + share). */
 export function nearestOnLine(line: readonly number[], x: number, y: number): { x: number; y: number; at: number } {
@@ -565,7 +587,20 @@ export function heapJitter(uid: string, y: number): { dx: number; dy: number } {
   return { dx: ((u - 0.5) * 0.4 + (row ? 0.25 : 0)) * 40, dy: -v * 0.2 * 40 * 0.7 };
 }
 
-export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
+/**
+ * owner1 L2 (the owner's review, point 1): the frame keeps its `things` and `pieces` the SAME objects between
+ * events, so their atlas items are built once per object and reused (and the scene's whole item list too when
+ * nothing else in it changed): a tick that moved nobody's things costs no item work and hands the UI thread
+ * the same array (./useRulesTable.ts pushes it only when it changed).
+ */
+const THING_ITEMS = new WeakMap<object, { c: SalvageContent; res: Resolver; items: number[]; solids: number[] }>();
+const PIECE_ITEMS = new WeakMap<object, { c: SalvageContent; res: Resolver; items: number[] }>();
+const LAST_ITEMS = new WeakMap<SalvageContent, { res: Resolver; a: number[]; b: number[]; rest: number[]; items: number[]; ra: number[]; rsol: number[]; solids: number[] }>();
+const sameNums = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((v, i) => v === b[i] || (v !== v && b[i] !== b[i]));
+
+function thingItems(c: SalvageContent, f: R.FrameTable, res: Resolver): { items: number[]; solids: number[] } {
+  const hit = THING_ITEMS.get(f.things);
+  if (hit && hit.c === c && hit.res === res) return hit;
   const items: number[] = [];
   const solids: number[] = [];
   // The old stock's beds (the look's ./dressing.ts bedsDress), shrinking as each zone's stock is worked.
@@ -583,12 +618,30 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
     sprite(items, res, id, th.x, th.y, { frame, tint: off === 0 ? thingLookTint(th.uid) : -1, dx: j?.dx, dy: j?.dy });
     if (off === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o?.size.w ?? e.footprint.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o?.size.d ?? e.footprint.d, e.footprint.d) / 2));
   }
+  const out = { c, res, items, solids };
+  THING_ITEMS.set(f.things, out);
+  return out;
+}
+
+function pieceItems(c: SalvageContent, f: R.FrameTable, res: Resolver): number[] {
+  const hit = PIECE_ITEMS.get(f.pieces);
+  if (hit && hit.c === c && hit.res === res) return hit.items;
+  const items: number[] = [];
   // Pieces on the ground.
   for (const p of f.pieces) {
     const list = GRADE_SPRITE[p.grade];
     const id = entryOf(p.sprite) ? p.sprite : list ? list[hashStr(p.uid) % list.length] : null;
     if (id) sprite(items, res, id, p.x, p.y, { frame: id.startsWith('piece.ingot') ? 3 : 0 });
   }
+  PIECE_ITEMS.set(f.pieces, { c, res, items });
+  return items;
+}
+
+export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
+  const A = thingItems(c, f, res);
+  const B = pieceItems(c, f, res);
+  const items: number[] = [];
+  const solids: number[] = [];
   // Machines in their looks; bays; partners' skips; circles; equipment the rules add.
   let pourAt: Pt | null = null;
   for (const m of f.machines) machineItems(items, res, m, f.t, (p) => (pourAt = p));
@@ -609,6 +662,15 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   }
   for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y);
   for (const fx of f.fixtures ?? []) sprite(items, res, fx.sprite, fx.x, fx.y);
+  // One list, presorted (./frameLoop.ts merges it, sortRuns), reused whole while its parts are the same.
+  const last = LAST_ITEMS.get(c);
+  let allItems: number[];
+  let allSolids: number[];
+  if (last && last.res === res && last.a === A.items && last.b === B && sameNums(last.rest, items)) allItems = last.items;
+  else allItems = presortItems([...A.items, ...B, ...items]);
+  if (last && last.ra === A.solids && sameNums(last.rsol, solids)) allSolids = last.solids;
+  else allSolids = [...A.solids, ...solids];
+  LAST_ITEMS.set(c, { res, a: A.items, b: B, rest: items, items: allItems, ra: A.solids, rsol: solids, solids: allSolids });
 
   // The boss: carrier, load, the rules' pose and target, his place (for the snap on an epoch change).
   const carrier = f.load.carrier === 'sack' ? 1 : f.load.carrier === 'trolley' ? 2 : 0;
@@ -654,104 +716,68 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   const line = mapDriveLine(c);
   const tl = tripLeg(c, tk, line);
   const truckPath = tl.path;
+  const truckAt = tl.at;
   const truck = [tk.owned ? 1 : 0, tk.x, tk.y, tk.heading ?? 0, loadState === null ? 0 : skipFrame >= 0 ? 2 : 1, tk.by === 'boss' ? 1 : tk.by === 'driver' ? 2 : 0, leg ? (LEG_CODE[leg.phase] ?? -1) : -1, leg?.t0 ?? 0, leg?.t1 ?? 0, tk.hook ?? -1, skipFrame, truckPath.length / 2, tl.driveEnd, tl.face];
 
   // The merchant's flatbed and its path; the public's car; purchases arriving.
   const fbd = f.flatbed;
-  let flatbedPath = flat(fbd.path);
-  if (flatbedPath.length < 4) {
-    const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
-    flatbedPath = [fbd.x, fbd.y, fbd.x, gate[1], gate[0], gate[1], lane ? Math.min(lane.gx + 60, laneDrawEnd(lane)) : gate[0] + 20, gate[1]];
+  // owner1 V3: a dated away path (along the drive line at the yard's speed) is drawn as the frame dates it.
+  const fbDated = fbd.phase === 'away' ? datedPath(fbd.path, (fbd as { at?: number[] }).at) : null;
+  let flatbedPath = fbDated ? fbDated.path : flat(fbd.path);
+  const flatbedAt = fbDated && fbDated.at.length >= 2 ? fbDated.at : [];
+  if (!flatbedAt.length) {
+    if (flatbedPath.length < 4) {
+      const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
+      flatbedPath = [fbd.x, fbd.y, fbd.x, gate[1], gate[0], gate[1], lane ? Math.min(lane.gx + 60, laneDrawEnd(lane)) : gate[0] + 20, gate[1]];
+    }
+    flatbedPath = viaDriveLine(flatbedPath, line, c.yard.width);
   }
-  flatbedPath = viaDriveLine(flatbedPath, line, c.yard.width);
   const flatbed = [FLATBED_CODE[fbd.phase] ?? 0, fbd.t0, fbd.t1, fbd.x, fbd.y, fbd.load <= 0 ? 0 : fbd.load < 3 ? 1 : 2, flatbedPath.length / 2];
   const dc = f.dropoffCar;
   const gate = c.map.points.gate ?? [c.yard.width - 1, c.yard.depth / 2];
   const car = dc ? [1, dc.from?.x ?? gate[0] + 25, dc.from?.y ?? gate[1], dc.to?.x ?? dc.x, dc.to?.y ?? dc.y, dc.t0, dc.t1] : [0, 0, 0, 0, 0, 0, 0];
   const arrivals: number[] = [];
-  for (const a of f.arrivals ?? []) arrivals.push(ARRIVAL_CODE[a.kind] ?? 0, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1);
+  const arrivalPath: number[] = [];
+  const arrivalAt: number[] = [];
+  for (const a of f.arrivals ?? []) {
+    // owner1 V4: by the drive line to the stop nearest the place, set down there (the frame's path and dates).
+    const d = datedPath(a.path, a.at);
+    const np = d && d.path.length >= 4 ? d.path.length / 2 : 0;
+    const p0 = arrivalAt.length;
+    if (d && np) {
+      arrivalPath.push(...d.path);
+      arrivalAt.push(...d.at);
+    }
+    arrivals.push(ARRIVAL_CODE[a.kind] ?? 0, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1, np, p0);
+  }
 
-  return { t: f.t, n, epoch: f.epoch ?? 0, items, solids, crew, truck, truckPath, flatbed, flatbedPath, car, arrivals, boss, cut: [], carried: f.load.pieces.length };
+  return { t: f.t, n, epoch: f.epoch ?? 0, items: allItems, solids: allSolids, crew, truck, truckPath, truckAt, flatbed, flatbedPath, flatbedAt, car, arrivals, arrivalPath, arrivalAt, boss, cut: [], carried: f.load.pieces.length };
 }
 
 /**
  * THE DRIVER'S TRUCK, ONE PHASE AT A TIME (the owner's review, 26 November, point 7: "trucks are
- * sometimes speeding through the yard ... running people and the building over"). The frame's
- * `truck.leg.path` is the WHOLE trip (park, gate, lane, skip) for every phase, reversed from `back` on,
- * starting from wherever the rules last set the truck: the world drew the `park` phase (floor to park, a
- * second or two) along the whole reversed trip, so the truck appeared at the partner's site and crossed the
- * lane and the yard at 70 m/s; `weigh` and `tip` stood at the path's end, so the truck jumped from the
- * gate to the bridge and from the bridge to the floor.
+ * sometimes speeding through the yard ... running people and the building over"). The frame gives each
+ * phase its OWN path and the yard second the truck passes each point (frame.ts, RULING-owner1 V1 and V3:
+ * `leg.path`, `leg.at`; out park -> line -> gate -> lane -> skip, hook one point at the skip, back skip ->
+ * lane -> gate -> weighbridge stop, weigh one point, tip weighbridge stop -> floor stop, park floor stop ->
+ * park; inside the fence at most truck.yardV). The world draws exactly that (./motion.ts truckAt): nothing
+ * here decides a place or a date. The facing while it stands on a one-point phase: east while hooking (the
+ * hook frames face east), else the one it arrived with (-2: keep).
  *
- * Until the frame names the path each phase drives (requests.md [owner1-world] frame.ts: `leg.drive` and
- * `leg.driveT1`, used here whenever present), the world draws each phase between the places the rules set
- * the truck at (truck.ts driverLegEnd: out from where it stands to the skip, hook at the skip, back from
- * the skip to the gate and on to the bridge, weigh on the bridge, tip from the bridge to the floor then
- * tipping, park from the floor to the park; the boss's loaded truck that a driver finishes drives from
- * where it stands), with the content's points and the drive line. Nothing is decided: the dates are the
- * leg's, the places the content's; only the share of `tip` spent driving is the world's estimate (the
- * bridge-to-floor run at the content's `truck.v`, at most half the phase). Pure.
+ * A frame without `leg.at` (a frozen test content without the review's rules) is drawn along its
+ * `leg.path` evenly over the leg, as the frame gives it.
  *
- * Returns the path (x, y per point), the instant its driving ends (NaN: at the leg's end) and the facing
- * while standing (heading8, -1: the path's).
+ * Returns the path (x, y per point), the dates of its points (empty: even), the instant its driving ends
+ * (the last date; NaN: at the leg's end) and the facing while standing (heading8; -1: the path's).
  */
-export function tripLeg(c: SalvageContent, tk: R.FrameTruck, line: readonly number[]): { path: number[]; driveEnd: number; face: number } {
+export function tripLeg(_c: SalvageContent, tk: R.FrameTruck, _line: readonly number[]): { path: number[]; at: number[]; driveEnd: number; face: number } {
   const leg = tk.leg;
-  if (!leg) return { path: [], driveEnd: NaN, face: -1 };
-  const W = c.yard.width;
-  const given = leg as typeof leg & { drive?: Pt[]; driveT1?: number };
-  if (Array.isArray(given.drive)) {
-    const p = flat(given.drive.length ? given.drive : [{ x: tk.x, y: tk.y }]);
-    return { path: p, driveEnd: typeof given.driveT1 === 'number' ? given.driveT1 : NaN, face: -1 };
-  }
-  const P = (id: string, d: Pt): Pt => {
-    const q = c.map.points[id];
-    return q ? { x: q[0], y: q[1] } : d;
-  };
-  const gate = P('gate', { x: W - 1, y: c.yard.depth / 2 });
-  const wb = P('weighbridge', gate);
-  const floor = P('floor', wb);
-  const park = P('park', { x: tk.x, y: tk.y });
-  const here = { x: tk.x, y: tk.y };
-  // The skip zone: where `out` goes to and the back phases come from (frame.ts tripTo).
-  const z = leg.phase === 'out' || leg.phase === 'walk' || leg.phase === 'hook' ? leg.to : leg.from;
-  const near = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y) < 1;
-  const fromSkip: Pt[] = [{ x: z.x, y: z.y }, { x: z.x, y: gate.y }, { x: gate.x + 2, y: gate.y }, gate];
-  let pts: Pt[];
-  let driveEnd = NaN;
-  let face = -1;
-  switch (leg.phase) {
-    case 'out':
-      pts = leg.path && leg.path.length >= 2 ? leg.path : [here, gate, { x: gate.x + 2, y: gate.y }, { x: z.x, y: gate.y }, { x: z.x, y: z.y }];
-      break;
-    case 'hook':
-      pts = [{ x: z.x, y: z.y }];
-      face = 2;
-      break;
-    case 'back':
-      // From the skip (the rules set the truck at the gate as it leaves the hook), else from where the boss left it.
-      pts = near(here, gate) ? [...fromSkip, wb] : [here, wb];
-      break;
-    case 'weigh':
-      pts = near(here, wb) ? [wb] : [here, wb];
-      face = 6;
-      break;
-    case 'tip': {
-      pts = [wb, floor];
-      const span = leg.t1 - leg.t0;
-      const len = Math.hypot(floor.x - wb.x, floor.y - wb.y);
-      driveEnd = leg.t0 + Math.min(span / 2, len / Math.max(0.1, c.truck.v));
-      break;
-    }
-    case 'park':
-      pts = [near(here, park) ? floor : here, park];
-      break;
-    default:
-      pts = [here];
-      face = tk.heading ?? 0;
-  }
-  const path = viaDriveLine(flat(pts), line, W);
-  return { path: path.length / 2 > PATH_MAX ? flat(pts) : path, driveEnd, face };
+  if (!leg) return { path: [], at: [], driveEnd: NaN, face: -1 };
+  const d = datedPath(leg.path, leg.at);
+  const face = leg.phase === 'hook' ? 2 : -1;
+  if (d) return { path: d.path, at: d.at, driveEnd: d.at[d.at.length - 1], face };
+  const p = flat(leg.path && leg.path.length ? leg.path : [{ x: tk.x, y: tk.y }]);
+  return { path: p, at: [], driveEnd: NaN, face };
 }
 
 /**

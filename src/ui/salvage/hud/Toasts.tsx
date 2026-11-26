@@ -13,7 +13,7 @@ import { useSalvageUi } from '../uiState';
 import { lineH, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
-import { barValues, say, toastText } from './words';
+import { barValues, heldRefusal, say, toastText } from './words';
 import { useGame } from '../../../state/store';
 
 export const TOAST_MS = 1800;
@@ -30,9 +30,19 @@ export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
       setToast({ id: ++n.current, ...t });
       timer = setTimeout(() => setToast(null), ms);
     };
+    // owner1 T4 (screens1 n7): a refusal the boss's act now HOLDS (a skip he cannot hook, a load not weighed at
+    // the floor) is shown by the tag beside the one button for as long as it holds, not as a passing toast too:
+    // the toast waits a moment (the state that holds it may land just after the event) and is dropped when the
+    // tag carries the same words.
+    let held: ReturnType<typeof setTimeout> | undefined;
     const off = yardEvents.on(['loadFull', 'refused'], (e) => {
       const t = toastText(e, cfg.salvage, useSalvageUi.getState().stack.length > 0);
-      if (t) show(t, TOAST_MS);
+      if (!t) return;
+      if (!t.refusal) return show(t, TOAST_MS);
+      clearTimeout(held);
+      held = setTimeout(() => {
+        if (heldRefusal(cfg, useGame.getState().game as R.SalvageGame) !== t.text) show(t, TOAST_MS);
+      }, 80);
     });
     // Passing a rival (P16): "You passed {rival} · 25th of 26" for two seconds, after any open card.
     let waiting: string | null = null;
@@ -54,6 +64,7 @@ export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
       offPassed();
       offUi();
       clearTimeout(timer);
+      clearTimeout(held);
     };
   }, [cfg]);
   if (!toast) return null;
