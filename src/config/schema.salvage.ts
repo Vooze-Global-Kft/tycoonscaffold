@@ -1275,7 +1275,8 @@ export function lintStage2(s0: SalvageContent): string[] {
       }
       const used = a.awayCap_min * a.awayPerDay + a.spotCap_min * a.spotPerDay;
       if (used > a.maxDayShare * 60 * h + 1e-9) out.push(`ads at rung ${r}: ${a.awayCap_min} x ${a.awayPerDay} + ${a.spotCap_min} x ${a.spotPerDay} = ${used} minutes of I a day, over ${a.maxDayShare} x 60 x ${h} h = ${(a.maxDayShare * 60 * h).toFixed(2)} (5.2 (6))`);
-      const cap = s.awayCapByRung_h[Math.min(r, s.awayCapByRung_h.length) - 1];
+      if (r > s.awayCapByRung_h.length) continue; // the away caps are held at the first yard's three in Phase A
+      const cap = s.awayCapByRung_h[r - 1];
       const want = Math.round((2 * (cap + s.nightWatch_h) + HABIT_PLAY_H) * 100) / 100;
       if (!near(h, want)) out.push(`ads.dayHours_h[${r - 1}] (rung ${r}) is ${h} h; the habit gives 2 x (${cap} + ${s.nightWatch_h}) + ${HABIT_PLAY_H} = ${want} h (ruling 10.6)`);
     }

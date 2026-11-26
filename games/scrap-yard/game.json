@@ -3369,9 +3369,7 @@
     "awayCapByRung_h": [
       0.5,
       2,
-      4,
-      6,
-      8
+      4
     ],
     "nightWatch_h": 2,
     "rivals": {
