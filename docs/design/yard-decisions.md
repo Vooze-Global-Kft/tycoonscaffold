@@ -1270,3 +1270,140 @@ prototype unless a point says "fixed".
    for a quiet week (that would raise the European age rating).
 4. Hiding packs from under-18s needs the phone to report an age, which needs a native module in
    the first store build: your decision then. On your phone in Expo Go all purchases are pretend.
+
+### 9. Rulings on what the writer and the critics found (01:50; these change sections 1 to 8 where they differ)
+
+9.1 **The packs' ladder.** 2, 5, 10 and 20 hours of I at $1.99, $4.99, $9.99 and $19.99: one flat
+    rate, no discount for size, and the largest pack under the payback time of rung 4 (22 h). (It
+    replaces 2, 5.5, 11.5 and 24 in 2.2.)
+9.2 **No bundle in stage 2.** A store product has one fixed price, so a bundle either charges for
+    parts already owned or is a one-chance offer. The shop of stage 2 sells looks, No ad videos
+    and packs. (It replaces the bundle of 2.2 and 7.1.)
+9.3 **A neutral age question makes the under-18 rule real.** Asked once, the first time something
+    needs it (the packs' rows where the country's switch is on; in stage 5 before the terms): year
+    of birth, no default; kept on the device as a band only (under 13, 13 to 17, 18 or over).
+    Under 18: packs hidden. Under 13: the local mode only (the design's 7.6). A platform's age
+    signal may replace the question in a store build (the owner's decision). (It amends 2.4.)
+9.4 **The Settings switch is locked.** Whoever sets "Scrip packs: hidden" chooses a four-digit
+    code; showing them again asks for it. It is a courtesy to parents, NOT declared to a store as
+    "parental controls"; the review notes name the platforms' own purchase approval.
+9.5 **The country** is the store account's country as the purchase module reports it, read each
+    time the shop opens; never the device's language or region, never an address on the network.
+    Until it answers, or if it fails: unknown, so packs are off.
+9.6 **One store sentence, true everywhere:** "Purchases change how your yard looks or remove ad
+    videos; in some countries they can also add scrip worth some hours of your own yard's income
+    in the game. Nothing sold adds tonnes directly, and shared boards count no more than play can
+    reach." Never "cosmetic only". The German rating is very likely 12 for the whole app, although
+    packs are off in Germany at launch: a rating is of the app, not of a country's switch.
+9.7 **The owner's words on screen.** The finance card's button reads "Bank loan" beside "Save up
+    (about 1 h 20 m)"; its lines: Price · You pay now · The bank pays · Charge · You repay · "{x}
+    of each {output} lot goes to the bank until it is repaid. No date." The advice line's one
+    sentence: "A loan suits a machine that earns." The rack's card is titled "Yard sale" (the
+    owner's word, for our own thing: the public buys things fit for reuse from a scrapyard); it
+    never sells looks or decorations and has no sale time. A holding is a PARTNERSHIP: "Partnership
+    with [partner] · step 1 of 3"; the ticket line "Partner terms: -§x"; the office's page for
+    loans and partnerships is "Agreements". (It replaces "a part in a partner", "your part" and
+    "Holdings" in section 4.)
+9.8 **The bank's share never makes a machine worse than none.** The share s is set per plate so
+    that a financed kilogram never nets less than the same kilogram unprocessed; first value 0.18
+    for the baler (baled §0.62 against loose §0.50); the bots raise it only while that holds. The
+    card prints the share that applies.
+9.9 **Ads and the bank never meet.** The spot buyer is never offered on an output grade of a plate
+    with an open agreement. The away bonus is half of the away cash that reached the player after
+    the bank's share, paid as its own line and never part of a payment the bank shares in. No ad
+    button stands on screen beside a card or ticket that shows a debt (a screen test).
+9.10 **A partnership must be worth having.** With the first yard's loads E20 leaves almost nothing
+    for a discount (1.25 % at the demolition partner, none at the farm). Stage 3's specification
+    and its numbers prototype choose the form among: better terms within E20, first pick of the
+    partner's loads (a richer mix, which raises the value of the yard's own work too), a share of
+    the foundry co-op's premium on what the player delivers; each step pays back in 0.8 to 1.5 tau
+    by the card's own numbers. Nothing of it is built in stage 2.
+9.11 **Help is priced when it arrives.** Each part of a request's mass is priced at the posted
+    price of the step at which it arrives, the same for both sides (the game pays the helper
+    exactly what the requester pays); the price at posting is a guide; what the requester's
+    set-aside and cash cannot pay is not sent. (It replaces "locked at posting" in 6.4.)
+9.12 **Classes are formed afresh each week** from that week's frozen roster size and capacity only,
+    never from results; they have no order and no ranking names ("12 companies of your size");
+    about twelve to a class (tune 10 to 14). The monthly easy week is "Inspection week" in player
+    text.
+9.13 **Looks and companies.** Emblem parts on sale and emblem parts earned are separate sets;
+    nothing the weekly order gives is ever sold. A look bought by a member shows on that member's
+    own flagpole and yard only; a company's shared emblem uses earned parts only.
+9.14 **Words.** "Counted", not "credited", on boards ("Counted on this board: 41.2 t"). "I can send
+    copper." "No ad videos: get every ad reward without watching." Player text never says "daily"
+    or "missed". One sentence in Help for everything pretend: "Prices, exchanges, loans,
+    partnerships and listings in this game are fictional and use scrip only. Nothing can be paid
+    out, and nothing here is financial advice." "Stock" is banned only as a word for a holding
+    ("old stock" stays).
+9.15 **Names in the design.** Every name in the design document is the names register's current
+    name or a placeholder in square brackets; the old currency name goes.
+
+### 10. Rulings on the second critic's points (exploits and buildability; 02:00)
+
+10.1 **The bank's share cannot be dodged.** Repayment is tied to what the financed plate MAKES, not
+    to how its output is sold. Each time mass of the plate's output leaves its tray, whatever its
+    destination (a lot, or another machine's hopper), an amount falls DUE: s_p x that mass x the
+    step's posted price for that output, never more than what remains of the total. What is due is
+    collected from the yard's next lot payments, at most 40 % of any one payment, and from nothing
+    else (not from cash in hand, ad rewards or packs), so cash never goes below zero. An idle
+    plate makes nothing, so nothing falls due. The ticket prints "to the bank §y" on a payment
+    that carries a collection. (It replaces "of each payment for lots of the plate's own output
+    grades" in 3.2.) The stage-3 advance is collected from every lot's payment by a share.
+10.2 **The share per plate.** s_p = min(bank.share, 0.8 x u_p), where u_p is the part of the
+    output's value that the plate adds (1 - the input's value per kilogram of output / the
+    output's value per kilogram, at usual prices), computed by the content script. The baler: u =
+    0.194, s = 0.155. (It replaces 9.8's first value.)
+10.3 **The cut that moves the lead line** also lowers rung 5's range in stage 2's content, and the
+    no-dead-end test and the bots run on the cut content before it is accepted.
+10.4 **Time away made cheap is a change to the ONE engine.** Crew trips are grouped whenever no
+    boss is within sight, in a tick, a jump and time away alike (as the cutter's whole-thing rule
+    already does), so that a tick equals a jump and present equals away stay exact. It is built
+    and benched as its own engine step BEFORE any stage-2 rule, together with rated income I and
+    10.5.
+10.5 **Hold never stops the yard (ECONOMY E40; it replaces E36(c)'s "next stage").** While the boss
+    is away and the cash cannot pay the next load, the held bay worth most rejoins the merchant's
+    round, one bay at a time; the away card names it ("Sold from hold to keep the yard running:
+    {grade}").
+10.6 **Rated income at named moments.** I is stated and gated at each rung's entry and at its last
+    purchase. "A day's income" is I x the production hours of the twice-a-day habit (12.3 h at
+    rung 3). The margin per tonne in I uses, for a machine with several recipes, the recipe with
+    the lowest margin (a player cannot raise I by switching a furnace before opening the shop).
+    The quote S is fixed when the card opens and shown again only when a purchase has arrived.
+10.7 **Ads fit the day.** All ad rewards together are at most 4 % of a day's income as defined in
+    10.6: at rung 3 about 30 minutes of I (one away bonus of up to 15 minutes; three spot buyers
+    of up to 5). The spot buyer is attached to a held bay's Sell, whose amount is known: it pays
+    min(a tenth of that Sell, its cap), and the button shows the figure. (It replaces 2.6's
+    numbers.)
+10.8 **A pack lives in this device's save.** The reconcile grants only transactions dated after
+    the save was created and missing from the ledger, at the amount stored with the pending
+    quote. The sheet shown before a purchase says that bought scrip lives in this device's save
+    (a consumable is not restored by a store). "Survives a restore" becomes "survives a save
+    migration" until stage 5 gives the player an account.
+10.9 **The shop in the shared code.** A shared product kind for hours of income (consumable) and a
+    hook in the modes' contract by which a mode grants a product with its transaction id and its
+    quote; no mode's name in a shared list. The four other games' tests stay green.
+10.10 **The yard sale's pace follows value.** The next visitor is dated at t + period x (the price
+    of the thing just sold / a reference price), so the rack earns at most a fixed rate whatever
+    is on it. The van is dated at t + its period when a batch reaches an empty trade corner; a
+    batch is valued at its prepared value at the collection's step. While the boss is in the yard
+    a tagged thing is his (he racks it or cuts it); while he is away yard hands rack tagged things
+    within their load; a tagged thing nobody present can lift is cut as any other. Content keys
+    are reuse.* (the tool rack keeps "rack").
+10.11 **Boards (stage 5).** A weekly bracket ranks by counted tonnes over the player's own frozen
+    capacity (how fully the yard ran that week), so capacity, bought or earned, cannot rank anyone
+    above a band-mate. On the all-time board the day and the cohort are anchored at the server's
+    first sight of the player, and ties on the curve break by the date the curve was reached. The
+    server's money bound sums every channel at its factor (the rack, the van, deals and orders)
+    with verified ad grants and booked fees.
+10.12 **The company order (stage 5).** Lines for grades that at least two in-members can supply,
+    and one "any grade" line for the rest, so that a company of one has a line. A member counts
+    "in" by default only with an accepted action in the last seven days. The order's size is a
+    content number tuned so that about three fifths of active companies reach 100 % (first value:
+    half of the in-members' frozen weekly capacity; it replaces "25 h"). "Send to the company
+    order" is refused beyond the member's counted cap ("Your part of the order is full") and pays
+    the posted price of the delivery's step, with no premium. A cover is one per member per week
+    and only for a shortfall of at most a quarter of that day's quantity.
+10.13 **On the owner's phone.** A development row in Settings (region, and a jump to a played
+    rung-4 yard) exists only in development builds and is checked absent from every release
+    export; the project rules record the exception. The shop's entry is on the office's first tab,
+    never on the Agreements page; the ad button hides while any card that shows a debt is open.
