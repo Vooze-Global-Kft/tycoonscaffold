@@ -348,6 +348,8 @@ export interface CrewRun {
 
 /** 2.1: a driver's trip planned at departure: each phase's end (walk .. park) and the truck's place then. */
 export interface TripPlan {
+  /** Yard second the trip left (its walk began). */
+  t0: number;
   ends: number[];
   x: number;
   y: number;

@@ -14,7 +14,8 @@ import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
-import type { CrewMember, RefusalKey, TxtArgs } from './types';
+import { bossSees, grouping, RUN_EPS } from './group';
+import type { CrewMember, RefusalKey, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
 /**
@@ -275,7 +276,92 @@ export function driverDepart(x: Ctx, t: number): boolean {
   d.t1 = t;
   tr.by = 'driver';
   x.ev.push({ type: 'crewLeg', id: d.id, job: 'drive', from: d.from, to: d.to, t0: t, t1: t + walk });
+  // 2.1: with no boss within sight of the truck, the partner's skip zone or the floor, the whole trip is
+  // planned now with one dated end (its phases replayed at their planned times when it lands).
+  const z = skipZone(x.c, best.partner, sk.slot);
+  if (grouping(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
+}
+
+const PHASES: TripPhase[] = ['walk', 'out', 'hook', 'back', 'weigh', 'tip', 'park'];
+
+/** Each phase's end of the trip just begun (walk .. park), with the durations driverLegEnd gives them at departure. */
+function planTrip(x: Ctx, t: number): void {
+  const tr = x.s.truck;
+  const trip = tr.trip!;
+  const v = driverV(x);
+  const F = driverF(x);
+  const gate = pt(x, 'gate');
+  const e: number[] = [trip.endsAt];
+  const add = (dur: number) => e.push(e[e.length - 1] + Math.max(0, dur));
+  add((routeM(x.c, 'park', 'gate', { x: tr.x, y: tr.y }, gate) + laneM(x.c, trip.partner)) / v);
+  add(x.c.truck.handle_s / F);
+  add((laneM(x.c, trip.partner) + routeM(x.c, 'gate', 'weighbridge')) / v);
+  add(x.c.weigh_s / F);
+  add(routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s / F);
+  add(routeM(x.c, 'floor', 'park') / v);
+  trip.plan = { t0: t, ends: e, x: tr.x, y: tr.y };
+}
+
+/**
+ * Replay a planned trip's phases whose end is at or before `upto` at their planned instants (the hook
+ * paid, the empty skip set down at the hook's time, the bridge ticket at the weigh's end, the load
+ * tipped); the trip goes on leg by leg in the phase under way, or ends parked. A skip set down by the
+ * replay that would already be full fills at the landing (it cannot be dated before now).
+ */
+function replayTrip(x: Ctx, upto: number): void {
+  const tr = x.s.truck;
+  const trip = tr.trip;
+  const plan = trip?.plan;
+  if (!trip || !plan) return;
+  delete trip.plan;
+  tr.x = plan.x;
+  tr.y = plan.y;
+  trip.phase = 'walk';
+  trip.t0 = plan.t0;
+  trip.endsAt = plan.ends[0];
+  const partner = trip.partner;
+  for (let i = 0; i < PHASES.length; i++) {
+    const te = plan.ends[i];
+    if (te > upto + RUN_EPS) break;
+    driverLegEnd(x, te);
+    if (!tr.trip) break;
+    tr.trip.t0 = te;
+    tr.trip.endsAt = plan.ends[i + 1] ?? te;
+  }
+  const now = x.s.t;
+  for (const sk of x.s.partners[partner]?.skips ?? []) if (sk.phase === 'filling' && sk.fullAt < now - RUN_EPS) sk.fullAt = now;
+}
+
+/** 2.1: OPEN the truck's planned trip when the boss comes within sight of it (hand.ts bossStep). */
+export function openTripInSight(x: Ctx, t: number): void {
+  const trip = x.s.truck.trip;
+  if (!trip?.plan) return;
+  const z = skipZone(x.c, trip.partner, trip.slot);
+  if (bossSees(x, t, [{ x: trip.plan.x, y: trip.plan.y }, { x: z.x, y: z.y }], ['floor'])) replayTrip(x, t);
+}
+
+/** The phase of a planned trip under way at the draft's clock, in the truck's shown fields (the frame's; tick.ts after every advance). */
+export function showTrip(x: Ctx): void {
+  const tr = x.s.truck;
+  const trip = tr.trip;
+  const plan = trip?.plan;
+  if (!trip || !plan) return;
+  const t = x.s.t;
+  let i = plan.ends.findIndex((e) => e > t + RUN_EPS);
+  if (i < 0) i = plan.ends.length - 1;
+  trip.phase = PHASES[i];
+  trip.t0 = i === 0 ? plan.t0 : plan.ends[i - 1];
+  trip.endsAt = plan.ends[i];
+  const z = skipZone(x.c, trip.partner, trip.slot);
+  const at = i <= 1 ? { x: plan.x, y: plan.y } : i === 2 ? { x: z.x, y: z.y } : i === 3 ? pt(x, 'gate') : i === 4 ? pt(x, 'weighbridge') : pt(x, 'floor');
+  tr.x = at.x;
+  tr.y = at.y;
+}
+
+/** The dated end of the truck's trip: a planned trip's last phase, else the phase's own end. */
+export function tripEndsAt(trip: NonNullable<Ctx['s']['truck']['trip']>): number {
+  return trip.plan ? trip.plan.ends[trip.plan.ends.length - 1] : trip.endsAt;
 }
 
 /** R2: the idle driver takes a loaded, parked truck: walk to it, drive to the weighbridge (or, weighed, on to the floor). */
@@ -305,6 +391,10 @@ export function driverLegEnd(x: Ctx, t: number): void {
   const tr = s.truck;
   const trip = tr.trip;
   if (!trip) return;
+  if (trip.plan) {
+    replayTrip(x, Infinity);
+    return;
+  }
   const v = driverV(x);
   const F = driverF(x);
   const gate = pt(x, 'gate');

@@ -84,9 +84,11 @@ function lessonFor(x: Ctx, lines: readonly TicketLine[], t: number): { grade: st
  * up to the platform step (the bay gets exactly the rounded grams; the difference kept in scaleRound_g),
  * a weigh-in ticket with no payment, at most one paced lesson. `by` 'boss' or a crew id.
  */
-export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number): void {
+export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number, at = t): void {
   if (!pieces.length) return;
-  const day = dayAt(x, t);
+  // `at`: the ticket's own instant (a grouped run's load, 2.1, lands at the run's end with the ticket and
+  // the day's prices of its own drop, as its leg would have printed them); everything else happens at t.
+  const day = dayAt(x, at);
   const { lines, trueByGrade } = linesOf(x, pieces, day);
   for (const l of lines) {
     const b = bayOf(x, l.grade);
@@ -99,7 +101,7 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number)
   numberBays(x);
   const lesson = by === 'boss' ? lessonFor(x, lines, t) : null;
   if (lesson) x.s.lessonsSeen.push(lesson.grade);
-  const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });
+  const ticket = printTicket(x, { ...ticketBase(x, at), kind: 'weighIn' as const, by, lines, todaysValue: roundMoney(lines.reduce((a, l) => a + l.amount, 0)), lessonText: lesson?.text ?? null, lesson: lesson?.text.key ?? null });
   x.ev.push({ type: 'weighIn', ticket, pieces: pieces.map((p) => p.uid), by });
   if (lesson) x.ev.push({ type: 'lesson', grade: lesson.grade, text: lesson.text });
   if (by === 'boss') {

@@ -12,7 +12,7 @@ import { awayPass } from './away';
 import { marketDay } from './board';
 import { releaseHolds } from './bays';
 import { accrueBoost, begin, boostEndsAt, finish, nextDayAt, bossFresh, type Ctx } from './clock';
-import { crewDepart, crewLegEnd } from './crew';
+import { crewDepart, crewLegEnd, showCrewRuns } from './crew';
 import { crucibleCheckReady, crucibleEvent, crucibleFromBays } from './crucible';
 import { dealDeliver, dealOffer, dealReprice } from './deal';
 import { bossActEnd, bossStep } from './hand';
@@ -21,7 +21,7 @@ import { fillSkip, openPartners } from './partners';
 import { roundEvent, roundTry } from './round';
 import { arrive, checks } from './rate';
 import { dropoffArrive } from './things';
-import { driverDepart, driverLegEnd } from './truck';
+import { driverDepart, driverLegEnd, showTrip, tripEndsAt } from './truck';
 import type { MachineId, QueuedEvent, QueuedKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
 import { MAX_TICK } from './types';
 
@@ -37,8 +37,10 @@ function eventsOf(s: SalvageState, dayAt: number, boostAt: number | null = null)
     if (at !== null && at !== undefined && Number.isFinite(at) && at >= s.t - EPS) out.push({ at, kind, ref });
   };
   add(s.act.endsAt, 'act');
-  for (const m of s.crew) if (m.phase !== 'wait' && m.t1 > m.t0) add(m.t1, 'crewLeg', m.id);
-  if (s.truck.trip) add(s.truck.trip.endsAt, 'driverLeg', s.truck.trip.partner);
+  // A grouped run's member is dated by its run's end (2.1); his shown leg fields decide nothing.
+  for (const m of s.crew) if (m.run) add(m.run.end, 'crewLeg', m.id);
+  else if (m.phase !== 'wait' && m.t1 > m.t0) add(m.t1, 'crewLeg', m.id);
+  if (s.truck.trip) add(tripEndsAt(s.truck.trip), 'driverLeg', s.truck.trip.partner);
   for (const id of RATE_MACHINES) add(workEndsAt(s.machines[id]), 'machine', id);
   const cr = s.machines.crucible;
   if (cr.phase === 'filling' || cr.phase === 'heating') add(cr.endsAt, 'crucible');
@@ -73,8 +75,9 @@ function firstEvent(x: Ctx): QueuedEvent | null {
   bSet = false;
   bMin = s.t - EPS;
   consider(s.act.endsAt, 'act', '');
-  for (const m of s.crew) if (m.phase !== 'wait' && m.t1 > m.t0) consider(m.t1, 'crewLeg', m.id);
-  if (s.truck.trip) consider(s.truck.trip.endsAt, 'driverLeg', s.truck.trip.partner);
+  for (const m of s.crew) if (m.run) consider(m.run.end, 'crewLeg', m.id);
+  else if (m.phase !== 'wait' && m.t1 > m.t0) consider(m.t1, 'crewLeg', m.id);
+  if (s.truck.trip) consider(tripEndsAt(s.truck.trip), 'driverLeg', s.truck.trip.partner);
   for (const id of RATE_MACHINES) consider(workEndsAt(s.machines[id]), 'machine', id);
   const cr = s.machines.crucible;
   if (cr.phase === 'filling' || cr.phase === 'heating') consider(cr.endsAt, 'crucible', '');
@@ -187,6 +190,9 @@ export function advance(x: Ctx, T: number): void {
   }
   for (const id of RATE_MACHINES) credit(x, id, s.t);
   checks(x, s.t, !x.live);
+  // 2.1: what the frame draws of a grouped run (a pure function of its plan and this clock).
+  showCrewRuns(x);
+  showTrip(x);
 }
 
 /** Close a transition's clocks: the market high mark rises to max(market time at the yard clock, now). */

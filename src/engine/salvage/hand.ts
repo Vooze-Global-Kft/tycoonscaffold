@@ -9,11 +9,13 @@
 import { bossFresh, count, standingFor, type Ctx } from './clock';
 import { byValue, carrierCap_g, cutTime, pieceSpec, tierOf, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
+import { openCrewInSight } from './crew';
+import { openRoundInSight } from './round';
 import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
 import { weighIn } from './scales';
 import { cutOff, dropOnPile, nextPiece, takeFromPile, thingOf } from './things';
-import { truckBossStep, truckBossActEnd } from './truck';
+import { openTripInSight, truckBossStep, truckBossActEnd } from './truck';
 import type { MachineId, Piece, ThingState } from './types';
 
 const load_g = (x: Ctx): number => x.s.load.reduce((a, p) => a + p.g, 0);
@@ -121,6 +123,10 @@ export function bossStep(x: Ctx, t: number): void {
     rerate(x, 'hand_stripper', t);
     return;
   }
+  // 2.1: a grouped run (crew, the truck's trip, the merchant's long round) the boss can now see is opened.
+  openCrewInSight(x, t);
+  openTripInSight(x, t);
+  openRoundInSight(x, t);
   const p = s.presence;
   for (const id of Object.keys(c.map.points)) {
     const key = `visited:${id}`;

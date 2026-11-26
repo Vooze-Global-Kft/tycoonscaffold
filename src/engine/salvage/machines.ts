@@ -75,12 +75,25 @@ export function hopperRoom(x: Ctx, id: MachineId): number {
   return defOf(x, id).inbuf * 1000 - hopper_g(m) - (m.work ? m.work.piece.g - (m.work.base_g ?? 0) : 0);
 }
 
+/**
+ * A rate machine's input grades as a set (content.ts machineInputs, memoised per content: the strippers'
+ * and the bench's inputs depend on the content only; a yard hand's departure asks this per piece).
+ */
+const INPUTS = new WeakMap<object, Map<MachineId, Set<string>>>();
+export function inputSet(x: Ctx, id: Exclude<MachineId, 'crucible'>): Set<string> {
+  let byId = INPUTS.get(x.c);
+  if (!byId) INPUTS.set(x.c, (byId = new Map()));
+  let set = byId.get(id);
+  if (!set) byId.set(id, (set = new Set(machineInputs(x.c, x.s, id))));
+  return set;
+}
+
 /** May this piece go into the machine's hopper now (its input, owned, room for it whole)? */
 export function accepts(x: Ctx, id: MachineId, p: Piece): boolean {
   if (id === 'crucible') return false;
   const m = x.s.machines[id];
   if (!m.owned) return false;
-  return machineInputs(x.c, x.s, id).includes(p.grade) && hopperRoom(x, id) >= p.g;
+  return inputSet(x, id).has(p.grade) && hopperRoom(x, id) >= p.g;
 }
 
 /** Which rate machine a piece goes to (the powered stripper fed first, 2.5), or null. */

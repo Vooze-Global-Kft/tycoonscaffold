@@ -10,13 +10,47 @@ import type { GroundPiece, Piece, PileKey, ThingState } from './types';
 
 /** Put a whole piece on a pile at the first free index (a pile's pieces keep their k when others leave). */
 export function dropOnPile(x: Ctx, p: Piece, pile: PileKey): GroundPiece {
+  return dropAllOnPile(x, [p], pile)[0];
+}
+
+/** Several pieces onto one pile in order, each at the first free index then (one look at the pile for all). */
+export function dropAllOnPile(x: Ctx, ps: readonly Piece[], pile: PileKey): GroundPiece[] {
   const used = new Set<number>();
   for (const q of x.s.pieces) if (q.pile === pile) used.add(q.k);
+  const out: GroundPiece[] = [];
   let k = 0;
-  while (used.has(k)) k++;
-  const gp: GroundPiece = { uid: p.uid, grade: p.grade, g: p.g, from: p.from, spec: p.spec, ...(p.whole ? { whole: p.whole } : {}), pile, k, claim: null };
-  x.s.pieces.push(gp);
-  return gp;
+  for (const p of ps) {
+    while (used.has(k)) k++;
+    used.add(k);
+    const gp: GroundPiece = { uid: p.uid, grade: p.grade, g: p.g, from: p.from, spec: p.spec, ...(p.whole ? { whole: p.whole } : {}), pile, k, claim: null };
+    x.s.pieces.push(gp);
+    out.push(gp);
+  }
+  return out;
+}
+
+/**
+ * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
+ * object (a pure function of the content; integer grams, so the sum is the same in any order).
+ */
+const REMAIN = new WeakMap<object, Map<string, number[]>>();
+export function remainingG(c: Ctx['c'], obj: string, cut: number): number {
+  let byObj = REMAIN.get(c);
+  if (!byObj) REMAIN.set(c, (byObj = new Map()));
+  let row = byObj.get(obj);
+  if (!row) {
+    const o = c.objects[obj];
+    if (!o) row = [];
+    else {
+      const n = pieceCount(c, obj);
+      row = new Array(n + 1).fill(0);
+      row[n] = o.waste_g;
+      for (let k = n - 1; k >= 0; k--) row[k] = row[k + 1] + (pieceSpec(c, obj, k)?.g ?? 0);
+    }
+    byObj.set(obj, row);
+  }
+  if (!row.length) return 0;
+  return row[cut < 0 ? 0 : cut >= row.length ? row.length - 1 : cut];
 }
 
 /** Take a ground piece off its pile (by uid): the piece, or null. */
@@ -177,14 +211,7 @@ export function floorSlot(x: Ctx): number {
 /** Grams on the tipping floor (things and loose pieces): the hook's room check (2.7). */
 export function floorMass_g(x: Ctx): number {
   let g = 0;
-  for (const th of x.s.things) if (th.at.at === 'floor') {
-    const o = x.c.objects[th.obj];
-    if (!o) continue;
-    let rem = o.waste_g;
-    const n = pieceCount(x.c, th.obj);
-    for (let k = th.cut; k < n; k++) rem += pieceSpec(x.c, th.obj, k)?.g ?? 0;
-    g += rem;
-  }
+  for (const th of x.s.things) if (th.at.at === 'floor') g += remainingG(x.c, th.obj, th.cut);
   for (const p of x.s.pieces) if (p.pile === 'floor') g += p.g;
   return g;
 }

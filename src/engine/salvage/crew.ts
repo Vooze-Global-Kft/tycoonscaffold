@@ -5,13 +5,13 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, type Ctx } from './clock';
-import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
+import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
-import { accepts, atPlace, feedPiece, hopperRoom, start as startMachine, takeTray, trayFree } from './machines';
+import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
-import { cutOff, dropOnPile, floorMass_g, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
+import { cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCut, RunLoad, Spot, ThingState } from './types';
 
 const RATE_FED: MachineId[] = ['stripper', 'bench'];
@@ -76,7 +76,16 @@ const pileOrder = (p: GroundPiece) => (p.pile.startsWith('circle.') ? 0 : p.pile
 /** Pick from a set of pieces best first while they fit `room` grams. */
 function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
   const out: GroundPiece[] = [];
-  for (const p of [...pieces].sort(byValue(x.c))) {
+  // byValue's order, with each grade's value per kilogram looked up once (the same comparison).
+  const v = new Map<string, number>();
+  const val = (g: string) => {
+    let q = v.get(g);
+    if (q === undefined) v.set(g, (q = vpk(x.c, g)));
+    return q;
+  };
+  const sorted = [...pieces].sort((a, b) => val(b.grade) - val(a.grade) || b.g - a.g || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
+  void byValue;
+  for (const p of sorted) {
     if (p.g <= room) {
       out.push(p);
       room -= p.g;
@@ -102,7 +111,7 @@ function waitsAt(x: Ctx, p: GroundPiece): 'circle' | 'dropoff' | 'floor' | null 
 
 /** Cable (an input of the strippers): a yard hand never takes it to the scale while the boss is in the yard (finding P11). */
 function isCable(x: Ctx, grade: string): boolean {
-  return machineInputs(x.c, x.s, 'hand_stripper').includes(grade);
+  return inputSet(x, 'hand_stripper').has(grade);
 }
 
 /** Loose things (tier 0) waiting at a place for a yard hand, oldest uid first (cable not while the boss is in the yard). */
@@ -161,7 +170,10 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   for (const id of [...RATE_FED, 'crucible' as MachineId]) {
     const mach = s.machines[id];
     if (!mach.owned) continue;
-    const src = free.filter((p) => (id === 'crucible' ? false : accepts(x, id, p)));
+    // accepts(x, id, p) for each piece, with the machine's inputs and its hopper's room looked up once.
+    const room = id === 'crucible' ? -Infinity : hopperRoom(x, id);
+    const inputs = id === 'crucible' ? null : inputSet(x, id);
+    const src = inputs ? free.filter((p) => inputs.has(p.grade) && room >= p.g) : [];
     if (!src.length) continue;
     const pile = [...src].sort((a, b) => pileOrder(a) - pileOrder(b))[0].pile;
     const pick = choose(x, src.filter((p) => p.pile === pile), Math.min(cap, (x.c.machines as unknown as Record<string, { inbuf: number }>)[id].inbuf * 1000));
@@ -263,11 +275,12 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     // One pile a trip (the drop-off's own pile or the pieces beside one thing there): the nearest to him first.
     const me = posOf(x, m.to);
     const at = (uid: string) => thingOf(x, uid)?.at ?? null;
-    const near = [...drop].sort((a, b) => {
-      const pa = piecePos(x.c, a.pile, a.k, at);
-      const pb = piecePos(x.c, b.pile, b.k, at);
-      return Math.hypot(pa.x - me.x, pa.y - me.y) - Math.hypot(pb.x - me.x, pb.y - me.y) || (a.uid < b.uid ? -1 : 1);
-    })[0].pile;
+    const dist = new Map<GroundPiece, number>();
+    for (const p of drop) {
+      const pp = piecePos(x.c, p.pile, p.k, at);
+      dist.set(p, Math.hypot(pp.x - me.x, pp.y - me.y));
+    }
+    const near = [...drop].sort((a, b) => dist.get(a)! - dist.get(b)! || (a.uid < b.uid ? -1 : 1))[0].pile;
     const pick = choose(x, drop.filter((p) => p.pile === near), cap);
     if (pick.length) {
       claim(pick);
@@ -321,10 +334,7 @@ function floorWholeDest(x: Ctx, th: ThingState): MachineId | 'scale' {
 
 /** Grams still in a thing (its pieces not yet off, and its waste). */
 function thingLeft_g(x: Ctx, th: ThingState): number {
-  let g = x.c.objects[th.obj]?.waste_g ?? 0;
-  const n = pieceCount(x.c, th.obj);
-  for (let k = th.cut; k < n; k++) g += pieceSpec(x.c, th.obj, k)?.g ?? 0;
-  return g;
+  return remainingG(x.c, th.obj, th.cut);
 }
 
 /**
@@ -353,68 +363,99 @@ function floorWholeTrip(x: Ctx, cap: number): { things: ThingState[]; dest: Mach
   return things.length ? { things, dest, g, waiting_g } : null;
 }
 
+/** Take what a trip claimed (pieces off their pile, tray grams, loose things cut off, whole things) onto his carrier. */
+function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number): Piece[] {
+  const s = x.s;
+  const load: Piece[] = [];
+  for (const c of claims) {
+    if (c.startsWith('tray.')) {
+      const [, id, grade, gs] = c.split('.');
+      const mach = s.machines[id as MachineId];
+      const want = Number(gs) || 0;
+      mach.trayClaim_g[grade] = Math.max(0, (mach.trayClaim_g[grade] ?? 0) - want);
+      if (!mach.trayClaim_g[grade]) delete mach.trayClaim_g[grade];
+      // Take exactly the claimed grade's grams.
+      const avail = mach.tray_g[grade] ?? 0;
+      const take = Math.min(avail, want);
+      if (take > 0) {
+        mach.tray_g[grade] = avail - take;
+        if (!mach.tray_g[grade]) delete mach.tray_g[grade];
+        const n = (s.counts![`tray:${id}`] ?? 0) + 1;
+        s.counts![`tray:${id}`] = n;
+        load.push({ uid: `${id}.t${n}`, grade, g: take, from: id, spec: -1 });
+      }
+      if (mach.status === 'trayFull') takeTray(x, id as MachineId, 0, t);
+      continue;
+    }
+    if (c.startsWith('loose:')) {
+      const th = thingOf(x, c.slice(6));
+      if (th && th.by === m.id) {
+        th.by = null;
+        for (let guard = 0; guard < 100; guard++) {
+          const r = cutOff(x, th, m.id, t);
+          if (!r) break;
+          load.push(r.piece);
+          if (r.gone) break;
+        }
+      }
+      continue;
+    }
+    const gp = s.pieces.find((p) => p.uid === c && p.claim === m.id);
+    if (gp) {
+      const p = takeFromPile(x, c);
+      if (p) load.push(p);
+      continue;
+    }
+    const th = thingOf(x, c);
+    if (th && th.by === m.id) {
+      const o = x.c.objects[th.obj];
+      thingGone(x, th, m.id, t, true);
+      load.push({ uid: th.uid, grade: o.whole!, g: o.gross_g, from: null, spec: -1, whole: th.obj });
+    }
+  }
+  for (const p of load) x.ev.push({ type: 'pickup', piece: p.uid, grade: p.grade, g: p.g, by: m.id });
+  return load;
+}
+
+/** Give back what a planned trip claimed and will not take (an opened run's later trips, a save's broken run). */
+export function releaseClaims(x: Ctx, id: string, claims: readonly string[]): void {
+  const s = x.s;
+  for (const c of claims) {
+    if (c.startsWith('tray.')) {
+      const [, mid, grade, gs] = c.split('.');
+      const mach = s.machines[mid as MachineId];
+      if (!mach) continue;
+      mach.trayClaim_g[grade] = Math.max(0, (mach.trayClaim_g[grade] ?? 0) - (Number(gs) || 0));
+      if (!mach.trayClaim_g[grade]) delete mach.trayClaim_g[grade];
+      continue;
+    }
+    const uid = c.startsWith('loose:') ? c.slice(6) : c;
+    const gp = s.pieces.find((p) => p.uid === uid && p.claim === id);
+    if (gp) {
+      gp.claim = null;
+      continue;
+    }
+    const th = thingOf(x, uid);
+    if (th && th.by === id) th.by = null;
+  }
+}
+
+const destSpotOf = (dest: string): Spot => (dest === 'scale' ? { place: 'scale' } : { place: machinePlace(dest as MachineId) });
+
 /** A yard hand's leg ends: pick (claimed items onto his carrier, then to the scale or the machine), or drop. */
 function handLegEnd(x: Ctx, m: CrewMember, t: number): void {
-  const s = x.s;
   const dest = m.dest ?? 'scale';
   if (m.phase === 'walkTo') {
     const at = posOf(x, m.to);
-    const load: Piece[] = [];
-    for (const c of m.claims) {
-      if (c.startsWith('tray.')) {
-        const [, id, grade, gs] = c.split('.');
-        const mach = s.machines[id as MachineId];
-        const want = Number(gs) || 0;
-        mach.trayClaim_g[grade] = Math.max(0, (mach.trayClaim_g[grade] ?? 0) - want);
-        if (!mach.trayClaim_g[grade]) delete mach.trayClaim_g[grade];
-        // Take exactly the claimed grade's grams.
-        const avail = mach.tray_g[grade] ?? 0;
-        const take = Math.min(avail, want);
-        if (take > 0) {
-          mach.tray_g[grade] = avail - take;
-          if (!mach.tray_g[grade]) delete mach.tray_g[grade];
-          const n = (s.counts![`tray:${id}`] ?? 0) + 1;
-          s.counts![`tray:${id}`] = n;
-          load.push({ uid: `${id}.t${n}`, grade, g: take, from: id, spec: -1 });
-        }
-        if (mach.status === 'trayFull') takeTray(x, id as MachineId, 0, t);
-        continue;
-      }
-      if (c.startsWith('loose:')) {
-        const th = thingOf(x, c.slice(6));
-        if (th && th.by === m.id) {
-          th.by = null;
-          for (let guard = 0; guard < 100; guard++) {
-            const r = cutOff(x, th, m.id, t);
-            if (!r) break;
-            load.push(r.piece);
-            if (r.gone) break;
-          }
-        }
-        continue;
-      }
-      const gp = s.pieces.find((p) => p.uid === c && p.claim === m.id);
-      if (gp) {
-        const p = takeFromPile(x, c);
-        if (p) load.push(p);
-        continue;
-      }
-      const th = thingOf(x, c);
-      if (th && th.by === m.id) {
-        const o = x.c.objects[th.obj];
-        thingGone(x, th, m.id, t, true);
-        load.push({ uid: th.uid, grade: o.whole!, g: o.gross_g, from: null, spec: -1, whole: th.obj });
-      }
-    }
+    const load = pickClaims(x, m, m.claims, t);
     m.claims = [];
     m.load = load;
     m.carries = load[0]?.grade ?? null;
-    for (const p of load) x.ev.push({ type: 'pickup', piece: p.uid, grade: p.grade, g: p.g, by: m.id });
     if (!load.length) {
       idle(m, t, at);
       return;
     }
-    const to: Spot = dest === 'scale' ? { place: 'scale' } : { place: machinePlace(dest as MachineId) };
+    const to: Spot = destSpotOf(dest);
     leg(x, m, m.job, 'walkBack', to, t, x.c.crew.hand.handle_s, at);
     return;
   }
@@ -445,6 +486,394 @@ function handLegEnd(x: Ctx, m: CrewMember, t: number): void {
   }
 }
 
+// ---------------------------------------------------------------------------------------- grouped runs (2.1)
+
+/** The grams a trip's claims hold (pieces and tray claims; things count their remaining grams). */
+function claimGrams(x: Ctx, claims: readonly string[]): number {
+  let g = 0;
+  for (const c of claims) {
+    if (c.startsWith('tray.')) g += Number(c.split('.')[3]) || 0;
+    else {
+      const uid = c.startsWith('loose:') ? c.slice(6) : c;
+      const p = x.s.pieces.find((q) => q.uid === uid);
+      if (p) g += p.g;
+      else {
+        const th = thingOf(x, uid);
+        if (th) g += thingLeft_g(x, th);
+      }
+    }
+  }
+  return g;
+}
+
+function claimGrade(x: Ctx, claims: readonly string[]): string | null {
+  const c = claims[0];
+  if (!c) return null;
+  if (c.startsWith('tray.')) return c.split('.')[2] ?? null;
+  const uid = c.startsWith('loose:') ? c.slice(6) : c;
+  const p = x.s.pieces.find((q) => q.uid === uid);
+  if (p) return p.grade;
+  const th = thingOf(x, uid);
+  if (!th) return null;
+  return x.c.objects[th.obj]?.whole ?? pieceSpec(x.c, th.obj, th.cut)?.grade ?? null;
+}
+
+type Cand = { spot: Spot; grade: string | null; g: number; take: () => string[] };
+
+function piecesCand(m: CrewMember, pick: GroundPiece[], pile: string): Cand | null {
+  if (!pick.length) return null;
+  return {
+    spot: { pile, k: pick[0].k },
+    grade: pick[0].grade,
+    g: pick.reduce((a, p) => a + p.g, 0),
+    take: () => {
+      for (const p of pick) p.claim = m.id;
+      return pick.map((p) => p.uid);
+    },
+  };
+}
+
+/** The next trip of the same kind from the same place (the in-place choice of 2.1.2), or null. Claims nothing until `take`. */
+function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: boolean, feedRoom: number): Cand | null {
+  const s = x.s;
+  switch (kind.k) {
+    case 'feed': {
+      if (feedRoom <= 0) return null;
+      const inputs = machineInputs(x.c, s, kind.dest);
+      const inbuf = (x.c.machines as unknown as Record<string, { inbuf: number }>)[kind.dest].inbuf * 1000;
+      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && inputs.includes(p.grade));
+      return piecesCand(m, choose(x, src, Math.min(cap, inbuf, feedRoom)), kind.pile);
+    }
+    case 'pile': {
+      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && !(inYard && isCable(x, p.grade)));
+      return piecesCand(m, choose(x, src, cap), kind.pile);
+    }
+    case 'tray': {
+      const mach = s.machines[kind.id];
+      if (trayFree(x, kind.id) <= 0) return null;
+      let left = cap;
+      const claimed: Record<string, number> = {};
+      for (const grade of Object.keys(mach.tray_g).sort((a, b) => (x.c.grades[b]?.pbar ?? 0) - (x.c.grades[a]?.pbar ?? 0))) {
+        const avail = (mach.tray_g[grade] ?? 0) - (mach.trayClaim_g[grade] ?? 0);
+        const take = Math.min(avail, left);
+        if (take <= 0) continue;
+        claimed[grade] = take;
+        left -= take;
+      }
+      const g = sumStock(claimed);
+      if (!g) return null;
+      return {
+        spot: { pile: `tray.${kind.id}` },
+        grade: Object.keys(claimed)[0] ?? null,
+        g,
+        take: () => {
+          for (const [grade, gg] of Object.entries(claimed)) mach.trayClaim_g[grade] = (mach.trayClaim_g[grade] ?? 0) + gg;
+          return Object.entries(claimed).map(([grade, gg]) => `tray.${kind.id}.${grade}.${gg}`);
+        },
+      };
+    }
+    case 'loose': {
+      const th = looseAt(x, kind.where, cap, inYard);
+      if (!th) return null;
+      return { spot: { thing: th.uid }, grade: pieceSpec(x.c, th.obj, th.cut)?.grade ?? null, g: thingLeft_g(x, th), take: () => ((th.by = m.id), [`loose:${th.uid}`]) };
+    }
+    case 'floorWhole': {
+      const trip = floorWholeTrip(x, cap);
+      if (!trip || trip.dest !== kind.dest) return null;
+      return {
+        spot: { thing: trip.things[0].uid },
+        grade: pieceSpec(x.c, trip.things[0].obj, trip.things[0].cut)?.grade ?? null,
+        g: trip.g,
+        take: () => {
+          for (const th of trip.things) th.by = m.id;
+          return trip.things.map((th) => `loose:${th.uid}`);
+        },
+      };
+    }
+    case 'whole': {
+      const th = wholeAt(x, kind.where, cap);
+      if (!th) return null;
+      return { spot: { thing: th.uid }, grade: x.c.objects[th.obj]?.whole ?? null, g: x.c.objects[th.obj]?.gross_g ?? 0, take: () => ((th.by = m.id), [th.uid]) };
+    }
+  }
+}
+
+/**
+ * 2.1: turn the trip handDepart just chose into a RUN when no boss is within sight of its start, its
+ * source or its destination: more trips of the same kind from the same place to the same destination
+ * while the run stays within group.maxRun_s, each with its own two leg ends; one dated end.
+ */
+function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, kind: HandKind): void {
+  const dest = m.dest ?? 'scale';
+  const destSpot = destSpotOf(dest);
+  const dpos = posOf(x, destSpot);
+  const src = posOf(x, m.to);
+  if (bossSees(x, t, [start, src, dpos])) return;
+  const v = handV(x, m);
+  const h = x.c.crew.hand.handle_s;
+  const dur = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(1e-3, legM(x.c, a, b) / v + h);
+  const cap = x.c.crew.hand.load * 1000;
+  const inYard = bossFresh(x, t);
+  const loads: RunLoad[] = [{ claims: m.claims, spot: m.to, grade: claimGrade(x, m.claims), pickAt: m.t1, dropAt: m.t1 + dur(src, dpos) }];
+  let feedRoom = dest !== 'scale' ? hopperRoom(x, dest as MachineId) - claimGrams(x, m.claims) : 0;
+  const maxRun = groupCfg(x.c).handRun_s;
+  while (loads.length < RUN_MAX) {
+    const c = sameAgain(x, m, kind, cap, inYard, feedRoom);
+    if (!c) break;
+    const last = loads[loads.length - 1];
+    const sp = posOf(x, c.spot);
+    const pickAt = last.dropAt + dur(dpos, sp);
+    const dropAt = pickAt + dur(sp, dpos);
+    if (dropAt - t > maxRun + RUN_EPS) break;
+    loads.push({ claims: c.take(), spot: c.spot, grade: c.grade, pickAt, dropAt });
+    feedRoom -= c.g;
+  }
+  const end = loads[loads.length - 1].dropAt;
+  m.run = { t0: t, end, start: [start.x, start.y], k: loads.length, legS: (end - t) / loads.length, dest, loads };
+  m.claims = [];
+  // The tray's claimed grams are his from this departure: a machine stopped by a full tray goes on now.
+  if (kind.k === 'tray' && x.s.machines[kind.id].status === 'trayFull') startMachine(x, kind.id, t);
+  showRun(x, m, t);
+}
+
+/** Deliver one landed load of a run: weighed in (dated at its own drop) or fed; what a hopper cannot take is weighed in. */
+function deliverLoad(x: Ctx, m: CrewMember, items: Piece[], dest: string, t: number, at: number): void {
+  if (!items.length) return;
+  if (dest === 'scale') {
+    weighIn(x, items, m.id, t, at);
+    return;
+  }
+  const left: Piece[] = [];
+  for (const p of items) {
+    if (dest === 'crucible') {
+      if (!meltPiece(x, p, m.id, t)) left.push(p);
+    } else if (accepts(x, dest as MachineId, p)) feedPiece(x, dest as MachineId, p, m.id, t);
+    else left.push(p);
+  }
+  if (left.length) weighIn(x, left, m.id, t, at);
+}
+
+/** Land a hand's run's loads whose drop is at or before `upto`, in order, at yard second t. Returns the first not landed. */
+function landLoads(x: Ctx, m: CrewMember, t: number, upto: number): number {
+  const run = m.run!;
+  const loads = run.loads ?? [];
+  const dest = run.dest ?? 'scale';
+  let i = 0;
+  for (; i < loads.length; i++) {
+    const L = loads[i];
+    if (L.dropAt > upto + RUN_EPS) break;
+    deliverLoad(x, m, pickClaims(x, m, L.claims, t), dest, t, L.dropAt);
+  }
+  return i;
+}
+
+/** Land a cutter's run's things whose cut ends at or before `upto`: each cut whole, its pieces on its place's pile. */
+function landCuts(x: Ctx, m: CrewMember, t: number, upto: number): number {
+  const cuts = m.run!.cuts ?? [];
+  let i = 0;
+  for (; i < cuts.length; i++) {
+    const C = cuts[i];
+    if (C.cutEnd > upto + RUN_EPS) break;
+    const th = thingOf(x, C.thing);
+    if (!th || th.by !== m.id) continue;
+    const pile = th.at.at === 'dropoff' ? 'dropoff' : 'floor';
+    const off: Piece[] = [];
+    for (let guard = 0; guard < 1000; guard++) {
+      const r = cutOff(x, th, m.id, t);
+      if (!r) break;
+      off.push(r.piece);
+      x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
+      if (r.gone) break;
+    }
+    dropAllOnPile(x, off, pile);
+  }
+  return i;
+}
+
+/** The points a run's sight is tested at: its start, every source and its destination. */
+function runPoints(x: Ctx, m: CrewMember): { x: number; y: number }[] {
+  const run = m.run!;
+  const pts = [{ x: run.start[0], y: run.start[1] }];
+  for (const L of run.loads ?? []) pts.push(posOf(x, L.spot));
+  for (const C of run.cuts ?? []) pts.push(posOf(x, { thing: C.thing }));
+  if (run.dest) pts.push(posOf(x, destSpotOf(run.dest)));
+  return pts;
+}
+
+/** A run's dated end: everything lands in order; he stands where his last leg ended. */
+function landRun(x: Ctx, m: CrewMember, t: number): void {
+  const run = m.run!;
+  if (run.cuts) {
+    const last = run.cuts[run.cuts.length - 1];
+    const at = last ? posOf(x, { thing: last.thing }) : { x: run.start[0], y: run.start[1] };
+    landCuts(x, m, t, Infinity);
+    delete m.run;
+    m.claims = [];
+    m.cut = null;
+    idle(m, t, at);
+    return;
+  }
+  const at = posOf(x, destSpotOf(run.dest ?? 'scale'));
+  landLoads(x, m, t, Infinity);
+  delete m.run;
+  delete m.dest;
+  m.claims = [];
+  m.load = [];
+  idle(m, t, at);
+}
+
+/**
+ * 2.1: OPEN a run at t (the boss came within sight of it): what its plan finished by t lands now, in
+ * order; the leg under way goes on as one ordinary leg with its planned times; the rest is released.
+ */
+export function openRun(x: Ctx, m: CrewMember, t: number): void {
+  const run = m.run;
+  if (!run) return;
+  const startXY = { x: run.start[0], y: run.start[1] };
+  if (run.cuts) {
+    const cuts = run.cuts;
+    const pos = cuts.map((C) => posOf(x, { thing: C.thing }));
+    const i = landCuts(x, m, t, t);
+    delete m.run;
+    if (i >= cuts.length) {
+      m.claims = [];
+      m.cut = null;
+      idle(m, t, pos[pos.length - 1] ?? startXY);
+      return;
+    }
+    for (let j = i + 1; j < cuts.length; j++) releaseClaims(x, m.id, [cuts[j].thing]);
+    const C = cuts[i];
+    const prev = i === 0 ? startXY : pos[i - 1];
+    const prevEnd = i === 0 ? run.t0 : cuts[i - 1].cutEnd;
+    m.claims = [C.thing];
+    if (t < C.walkEnd - RUN_EPS) {
+      m.phase = 'walkTo';
+      m.cut = null;
+      m.from = { xy: [prev.x, prev.y] };
+      m.to = { thing: C.thing };
+      m.t0 = prevEnd;
+      m.t1 = C.walkEnd;
+    } else {
+      m.phase = 'work';
+      m.cut = { thing: C.thing, whole: true };
+      m.from = { thing: C.thing };
+      m.to = { thing: C.thing };
+      m.t0 = C.walkEnd;
+      m.t1 = C.cutEnd;
+    }
+    return;
+  }
+  const loads = run.loads ?? [];
+  const dest = run.dest ?? 'scale';
+  const destSpot = destSpotOf(dest);
+  const dpos = posOf(x, destSpot);
+  const spots = loads.map((L) => posOf(x, L.spot));
+  const i = landLoads(x, m, t, t);
+  delete m.run;
+  m.load = [];
+  m.carries = null;
+  if (i >= loads.length) {
+    delete m.dest;
+    m.claims = [];
+    idle(m, t, dpos);
+    return;
+  }
+  for (let j = i + 1; j < loads.length; j++) releaseClaims(x, m.id, loads[j].claims);
+  const L = loads[i];
+  m.dest = dest;
+  if (t < L.pickAt - RUN_EPS) {
+    const prev = i === 0 ? startXY : dpos;
+    m.phase = 'walkTo';
+    m.claims = L.claims;
+    m.from = { xy: [prev.x, prev.y] };
+    m.to = L.spot;
+    m.t0 = i === 0 ? run.t0 : loads[i - 1].dropAt;
+    m.t1 = L.pickAt;
+    return;
+  }
+  const at = spots[i];
+  const items = pickClaims(x, m, L.claims, t);
+  m.claims = [];
+  if (!items.length) {
+    delete m.dest;
+    idle(m, t, at);
+    return;
+  }
+  m.load = items;
+  m.carries = items[0].grade;
+  m.phase = 'walkBack';
+  m.from = { xy: [at.x, at.y] };
+  m.to = destSpot;
+  m.t0 = L.pickAt;
+  m.t1 = L.dropAt;
+}
+
+/** Open every crew run the boss can see now (hand.ts bossStep, live only). */
+export function openCrewInSight(x: Ctx, t: number): void {
+  for (const m of x.s.crew) if (m.run && bossSees(x, t, runPoints(x, m))) openRun(x, m, t);
+}
+
+/**
+ * The leg of a run under way at t, written into the member's shown fields (phase, from, to, t0, t1,
+ * carries; a cutter's `cut`): what the frame draws. A pure function of the plan and the clock, set at
+ * the end of every advance (tick, jump and away alike); nothing decides from these fields while a run
+ * holds them (the queue reads `run.end`).
+ */
+function showRun(x: Ctx, m: CrewMember, t: number): void {
+  const run = m.run!;
+  const startXY = { x: run.start[0], y: run.start[1] };
+  if (run.cuts) {
+    const cuts = run.cuts;
+    let i = cuts.findIndex((C) => C.cutEnd > t + RUN_EPS);
+    if (i < 0) i = cuts.length - 1;
+    const C = cuts[i];
+    if (t < C.walkEnd - RUN_EPS) {
+      const prev = i === 0 ? startXY : posOf(x, { thing: cuts[i - 1].thing });
+      m.phase = 'walkTo';
+      m.cut = null;
+      m.from = { xy: [prev.x, prev.y] };
+      m.to = { thing: C.thing };
+      m.t0 = i === 0 ? run.t0 : cuts[i - 1].cutEnd;
+      m.t1 = C.walkEnd;
+    } else {
+      m.phase = 'work';
+      m.cut = { thing: C.thing, whole: true };
+      m.from = { thing: C.thing };
+      m.to = { thing: C.thing };
+      m.t0 = C.walkEnd;
+      m.t1 = C.cutEnd;
+    }
+    return;
+  }
+  const loads = run.loads ?? [];
+  let i = loads.findIndex((L) => L.dropAt > t + RUN_EPS);
+  if (i < 0) i = loads.length - 1;
+  const L = loads[i];
+  const destSpot = destSpotOf(run.dest ?? 'scale');
+  if (t < L.pickAt - RUN_EPS) {
+    const prev = i === 0 ? startXY : posOf(x, destSpot);
+    m.phase = 'walkTo';
+    m.from = { xy: [prev.x, prev.y] };
+    m.to = L.spot;
+    m.t0 = i === 0 ? run.t0 : loads[i - 1].dropAt;
+    m.t1 = L.pickAt;
+    m.carries = null;
+  } else {
+    const at = posOf(x, L.spot);
+    m.phase = 'walkBack';
+    m.from = { xy: [at.x, at.y] };
+    m.to = destSpot;
+    m.t0 = L.pickAt;
+    m.t1 = L.dropAt;
+    m.carries = L.grade;
+  }
+}
+
+/** Every running member's shown leg at the draft's clock (tick.ts, at the end of every advance). */
+export function showCrewRuns(x: Ctx): void {
+  for (const m of x.s.crew) if (m.run) showRun(x, m, x.s.t);
+}
+
 // ---------------------------------------------------------------------------------------- cutters
 
 /** A cutter's power, kg/s at hardness 1: P × share × (1 + lev × (L − 1)), at most cap × P (2.12). */
@@ -471,15 +900,58 @@ function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
   for (const where of ['dropoff', 'floor'] as const) {
     const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier);
     if (!cands.length) continue;
-    const score = (th: ThingState) => (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P));
-    const th = cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1))[0];
+    // The score is a pure function of the thing (memoised for the sort; the order is the same).
+    const scores = new Map<ThingState, number>();
+    const score = (th: ThingState) => {
+      let v = scores.get(th);
+      if (v === undefined) scores.set(th, (v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P))));
+      return v;
+    };
+    cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1));
+    const th = cands[0];
+    const job: CrewJob = where === 'dropoff' ? 'cutDropoff' : 'cutFloor';
+    const start = posOf(x, m.to);
+    if (grouping(x) && !bossSees(x, t, [start], [where])) {
+      groupCutter(x, m, t, job, cands, P, start);
+      return true;
+    }
     th.by = m.id;
     m.claims = [th.uid];
     m.cut = null;
-    leg(x, m, where === 'dropoff' ? 'cutDropoff' : 'cutFloor', 'walkTo', { thing: th.uid }, t, 0);
+    leg(x, m, job, 'walkTo', { thing: th.uid }, t, 0);
     return true;
   }
   return false;
+}
+
+/**
+ * 2.1: a cutter's RUN (no boss within sight of him or of the place): things of one place in his score
+ * order, each walked to and cut whole, while the run stays within group.maxRun_s (the first always).
+ */
+function groupCutter(x: Ctx, m: CrewMember, t: number, job: CrewJob, sorted: ThingState[], P: number, start: { x: number; y: number }): void {
+  const v = handV(x, m);
+  const maxRun = groupCfg(x.c).cutRun_s;
+  const cuts: RunCut[] = [];
+  let here = start;
+  let tt = t;
+  for (const th of sorted) {
+    if (cuts.length >= RUN_MAX) break;
+    const p = posOf(x, { thing: th.uid });
+    const walkEnd = tt + Math.max(1e-3, legM(x.c, here, p) / v);
+    const cutEnd = walkEnd + Math.max(1e-3, cutLeft(x, th, P));
+    if (cuts.length && cutEnd - t > maxRun + RUN_EPS) break;
+    th.by = m.id;
+    cuts.push({ thing: th.uid, walkEnd, cutEnd });
+    here = p;
+    tt = cutEnd;
+  }
+  const end = cuts[cuts.length - 1].cutEnd;
+  m.job = job;
+  m.claims = [];
+  m.cut = null;
+  m.run = { t0: t, end, start: [start.x, start.y], k: cuts.length, legS: (end - t) / cuts.length, cuts };
+  showRun(x, m, t);
+  x.ev.push({ type: 'crewLeg', id: m.id, job, from: m.from, to: m.to, t0: m.t0, t1: m.t1 });
 }
 
 function bossWithin(x: Ctx, th: ThingState, t: number): boolean {
@@ -539,7 +1011,8 @@ function cutterLegEnd(x: Ctx, m: CrewMember, t: number): void {
 
 /** A crew member's leg ends at t (his t1). */
 export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
-  if (m.role === 'hand') handLegEnd(x, m, t);
+  if (m.run) landRun(x, m, t);
+  else if (m.role === 'hand') handLegEnd(x, m, t);
   else if (m.role === 'cutter') cutterLegEnd(x, m, t);
   else {
     m.t0 = t;
@@ -550,11 +1023,21 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
 /** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
 export function crewDepart(x: Ctx, t: number): void {
   for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
-  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') handDepart(x, m, t);
+  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') departHand(x, m, t);
+}
+
+/** A yard hand's departure (handDepart), grouped into a run when 2.1 says so. */
+function departHand(x: Ctx, m: CrewMember, t: number): boolean {
+  const start = posOf(x, m.to);
+  PLAN = null;
+  if (!handDepart(x, m, t)) return false;
+  if (PLAN && grouping(x)) groupHand(x, m, t, start, PLAN);
+  PLAN = null;
+  return true;
 }
 
 /** Is this crew member's leg pending (a dated end in the future or now)? */
-export const crewPending = (m: CrewMember): boolean => m.phase !== 'wait' && m.t1 > m.t0 - 1e-9;
+export const crewPending = (m: CrewMember): boolean => !!m.run || (m.phase !== 'wait' && m.t1 > m.t0 - 1e-9);
 
 void atPlace;
 void piecePos;

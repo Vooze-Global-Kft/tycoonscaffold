@@ -18,10 +18,13 @@ export interface GroupCfg {
   maxRun_s: number;
   /** A merchant's round that leaves with no boss within sight of his stand is away at least this long. */
   roundAway_s: number;
+  /** Experiment knobs: per-role run lengths (default maxRun_s). */
+  handRun_s: number;
+  cutRun_s: number;
 }
 
 /** First values (part-a 2.1.2): grouping from rung 3, runs of at most 300 s, the merchant away 120 s. */
-export const GROUP_DEFAULT: GroupCfg = { fromRung: 3, maxRun_s: 300, roundAway_s: 120 };
+export const GROUP_DEFAULT = { fromRung: 3, maxRun_s: 300, roundAway_s: 120 };
 
 const CACHE = new WeakMap<SalvageContent, GroupCfg>();
 
@@ -33,7 +36,11 @@ export function groupCfg(c: SalvageContent): GroupCfg {
       fromRung: Number.isFinite(raw.fromRung) ? (raw.fromRung as number) : GROUP_DEFAULT.fromRung,
       maxRun_s: Number.isFinite(raw.maxRun_s) && (raw.maxRun_s as number) > 0 ? (raw.maxRun_s as number) : GROUP_DEFAULT.maxRun_s,
       roundAway_s: Number.isFinite(raw.roundAway_s) && (raw.roundAway_s as number) >= 0 ? (raw.roundAway_s as number) : GROUP_DEFAULT.roundAway_s,
+      handRun_s: 0,
+      cutRun_s: 0,
     };
+    g.handRun_s = Number.isFinite(raw.handRun_s) ? (raw.handRun_s as number) : g.maxRun_s;
+    g.cutRun_s = Number.isFinite(raw.cutRun_s) ? (raw.cutRun_s as number) : g.maxRun_s;
     CACHE.set(c, g);
   }
   return g;
