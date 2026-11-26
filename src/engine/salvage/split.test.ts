@@ -114,11 +114,14 @@ describe('the same with runs off and with runs from rung 1 (the attacker split3)
 });
 
 describe('at a fixed rung (the attacker split) and what the checks still do away', () => {
-  it('seeds 31 and 63 at minute 60: 3.9 h away, one pass against two and against eleven', () => {
+  // owner1-rules (rung 3 at 31.5 t): at minute 60 these seeds now stand at rung 2, so the 3.9 h absence crossed the
+  // rung (whose away cap differs) and was no longer the attacker's fixed-rung split: measured at minute 70, at rung 3.
+  it('seeds 31 and 63 at minute 70 (rung 3): 3.9 h away, one pass against two and against eleven', () => {
     for (const seed of [31, 63]) {
       const cfg = cfgOf(seed);
       const b = botOf(cfg, seed);
-      playTo(b, 3600);
+      playTo(b, 4200);
+      expect(b.g.salvage.ladder.rung, `seed ${seed}`).toBe(3);
       const g0 = leave(b.g);
       const rnd = lcg(seed * 13 + 3);
       const two = cut(cfg, g0, 3.9 * 3600_000, [0.5]);

@@ -43,7 +43,9 @@ function differs(cfg: SalvageConfig, g: SalvageGame, now: number, seconds: numbe
   // engine2-group (2.1): grouped runs and the truck's planned trip, whole.
   const runs = (x: SalvageGame) => JSON.stringify([x.salvage.crew.map((m) => m.run ?? null), x.salvage.truck.trip, x.salvage.merchant]);
   if (runs(a) !== runs(j)) d.push(`runs ${runs(a)} vs ${runs(j)}`);
-  const trays = (x: SalvageGame) => JSON.stringify(Object.values(x.salvage.machines).map((m) => m.tray_g));
+  // The trays' grams by grade (owner1-rules: compared by grade, not by the order the grades were first credited in:
+  // seed 8 minute 51 holds the bench's {li, no2, alcast} ticked and {no2, li, alcast} jumped, the same grams).
+  const trays = (x: SalvageGame) => JSON.stringify(Object.values(x.salvage.machines).map((m) => Object.entries(m.tray_g).sort(([p], [q]) => (p < q ? -1 : 1))));
   if (trays(a) !== trays(j)) d.push('trays');
   return d;
 }
