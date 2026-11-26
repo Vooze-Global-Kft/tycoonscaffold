@@ -539,6 +539,13 @@ baseline, and the bots' report on the new engine (REPORT7) states it.
 **E43. The merchant's round is the same watched or not (RULING2.md 14.3).** It is never lengthened
 for time away.
 
+**E44. The driver fetches what pays best (RULING2.md section 16).** In the first yard as merged the
+hired driver fetched the skip that had been full longest, and "Another skip" for the farm made the
+yard poorer once demolition was open (its light skips crowded out loads that net twice as much).
+From rung 3 he ranks partners by what a load nets and keeps the floor's room for the best; a
+partner's level never lowers what the yard keeps. No purchase may make the yard poorer: the bots
+check every purchase, hire and level for it from now on.
+
 ---
 
 ## The first yard: the lead's rulings after its review (25 November)
@@ -1770,3 +1777,44 @@ store error, and blocked a pack for ever when the device's clock had been wrong.
     the answer N3 in its 11.3 is withdrawn): the shop appears after the player's next absence of
     thirty minutes or more. The development rows' prepared yards ("Start at rung 3", "Start at
     rung 4") have it set, so that the owner sees the shop at once on the phone.
+
+### 16. The driver fetches what pays best (09:35; found while rated income was being calibrated)
+
+The engineer who calibrated rated income found a fault in the FIRST yard's own economy
+(`notes/s2a-engine2-income2.md` section 3): buying "Another skip" for the farm partner makes the
+yard earn LESS once the demolition partner is open (seed 1, day 1, demolition at 2 skips: the yard
+keeps §47,949, §43,129, §38,145 an hour with the farm at 1, 2, 3 skips; four of five seeds lose
+4.5 to 7.7 % at minute 90). The driver fetches the skip that has been full longest and fits the
+floor; the farm's light skips are full first and fit first, and they crowd out the demolition
+loads, which net about twice as much a load. A purchase that makes the yard poorer is a fault
+(the economy's first rule), and no rated income can be both honest and rising while the yard
+itself falls. The lead rules:
+
+16.1 **The rule.** From rung `truck.pickFromRung` (first value 3, so that the first hour as merged
+    is untouched), the hired driver chooses by what a load nets, not by which skip was full first:
+    (a) every open partner has a rated net a load, from the content alone: the load's contents at
+        usual prices as they weigh in, less the load's price at usual prices;
+    (b) he departs for the best-ranked partner that has a full skip the yard can pay for and whose
+        load fits the tipping floor;
+    (c) he does not depart for a lesser partner while a better-ranked partner has a full skip the
+        yard can pay for that does not fit: he waits, and the floor's room is kept for the load
+        that pays best;
+    (d) equal ranks: the skip that has been full longest, as before;
+    (e) a skip the yard cannot pay for blocks nobody (no dead end; Hold's rule 14.6 as it is);
+    (f) the boss at the wheel fetches whatever he likes; a truck the boss left loaded is finished
+        as before.
+    Below `truck.pickFromRung` the first yard's rule stands, bit for bit.
+16.2 **Rated income follows the same rule** in its replay of the driver, so that I rises (or
+    stays) when a partner is levelled.
+16.3 **The gates.** (i) Levelling ANY partner never lowers what the yard keeps: on fifteen seeds at
+    minute 90, day 1 and day 3, each partner's level set by hand one step up: the MEAN change of G
+    is not below -1 % and no seed loses more than 4 % (the yard's own noise). (ii) The yard under
+    the new rule keeps at least what it kept under the old one, on means, at the same three
+    moments. (iii) A tick equals a jump; an absence cut into passes equals one pass; mass; the
+    first hour below the rung bit for bit. (iv) Rated income's band (14.10) measured again on the
+    new rule, with the monotony restated: no single purchase, hire or level lowers I by more than
+    5 %, and none where the yard's own G rises by more than I falls (what is left are artefacts of
+    a replay that must cost under a millisecond; they are printed, not hidden).
+16.4 **The first hour.** The bots also play the first hour with `truck.pickFromRung` 1 (the rule
+    from the first trip) and print its beats beside the merged ones; the lead decides from that
+    table whether the rule starts at rung 1 (as he will for the runs, LEAD L16).
