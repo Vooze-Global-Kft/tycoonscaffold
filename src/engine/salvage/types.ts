@@ -306,6 +306,51 @@ export interface CrewMember {
   cut: { thing: string; whole: boolean } | null;
   /** A yard hand's destination for this trip's load: 'scale' or a machine id (feed); absent when idle. */
   dest?: string;
+  /**
+   * Stage 2, 2.1 (engine2-group): a GROUPED RUN, planned at a departure with no boss within sight, with
+   * one dated end (`end`, the queue's date for this member). While it runs, `from`/`to`/`t0`/`t1`/`phase`
+   * show the planned leg under way (set at the end of every advance; nothing decides from them) and
+   * `claims` is empty (each load holds its own). Absent on a leg-by-leg member and in a stage-1 save.
+   */
+  run?: CrewRun;
+}
+
+/** One trip of a yard hand's run: what it claimed at departure, where it picks, and its own two leg ends. */
+export interface RunLoad {
+  claims: string[];
+  spot: Spot;
+  /** The grade shown on the carrier while it walks back (display only). */
+  grade: GradeId | null;
+  pickAt: number;
+  dropAt: number;
+}
+
+/** One thing of a cutter's run: its walk's end and its whole cut's end. */
+export interface RunCut {
+  thing: string;
+  walkEnd: number;
+  cutEnd: number;
+}
+
+/** A grouped run (2.1): planned at `t0` from `start`; lands at `end`; `k` trips of about `legS` seconds (the frame's loops). */
+export interface CrewRun {
+  t0: number;
+  end: number;
+  start: [number, number];
+  k: number;
+  legS: number;
+  /** A yard hand's destination ('scale' or a machine id) and his loads, in order. */
+  dest?: string;
+  loads?: RunLoad[];
+  /** A cutter's things, in order. */
+  cuts?: RunCut[];
+}
+
+/** 2.1: a driver's trip planned at departure: each phase's end (walk .. park) and the truck's place then. */
+export interface TripPlan {
+  ends: number[];
+  x: number;
+  y: number;
 }
 
 /** A partner's skip (2.7, E13b): contents fixed when it fills, printed on its label, equal to the weigh-in. */
@@ -363,7 +408,7 @@ export interface TruckState {
   /** Who is in it. */
   by: 'boss' | 'driver' | null;
   /** The driver's run: its partner, phase, the yard second the phase began and the one it ends. */
-  trip: { partner: PartnerId; slot: number; phase: TripPhase; t0: number; endsAt: number } | null;
+  trip: { partner: PartnerId; slot: number; phase: TripPhase; t0: number; endsAt: number; plan?: TripPlan } | null;
   /** Yard second the boss began standing still in a skip zone (the hook ring; moving clears it), or null. */
   hookSince: number | null;
   /** § and tipping-floor grams held at the driver's departure (no purchase takes cash below it; the hook always pays), or null. */

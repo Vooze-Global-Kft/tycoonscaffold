@@ -7,11 +7,12 @@
 import { boostFactor, bossFresh, type Ctx } from './clock';
 import { byValue, cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP } from './content';
 import { meltPiece } from './crucible';
-import { accepts, atPlace, feedPiece, hopperRoom, takeTray, trayFree } from './machines';
+import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
+import { accepts, atPlace, feedPiece, hopperRoom, start as startMachine, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
 import { cutOff, dropOnPile, floorMass_g, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
-import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, Spot, ThingState } from './types';
+import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCut, RunLoad, Spot, ThingState } from './types';
 
 const RATE_FED: MachineId[] = ['stripper', 'bench'];
 
@@ -63,7 +64,7 @@ export function newCrew(x: Ctx, role: CrewMember['role'], t: number): CrewMember
   const m: CrewMember = { id: `${role}.${slot}`, role, slot, name: x.s.crew.length, level: 1, job: 'idle', phase: 'wait', from: { place: 'office' }, to: { xy: [door.x, door.y] }, t0: t, t1: t, carries: null, load: [], claims: [], cut: null };
   x.s.crew.push(m);
   x.s.crew.sort((a, b) => (a.id < b.id ? -1 : 1));
-  if (role === 'hand') handDepart(x, m, t);
+  if (role === 'hand') departHand(x, m, t);
   else if (role === 'cutter') cutterDepart(x, m, t);
   return m;
 }
@@ -103,6 +104,28 @@ function waitsAt(x: Ctx, p: GroundPiece): 'circle' | 'dropoff' | 'floor' | null 
 function isCable(x: Ctx, grade: string): boolean {
   return machineInputs(x.c, x.s, 'hand_stripper').includes(grade);
 }
+
+/** Loose things (tier 0) waiting at a place for a yard hand, oldest uid first (cable not while the boss is in the yard). */
+function looseAt(x: Ctx, where: 'dropoff' | 'floor', cap: number, inYard: boolean): ThingState | null {
+  const looseCable = (th: ThingState) => inYard && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
+  return x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
+}
+
+/** A whole workable thing at a place carried at its whole grade (E4), best whole grade first. */
+function wholeAt(x: Ctx, where: 'dropoff' | 'floor', cap: number): ThingState | null {
+  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0);
+  return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
+}
+
+/** What kind of trip the last successful handDepart chose: the in-place choice a grouped run repeats (2.1). */
+type HandKind =
+  | { k: 'feed'; pile: string; dest: MachineId }
+  | { k: 'pile'; pile: string }
+  | { k: 'tray'; id: MachineId }
+  | { k: 'loose'; where: 'dropoff' | 'floor' }
+  | { k: 'floorWhole'; dest: MachineId | 'scale' }
+  | { k: 'whole'; where: 'dropoff' | 'floor' };
+let PLAN: HandKind | null = null;
 
 /**
  * A yard hand's departure (2.12, S12's order). Returns true when he set off. Finding P11 (ruling): while
@@ -145,6 +168,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     if (!pick.length) continue;
     claim(pick);
     m.cut = null;
+    PLAN = { k: 'feed', pile, dest: id };
     leg(x, m, 'feed', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
     m.dest = id;
     return true;
@@ -156,6 +180,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     const pick = choose(x, circles.filter((p) => p.pile === pile), cap);
     if (pick.length) {
       claim(pick);
+      PLAN = { k: 'pile', pile };
       leg(x, m, 'circle', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
       return true;
@@ -178,17 +203,17 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     }
     if (!sumStock(claimed)) continue;
     m.claims = Object.entries(claimed).map(([grade, gg]) => `tray.${id}.${grade}.${gg}`);
+    PLAN = { k: 'tray', id };
     leg(x, m, 'tray', 'walkTo', { pile: `tray.${id}` }, t, x.c.crew.hand.handle_s);
     m.dest = 'scale';
     return true;
   }
   // Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry: they go with the pieces of their place.
-  const looseCable = (th: ThingState) => inYard && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
-  const loose = (where: 'dropoff' | 'floor'): ThingState | null =>
-    s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
+  const loose = (where: 'dropoff' | 'floor'): ThingState | null => looseAt(x, where, cap, inYard);
   const takeLoose = (th: ThingState, job: CrewJob): boolean => {
     th.by = m.id;
     m.claims = [`loose:${th.uid}`];
+    PLAN = { k: 'loose', where: th.at.at === 'dropoff' ? 'dropoff' : 'floor' };
     leg(x, m, job, 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
     m.dest = 'scale';
     return true;
@@ -207,6 +232,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
         for (const th of trip.things) th.by = m.id;
         m.claims = trip.things.map((th) => `loose:${th.uid}`);
         m.cut = null;
+        PLAN = { k: 'floorWhole', dest: trip.dest };
         leg(x, m, 'floor', 'walkTo', { thing: trip.things[0].uid }, t, x.c.crew.hand.handle_s);
         m.dest = trip.dest;
         return true;
@@ -219,6 +245,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
       const pick = choose(x, floor.filter((p) => p.pile === pile), cap);
       if (pick.length) {
         claim(pick);
+        PLAN = { k: 'pile', pile };
         leg(x, m, 'floor', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
         m.dest = 'scale';
         return true;
@@ -244,6 +271,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     const pick = choose(x, drop.filter((p) => p.pile === near), cap);
     if (pick.length) {
       claim(pick);
+      PLAN = { k: 'pile', pile: near };
       leg(x, m, 'dropoff', 'walkTo', { pile: near, k: pick[0].k }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
       return true;
@@ -251,16 +279,14 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   // (5) a whole thing at the drop-off at its whole grade, when no cutter is hired or every place is taken (E4).
   const noCutter = !s.crew.some((c) => c.role === 'cutter');
-  const wholeThing = (where: 'dropoff' | 'floor'): ThingState | null => {
-    const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0);
-    return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
-  };
+  const wholeThing = (where: 'dropoff' | 'floor'): ThingState | null => wholeAt(x, where, cap);
   const full = dropoffCount(x) >= x.c.dropoff.places;
   if (inYard ? full : noCutter || full) {
     const th = wholeThing('dropoff');
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
+      PLAN = { k: 'whole', where: 'dropoff' };
       leg(x, m, 'wholeThing', 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
       return true;
@@ -272,6 +298,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
+      PLAN = { k: 'whole', where: 'floor' };
       leg(x, m, 'wholeThing', 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
       return true;
@@ -522,9 +549,8 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
 
 /** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
 export function crewDepart(x: Ctx, t: number): void {
-  const G = globalThis as any;
-  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') { const ok = cutterDepart(x, m, t); if (G.__eg) G.__eg[(ok ? 'cutOk' : 'cutFail')]++; }
-  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') { const ok = handDepart(x, m, t); if (G.__eg) G.__eg[(ok ? 'handOk' : 'handFail')]++; }
+  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
+  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') handDepart(x, m, t);
 }
 
 /** Is this crew member's leg pending (a dated end in the future or now)? */
