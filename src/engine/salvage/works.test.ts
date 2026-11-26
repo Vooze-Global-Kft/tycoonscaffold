@@ -324,12 +324,19 @@ describe('2.8 the back field: bays, the line, the halls', () => {
 
   it('a whole closed yard keeps every gram through ten minutes of the works (bays, hoppers, work, heats, waste)', () => {
     const g0 = quiet(r4Game());
+    // (wave 2) the merged content's objects (a works-layer thing may stand in the yard), an oversize piece by its fixed
+    // mass, and what the Yard sale sold (supplied grams leave the yard).
+    const M = begin(cfg, g0, [], true).c;
     const mass = (s: SalvageState) => {
-      let m = s.waste_g;
+      let m = s.waste_g + s.ladder.supplied_g;
       for (const p of s.pieces) m += p.g;
       for (const th of s.things) {
-        m += C().objects[th.obj].waste_g;
-        for (let k = th.cut; k < pieceCount(C(), th.obj); k++) m += pieceSpec(C(), th.obj, k)!.g;
+        if (th.g !== undefined && th.cut === 0) {
+          m += th.g;
+          continue;
+        }
+        m += M.objects[th.obj].waste_g;
+        for (let k = th.cut; k < pieceCount(M, th.obj); k++) m += pieceSpec(M, th.obj, k)!.g;
       }
       for (const b of Object.values(s.bays)) m += b.g;
       for (const w of Object.values(s.works)) {

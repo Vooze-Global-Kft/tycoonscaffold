@@ -646,10 +646,19 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   // it before the drop-off (crew.ts handDepart, FLOOR_CLEAR_SHARE), so the loads are replayed at the steps'
   // whole hour, and the drop-off's things are taken with the seconds the loads leave (nothing is paid for
   // them).
-  const q = rateQueue(c, parts, cutHave, carryHave, s.ladder.rung >= pickFromRung(c));
+  // RULING2.md 16.2 and 17.4 (engine2-dispatch): from the rung of either rule the replay follows the yard as it now
+  // works. The driver's rule (byNet). The hands' rule keeps them on a floor over half full, so the loads still take the
+  // hands first; but the CUTTERS' own order (crew.ts cutterDepart: the drop-off, then the floor) is no longer hidden
+  // behind the hands: they cut the drop-off's things first and the loads get the cutting seconds left (measured: with
+  // the loads first, I ran 13 % (flat board) to 19 % (normal board) under G on both rules, the replay buying the
+  // demolition loads the cutters had no seconds for).
+  const rules = s.ladder.rung >= pickFromRung(c) || s.ladder.rung >= orderFromRung(c);
+  const fCut = rules ? Math.min(1, share(drop.cut, cutHave)) : 1;
+  const cutForLoads = rules ? Math.max(0, cutHave - fCut * drop.cut) : cutHave;
+  const q = rateQueue(c, parts, cutForLoads, carryHave, s.ladder.rung >= pickFromRung(c));
   const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
   const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
-  const f = Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft));
+  const f = rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft));
   return finish(q, f);
 }
 
