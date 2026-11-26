@@ -103,7 +103,7 @@ function taggedPiece(x: Pick<Ctx, 'c' | 's'>, p: Piece): boolean {
 /** The Yard sale's places (2.12): slots + levelSlots × min(level, levels). */
 export function rackCap(x: Pick<Ctx, 'c' | 's'>): number {
   const R = x.c.reuse;
-  if (!R) return 0;
+  if (!R || !x.s.reuse) return 0;
   return R.slots + R.levelSlots * Math.min(x.s.reuse.level, R.levels);
 }
 
@@ -296,6 +296,7 @@ export function rackLegEnd(x: Ctx, m: CrewMember, t: number): void {
 /** The visitor's and the van's dated ends (the visitor's only while the rack holds a thing). No allocation. */
 export function reuseDated(x: Ctx, add: DatedAdd<ReuseKind>): void {
   const r = x.s.reuse;
+  if (!r) return;
   if (r.nextAt !== null) {
     for (const th of x.s.things)
       if (th.at.at === 'rack') {
@@ -339,7 +340,7 @@ function shareIAt(x: Ctx): number | null {
 
 /** A visitor buys, or the van collects, at its instant t. */
 export function reuseApply(x: Ctx, kind: ReuseKind, t: number): void {
-  if (!x.c.reuse) return;
+  if (!x.c.reuse || !x.s.reuse) return;
   if (kind === 'visitor') visitorBuys(x, t);
   else vanCollects(x, t);
 }

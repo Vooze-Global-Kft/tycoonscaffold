@@ -260,6 +260,8 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
       Object.assign(m, { job: 'idle', phase: 'wait', t0: x.s.t, t1: x.s.t, claims: [], load: [], run: undefined, course: undefined });
       delete m.run;
       delete m.course;
+      // (wave 2) the yard's other light iron off, so that the one pile a trip is this one whatever the played yard holds.
+      x.s.pieces = x.s.pieces.filter((p) => p.grade !== 'li');
       x.s.pieces.push({ uid: 'q.p3', grade: 'li', g: 30_000, from: null, spec: -1, pile: 'floor', k: 900, claim: null });
       worksDepart(x, x.s.t);
       expect(m.dest).toBe('baler');
@@ -269,7 +271,8 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
     expect(h.salvage.pieces.some((p) => p.uid === 'q.p3')).toBe(false);
     const w = h.salvage.works.baler;
     const got = (w.tray_g.lib ?? 0) + (w.work ? w.work.piece.g : 0) + w.hopper.reduce((a, p) => a + p.g, 0);
-    expect(got).toBeGreaterThanOrEqual(30_000);
+    // (wave 2) on the played yard a yard hand may already have carried the baled tray to the scale: worked counts it then.
+    expect(got >= 30_000 || (h.salvage.counts!['worked:baler'] ?? 0) - (g.salvage.counts!['worked:baler'] ?? 0) >= 1).toBe(true);
   });
 
   it('the magnet crane moves ferrous pieces from the floor into a hopper its reach holds, never a grade of crane.never', () => {

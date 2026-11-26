@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stage2Cfg, stage2Game } from '../fixtures/salvage';
-import { chevronOf, conditionMet, goalListOf, nextGoal } from './goals';
+import { checkGoals, chevronOf, conditionMet, goalListOf, nextGoal } from './goals';
 import type { SalvageConfig, SalvageGame } from './types';
 
 const LIST = (JSON.parse(readFileSync(join(__dirname, '../../../scripts/content/yard/goals.json'), 'utf8')) as { stage2: unknown[] }).stage2;
@@ -51,5 +51,44 @@ describe('stage 2\'s goal list in goals.ts', () => {
   it('the chevron points at a works point (the bath by the canopy)', () => {
     const p = works.points.firstThing;
     expect(chevronOf(cfg, g0)).toEqual({ x: p[0], y: p[1], id: 'firstThing' });
+  });
+});
+
+describe("the lead's rule (requests.md 26 Nov 11:10): day-one goals still open come first while stage 2 waits on a repeating goal", () => {
+  const all = LIST as { id: string; repeat?: boolean; done: string }[];
+  const iWait = all.findIndex((d) => d.repeat || d.done === 'repeat');
+  const dayOneIds = ((cfg.salvage as unknown as { dayOne: { id: string }[] }).dayOne ?? []).map((d) => d.id);
+  // r3 with every stage-2 goal before the first wait done: the stage's current goal is its first repeating goal.
+  // buyNight is offered after the first away card (its `after` away:1): r3 is given one closed away card.
+  const atWait = { ...g0, salvage: { ...g0.salvage, counts: { ...(g0.salvage.counts ?? {}), away: 1 }, goals: { ...g0.salvage.goals, done: [...g0.salvage.goals.done, ...all.slice(0, iWait).map((d) => d.id)] } } };
+  const openD1 = goalListOf(cfg, atWait)
+    .map((l) => l.id)
+    .filter((id) => dayOneIds.includes(id) && !atWait.salvage.goals.done.includes(id) && !atWait.salvage.goals.skipped.includes(id));
+
+  it('r3 holds buyNight and hireCutter2 open; during the first wait they are offered first, in the day-one order, before the wait', () => {
+    expect(openD1).toEqual(expect.arrayContaining(['buyNight', 'hireCutter2']));
+    expect(nextGoal(cfg, atWait)?.id).toBe(openD1[0]);
+    const ids = goalListOf(cfg, atWait).map((l) => l.id);
+    for (const d of openD1) expect(ids.indexOf(d)).toBeLessThan(ids.indexOf(all[iWait].id));
+    expect(openD1).toEqual(dayOneIds.filter((id) => openD1.includes(id)));
+  });
+
+  it('the list never stalls: the supply goal after the wait ticks while day-one goals are still open, and they go back behind the list', () => {
+    const next = all[iWait + 1];
+    expect(next.done.startsWith('rung:')).toBe(true);
+    const n = Number(next.done.split(':')[1]);
+    const r = (cfg.salvage.ladder.rungs as unknown as { t: number }[])[n - 1];
+    const met = { ...atWait, salvage: { ...atWait.salvage, ladder: { ...atWait.salvage.ladder, rung: n, supplied_g: Math.round(r.t * 1e6) + 1 } } };
+    const out = checkGoals(cfg, met);
+    expect(out.done).toEqual(expect.arrayContaining([all[iWait].id, next.id]));
+    for (const d of openD1) expect(out.goals.done).not.toContain(d);
+    const after = { ...met, salvage: { ...met.salvage, goals: out.goals } };
+    expect(dayOneIds).not.toContain(nextGoal(cfg, after)?.id);
+  });
+
+  it('with every day-one goal done or skipped, the wait shows the repeating goal again', () => {
+    const none = { ...atWait, salvage: { ...atWait.salvage, goals: { ...atWait.salvage.goals, skipped: [...atWait.salvage.goals.skipped, ...dayOneIds] } } };
+    const ids = goalListOf(cfg, none).map((l) => l.id);
+    expect(ids.indexOf(all[iWait].id)).toBeLessThan(Math.min(...dayOneIds.map((d) => (ids.indexOf(d) < 0 ? Infinity : ids.indexOf(d)))));
   });
 });

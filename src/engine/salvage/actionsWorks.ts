@@ -17,6 +17,7 @@ import { roundMoney } from './money';
 import { checks } from './rate';
 import { bayOf } from './bays';
 import { orderPlate, reratePlate, routeOf, takesGrade } from './works';
+import { forkliftOut } from './forklift';
 import type { CardAction, GradeId, LevelTarget, PlateId, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, StationId, TxtArgs } from './types';
 
 const refuse = (g: SalvageGame, events: SalvageEvent[] | undefined, key: RefusalKey, args: TxtArgs = {}, retry: CardAction | null = null): SalvageGame => {
@@ -155,5 +156,20 @@ export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateI
   h.endsAt = null;
   x.ev.push({ type: 'recipe', recipe, heelPoured: false, plate });
   void routeOf;
+  return finish(g, x);
+}
+
+/**
+ * "Step out" of the forklift (2.9; wave 2): refused `nothing` when the boss is not in it, `stopFirst` while he
+ * moves; else he stands beside it where it is parked, its forks keeping their load. Entering again is armed once he
+ * has walked farther than truck.enter + truck.rearm from it (forklift.ts).
+ */
+export function stepOutForklift(cfg: SalvageConfig, g: SalvageGame, clock: number, events?: SalvageEvent[]): SalvageGame {
+  void clock;
+  const s = g.salvage;
+  if (!s.forklift || s.forklift.by !== 'boss') return refuse(g, events, 'nothing');
+  if (s.presence.moving) return refuse(g, events, 'stopFirst');
+  const x = begin(cfg, g, events, true);
+  forkliftOut(x);
   return finish(g, x);
 }

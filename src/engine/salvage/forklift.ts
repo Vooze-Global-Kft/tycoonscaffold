@@ -3,15 +3,78 @@
  * left with "Step out"; whole things and pieces up to `forklift.load`, a car from the car pad onto the
  * depollution apron; `SalvageState.forklift` (null until owned). Owner: rules-works (Phase B).
  *
- * PHASE A STUB (engine2-hooks, 26 November): no forklift. The loop does not call this yet: the boss's
- * step (hand.ts bossStep) will hand him to it while he is in it (`forklift.by === 'boss'`), as it hands him
- * to the truck (truck.ts truckBossStep); ask engine2 for that line in hand.ts.
+ * THE RULE AS BUILT (wave 2, 26 Nov; hand.ts bossStep calls forkliftStep after the truck's step, s2a-fix):
+ * - Owned (works.ts worksOwn): parked on its bay. A fresh boss who walks within truck.enter of it (not at the
+ *   truck's wheel, the forklift empty of anyone) is in it (`by` 'boss', event `forklift` on); after Step out
+ *   (actionsWorks.ts stepOutForklift) entering is armed again once he is farther than truck.enter + truck.rearm.
+ * - In it, the forklift is where the boss is (the world drives it as it drives the truck) and his acts are the
+ *   forklift's: standing still on the car pad (within reach.place) with the forks empty he lifts the car; standing
+ *   still at a running station plate's apron whose apron is free he sets it there (a car reaches an apron only so,
+ *   T1). Nothing else is carried in this stage (hoppers by forklift: not built).
+ * - The forks hold at most forklift.load kg. Nothing is dated: every move is a presence step (live only).
  */
 import type { Ctx } from './clock';
+import { bossFresh } from './clock';
+import { plateDef } from './content';
+import { nearPlace } from './positions';
+import { plateIds } from './works';
 
-/** The boss in the forklift at yard second t: true when this step was the forklift's. Stub: never. */
+/** The boss in (or entering) the forklift at yard second t: true when this step was the forklift's. */
 export function forkliftStep(x: Ctx, t: number): boolean {
-  void x;
-  void t;
-  return false;
+  const f = x.s.forklift;
+  if (!f || !bossFresh(x, t)) return false;
+  const p = x.s.presence;
+  const c = x.c;
+  if (f.by !== 'boss') {
+    const d = Math.hypot(p.x - f.x, p.y - f.y);
+    if (x.s.counts!['forklift:out'] && d > c.truck.enter + c.truck.rearm) delete x.s.counts!['forklift:out'];
+    if (x.s.truck.by === 'boss' || x.s.counts!['forklift:out'] || d > c.truck.enter) return false;
+    f.by = 'boss';
+    x.s.act = { kind: 'none', target: null, since: t, endsAt: null };
+    x.ev.push({ type: 'forklift', on: true });
+    x.dirty = true;
+    return true;
+  }
+  f.x = p.x;
+  f.y = p.y;
+  if (p.heading !== undefined) f.heading = p.heading;
+  if (p.moving) return true;
+  const reach = c.reach.place;
+  const capG = (c.forklift?.load ?? 0) * 1000;
+  if (!f.load.length) {
+    const car = x.s.things.find((q) => q.at.at === 'elvPad' && !q.by);
+    const o = car ? c.objects[car.obj] : undefined;
+    if (car && o && o.gross_g <= capG && nearPlace(c, 'elvPad', p.x, p.y, reach)) {
+      x.s.things.splice(x.s.things.indexOf(car), 1);
+      f.load.push({ uid: car.uid, grade: o.shell?.grade ?? o.pieces[0]?.[0] ?? 'waste', g: o.gross_g, from: null, spec: -1, whole: car.obj });
+      x.ev.push({ type: 'pickup', piece: car.uid, grade: f.load[0].grade, g: o.gross_g, by: 'boss' });
+      x.dirty = true;
+    }
+    return true;
+  }
+  const load = f.load[0];
+  for (const id of plateIds(x)) {
+    const w = x.s.works[id];
+    const d = plateDef(c, id);
+    if (!w || w.phase !== 'running' || !d || d.kind !== 'station' || d.feedBy !== 'forklift' || !load.whole || !d.in.includes(load.whole)) continue;
+    if (x.s.things.some((q) => q.at.at === 'apron' && q.at.plate === id)) continue;
+    if (!nearPlace(c, `${id}.apron`, p.x, p.y, reach)) continue;
+    f.load = [];
+    x.s.things.push({ uid: load.uid, obj: load.whole, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null });
+    x.dirty = true;
+    return true;
+  }
+  return true;
+}
+
+/** Step out of the forklift (actionsWorks.ts stepOutForklift): parked where it stands, its load kept on the forks. */
+export function forkliftOut(x: Ctx): boolean {
+  const f = x.s.forklift;
+  if (!f || f.by !== 'boss') return false;
+  f.by = null;
+  x.s.counts!['forklift:out'] = 1;
+  x.s.act = { kind: 'none', target: null, since: x.s.t, endsAt: null };
+  x.ev.push({ type: 'forklift', on: false });
+  x.dirty = true;
+  return true;
 }

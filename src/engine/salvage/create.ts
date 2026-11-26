@@ -25,7 +25,8 @@ export function stockThings(c: SalvageContent): ThingState[] {
   return out;
 }
 
-function partnerOf(c: SalvageContent, id: string): PartnerState {
+/** A partner's fresh state (closed, its trial load full); also the works layer's partners at the works' opening (works.ts worksOpen). */
+export function partnerOf(c: SalvageContent, id: string): PartnerState {
   const p = c.partners[id];
   const mass = Object.entries(p.trial).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
   return { open: false, trialUsed: false, level: 0, skips: [{ slot: 0, phase: 'full', setAt: 0, fullAt: 0, contents: { ...p.trial }, mass_g: mass, price: p.trialPrice, priceDay: 0, trial: true, n: 0 }] };

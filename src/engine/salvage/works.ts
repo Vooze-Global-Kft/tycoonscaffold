@@ -29,6 +29,7 @@
  */
 import type { PlateDef } from '../../config/schema.salvage';
 import { bayOf } from './bays';
+import { partnerOf } from './create';
 import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock';
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
@@ -40,6 +41,7 @@ import { crateAct, crateActEnd, crateActHolds } from './crate';
 import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
 import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
+import { weighIn } from './scales';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, WorksState } from './types';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
@@ -95,6 +97,7 @@ export function worksDated(x: Ctx, add: DatedAdd<WorksKind>): void {
       continue;
     }
     if (w.work) add(pieceEndsAt(w), 'plate', id);
+    else if (w.car) add(w.car.end, 'plate', id);
     if (w.move) add(w.move.end, 'crane', id);
   }
   hallsDated(x, add as DatedAdd<'hall'>);
@@ -109,7 +112,10 @@ export function worksApply(x: Ctx, kind: WorksKind, ref: string, t: number): voi
     else if (w.phase === 'installed') commission(x, ref, 'self', t);
     return;
   }
-  if (kind === 'plate') finishPlatePiece(x, ref, w, t);
+  if (kind === 'plate') {
+    if (!w.work && w.car) carDrained(x, ref, w, t);
+    else finishPlatePiece(x, ref, w, t);
+  }
   else if (kind === 'hall') hallApply(x, ref, t);
   else if (kind === 'crane') craneLand(x, ref, w, t);
 }
@@ -147,6 +153,7 @@ export function worksDepart(x: Ctx, t: number): void {
       if (!w.work && d.feedBy === 'bays') bayDraw(x, id, w, t);
       if (!w.work) startPlate(x, id, w, t);
     } else if (d.kind === 'batch') hallFromBays(x, id, t);
+    else if (d.kind === 'station' && !w.car) carStart(x, id, w, t);
     else if (d.kind === 'handling' && !w.move) craneDepart(x, id, w, t);
   }
   for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle' && !m.run) handToPlate(x, m, t);
@@ -168,6 +175,9 @@ export function worksOpen(x: Ctx, t: number): void {
   x.c = mergedContent(x.cfg.salvage);
   x.dirty = true;
   x.ev.push({ type: 'backFieldOpen' });
+  // Wave 2 (2.9): the works layer's partners (the bridge partners) get their state now, closed until their
+  // purchase (the three-axle hook-lift) opens them (partners.ts openPartners at the checks).
+  for (const id of Object.keys(x.c.partners)) if (!s.partners[id]) s.partners[id] = partnerOf(x.c, id);
   lotsOpen(x, t);
   reuseOpen(x, t);
 }
@@ -601,9 +611,13 @@ export const WORKS_ACTS: ReadonlySet<string> = new Set<WorksActKind>(['commissio
  * plate never comes here (orderPlate). Stub: nothing.
  */
 export function worksOwn(x: Ctx, item: string, t: number): void {
-  void x;
-  void item;
   void t;
+  // The forklift (2.9): parked on its bay, nobody in it, empty. The three-axle hook-lift opens the bridge partners
+  // through openPartners (their `opens`), the pallet truck is a carrier and the plasma cutter a tool (rate.ts own).
+  if (item === 'forklift' && !x.s.forklift) {
+    const p = spotPos(x.c, { place: 'forklift' }, x.s.things, x.s.truck);
+    x.s.forklift = { x: p.x, y: p.y, heading: 0, by: null, load: [] };
+  }
 }
 
 /**
@@ -889,8 +903,78 @@ function craneLand(x: Ctx, id: string, w: WorksState, t: number): void {
  * today): a request to engine2.
  */
 export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
-  void x;
-  void skip;
-  void t;
+  const objs = Object.keys(skip.contents);
+  if (!objs.length) return false;
+  const by = (o: string): string => x.c.objects[o]?.arrives ?? 'tip';
+  if (objs.every((o) => by(o) === 'pad')) {
+    // The flatrack (T1, ruling 13.4): the car is set down on the car pad, never tipped (one car at a time: the
+    // partners' rotation sends a car only while none waits, partners.ts grownContents).
+    for (const [obj, n] of Object.entries(skip.contents))
+      for (let i = 0; i < n; i++) {
+        const k = (x.s.counts!.floorThings ?? 0) + 1;
+        x.s.counts!.floorThings = k;
+        x.s.things.push({ uid: `f${k}`, obj, at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
+      }
+    x.dirty = true;
+    return true;
+  }
+  if (objs.every((o) => by(o) === 'batteryBox')) {
+    // The closed battery box (T1): set down unopened, weighed as one weigh-in, the batteries whole into their bay.
+    const pieces: Piece[] = [];
+    for (const [obj, n] of Object.entries(skip.contents)) {
+      const o = x.c.objects[obj];
+      if (!o) continue;
+      for (let i = 0; i < n; i++) {
+        const k = (x.s.counts!.floorThings ?? 0) + 1;
+        x.s.counts!.floorThings = k;
+        pieces.push({ uid: `f${k}`, grade: o.whole ?? o.pieces[0][0], g: o.gross_g, from: null, spec: -1, whole: obj });
+      }
+    }
+    weighIn(x, pieces, x.s.truck.by === 'boss' ? 'boss' : (x.s.crew.find((m) => m.role === 'driver')?.id ?? 'driver'), t);
+    return true;
+  }
   return false;
+}
+
+// ---------------------------------------------------------------------------------------- the depollution bay (2.7, 2.9; wave 2)
+
+/** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
+function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
+  const th = x.s.things.find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
+  if (!th) return;
+  const d = plateDef(x.c, id)!;
+  const s = (x.c.depollution?.s ?? 0) / (1 + d.lev * Math.max(0, w.level - 1));
+  th.by = id;
+  w.car = { thing: th.uid, t0: t, end: t + Math.max(1e-3, s) };
+  setStatus(x, id, w, 'working', t);
+}
+
+/**
+ * The car is drained at t (event `depolluted`): its pieces (the battery, the wheels, the loom, the converter) and its
+ * drained shell go WHOLE into their bays (the object's own yield, the one definition of a car's yield), its fluids
+ * and tyres to the licensed waste carrier. Mass kept: pieces + shell + waste = the car.
+ */
+function carDrained(x: Ctx, id: string, w: WorksState, t: number): void {
+  const car = w.car!;
+  w.car = null;
+  const th = x.s.things.find((q) => q.uid === car.thing);
+  if (th) {
+    const o = x.c.objects[th.obj];
+    x.s.things.splice(x.s.things.indexOf(th), 1);
+    if (o) {
+      for (const sp of o.pieces) {
+        const b = bayOf(x, sp[0]);
+        b.g += sp[1] * sp[2];
+        if (x.c.wholeUnits_kg[sp[0]] !== undefined) b.n += sp[2];
+      }
+      if (o.shell) bayOf(x, o.shell.grade).g += o.shell.g;
+      x.s.waste_g += o.waste_g;
+      numberBays(x);
+    }
+    count(x, `worked:${id}`);
+    count(x, 'depolluted');
+    x.ev.push({ type: 'depolluted', thing: car.thing, plate: id });
+  }
+  setStatus(x, id, w, 'idle', t);
+  carStart(x, id, w, t);
 }
