@@ -26,7 +26,7 @@ import {
 } from './economy';
 import { formatNumber } from './format';
 import { hashString, rngFloat, rngInt, rngMix, rngPick, rngWeighted } from './rng';
-import { engineFor } from './mode';
+import { engineFor, type ProductArrival, type ProductListing } from './mode';
 import type { DealState, GameState } from './types';
 
 // ---------------------------------------------------------------- cards
@@ -161,7 +161,36 @@ export function applyProduct(cfg: GameConfig, state: GameState, product: IapProd
       // A permanent rule (unlock) or look (cosmetic, Decision M7 of market-design.md) the mode reads from
       // entitlements.products (recorded above).
       return { state: s, granted: [] };
+    case 'hoursOfIncome':
+      // Granted only with its transaction, by the mode (grantPurchase below); never the shared time warp.
+      return { state: s, granted: [] };
   }
+}
+
+/**
+ * Applies a product the store has reported paid, with its transaction. A `hoursOfIncome` product is
+ * the one case handed to the mode (src/engine/mode.ts `grantProduct`, with the arrival: id, store
+ * date, and whether it is a quote's own sheet's result): the mode grants it at its saved quote, once
+ * per `txId`, and returns the same object otherwise (also when no mode with `grantProduct` runs this
+ * config). Every other kind is exactly applyProduct.
+ */
+export function grantPurchase(cfg: GameConfig, state: GameState, product: IapProduct, arrival: Omit<ProductArrival, 'productId'>, now: number): { state: GameState; granted: GrantedReward[] } {
+  if (product.kind !== 'hoursOfIncome') return applyProduct(cfg, state, product, now);
+  const mode = engineFor(cfg);
+  if (!mode?.grantProduct) return { state, granted: [] };
+  return { state: mode.grantProduct(cfg, state, { productId: product.id, ...arrival }), granted: [] };
+}
+
+/** After a listing of the store's transactions was handed over: the mode's afterListing (15.6), only with the grant route; else the same object. */
+export function afterListing(cfg: GameConfig, state: GameState, listing: ProductListing, now: number): GameState {
+  const mode = engineFor(cfg);
+  if (!mode?.afterListing || !grantsHoursOfIncome(cfg)) return state;
+  return mode.afterListing(cfg, state, listing, now);
+}
+
+/** True when this config can sell a `hoursOfIncome` product: its installed mode grants them. */
+export function grantsHoursOfIncome(cfg: GameConfig): boolean {
+  return !!engineFor(cfg)?.grantProduct && cfg.monetization.iap.products.some((p) => p.kind === 'hoursOfIncome');
 }
 
 /** True when the player already owns a non-consumable product. */

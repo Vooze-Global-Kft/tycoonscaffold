@@ -25,6 +25,7 @@ const GROUP_OF: Record<IapProduct['kind'], Group | null> = {
   clearance: null,
   unlock: null,
   cosmetic: null,
+  hoursOfIncome: null,
   multiplier: 'boosts',
   gems: 'gems',
   timeWarp: 'warp',

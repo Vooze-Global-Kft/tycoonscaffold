@@ -368,3 +368,19 @@ describe('the salvage entry (the scrapyard, docs/design/yard-ground.md, yard-sta
     expect(installedEngine()).toBeNull();
   });
 });
+
+describe('the shop seams of stage 2 (src/engine/mode.ts grantProduct, adAudience; yard-stage2.md 2.15.7)', () => {
+  it('none of the four other games gains them: sim and classic install no engine; haul, merge and decree have neither', async () => {
+    for (const id of ['sim', 'classic'] as const) expect((await import(`./${id}`)).default.engine, id).toBeUndefined();
+    for (const id of ['haul', 'merge', 'decree'] as const) {
+      const engine = (await import(`./${id}`)).default.engine!;
+      expect(engine.grantProduct, `${id}: no hoursOfIncome grant`).toBeUndefined();
+      expect(engine.adAudience, `${id}: no age band for ads`).toBeUndefined();
+    }
+  });
+
+  it('the salvage engine, when it carries them (rules-money builds grantProduct), carries functions', async () => {
+    const engine = (await import('./salvage')).default.engine!;
+    for (const k of ['grantProduct', 'adAudience'] as const) expect(['undefined', 'function']).toContain(typeof engine[k]);
+  });
+});

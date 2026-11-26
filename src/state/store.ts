@@ -21,7 +21,7 @@ import type { BuyAmount, GameState } from '../engine/types';
 import { ads } from '../services/ads';
 import { analytics, crash, fetchRemoteOverrides } from '../services/firebase';
 import { fx } from '../services/fx';
-import { iap } from '../services/iap';
+import { iap, type PurchaseResult, type StoreListing, type StoreTransaction } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
 import { modeEvents } from './modeEvents';
@@ -147,8 +147,20 @@ interface Store {
   claimDaily(): void;
   gemTimeWarp(): void;
   dismissStory(): void;
-  /** Resolves true when the product was paid for and granted. */
+  /** Resolves true when the product was paid for and granted. A `hoursOfIncome` product is refused here (buyQuoted sells it). */
   purchase(product: IapProduct): Promise<boolean>;
+  /**
+   * Sells a `hoursOfIncome` product with the mode's quote (yard-stage2.md 2.15.4, B6; RULING2 section 15):
+   * the store's listing is read afresh (a live store that cannot be asked, or whose listing is not fresh
+   * or has no request time of its own, opens no sheet: 15.12 e) and handed over; `quote` adds the mode's
+   * quote with the product's `known` ids and that listing's request time as `askedMs` (same object:
+   * refused, no sheet);
+   * the save is written; only then the store's sheet opens, and that product's later arrivals are held
+   * until it answers; paid, the id the purchase's listing shows new against `known` goes to the mode's
+   * grantProduct as that quote's own; otherwise `settle` tells the mode the outcome of THAT quote.
+   * The mode's shop calls this from its Buy; nothing else does.
+   */
+  buyQuoted(product: IapProduct, quote: QuoteFn, settle: SettleFn): Promise<QuotedOutcome>;
   restorePurchases(): Promise<number>;
   /** Dev only: wipe the save. */
   reset(): Promise<void>;
@@ -217,6 +229,104 @@ async function once(key: string, fn: () => Promise<void>): Promise<void> {
 }
 
 /**
+ * iap.purchase's result. A bare boolean (the stand-in purchase services of tests written before the
+ * result carried a transaction) reads as paid or not, with no listing.
+ */
+function asPurchase(r: PurchaseResult | boolean): PurchaseResult {
+  if (typeof r !== 'boolean') return r;
+  return r ? { ok: true, txId: '', purchasedMs: null, listed: null, requestMs: null } : { ok: false };
+}
+
+/** Transaction ids a grant was seen to apply in this run of the app (buyQuoted tells "granted" from "paid, not granted"). */
+const grantedTx = new Set<string>();
+
+/**
+ * Hands one store transaction of a `hoursOfIncome` product to the mode (meta.grantPurchase, src/engine/mode.ts
+ * grantProduct), as the own result of the quote made at `own.atMs`, or (own null) as a later arrival. The mode
+ * grants it once by id at its saved quote and returns the same object otherwise. Any other product, an unknown
+ * one or an id the store did not give: unchanged.
+ */
+export function grantTransaction(cfg: GameConfig, game: GameState, t: StoreTransaction, now: number, own: { atMs: number } | null = null): GameState {
+  const p = cfg.monetization.iap.products.find((x) => x.id === t.productId);
+  if (!p || p.kind !== 'hoursOfIncome' || !t.txId) return game;
+  const next = safe('meta.grantPurchase', () => M.grantPurchase(cfg, game, p, { txId: t.txId, purchasedMs: t.purchasedMs, own }, now).state, game);
+  if (next !== game) grantedTx.add(t.txId);
+  return next;
+}
+
+/**
+ * One listing of the store account's transactions, on the grant route (RULING2 15.5, 15.6, 15.7): each
+ * `hoursOfIncome` transaction to the mode as a later arrival; each non-consumable not yet owned applied
+ * now (a look approved later appears at once, as boot's owned() does at the next start); then the
+ * mode's afterListing. `granted`: how many purchases were granted or applied.
+ */
+function applyListing(cfg: GameConfig, game: GameState, l: StoreListing, now: number): { game: GameState; granted: number } {
+  let g = game;
+  let granted = 0;
+  for (const t of l.txs) {
+    const p = cfg.monetization.iap.products.find((x) => x.id === t.productId);
+    if (!p) continue;
+    const before = g;
+    if (p.kind === 'hoursOfIncome') g = grantTransaction(cfg, g, t, now);
+    else if (M.isNonConsumable(p) && !M.productOwned(g, p)) g = safe('meta.applyProduct', () => applyProductNow(cfg, g, p, now).state, g);
+    if (g !== before) granted++;
+  }
+  const at = g;
+  g = safe('meta.afterListing', () => M.afterListing(cfg, at, l, now), at);
+  return { game: g, granted };
+}
+
+/** Products whose store sheet is open on the grant route: their arrivals are held until it answers (RULING2 15.5). */
+const sheetsOpen = new Map<string, number>();
+/**
+ * What arrived for those products meanwhile (by id), whether any of it came in a fresh listing, and the
+ * store's request time of the latest fresh listing held (handed on with the replay, RULING2 15.12 a).
+ */
+const held = new Map<string, StoreTransaction>();
+let heldFresh = false;
+let heldRequestMs: number | null = null;
+
+/** The store's unsubscribe of the listener, kept per JS context so that a store made again (a development reload) removes the old one's (15.8). */
+const UNSUBSCRIBE_SLOT = '__itfStoreTxUnsubscribe';
+type UnsubscribeSlot = { [UNSUBSCRIBE_SLOT]?: () => void };
+
+/** What buyQuoted came to (yard-stage2.md 2.15.4, 2.15.5; RULING2 15.4). */
+export type QuotedOutcome =
+  /** Paid and granted by the mode. */
+  | 'granted'
+  /** The store waits for an approval: the quote stays (WAITING); the grant comes through the listener or the check at start. "Waiting for approval". */
+  | 'pending'
+  /** A store error that does not prove nothing was charged, or paid but not yet granted: the quote stays (WAITING); the store showed "has not confirmed". */
+  | 'unconfirmed'
+  /** Not sold: no grant route, a purchase of it already running, or the mode's quote refused. No sheet opened. */
+  | 'refused'
+  /** The player closed the store's sheet: the quote is withdrawn. */
+  | 'cancelled'
+  /** Nothing was charged: the store refused (not allowed, invalid, not for sale), the product is unavailable, or the store could not be reached before any quote. The store showed why. */
+  | 'failed'
+  /** The save could not be written: the quote is withdrawn and no sheet opened. */
+  | 'unsaved';
+
+/**
+ * What became of a quote's sheet, told to the mode's `settle` (RULING2 15.4). Withdraw the quote on
+ * 'cancelled', 'declined' (the store refused: not allowed, invalid, not for sale), 'unavailable' (no sheet
+ * could open) and 'unsaved' (no sheet opened); keep it WAITING on 'pending' and 'unconfirmed'.
+ */
+export type QuoteOutcome = 'cancelled' | 'declined' | 'unavailable' | 'unsaved' | 'pending' | 'unconfirmed';
+/** The outcomes that withdraw a quote (nothing was charged). */
+export const WITHDRAWING: readonly QuoteOutcome[] = ['cancelled', 'declined', 'unavailable', 'unsaved'];
+
+/**
+ * The mode's quote: appends its quote of the product to the state with `atMs` = `now` (the device's
+ * clock), the ids the store already lists for the product (`known`, RULING2 15.3) and `askedMs`, the
+ * store's own request time of the fresh listing that supplied `known` (15.12 a: the quote keeps it as
+ * its askedMs; in the simulated store, the simulation's own clock), or returns the same object to refuse.
+ */
+export type QuoteFn = (cfg: GameConfig, game: GameState, now: number, known: readonly string[], askedMs: number) => GameState;
+/** Tells the mode what became of the quote made at `q.atMs` (only that one; if it no longer stands, the same object). */
+export type SettleFn = (cfg: GameConfig, game: GameState, outcome: QuoteOutcome, q: { product: string; atMs: number }) => GameState;
+
+/**
  * Applies a product (meta.applyProduct) and, for a non-consumable recorded just now, lets a mode
  * with its own engine apply it to the run in progress (src/engine/mode.ts `entitle`; haul: Hangar
  * Expansion's start drones). Sim and classic install no engine: exactly applyProduct.
@@ -280,10 +390,104 @@ function playSimSounds(events: readonly GameEvent[]) {
   }
 }
 
-export const useGame = create<Store>((set, get) => {
+export const useGame = create<Store>((set, get, api) => {
   const syncAds = (game: GameState) => {
     ads.noAds = game.entitlements.noAds;
     ads.skipRewarded = game.entitlements.skipRewarded;
+  };
+
+  /**
+   * A mode that keeps an age band (src/engine/mode.ts adAudience) hands its ad treatment to the ad
+   * service now and on every change of the game, whoever changes it (a mode's own actions set the
+   * store directly). Without adAudience nothing subscribes and the ad service is never told.
+   */
+  const followAudience = (cfg: GameConfig, game: GameState) => {
+    const mode = engineFor(cfg);
+    if (!mode?.adAudience) return;
+    const tell = (c: GameConfig, g: GameState) => ads.setAudience(safe('engine.adAudience', () => mode.adAudience!(c, g), null));
+    tell(cfg, game);
+    api.subscribe((st, prev) => {
+      if (st.game !== prev.game || st.cfg !== prev.cfg) tell(st.cfg, st.game);
+    });
+  };
+
+  /** Writes the save; true once it is on disk. Before boot has loaded the save nothing is written (false). */
+  const writeSave = async (): Promise<boolean> => {
+    // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
+    if (!get().hydrated) return false;
+    // While paused (in the background) a save (App.tsx's autosave, its timer alive on Android or
+    // overdue at will-enter-foreground on iOS) still writes, but never moves the start of the time away.
+    const game = { ...get().game, lastSavedAt: paused ? get().game.lastSavedAt : Date.now() };
+    set({ game });
+    try {
+      await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
+      return true;
+    } catch (e) {
+      crash.record(e, 'save');
+      return false;
+    }
+  };
+
+  /**
+   * A listing the store reports (the listener, the check after subscribing, the read at Buy): handed
+   * over by applyListing and saved when anything changed. Arrivals of a product whose sheet is open
+   * are held and replayed when it has answered (15.5), and meanwhile no listing counts as fresh, so
+   * the mode withdraws no quote whose arrival is held.
+   */
+  const routeListing = (l: StoreListing) => {
+    if (!get().hydrated) return;
+    let listing = l;
+    if (sheetsOpen.size > 0) {
+      for (const t of l.txs) if (sheetsOpen.has(t.productId)) held.set(t.txId, t);
+      if (l.fresh) heldRequestMs = l.requestMs;
+      heldFresh = heldFresh || l.fresh;
+      listing = { txs: l.txs.filter((t) => !sheetsOpen.has(t.productId)), fresh: false, requestMs: l.requestMs };
+    }
+    const before = get().game;
+    let granted = 0;
+    const next = update((s, cfg) => {
+      const r = applyListing(cfg, s, listing, Date.now());
+      granted = r.granted;
+      return r.game;
+    });
+    if (granted > 0) {
+      grantSeq++;
+      fx.play('purchase_success');
+    }
+    if (next !== before) get().save();
+  };
+
+  /** A sheet of this product opens on the grant route: hold its arrivals. */
+  const holdArrivals = (productId: string) => sheetsOpen.set(productId, (sheetsOpen.get(productId) ?? 0) + 1);
+  /** That sheet has answered: replay what was held for it (once no sheet of it is open). */
+  const releaseArrivals = (productId: string) => {
+    const n = (sheetsOpen.get(productId) ?? 1) - 1;
+    if (n > 0) return void sheetsOpen.set(productId, n);
+    sheetsOpen.delete(productId);
+    // Everything held whose product has no sheet open now (a purchase's own listing parks other products' too).
+    const txs = [...held.values()].filter((t) => !sheetsOpen.has(t.productId));
+    const fresh = heldFresh && sheetsOpen.size === 0;
+    const requestMs = fresh ? heldRequestMs : null;
+    if (sheetsOpen.size === 0) {
+      heldFresh = false;
+      heldRequestMs = null;
+    }
+    if (txs.length === 0) return;
+    for (const t of txs) held.delete(t.txId);
+    routeListing({ txs, fresh, requestMs });
+  };
+
+  const waitingBanner = () => {
+    fx.play('ui_denied');
+    celebrate({ kind: 'reward', title: 'Waiting for approval', subtitle: 'The purchase arrives here once it is approved.', icon: get().cfg.theme.icons.tabShop });
+  };
+  const unconfirmedBanner = () => {
+    fx.play('ui_denied');
+    celebrate({ kind: 'reward', title: 'Not confirmed yet', subtitle: 'The store has not confirmed this purchase yet. If you were charged, it arrives when it does.', icon: get().cfg.theme.icons.tabShop });
+  };
+  const unreachableBanner = () => {
+    fx.play('ui_denied');
+    celebrate({ kind: 'reward', title: 'Store not reachable', subtitle: 'The store cannot be reached. Nothing was charged.', icon: get().cfg.theme.icons.tabShop });
   };
 
   /** Apply an engine transition and keep ads in sync with entitlements. */
@@ -424,6 +628,20 @@ export const useGame = create<Store>((set, get) => {
           const p = cfg.monetization.iap.products.find((x) => x.id === id);
           if (p && M.isNonConsumable(p) && !M.productOwned(game, p)) game = safe('meta.applyProduct', () => applyProductNow(cfg, game, p, at).state, game);
         }
+        // The check at start (yard-stage2.md 2.15.5, RULING2 15.5, 15.8): a game whose mode grants hours of
+        // income hands it the store's listing, read afresh; the mode grants what it holds a standing quote for
+        // and has not granted, then may withdraw old quotes (afterListing). Games without such a product
+        // never ask (their start is as before).
+        const grants = M.grantsHoursOfIncome(cfg);
+        if (grants) {
+          let l: StoreListing | null = null;
+          try {
+            l = await iap.listing();
+          } catch (e) {
+            crash.record(e, 'iap.listing');
+          }
+          if (l) game = applyListing(cfg, game, l, at).game;
+        }
         game = safe('meta.registerSession', () => M.registerSession(game, at), game);
         game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, at), game);
         game = refreshMeta(cfg, game, at);
@@ -434,6 +652,8 @@ export const useGame = create<Store>((set, get) => {
         // A mode that is paid when its absence is computed (decree, 2.15) gets the earnings in this same update.
         if (offline && offline.earnings > 0 && engineFor(cfg)?.paysOnCompute) game = E.grantCash(game, offline.earnings);
         syncAds(game);
+        // Before the ad service may start (below): its first requests already carry the band.
+        followAudience(cfg, game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
         sessionStartedAt = at;
@@ -445,7 +665,20 @@ export const useGame = create<Store>((set, get) => {
           offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, offline) ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
         });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
-        ads.init();
+        // A purchase approved later (or completed after a kill) reaches the mode while the game runs; saved at
+        // once. One subscription per JS context: a store made again removes the earlier one's (15.8). Then the
+        // listing is read once more, for an approval that landed between the check above and the subscription.
+        if (grants) {
+          const slot = globalThis as UnsubscribeSlot;
+          safe('iap.unsubscribe', () => slot[UNSUBSCRIBE_SLOT]?.(), undefined);
+          slot[UNSUBSCRIBE_SLOT] = safe('iap.onTransactions', () => iap.onTransactions(routeListing), undefined);
+          iap
+            .listing()
+            .then((l) => l && routeListing(l))
+            .catch((e) => crash.record(e, 'iap.listing'));
+        }
+        // 'firstOffer': consent, tracking and the SDK wait for the mode's first ad button (ads.firstOffer()).
+        if ((cfg.monetization.ads.initOn ?? 'boot') === 'boot') ads.init();
         detectRegion().then((region) => set({ region }));
       })();
       return booting;
@@ -547,17 +780,7 @@ export const useGame = create<Store>((set, get) => {
     },
 
     async save() {
-      // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
-      if (!get().hydrated) return;
-      // While paused (in the background) a save (App.tsx's autosave, its timer alive on Android or
-      // overdue at will-enter-foreground on iOS) still writes, but never moves the start of the time away.
-      const game = { ...get().game, lastSavedAt: paused ? get().game.lastSavedAt : Date.now() };
-      set({ game });
-      try {
-        await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
-      } catch (e) {
-        crash.record(e, 'save');
-      }
+      await writeSave();
     },
 
     setBuyAmount(buyAmount) {
@@ -841,7 +1064,7 @@ export const useGame = create<Store>((set, get) => {
       if (deal.productId) {
         const product = cfg.monetization.iap.products.find((p) => p.id === deal.productId);
         if (!product || !safe('meta.activeDeals', () => M.activeDeals(cfg, game, now), []).some((d) => d.deal.id === dealId)) return fx.play('ui_denied');
-        const ok = await iap.purchase(product);
+        const ok = asPurchase(await iap.purchase(product)).ok;
         if (!ok) return purchaseFailed();
         // Use the latest state: the game kept running while the payment sheet was open.
         result = safe('meta.grantDeal', () => M.grantDeal(cfg, get().game, dealId, Date.now()), null);
@@ -1007,11 +1230,21 @@ export const useGame = create<Store>((set, get) => {
         const seq = grantSeq;
         return get().buyDeal(deal.id).then(() => grantSeq > seq);
       }
+      // Hours of income are sold only with the mode's quote, saved first (buyQuoted): never a sheet without one.
+      if (product.kind === 'hoursOfIncome') {
+        fx.play('ui_denied');
+        return Promise.resolve(false);
+      }
       const seq = grantSeq;
-      return once(`iap:${product.id}`, async () => {
-        if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
-        const ok = await iap.purchase(product);
-        if (!ok) return purchaseFailed();
+      // A game that sells hours of income (the grant route) holds this product's arrivals while its sheet is
+      // open, and says "Waiting for approval" / "not confirmed" instead of "did not go through" (RULING2 15.7).
+      // The other games: exactly as before.
+      const grants = M.grantsHoursOfIncome(get().cfg);
+      const sell = async () => {
+        const r = asPurchase(await iap.purchase(product));
+        if (!r.ok && grants && r.pending) return waitingBanner();
+        if (!r.ok && grants && r.unconfirmed) return unconfirmedBanner();
+        if (!r.ok) return purchaseFailed();
         // The payment sheet was open for a while: apply to the latest state, never to a copy taken before.
         const result = safe('meta.applyProduct', () => applyProductNow(get().cfg, get().game, product, Date.now()), null);
         if (!result) {
@@ -1025,7 +1258,118 @@ export const useGame = create<Store>((set, get) => {
         fx.play('purchase_success');
         celebrateRewards(result.granted);
         get().save();
+      };
+      return once(`iap:${product.id}`, async () => {
+        if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
+        if (!grants) return sell();
+        holdArrivals(product.id);
+        try {
+          await sell();
+        } finally {
+          releaseArrivals(product.id);
+        }
       }).then(() => grantSeq > seq);
+    },
+
+    async buyQuoted(product, quote, settle) {
+      const key = `iap:${product.id}`;
+      const { cfg } = get();
+      if (product.kind !== 'hoursOfIncome' || !M.grantsHoursOfIncome(cfg) || !get().hydrated || inFlight.has(key)) {
+        fx.play('ui_denied');
+        return 'refused';
+      }
+      inFlight.add(key);
+      let holding = false;
+      try {
+        // 15.3: what the store already lists for this product, read afresh, and handed over first (an arrival
+        // for an older quote is granted before this quote exists). A real store that cannot be asked, or whose
+        // answer is not fresh (the cache could not be cleared and read anew) or carries no request time of its
+        // own: no quote, no sheet (15.3, 15.12 e).
+        let l: StoreListing | null = null;
+        try {
+          l = await iap.listing();
+        } catch (e) {
+          crash.record(e, 'iap.listing');
+        }
+        if (l) routeListing(l);
+        if (iap.live && (!l || !l.fresh || l.requestMs == null)) {
+          unreachableBanner();
+          return 'failed';
+        }
+        const known = (l?.txs ?? []).filter((t) => t.productId === product.id).map((t) => t.txId);
+        const atMs = Date.now();
+        // The store's own time of that listing (15.12 a). The simulated store (Expo Go: no listing, no money)
+        // is always fresh, and its clock is the simulation's own, the device's.
+        const askedMs = l?.requestMs ?? atMs;
+        const before = get().game;
+        // From the quote on, this product's arrivals wait for the sheet's answer (15.5).
+        holdArrivals(product.id);
+        holding = true;
+        const quoted = safe('mode.quote', () => quote(cfg, before, atMs, known, askedMs), before);
+        if (quoted === before) {
+          fx.play('ui_denied');
+          return 'refused';
+        }
+        syncAds(quoted);
+        set({ game: quoted });
+        const q = { product: product.id, atMs };
+        const tell = (outcome: QuoteOutcome) => {
+          update((s, c) => safe('mode.settle', () => settle(c, s, outcome, q), s));
+          get().save();
+        };
+        // The quote is on disk before the store's sheet opens (B6): a kill at any later moment loses no paid pack.
+        if (!(await writeSave())) {
+          tell('unsaved');
+          return 'unsaved';
+        }
+        const r = asPurchase(await iap.purchase(product));
+        if (!r.ok) {
+          if (r.pending) {
+            tell('pending');
+            waitingBanner();
+            return 'pending';
+          }
+          if (r.unconfirmed) {
+            tell('unconfirmed');
+            unconfirmedBanner();
+            return 'unconfirmed';
+          }
+          const failure = iap.lastFailure;
+          tell(failure === 'unavailable' ? 'unavailable' : failure ? 'declined' : 'cancelled');
+          if (failure) purchaseFailed();
+          return failure ? 'failed' : 'cancelled';
+        }
+        // 15.2, 15.5: the purchase is read through the listing returned with it; the id new against `known`
+        // is this quote's own (the result's own id picks among several, else the latest dated).
+        const fresh = (r.listed ?? []).filter((t) => t.productId === product.id && !known.includes(t.txId));
+        const mine = fresh.find((t) => t.txId === r.txId) ?? [...fresh].sort((x, y) => (x.purchasedMs ?? -Infinity) - (y.purchasedMs ?? -Infinity)).at(-1);
+        // The rest of that listing (another device's purchase among them) arrives after the sheet's answer.
+        for (const t of r.listed ?? []) if (t !== mine) held.set(t.txId, t);
+        if (!mine) {
+          // Paid, but the listing does not show it yet: the listener or the next start brings it to this quote.
+          tell('unconfirmed');
+          unconfirmedBanner();
+          return 'unconfirmed';
+        }
+        const prior = get().game;
+        const next = update((s, c) => grantTransaction(c, s, mine, Date.now(), { atMs }));
+        if (next === prior && !grantedTx.has(mine.txId)) {
+          // Money was taken and the mode granted nothing: never fail silently. The quote stays, WAITING.
+          crash.record(new Error(`product ${product.id} paid (${mine.txId}) but not granted`), 'buyQuoted');
+          tell('unconfirmed');
+          unconfirmedBanner();
+          return 'unconfirmed';
+        }
+        if (next !== prior) {
+          grantSeq++;
+          fx.play('purchase_success');
+        }
+        await writeSave();
+        return 'granted';
+      } finally {
+        inFlight.delete(key);
+        if (holding) releaseArrivals(product.id);
+      }
     },
 
     async restorePurchases() {
