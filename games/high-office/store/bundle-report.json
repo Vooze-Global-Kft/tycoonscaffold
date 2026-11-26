@@ -1,10 +1,10 @@
 {
  "game": "high-office",
- "date": "2026-11-26T00:00:18.137Z",
+ "date": "2026-11-26T18:28:51.918Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "488ebe32e7df84ff41249803f1dc58d9c7a61f42e082d0a7ad35d4c6ae90b477",
+ "sourceHash": "288f2d0b45c13de8d520efecc3436f361a92d651e03e067b75299a894a5345bb",
  "sources": [
   "app.config.ts",
   "games/high-office/assets/sfx/appoint.wav",
@@ -220,5 +220,5 @@
  "violations": [],
  "modules": 1812,
  "assets": 36,
- "bytes": 5302448
+ "bytes": 5311025
 }
