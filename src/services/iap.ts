@@ -8,9 +8,11 @@
  * the store and re-granted at boot, and a mode with its own engine applies them to
  * the run in progress (store.ts applyProductNow: Hangar Expansion's drones);
  * consumables (gems, timeWarp) are granted once per purchase. A `hoursOfIncome` consumable is granted
- * by the mode with the transaction's id and date (src/engine/mode.ts grantProduct): `purchase` resolves
- * them, `onTransactions` delivers purchases approved later (Ask to Buy, a slow card), and
- * `transactions` lists them for the reconcile at start (src/state/store.ts).
+ * by the mode (src/engine/mode.ts grantProduct; RULING2 section 15): a transaction is known by the id
+ * the store's LISTING (customer info's non-subscription transactions) gives it, and the result of a
+ * purchase is read through that same listing (`listed`), never through a second id. `listing` reads
+ * the account's transactions afresh (for the check at start and for a quote's `known` at Buy),
+ * `onTransactions` delivers purchases approved later (Ask to Buy, a slow card).
  */
 import { Platform } from 'react-native';
 import { baseGame } from '../config/game';
@@ -38,41 +40,71 @@ const RETRY_MAX_MS = 5 * 60_000;
 export type PurchaseFailure = 'unavailable' | 'failed' | null;
 
 /**
- * What a purchase came to. ok: paid, with the store's transaction id and its date (ms). Not ok:
- * cancelled, failed (lastFailure says which), or `pending`: the store took the order but waits for
- * an approval (a parent's Ask to Buy, a slow payment method); the transaction arrives later through
- * `onTransactions` with its own id and date, or through `transactions` at the next start.
+ * What a purchase came to. ok: paid. `listed` is the store account's listing returned with the
+ * purchase (customer info's non-subscription transactions, in the ids every later listing uses; null
+ * when the store returned none); a grant by id reads the purchase from it (RULING2 15.2). `txId` and
+ * `purchasedMs` are the purchase result's own transaction, for analytics only (on a store they may be
+ * the store's id, not the listing's; '' and null when absent; no device time stands in for a store date).
+ * A simulated purchase (Expo Go, development builds) lists only itself, with its made-up id.
+ * Not ok: cancelled (lastFailure null), refused or unavailable (lastFailure 'failed' / 'unavailable':
+ * nothing was charged), `pending` (the store waits for an approval: a parent's Ask to Buy, a slow
+ * payment method) or `unconfirmed` (any other store error: it does not prove that nothing was
+ * charged, so a transaction may still arrive through `onTransactions` or `listing`). lastFailure is
+ * 'failed' for pending and unconfirmed too, as before, so the games without a grant route say what
+ * they said before.
  */
-export type PurchaseResult = { ok: true; txId: string; purchasedMs: number } | { ok: false; pending?: true };
-// txId is never empty for a simulated purchase; for a real one it is empty only if the store returned
-// no transaction (see purchaseOnce): a grant by id then waits for onTransactions or transactions.
+export type PurchaseResult =
+  | { ok: true; txId: string; purchasedMs: number | null; listed: StoreTransaction[] | null }
+  | { ok: false; pending?: true; unconfirmed?: true };
 
 /** One completed non-subscription transaction the store reports. */
 export interface StoreTransaction {
   productId: string;
+  /** The id the store's listing gives it. */
   txId: string;
-  /** The store's purchase date, ms since the epoch. */
-  purchasedMs: number;
+  /** The store's purchase date, ms since the epoch; null when it could not be read (information only). */
+  purchasedMs: number | null;
+}
+
+/** The store account's transactions as one listing. `fresh`: read from the network just now (the cache invalidated first). */
+export interface StoreListing {
+  txs: StoreTransaction[];
+  fresh: boolean;
 }
 
 type RcTransaction = import('react-native-purchases').PurchasesStoreTransaction;
 
 /** RevenueCat's error code for a purchase waiting for approval (PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR). */
 const PAYMENT_PENDING = '20';
+/**
+ * RevenueCat's error codes that prove the store charged nothing (PURCHASES_ERROR_CODE): PURCHASE_NOT_ALLOWED
+ * 3, PURCHASE_INVALID 4, PRODUCT_NOT_AVAILABLE_FOR_PURCHASE 5. Every other error (NETWORK_ERROR 10,
+ * STORE_PROBLEM 2, UNKNOWN 0, UNEXPECTED_BACKEND_RESPONSE 12, ...) may come after a charge: unconfirmed.
+ */
+const NOTHING_CHARGED = new Set(['3', '4', '5']);
 
-/** The store's transactions as StoreTransaction; one without an id or a readable date is left out (it cannot be checked). */
+/** The store's transactions as StoreTransaction; one without an id is left out (it cannot be granted by id); an unreadable date is null. */
 function toTransactions(list: readonly RcTransaction[] | undefined): StoreTransaction[] {
   const out: StoreTransaction[] = [];
   for (const t of list ?? []) {
-    const purchasedMs = Date.parse(t.purchaseDate);
-    if (!t.transactionIdentifier || !Number.isFinite(purchasedMs)) {
-      crash.record(new Error(`store transaction without id or date: ${t.productIdentifier}`), 'iap.transactions');
+    if (!t.transactionIdentifier) {
+      crash.record(new Error(`store transaction without id: ${t.productIdentifier}`), 'iap.transactions');
       continue;
     }
-    out.push({ productId: t.productIdentifier, txId: t.transactionIdentifier, purchasedMs });
+    const dated = Date.parse(t.purchaseDate);
+    out.push({ productId: t.productIdentifier, txId: t.transactionIdentifier, purchasedMs: Number.isFinite(dated) ? dated : null });
   }
   return out;
 }
+
+type CustomerInfoListener = Parameters<RC['addCustomerInfoUpdateListener']>[0];
+/**
+ * The one native customer-info listener of this JS context (RULING2 15.8). It lives outside any
+ * IapService: a development reload makes a new service, which first removes the listener the
+ * previous one added, so an old store never hears the store again.
+ */
+const NATIVE_SLOT = '__itfIapCustomerInfoListener';
+type Slot = { [NATIVE_SLOT]?: CustomerInfoListener };
 
 /** Counts simulated purchases, so two in one millisecond still get two ids. */
 let simSeq = 0;
@@ -87,8 +119,8 @@ class IapService {
   lastFailure: PurchaseFailure = null;
   /** Products whose payment sheet is open: a second purchase of the same one waits for nothing and fails. */
   private buying = new Set<string>();
-  private txListeners = new Set<(txs: StoreTransaction[]) => void>();
-  private listening = false;
+  private txListeners = new Set<(listing: StoreListing) => void>();
+  private listening: CustomerInfoListener | null = null;
 
   /** True when real purchases are possible. Otherwise purchases are simulated in dev builds. */
   get live() {
@@ -196,7 +228,9 @@ class IapService {
       await new Promise((r) => setTimeout(r, 400));
       analytics.log('iap_success_simulated', { product_id: product.id });
       const purchasedMs = Date.now();
-      return { ok: true, txId: `sim:${product.id}:${purchasedMs}:${++simSeq}`, purchasedMs };
+      const txId = `sim:${product.id}:${purchasedMs}:${++simSeq}`;
+      // The simulated store lists nothing else and never delivers anything later.
+      return { ok: true, txId, purchasedMs, listed: [{ productId: product.id, txId, purchasedMs }] };
     }
     if (!this.products.has(product.id)) await this.loadProducts().catch((e) => crash.record(e, 'iap.products'));
     const sp = this.products.get(product.id);
@@ -210,10 +244,10 @@ class IapService {
       analytics.log('iap_success', { product_id: product.id, price: sp.price, currency: sp.currencyCode });
       const t = made?.transaction;
       const dated = t ? Date.parse(t.purchaseDate) : NaN;
-      const purchasedMs = Number.isFinite(dated) ? dated : Date.now();
-      // An empty id means the store gave no transaction (its type says it always does): paid, but a
-      // grant by id must wait for the listener or the reconcile, which carry the real one.
-      return { ok: true, txId: t?.transactionIdentifier ?? '', purchasedMs };
+      // The listing returned with the purchase carries the ids every later listing uses (15.2); the
+      // result's own transaction is kept for analytics only. No device time stands in for a store date.
+      const listed = made?.customerInfo ? toTransactions(made.customerInfo.nonSubscriptionTransactions) : null;
+      return { ok: true, txId: t?.transactionIdentifier ?? '', purchasedMs: Number.isFinite(dated) ? dated : null, listed };
     } catch (e: unknown) {
       const err = typeof e === 'object' && e !== null ? (e as { userCancelled?: boolean; code?: unknown }) : {};
       const cancelled = !!err.userCancelled;
@@ -222,57 +256,94 @@ class IapService {
         this.lastFailure = 'failed';
       }
       analytics.log(cancelled ? 'iap_cancel' : 'iap_fail', { product_id: product.id });
-      // Waiting for approval: lastFailure stays 'failed' as before (the games without a grant route say
-      // what they said before); a caller that grants later reads `pending`.
-      if (!cancelled && String(err.code) === PAYMENT_PENDING) return { ok: false, pending: true };
-      return { ok: false };
+      if (cancelled) return { ok: false };
+      // Waiting for approval, and every error that does not prove nothing was charged: lastFailure stays
+      // 'failed' as before (the games without a grant route say what they said before); a caller that
+      // grants later reads `pending` / `unconfirmed` and keeps its quote.
+      const code = String(err.code);
+      if (code === PAYMENT_PENDING) return { ok: false, pending: true };
+      if (NOTHING_CHARGED.has(code)) return { ok: false };
+      return { ok: false, unconfirmed: true };
     }
   }
 
   /**
-   * The completed non-subscription transactions of this store account (consumables included), for
-   * the reconcile at start. Empty without the purchase module (Expo Go, web) or when the store
-   * cannot be asked.
+   * The completed non-subscription transactions of this store account (consumables included), read
+   * afresh: the store's cached customer info is invalidated first, so the answer comes from the
+   * network (`fresh`; false when the invalidation failed and the answer may be the cache). null when
+   * the store cannot be asked (no purchase module: Expo Go, web; not configured; an error).
    */
-  async transactions(): Promise<StoreTransaction[]> {
-    if (!Purchases || !this.configured) return [];
+  async listing(): Promise<StoreListing | null> {
+    if (!Purchases || !this.configured) return null;
+    let fresh = true;
+    try {
+      await Purchases.invalidateCustomerInfoCache();
+    } catch (e) {
+      fresh = false;
+      crash.record(e, 'iap.invalidate');
+    }
     try {
       const info = await Purchases.getCustomerInfo();
-      return toTransactions(info.nonSubscriptionTransactions);
+      return { txs: toTransactions(info.nonSubscriptionTransactions), fresh };
     } catch (e) {
-      crash.record(e, 'iap.transactions');
-      return [];
+      crash.record(e, 'iap.listing');
+      return null;
     }
   }
 
   /**
-   * Calls `fn` with the account's transactions every time the store reports a change (a purchase
-   * approved hours later, one completed after the app was killed). The same transaction comes again
-   * and again: the receiver grants by id once. Without the purchase module nothing is ever delivered.
-   * Returns an unsubscribe function.
+   * The ids the store lists afresh for one product (a quote's `known`, RULING2 15.3); null when the
+   * store cannot be asked (then a live store opens no sheet). Without the module: null too.
    */
-  onTransactions(fn: (txs: StoreTransaction[]) => void): () => void {
+  async knownIds(productId: string): Promise<string[] | null> {
+    const l = await this.listing();
+    return l ? l.txs.filter((t) => t.productId === productId).map((t) => t.txId) : null;
+  }
+
+  /**
+   * Calls `fn` with the account's listing every time the store reports a change (a purchase approved
+   * hours later, one completed after the app was killed); `fresh` is false (the report may come from
+   * the store's cache). The same transaction comes again and again: the receiver grants by id once.
+   * Without the purchase module nothing is ever delivered. One native listener per JS context: a new
+   * service (a development reload) removes the one an earlier service added. Returns an unsubscribe.
+   */
+  onTransactions(fn: (listing: StoreListing) => void): () => void {
     this.txListeners.add(fn);
     if (Purchases && this.configured && !this.listening) {
-      this.listening = true;
-      try {
-        Purchases.addCustomerInfoUpdateListener((info) => {
-          const txs = toTransactions(info.nonSubscriptionTransactions);
-          this.txListeners.forEach((l) => {
-            try {
-              l(txs);
-            } catch (e) {
-              crash.record(e, 'iap.onTransactions');
-            }
-          });
+      const native: CustomerInfoListener = (info) => {
+        const listing: StoreListing = { txs: toTransactions(info.nonSubscriptionTransactions), fresh: false };
+        this.txListeners.forEach((l) => {
+          try {
+            l(listing);
+          } catch (e) {
+            crash.record(e, 'iap.onTransactions');
+          }
         });
+      };
+      const slot = globalThis as Slot;
+      try {
+        const previous = slot[NATIVE_SLOT];
+        if (previous) Purchases.removeCustomerInfoUpdateListener(previous);
+        Purchases.addCustomerInfoUpdateListener(native);
+        slot[NATIVE_SLOT] = native;
+        this.listening = native;
       } catch (e) {
-        this.listening = false;
         crash.record(e, 'iap.listen');
       }
     }
     return () => {
       this.txListeners.delete(fn);
+      // The last receiver gone: the native listener goes with it.
+      if (this.txListeners.size === 0 && this.listening && Purchases) {
+        const slot = globalThis as Slot;
+        try {
+          Purchases.removeCustomerInfoUpdateListener(this.listening);
+        } catch (e) {
+          crash.record(e, 'iap.unlisten');
+        }
+        if (slot[NATIVE_SLOT] === this.listening) delete slot[NATIVE_SLOT];
+        this.listening = null;
+      }
     };
   }
 

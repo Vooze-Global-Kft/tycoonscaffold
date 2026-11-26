@@ -165,8 +165,9 @@ class AdsService {
 
   /**
    * Starts consent, then ATT, then the SDK (order matters). The store calls it at startup when the
-   * game's `initOn` is 'boot'; with 'firstOffer' the mode's screen calls firstOffer() instead. Once per
-   * run of the app: a second call (or firstOffer after init) returns the same start.
+   * game's `initOn` is 'boot'; with 'firstOffer' the mode's screen calls firstOffer() instead. A call
+   * while a start runs (or firstOffer after init) returns that start; after a start that ended without
+   * the SDK running, a later call starts again (asks for consent again), as before.
    */
   init(): Promise<void> {
     if (!gma || this.ready) return Promise.resolve();
@@ -226,6 +227,10 @@ class AdsService {
       this.loadInterstitial();
     } catch (e) {
       crash.record(e, 'ads.init');
+    } finally {
+      // A start that ended without the SDK running (it failed, or consent said ads may not be requested) may
+      // be asked again by a later init() or firstOffer(), as before the start was shared.
+      if (!this.ready) this.starting = null;
     }
   }
 

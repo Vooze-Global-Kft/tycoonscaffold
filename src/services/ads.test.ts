@@ -100,6 +100,26 @@ describe('when the ad service starts', () => {
     expect(names().filter((n) => n === 'gatherConsent')).toHaveLength(1);
     expect(ads.canShowBanner).toBe(true);
   });
+
+  it('a start that ended with "ads may not be requested" is asked again by a later call, as before the start was shared (store-fix)', async () => {
+    const ads = await fresh('firstOffer');
+    const sdks = (await import('./sdks')) as unknown as { loadAds: () => { AdsConsent: { gatherConsent: (...a: unknown[]) => Promise<unknown> } } };
+    const consent = sdks.loadAds().AdsConsent;
+    const real = consent.gatherConsent;
+    consent.gatherConsent = async (...a: unknown[]) => (h.calls.push(['gatherConsent', ...a]), { status: 'REQUIRED', canRequestAds: false });
+    try {
+      await ads.firstOffer();
+      expect(names()).not.toContain('initialize');
+      consent.gatherConsent = real;
+      await ads.firstOffer();
+      expect(names().filter((n) => n === 'gatherConsent'), 'asked again').toHaveLength(2);
+      expect(names()).toContain('initialize');
+      await ads.firstOffer();
+      expect(names().filter((n) => n === 'gatherConsent'), 'once running, never again').toHaveLength(2);
+    } finally {
+      consent.gatherConsent = real;
+    }
+  });
 });
 
 describe("the age band reaches every request (P8)", () => {
