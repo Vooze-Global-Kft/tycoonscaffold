@@ -52,3 +52,13 @@ export function reuseApply(x: Ctx, kind: ReuseKind, t: number): void {
   void kind;
   void t;
 }
+
+/**
+ * The works open (works.ts worksOpen, `backFieldOpen`): the Yard sale's first moment (2.12: `reuse.firstThing`,
+ * the bath, set beside the canopy). WAVE 2's body (rules-works wave 1 calls it at the one instant the works open,
+ * live only; counts.bathSet is already set, so it is never called again). Stub: nothing.
+ */
+export function reuseOpen(x: Ctx, t: number): void {
+  void x;
+  void t;
+}

@@ -201,9 +201,28 @@ export interface TicketView {
   /** One or two legal lines (11 pt). */
   legal: Txt[];
   lesson: Txt | null;
+  /**
+   * Stage 2 (2.14.5, rules-money): "to the bank §y · to you §z" under "Paid §x" on a lot ticket whose payment
+   * the bank shared in (the ticket's `bank.y`, set by bank.ts payLot before it printed; z = paid − y). Absent
+   * on every other ticket. A ticket with it SHOWS A DEBT (`showsDebt`): no ad and no shop entry beside it.
+   */
+  bank?: Txt;
+  showsDebt?: boolean;
 }
 
 const MAX_LINES = 3;
+
+/** The bank's line of a lot ticket (2.14.5), or nothing: y as payLot took it, z = paid − y. */
+function bankLine(t: Ticket): Pick<TicketView, 'bank' | 'showsDebt'> {
+  const b = 'bank' in t ? t.bank : undefined;
+  if (!b || !(b.y > 0) || !('paid' in t)) return {};
+  return { bank: { key: 'ticket.bankSplit', args: { y: { exact: b.y }, z: { exact: roundMoney(t.paid - b.y) } } }, showsDebt: true };
+}
+
+/** The view of a ticket (2.2's table) with its bank line when the bank shared in its payment (2.14.5). */
+export function ticketView(t: Ticket): TicketView {
+  return { ...ticketViewBase(t), ...bankLine(t) };
+}
 
 function noteTxt(l: TicketLine): Txt | null {
   if (l.note?.kind === 'fromCar') return { key: 'ticket.fromCar', args: { ref: refArg(l.note.ref) } };
@@ -211,8 +230,7 @@ function noteTxt(l: TicketLine): Txt | null {
   return null;
 }
 
-/** The view of a ticket (2.2's table). */
-export function ticketView(t: Ticket): TicketView {
+function ticketViewBase(t: Ticket): TicketView {
   const date: Txt = { key: 'ticket.date', args: { date: { day: t.day } } };
   const cut = <T>(xs: T[]) => ({ shown: xs.slice(0, MAX_LINES), more: xs.length > MAX_LINES ? ({ key: 'ticket.more', args: { n: { n: xs.length - MAX_LINES } } } as Txt) : null });
   switch (t.kind) {

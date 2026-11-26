@@ -396,6 +396,12 @@ export const TruckSchema = z.object({
   /** The truck's stored tare and the empty skip's, kg (the skip ticket's "Tare"; content may add them, 0 until then). */
   tare_kg: z.number().nonnegative().default(0),
   skipTare_kg: z.number().nonnegative().default(0),
+  /**
+   * RULING2.md 16.1 (engine2-dispatch): the first rung on which the hired driver ranks partners by their rated net a
+   * load and keeps the floor's room for the best (src/engine/salvage/truck.ts bestLoad). Absent: never (the first
+   * yard's rule, the skip full longest).
+   */
+  pickFromRung: z.number().int().optional(),
 });
 export type TruckDef = z.infer<typeof TruckSchema>;
 
@@ -434,9 +440,17 @@ export const CrewSchema = z.object({
   cutter: z.object({ share: z.number().positive(), lev: z.number().nonnegative(), cap: z.number().positive(), maxlev: z.number().int().positive() }),
   /** Driver: +lev a level (speed), top level. */
   driver: z.object({ lev: z.number().nonnegative(), maxlev: z.number().int().positive() }),
+  /**
+   * RULING2.md 17.2 (engine2-dispatch): the first rung of the yard hands' order of work that keeps the yard from
+   * getting poorer by a machine (src/engine/salvage/crew.ts orderPlan). Absent: never (the first yard's S12).
+   */
+  orderFromRung: z.number().int().optional(),
+  /** While both candidates of 17.2 are measured: 'floor' (the lead's) or 'tray'. Removed when one is kept. */
+  orderRule: z.enum(['floor', 'tray']).optional(),
 });
 export type CrewDef = z.infer<typeof CrewSchema>;
-export type CrewRole = keyof CrewDef;
+/** The crew's roles (the keys of `crew` that are a role: not the order's keys of RULING2.md 17.2). */
+export type CrewRole = Exclude<keyof CrewDef, 'orderFromRung' | 'orderRule'>;
 
 /** The public drop-off (content2 `dropoff`): seconds between arrivals, the first at `first` s, waiting places, the drawn mix [object, weight], the fixed first arrivals. */
 export const DropoffSchema = z.object({

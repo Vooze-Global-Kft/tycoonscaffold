@@ -32,6 +32,10 @@ export { awayView, inOutTxt, levelFact, nightWatchLine, type AwayView } from './
 export { rungProgress, rungTiles, type RungProgress, type RungTile } from './salvage/ladder';
 export { converterLineCfg as converterLine, printedNo } from './salvage/tickets';
 export { reconcileSalvage } from './salvage/save';
+// rules-money, stage 2 wave 1 (add only): plant finance (2.14), the stage's ladder (2.11), the goals' list.
+export { bankRow, financeTerms, letterDue, loanFoot, loanOffered, platePrice, saveUpSeconds, type Terms as FinanceTermsNow } from './salvage/bank';
+export { plateLevelPrice, thetaOf, topRungOf } from './salvage/ladder';
+export { ticketView, type TicketView } from './salvage/tickets';
 
 // ---- rules-sim (changes)
 export { createSalvage, freshSalvageCfg as freshSalvage, isSalvage, stockThings, withSalvageFields } from './salvage/create';
@@ -42,6 +46,7 @@ export { ratedCapacity } from './salvage/rate';
 // value of unsold stock at usual prices (the gate's G). The built incomeRate stays for what reads it today.
 export { ratedIncomeCfg as ratedIncome, ratedTermsCfg as ratedTerms, stockValueCfg as stockValue, type RatedTerms } from './salvage/rate';
 export { ackAway, buy, declineDeal, hire, level, noteSeen, sell, setFromBays, setHold, setPresence, setRecipe, signDeal, skipGoal, stepOut } from './salvage/actions';
+export { signFinance } from './salvage/actionsMoney';
 export {
   bayPosCfg as bayPos,
   circlePosCfg as circlePos,

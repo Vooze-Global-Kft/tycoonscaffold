@@ -40,7 +40,10 @@ export function financeCard(cfg: SalvageConfig, g: SalvageGame, plate: string): 
     charge: tm.charge,
     T: tm.T,
     share,
-    shareWords: { key: 'card.letter.rule', args: { share: shareWords(c) } },
+    ...(() => {
+      const w = shareWords(c);
+      return 'text' in w ? { shareWords: { key: w.text } } : {};
+    })(),
     I: tm.I,
     sign: btn({ key: 'card.sign' }, { act: 'signFinance', plate, shown: shownOf(tm) }, refusal),
     notNow,

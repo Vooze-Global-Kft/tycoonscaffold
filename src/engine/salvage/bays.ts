@@ -20,9 +20,39 @@ export function bayOf(x: Ctx, grade: string): BayState {
 
 export const asideOf = (b: BayState): number => b.aside.reduce((a, x) => a + x.g, 0);
 
-/** Grams of a bay not reserved and not set aside (what Sell and the round may take). */
+/** v3 (2.8.1): grams a bay keeps for the stations its grade is routed to (BayState.reserved; absent = none). */
+export function reservedOf(b: BayState): number {
+  let r = 0;
+  if (b.reserved) for (const k in b.reserved) r += b.reserved[k];
+  return r;
+}
+
+/** Grams of a bay not reserved and not set aside (what Sell and the round may take). v3: a station's reserve (2.8.1) is kept too. */
 export function freeOf(b: BayState): number {
-  return Math.max(0, b.g - asideOf(b) - b.forCrucible_g - b.forDeal_g);
+  return Math.max(0, b.g - asideOf(b) - b.forCrucible_g - b.forDeal_g - reservedOf(b));
+}
+
+/**
+ * Take up to `want` grams out of a bay for a station (rules-works: a bay-fed plate's draw, a hall's charge);
+ * returns the grams taken. A grade counted in whole units (content wholeUnits_kg: wheels, motors) gives whole
+ * units only, each at the bay's mean grams a unit, so `n` stays true.
+ */
+export function takeGrams(x: Ctx, grade: string, want: number): number {
+  const b = x.s.bays[grade];
+  if (!b || want <= 0) return 0;
+  if (x.c.wholeUnits_kg[grade] !== undefined && b.n > 0) {
+    const per = b.g / b.n;
+    const k = Math.min(b.n, Math.floor(want / per + 1e-9));
+    if (k <= 0) return 0;
+    const g = k === b.n ? b.g : Math.round(k * per);
+    b.g -= g;
+    b.n -= k;
+    return g;
+  }
+  const g = Math.min(Math.floor(want), b.g);
+  if (g <= 0) return 0;
+  b.g -= g;
+  return g;
 }
 
 /** A bay's capacity, grams (content `bays.<grade>` kg; none = unbounded). */
@@ -39,7 +69,7 @@ export function collectable(x: Ctx, grade: string): { free: number; aside: numbe
   const b = x.s.bays[grade];
   if (!b) return { free: 0, aside: 0 };
   const aside = resolveDown(asideOf(b));
-  const free = b.held ? resolveDown(Math.max(0, freeOf(b) - Math.max(0, capOf(x, grade) - asideOf(b) - b.forCrucible_g - b.forDeal_g))) : resolveDown(freeOf(b));
+  const free = b.held ? resolveDown(Math.max(0, freeOf(b) - Math.max(0, capOf(x, grade) - asideOf(b) - b.forCrucible_g - b.forDeal_g - reservedOf(b)))) : resolveDown(freeOf(b));
   return { free, aside };
 }
 

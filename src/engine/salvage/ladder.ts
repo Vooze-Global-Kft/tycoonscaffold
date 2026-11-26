@@ -230,7 +230,7 @@ function levelNow(g: SalvageGame, target: LevelTarget): number | null {
   if (target.kind === 'crew') return s.crew.find((m) => m.id === target.id)?.level ?? null;
   if (target.kind === 'machine') return s.machines[target.machine]?.owned ? s.machines[target.machine].level : null;
   // Stage 2 (s2a-fix widened LevelTarget): a plate's level and the Yard sale's room.
-  if (target.kind === 'plate') return s.works[target.plate]?.owned ? s.works[target.plate].level : null;
+  if (target.kind === 'plate') return s.works[target.plate] ? Math.max(1, s.works[target.plate].level || 1) : null;
   if (target.kind === 'reuse') return s.reuse.level;
   const p = s.partners[target.partner];
   return p?.open ? p.level : null;
@@ -287,6 +287,11 @@ function marginOf(c: SalvageContent, target: LevelTarget): number {
 
 /** The highest level of a target (content levels.maxLevel, crew roles' maxlev). */
 export function maxLevelOf(c: SalvageContent, g: SalvageGame, target: LevelTarget): number {
+  if (target.kind === 'plate') {
+    const cm = contentAt(c, g.salvage);
+    const d = cm.works?.plates[target.plate];
+    return d ? Math.min(d.maxLevel, cm.works?.maxLevel ?? d.maxLevel) : 1;
+  }
   if (target.kind === 'crew') {
     const role = g.salvage.crew.find((m) => m.id === target.id)?.role;
     return Math.min(c.levels.maxLevel, role ? c.crew[role].maxlev : c.levels.maxLevel);
@@ -312,6 +317,8 @@ function roundPrice(v: number): number {
  * or at its top level.
  */
 export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number | null {
+  // Stage 2: a works plate's level has its own rule (plateLevelPrice, the one function rules-works reads).
+  if (target.kind === 'plate') return plateLevelPrice(cfg, g, target.plate);
   const c = cfg.salvage;
   const L = levelNow(g, target);
   if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
@@ -324,7 +331,7 @@ export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
 export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): PurchaseCheck {
   const c = cfg.salvage;
   const L = levelNow(g, target);
-  if (L === null || L < 1) return { price: null, refusal: { key: 'notOwned', args: {} }, state: 'locked' };
+  if (L === null || L < 1 || (target.kind === 'plate' && g.salvage.works[target.plate]?.phase !== 'running')) return { price: null, refusal: { key: 'notOwned', args: {} }, state: 'locked' };
   const gate = gateRefusal(c, g, c.levels.opens);
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   if (L >= maxLevelOf(c, g, target)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };

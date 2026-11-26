@@ -31,3 +31,14 @@ export function lotArrive(x: Ctx, t: number): void {
   void x;
   void t;
 }
+
+/**
+ * The works open (works.ts worksOpen, `backFieldOpen`; rules-works wave 1): the first lot is dated
+ * t + lots.period_s (2.10.1: `nextAt` is first set here, never at creation or migration). Arrivals and their
+ * kinds are wave 2's (lotsDated, lotArrive).
+ */
+export function lotsOpen(x: Ctx, t: number): void {
+  const L = x.c.lots;
+  if (!L || x.s.lots.nextAt !== null) return;
+  x.s.lots.nextAt = t + L.period_s;
+}

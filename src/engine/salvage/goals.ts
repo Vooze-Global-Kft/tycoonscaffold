@@ -14,7 +14,7 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { advice, cardForItem } from './advice';
-import { roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
+import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
 import { pointOf } from './positions';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
@@ -41,10 +41,36 @@ export function bump(counts: Counts, key: string, n = 1): Counts {
 
 const countsOf = (g: SalvageGame): Counts => g.salvage.counts ?? {};
 
-/** Every goal in order: the hour's, then the day-1 list (content `dayOne`, the hints' file). */
-export function goalSpecs(c: SalvageContent): { goals: GoalSpec[]; dayOne: GoalSpec[] } {
-  const dayOne = ((c as unknown as { dayOne?: Partial<GoalSpec>[] }).dayOne ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }) as GoalSpec);
-  return { goals: c.goals as GoalSpec[], dayOne };
+/** Every goal list: the hour's, the day-1 list (content `dayOne`) and stage 2's (content `stage2`, goals.json's list; 1.3, 2.13). */
+export function goalSpecs(c: SalvageContent): { goals: GoalSpec[]; dayOne: GoalSpec[]; stage2: GoalSpec[] } {
+  const fill = (l: Partial<GoalSpec>[] | undefined) => (l ?? []).map((d) => ({ optional: false, repeat: false, buy: null, ...d }) as GoalSpec);
+  const x = c as unknown as { dayOne?: Partial<GoalSpec>[]; stage2?: Partial<GoalSpec>[] };
+  return { goals: c.goals as GoalSpec[], dayOne: fill(x.dayOne), stage2: fill(x.stage2) };
+}
+
+/** The rung the works open at (2.20: derived from the state, not from a rung event): the lowest gate of content `works.plates`; Infinity without plates. */
+function worksRung(c: SalvageContent): number {
+  let r = Infinity;
+  for (const p of Object.values(c.works?.plates ?? {})) r = Math.min(r, gateRung(p.gate) || Infinity);
+  return r;
+}
+
+/** Is stage 2's list offered (2.13, 2.20): the yard at or above the works' rung. */
+function stage2Offered(c: SalvageContent, g: SalvageGame): boolean {
+  return g.salvage.ladder.rung >= worksRung(c);
+}
+
+type Footprint = { x: number; y: number; w: number; d: number };
+const worksMap = (c: SalvageContent) => (c.map as unknown as { works?: { points?: Record<string, [number, number] | { x: number; y: number }>; footprints?: Record<string, Footprint> } }).works ?? {};
+
+/** `at:<place>` (goals.json $stage2): the boss, in the yard, on foot, within reach.place of the place's footprint on the merged map, now. */
+function bossAt(c: SalvageContent, g: SalvageGame, place: string): boolean {
+  const f = worksMap(c).footprints?.[place];
+  const p = g.salvage.presence as { x: number; y: number; driving?: boolean };
+  if (!f || g.salvage.away || p.driving) return false;
+  const dx = Math.max(0, Math.abs(p.x - f.x) - f.w / 2);
+  const dy = Math.max(0, Math.abs(p.y - f.y) - f.d / 2);
+  return Math.hypot(dx, dy) <= c.reach.place;
 }
 
 /**
@@ -125,7 +151,8 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
     case 'worked':
       return countOf(c, g, `worked:${parts[1]}`) >= num(2);
     case 'owned':
-      return s.owned.includes(parts[1]) || hiredKey(c, g, parts[1]);
+      // Stage 2: a plate is owned once it is in `works` (any phase, however paid); plates never enter `owned`.
+      return s.owned.includes(parts[1]) || hiredKey(c, g, parts[1]) || s.works?.[parts[1]] !== undefined;
     case 'hired':
       return s.crew.filter((m) => m.role === parts[1]).length >= num(2);
     case 'fetched':
@@ -146,7 +173,22 @@ export function conditionMet(cfg: SalvageConfig, g: SalvageGame, cond: string | 
       return cr.owned && cr.fromBays && (cr.charge_g > 0 || Object.values(s.bays).some((b) => b.forCrucible_g > 0) || cr.phase !== 'empty');
     }
     case 'poured':
+      // Stage 2: `poured:<plate>` (a hall's first pour, counts['poured:<plate>']); a NUMBER stays the first yard's heats.
+      if (parts[1] && !/^\d+$/.test(parts[1])) return (s.counts?.[`poured:${parts[1]}`] ?? 0) >= 1;
       return countOf(c, g, 'poured') >= num(1);
+    // ---- stage 2's grammar (goals.json $stage2; 1.3, 2.13)
+    case 'plate':
+      return s.works?.[parts[1]] !== undefined;
+    case 'commissioned':
+      return (s.counts?.[`commissioned:${parts[1]}`] ?? 0) >= 1;
+    case 'racked':
+      return (s.counts?.racked ?? 0) >= num(1);
+    case 'lot':
+      return (s.counts?.lotOpened ?? 0) >= num(1);
+    case 'crate':
+      return (s.counts?.crateSorted ?? 0) >= num(1);
+    case 'at':
+      return bossAt(c, g, parts[1]);
     case 'passed':
       return s.ladder.passed >= num(1);
     case 'visited':
@@ -176,10 +218,15 @@ export function goalMet(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): boolea
   return conditionMet(cfg, g, d.done);
 }
 
-/** The goals in the order the card offers them: the hour's, then day-1 (each once its `after` holds). */
+/**
+ * The goals in the order the card offers them: the hour's, then stage 2's from the works' rung (requests.md
+ * [goals2] 26 Nov: after the hour's and before the day-one goals still open), then day-1 (each once its
+ * `after` holds).
+ */
 function ordered(cfg: SalvageConfig, g: SalvageGame): GoalSpec[] {
-  const { goals, dayOne } = goalSpecs(cfg.salvage);
-  return [...goals, ...dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null))];
+  const { goals, dayOne, stage2 } = goalSpecs(cfg.salvage);
+  const s2 = stage2.length && stage2Offered(cfg.salvage, g) ? stage2 : [];
+  return [...goals, ...s2, ...dayOne.filter((d) => conditionMet(cfg, g, d.after ?? null))];
 }
 
 const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
@@ -296,7 +343,12 @@ export function chevronOf(cfg: SalvageConfig, g: SalvageGame): { x: number; y: n
   const via = spec?.via && s.truck.by !== 'boss' ? spec.via : null;
   const id = via ?? goal.target;
   if (id === 'truck') return s.truck.owned ? { x: s.truck.x, y: s.truck.y, id } : null;
-  if (!cfg.salvage.map.points[id]) return null;
+  if (!cfg.salvage.map.points[id]) {
+    // Stage 2: a target on the works layer of the map (map.works.points: firstThing, baler, backfield, ...).
+    const w = worksMap(cfg.salvage).points?.[id];
+    if (!w) return null;
+    return Array.isArray(w) ? { x: w[0], y: w[1], id } : { x: w.x, y: w.y, id };
+  }
   const p = pointOf(cfg.salvage, id);
   return { x: p.x, y: p.y, id };
 }

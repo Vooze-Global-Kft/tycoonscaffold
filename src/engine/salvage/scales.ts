@@ -101,6 +101,19 @@ export function weighIn(x: Ctx, pieces: readonly Piece[], by: string, t: number,
     }
   }
   const { lines, trueByGrade } = linesOf(x, graded, day);
+  // Stage 2 (2.5.2; rules-works): a line of an analysed grade carries the note "Analysed" (unless it has one),
+  // and each analysed grade is counted (`analysed:<grade>`) and reported once a weigh-in (`analysed`).
+  if (graded !== pieces) {
+    const from: Record<string, string> = {};
+    for (let i = 0; i < pieces.length; i++) if (graded[i].grade !== pieces[i].grade) from[graded[i].grade] ??= pieces[i].grade;
+    for (const l of lines) {
+      const f = from[l.grade];
+      if (f === undefined) continue;
+      if (!l.note) l.note = { kind: 'analysed' };
+      count(x, `analysed:${l.grade}`);
+      if (heard(x)) x.ev.push({ type: 'analysed', grade: l.grade, from: f });
+    }
+  }
   for (const l of lines) {
     const b = bayOf(x, l.grade);
     b.g += l.g;

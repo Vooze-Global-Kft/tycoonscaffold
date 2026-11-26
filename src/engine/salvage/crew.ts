@@ -5,7 +5,7 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, heard, type Ctx } from './clock';
-import { cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
+import { cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
@@ -205,10 +205,94 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   // Stage 2 (2.12, ruling 13.1): a tagged thing for the Yard sale comes FIRST in a yard hand's order while a
   // place is free (reuse.ts rackChoice sets him off with it; the stub never does).
   if (rackChoice(x, m, t, null)) return true;
+  // RULING2.md 17.2 (from rung crew.orderFromRung): which machines' feeds and trays wait (orderWaits).
+  const plan = orderPlan(x, cap);
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
+  if (feedStep(x, m, t, cap, free, plan ? (id) => plan.first(id, 'feed') : null)) return true;
+  // (2) chalk circles.
+  if (circles.length) {
+    const pile = circles[0].pile;
+    const pick = choose(x, circles.filter((p) => p.pile === pile), cap);
+    if (pick.length) {
+      claimPieces(m, pick);
+      PLAN = { k: 'pile', pile };
+      leg(x, m, 'circle', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  // (3) out trays (mass, up to his load). Stage 2 (2.5.3, S12; s2a-fix): the stations' order is works.ts
+  // stationTrays' (the first yard's list itself while no plate exists); a plate's tray is worksTrayTrip's.
+  if (trayStep(x, m, t, cap, plan ? (id) => plan.first(id, 'tray') : null)) return true;
+  // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
+  // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
+  // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
+  // truck tips nothing more.
+  const floorFirst = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
+  if (floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
+  // RULING2.md 17.2: what waited for the floor goes now, before the drop-off (the feeds, then the trays).
+  const later = plan?.later;
+  if (later) {
+    if (feedStep(x, m, t, cap, free, (id) => later(id, 'feed'))) return true;
+    if (trayStep(x, m, t, cap, (id) => later(id, 'tray'))) return true;
+  }
+  return handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop);
+}
+
+/** The two candidates of RULING2.md 17.2 (measured; content crew.orderRule while both are built). */
+interface OrderPlan {
+  /** May this machine's feed or tray be taken at its first-yard place in the order? */
+  first: (id: MachineId, kind: 'feed' | 'tray') => boolean;
+  /** Taken after the floor (before the drop-off) instead, or null. */
+  later: ((id: MachineId, kind: 'feed' | 'tray') => boolean) | null;
+}
+
+/** The worth a kilogram of a machine's input becomes at usual prices over the input's own (content only, memoised). */
+const WORTH = new WeakMap<object, Record<string, number>>();
+export function machineWorth(c: Ctx['c'], id: MachineId): number {
+  let w = WORTH.get(c);
+  if (!w) WORTH.set(c, (w = {}));
+  if (w[id] === undefined) {
+    const p = (g: string) => c.grades[g]?.pbar ?? 0;
+    if (id === 'crucible') {
+      let r = 0;
+      for (const rec of Object.values(c.machines.crucible.recipes)) {
+        const [ins, out, y, dross] = rec as unknown as [string | string[], string, number, string];
+        for (const g of Array.isArray(ins) ? ins : [ins]) r = Math.max(r, (y * p(out) + (1 - y) * p(dross)) / Math.max(1e-9, p(g)));
+      }
+      w[id] = r;
+    } else {
+      const input = id === 'bench' ? 'mot' : 'cab';
+      w[id] = machineShares(c, id, input).reduce((a, [g, q]) => a + q * p(g), 0) / Math.max(1e-9, p(input));
+    }
+  }
+  return w[id];
+}
+
+function orderPlan(x: Ctx, cap: number): OrderPlan | null {
+  if (x.s.ladder.rung < orderFromRung(x.c)) return null;
+  const rule = (x.c.crew as { orderRule?: string }).orderRule ?? 'floor';
+  if (rule === 'tray') {
+    // Candidate B: an out tray is emptied only when it holds a hand's load, or its machine has stopped (a full
+    // tray, or nothing left to work: the grams would wait for nothing).
+    const ready = (id: MachineId) => trayFree(x, id) >= cap - 1e-9 || x.s.machines[id].status !== 'working';
+    return { first: (id, kind) => kind === 'feed' || ready(id), later: null };
+  }
+  // Candidate A (the lead's): while the tipping floor is more than half full, the floor before a machine's feed
+  // or tray, except a machine whose work at least doubles the worth of what it takes.
+  const full = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
+  if (!full) return null;
+  const waits = (id: MachineId) => machineWorth(x.c, id) < 2;
+  return { first: (id) => !waits(id), later: (id) => waits(id) };
+}
+
+/** handDepart's (1): feed a machine with room for its input (`only`: the machines asked now; null: all). */
+function feedStep(x: Ctx, m: CrewMember, t: number, cap: number, free: GroundPiece[], only: ((id: MachineId) => boolean) | null): boolean {
+  const s = x.s;
   for (const id of RATE_FED) {
     const mach = s.machines[id];
     if (!mach.owned) continue;
+    if (only && !only(id)) continue;
     // accepts(x, id, p) for each piece, with the machine's inputs and its hopper's room looked up once.
     const room = hopperRoom(x, id);
     const inputs = inputSet(x, id);
@@ -234,26 +318,19 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     m.dest = id;
     return true;
   }
-  // (2) chalk circles.
-  if (circles.length) {
-    const pile = circles[0].pile;
-    const pick = choose(x, circles.filter((p) => p.pile === pile), cap);
-    if (pick.length) {
-      claimPieces(m, pick);
-      PLAN = { k: 'pile', pile };
-      leg(x, m, 'circle', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
-      m.dest = 'scale';
-      return true;
-    }
-  }
-  // (3) out trays (mass, up to his load). Stage 2 (2.5.3, S12; s2a-fix): the stations' order is works.ts
-  // stationTrays' (the first yard's list itself while no plate exists); a plate's tray is worksTrayTrip's.
+  return false;
+}
+
+/** handDepart's (3): an out tray (`only`: the first yard's machines asked now, a plate's tray only when null). */
+function trayStep(x: Ctx, m: CrewMember, t: number, cap: number, only: ((id: MachineId) => boolean) | null): boolean {
+  const s = x.s;
   for (const sid of stationTrays(x, OUT_TRAYS)) {
     if (!(sid in s.machines)) {
-      if (worksTrayTrip(x, m, t, sid)) return true;
+      if (!only && worksTrayTrip(x, m, t, sid)) return true;
       continue;
     }
     const id = sid as MachineId;
+    if (only && !only(id)) continue;
     const g = trayFree(x, id);
     if (g <= 0) continue;
     const mach = s.machines[id];
@@ -274,12 +351,12 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     m.dest = 'scale';
     return true;
   }
-  // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
-  // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
-  // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
-  // truck tips nothing more.
-  const floorFirst = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
-  if (floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
+  return false;
+}
+
+/** handDepart's (4) to the end: the drop-off, its whole things (E4), the floor when it was not first, E4's floor things. */
+function handDepartRest(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolean, floorFirst: boolean, floor: GroundPiece[], floorG: number, drop: GroundPiece[]): boolean {
+  const s = x.s;
   // (4) the drop-off's pieces. Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry:
   // they go with the pieces of their place.
   if (!drop.length) {

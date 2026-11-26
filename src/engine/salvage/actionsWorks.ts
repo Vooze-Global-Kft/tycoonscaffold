@@ -8,46 +8,152 @@
  *
  * PHASE A STUB: every action refuses with `nothing` (nothing of the works is on sale before they open).
  */
-import type { GradeId, LevelTarget, PlateId, RecipeId, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, StationId } from './types';
+import { begin, finish, spend } from './clock';
+import { plateDef } from './content';
+import { hallBusy } from './halls';
+import { cashRefusal, gateRefusal, plateLevelPrice, shopItem, type PurchaseCheck } from './ladder';
+import { contentAt } from './layer';
+import { roundMoney } from './money';
+import { checks } from './rate';
+import { bayOf } from './bays';
+import { orderPlate, reratePlate, routeOf, takesGrade } from './works';
+import type { CardAction, GradeId, LevelTarget, PlateId, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, StationId, TxtArgs } from './types';
 
-const nothing = (g: SalvageGame, events: SalvageEvent[] | undefined): SalvageGame => {
-  events?.push({ type: 'refused', key: 'nothing', args: {}, retry: null });
+const refuse = (g: SalvageGame, events: SalvageEvent[] | undefined, key: RefusalKey, args: TxtArgs = {}, retry: CardAction | null = null): SalvageGame => {
+  events?.push({ type: 'refused', key, args, retry });
   return g;
 };
+const same = (a: number, b: number) => Math.abs(a - b) < 0.005;
+const plateName = (id: string): TxtArgs => ({ item: { text: `title.works.${id}` as never } });
 
-/** Buy a plate at its shown price (actions.ts buy, for a shop item of kind 'works'). Stub: refused. */
+/**
+ * THE CHECK OF BUYING A PLATE (2.6.2): the card prints this object and buyWorks applies it, so the price shown is
+ * the price applied. In order: not a plate of the content read now (contentAt) or not on sale: `nothing`;
+ * already ordered (any phase): `owned` (state 'arriving' while on the flatbed or installed); its gate (a rung):
+ * `rung`; the plate it needs not ordered: `needsItem` naming it; the price (the shop item's, rounded) above the
+ * cash or the driver's earmark: `cash` / `earmark`. Cash only here (a loan is signFinance's, rules-money).
+ */
+export function plateBuyCheck(cfg: SalvageConfig, g: SalvageGame, plate: ShopKey): PurchaseCheck {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const d = plateDef(c, plate);
+  const it = shopItem(c, plate);
+  if (!d || !it || it.kind !== 'works') return { price: null, refusal: { key: 'nothing', args: {} }, state: 'info' };
+  const w = g.salvage.works[plate];
+  if (w) return { price: null, refusal: { key: 'owned', args: {} }, state: w.phase === 'running' ? 'owned' : 'arriving' };
+  const gate = gateRefusal(c, g, it.gate);
+  if (gate) return { price: null, refusal: gate, state: 'locked' };
+  const needs = d.needs ?? it.needsItem ?? null;
+  if (needs && !g.salvage.works[needs]) return { price: null, refusal: { key: 'needsItem', args: plateName(needs) }, state: 'locked' };
+  const price = roundMoney(it.price);
+  const money = cashRefusal(g, price);
+  if (money) return { price, refusal: money, state: 'cantAfford' };
+  return { price, refusal: null, state: 'buy' };
+}
+
+/** Buy a plate at its shown price (actions.ts buy, for a shop item of kind 'works'): the money, then works.ts orderPlate (its one path). */
 export function buyWorks(cfg: SalvageConfig, g: SalvageGame, item: ShopKey, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void item;
-  void shownPrice;
-  void clock;
-  return nothing(g, events);
+  const ch = plateBuyCheck(cfg, g, item);
+  if (ch.refusal) return refuse(g, events, ch.refusal.key, ch.refusal.args);
+  if (ch.price === null) return refuse(g, events, 'nothing');
+  if (!same(ch.price, shownPrice)) return refuse(g, events, 'priceUpdated', { a: { money: shownPrice }, b: { money: ch.price } }, { act: 'buy', item, price: ch.price });
+  const x = begin(cfg, g, events, true);
+  spend(x, ch.price);
+  const t = Math.max(clock, x.s.t);
+  orderPlate(x, item, t);
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Level a plate or the Yard sale's room (actions.ts level, for kinds 'plate' and 'reuse'). Stub: refused. */
+/**
+ * THE CHECK OF A PLATE'S LEVEL (2.6.4): not ordered or not running: `notOwned`; at works.maxLevel or the plate's
+ * maxLevel: `topLevel`; the price is rules-money's ladder.ts plateLevelPrice (null: `nothing`); above the cash: `cash`.
+ */
+export function plateLevelCheck(cfg: SalvageConfig, g: SalvageGame, plate: PlateId): PurchaseCheck {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const d = plateDef(c, plate);
+  const w = g.salvage.works[plate];
+  if (!d || !w || w.phase !== 'running') return { price: null, refusal: { key: 'notOwned', args: plateName(plate) }, state: 'locked' };
+  const top = Math.min(d.maxLevel, c.works?.maxLevel ?? d.maxLevel);
+  if (w.level >= top) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
+  const p = plateLevelPrice(cfg, g, plate);
+  if (p === null) return { price: null, refusal: { key: 'nothing', args: {} }, state: 'info' };
+  const price = roundMoney(p);
+  const money = cashRefusal(g, price);
+  if (money) return { price, refusal: money, state: 'cantAfford' };
+  return { price, refusal: null, state: 'buy' };
+}
+
+/** Level a plate (actions.ts level, kind 'plate'); the Yard sale's room (kind 'reuse') is wave 2's and refuses `nothing` until it is built. A level re-rates the piece in work at once. */
 export function levelWorks(cfg: SalvageConfig, g: SalvageGame, target: Extract<LevelTarget, { kind: 'plate' | 'reuse' }>, shownPrice: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void target;
-  void shownPrice;
-  void clock;
-  return nothing(g, events);
+  if (target.kind !== 'plate') return refuse(g, events, 'nothing');
+  const ch = plateLevelCheck(cfg, g, target.plate);
+  if (ch.refusal) return refuse(g, events, ch.refusal.key, ch.refusal.args);
+  if (ch.price === null) return refuse(g, events, 'nothing');
+  if (!same(ch.price, shownPrice)) return refuse(g, events, 'priceUpdated', { a: { money: shownPrice }, b: { money: ch.price } }, { act: 'level', target, price: ch.price });
+  const x = begin(cfg, g, events, true);
+  spend(x, ch.price);
+  const t = Math.max(clock, x.s.t);
+  const w = x.s.works[target.plate];
+  w.level += 1;
+  reratePlate(x, target.plate, w, t);
+  x.ev.push({ type: 'levelled', target, level: w.level });
+  checks(x, t);
+  return finish(g, x);
 }
 
-/** Route a grade's bay to a station or back to the bay (2.8.1; refusals notOwned, noRoute). Stub: refused. */
+/**
+ * Route a grade's bay (2.7.1, 2.8.1): to a running station that takes the grade (a plate, or the crucible) or back
+ * to 'bay' (sold by the round). Refusals: an unknown grade `nothing`; a station not running (not owned)
+ * `notOwned`; one that does not take the grade `noRoute`. The same route again changes nothing. Event `routeSet`.
+ * The plates read it at their next draw, charge or a hand's departure; the bays' reserves follow at once.
+ */
 export function setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to: StationId | 'bay', clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void grade;
-  void to;
+  const c = contentAt(cfg.salvage, g.salvage);
+  if (!c.grades[grade]) return refuse(g, events, 'nothing');
+  const s = g.salvage;
+  if (to !== 'bay') {
+    const runs = to === 'crucible' ? s.machines.crucible.owned : s.works[to]?.phase === 'running';
+    if (!runs) return refuse(g, events, 'notOwned', to === 'crucible' ? {} : plateName(to));
+  }
+  if (s.routes[grade] === to) return g;
+  const x = begin(cfg, g, events, true);
+  if (to !== 'bay' && !takesGrade(x, to, grade)) return refuse(g, events, 'noRoute');
+  x.s.routes[grade] = to;
+  x.ev.push({ type: 'routeSet', grade, to });
   void clock;
-  return nothing(g, events);
+  return finish(g, x);
 }
 
-/** A hall's recipe (as setRecipe; refusals notOwned, heatRunning, confirmHeel, routed). Stub: refused. */
+/**
+ * A hall's recipe (2.8, as the crucible's setRecipe): not a running hall or not its recipe `notOwned`; a heat
+ * running `heatRunning`; a charge in and not confirmed `confirmHeel` (retry with it); a grade of the new recipe
+ * routed by its bay card to another station `routed`. The charge goes back to its own bays (by grade); the hall
+ * then charges from its bays under the new recipe.
+ */
 export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void plate;
-  void recipe;
-  void confirmHeel;
-  void clock;
-  return nothing(g, events);
+  const c = contentAt(cfg.salvage, g.salvage);
+  const d = plateDef(c, plate);
+  const w = g.salvage.works[plate];
+  const rec = d?.recipes?.[recipe];
+  if (!d || !w || !w.heat || w.phase !== 'running' || !rec) return refuse(g, events, 'notOwned', plateName(plate));
+  if (w.heat.recipe === recipe) return g;
+  if (hallBusy(w.heat.phase)) return refuse(g, events, 'heatRunning');
+  if (w.heat.charge_g > 0 && !confirmHeel) return refuse(g, events, 'confirmHeel', {}, { act: 'setRecipe', recipe, confirmHeel: true, plate });
+  for (const gr of rec.in) {
+    const set = g.salvage.routes[gr];
+    if (set !== undefined && set !== plate) return refuse(g, events, 'routed', plateName(set === 'bay' ? plate : set));
+  }
+  const x = begin(cfg, g, events, true);
+  const t = Math.max(clock, x.s.t);
+  const h = x.s.works[plate].heat!;
+  for (const [gr, gg] of Object.entries(h.chargeBy ?? {})) if (gg > 0) bayOf(x, gr).g += gg;
+  h.charge_g = 0;
+  h.chargeBy = {};
+  h.recipe = recipe;
+  h.phase = 'empty';
+  h.phaseSince = t;
+  h.endsAt = null;
+  x.ev.push({ type: 'recipe', recipe, heelPoured: false, plate });
+  void routeOf;
+  return finish(g, x);
 }

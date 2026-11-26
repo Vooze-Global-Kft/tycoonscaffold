@@ -9,7 +9,9 @@
  * level is useful only when its target binds (E19: the advice line never names "not the bottleneck now").
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import { buyCheck, crewKeys, hireCheck, itemName, levelCheck, roleOfKey, shopItems } from './ladder';
+import { loanOffered, platePrice } from './bank';
+import { contentAt } from './layer';
+import { buyCheck, cashRefusal, crewKeys, gateRung, hireCheck, itemName, levelCheck, roleOfKey, shopItems } from './ladder';
 import { roundMoney } from './money';
 import { incomeRate } from './tick';
 import type { Advice, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt } from './types';
@@ -24,6 +26,27 @@ export interface Binding {
   /** Supply binds (no crew or machine does): skips in rotation at the open partners, and the driver while he is out. */
   partners: string[];
   driver: boolean;
+  /** Stage 2 (2.13): works plates whose level binds (the shear by uncut tier-3 steel on the floor; a plate's hopper or its bays' reserve 80 % full). */
+  plates: string[];
+}
+
+/** The rung the works open at (the lowest gate of content works.plates; Infinity without): stage 2's bindings start there, so the first yard's advice is untouched. */
+function worksRungOf(c: SalvageContent): number {
+  let r = Infinity;
+  for (const p of Object.values(c.works?.plates ?? {})) r = Math.min(r, gateRung(p.gate) || Infinity);
+  return r;
+}
+
+/** Grams of UNCUT tier-3 steel things on the tipping floor (2.13: what the shear's level is for). */
+function uncutSteelFloorGrams(c: SalvageContent, g: SalvageGame): number {
+  let sum = 0;
+  for (const t of g.salvage.things) {
+    if (t.at.at !== 'floor') continue;
+    const o = c.objects[t.obj];
+    if (!o || o.tier < 3 || !o.pieces.some((p) => c.grades[p[0]]?.material === 'steel')) continue;
+    sum += thingLeft(c, t.obj, t.cut);
+  }
+  return sum;
 }
 
 /**
@@ -102,17 +125,39 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
     const stock = ins.reduce((a, gr) => a + (s.bays[gr]?.g ?? 0), 0);
     if (stock > pot) machines.push('crucible');
   }
-  const crewBinds = cutter || hand || machines.length > 0;
+  // Stage 2 (2.13; from the works' rung only): the shear by uncut tier-3 steel, a plate's hopper (or its bays'
+  // reserve for it) 80 % full, and a full skip waiting while the driver is busy.
+  const plates: string[] = [];
+  let skipWaits = false;
+  const cm = contentAt(c, s);
+  if (s.ladder.rung >= worksRungOf(cm)) {
+    const defs = cm.works?.plates ?? {};
+    const shearKg = cm.advice.shearKg;
+    if (shearKg !== undefined && s.works.shear?.phase === 'running' && uncutSteelFloorGrams(cm, g) > shearKg * 1000) plates.push('shear');
+    for (const [pid, w] of Object.entries(s.works)) {
+      const d = defs[pid];
+      if (!d || w.phase !== 'running' || plates.includes(pid) || !(d.inbuf > 0)) continue;
+      const inbuf = d.inbuf * 1000;
+      const hopper = w.hopper.reduce((a, p) => a + p.g, 0);
+      let reserved = 0;
+      for (const b of Object.values(s.bays)) reserved += b.reserved?.[pid] ?? 0;
+      if (hopper > HOPPER_SHARE * inbuf || reserved > HOPPER_SHARE * inbuf) plates.push(pid);
+    }
+    skipWaits = s.truck.trip !== null && Object.values(s.partners).some((p) => p.open && p.skips.some((k) => k.phase === 'full'));
+  }
+  const crewBinds = cutter || hand || machines.length > 0 || plates.length > 0;
   const partners = crewBinds ? [] : Object.entries(s.partners).filter(([, p]) => p.open).map(([id]) => id);
-  const driver = !crewBinds && s.crew.some((m) => m.role === 'driver') && s.truck.trip !== null;
-  return { cutter, hand, machines, partners, driver };
+  const hasDriver = s.crew.some((m) => m.role === 'driver');
+  const driver = hasDriver && s.truck.trip !== null && (!crewBinds || skipWaits);
+  return { cutter, hand, machines, partners, driver, plates };
 }
 
 /** Does a level of this target widen the bottleneck now (E13c, E19)? */
 export function levelBinds(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, b = binding(cfg, g)): boolean {
   if (target.kind === 'machine') return b.machines.includes(target.machine);
   if (target.kind === 'partner') return b.partners.includes(target.partner);
-  if (target.kind !== 'crew') return false; // a plate's or the Yard sale's level (stage 2): rules-works' (Phase B)
+  if (target.kind === 'plate') return b.plates.includes(target.plate);
+  if (target.kind !== 'crew') return false; // the Yard sale's room (stage 2): rules-works'
   const role = g.salvage.crew.find((m) => m.id === target.id)?.role;
   return role === 'cutter' ? b.cutter : role === 'hand' ? b.hand : role === 'driver' ? b.driver : false;
 }
@@ -170,7 +215,10 @@ function dayOneUseful(cfg: SalvageConfig, g: SalvageGame, it: ShopItem, b: Bindi
 }
 
 /** Every purchase the advice line may name now, with its card's action and price (owned, gated and top excluded). */
-function candidates(cfg: SalvageConfig, g: SalvageGame): Advice[] {
+function candidates(cfg0: SalvageConfig, g: SalvageGame): Advice[] {
+  // The content the state reads (layer.ts): the works layer's items once the works opened; the same config before.
+  const cm = contentAt(cfg0.salvage, g.salvage);
+  const cfg = cm === cfg0.salvage ? cfg0 : { ...cfg0, salvage: cm };
   const c = cfg.salvage;
   const s = g.salvage;
   const b = binding(cfg, g);
@@ -178,6 +226,13 @@ function candidates(cfg: SalvageConfig, g: SalvageGame): Advice[] {
   const hourKeys = new Set(c.shop.map((i) => i.key));
   const seenRole = new Set<CrewRole>();
   for (const it of shopItems(c)) {
+    if (it.kind === 'works') {
+      // Stage 2: a plate for sale (bank.ts platePrice: not in `works`, its gate and needs met), bought with cash.
+      const price = platePrice(cfg, g, it.key);
+      if (price === null || cashRefusal(g, price)?.key === 'earmark') continue;
+      out.push({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } });
+      continue;
+    }
     const role = roleOfKey(it.key);
     if (role) {
       if (seenRole.has(role)) continue;
@@ -198,6 +253,7 @@ function candidates(cfg: SalvageConfig, g: SalvageGame): Advice[] {
   for (const m of s.crew) targets.push({ t: { kind: 'crew', id: m.id }, name: `role.${m.role}` as TextKey, open: { kind: 'office', tab: 'rota' }, level: m.level });
   for (const id of ['stripper', 'bench', 'crucible'] as const) if (s.machines[id].owned) targets.push({ t: { kind: 'machine', machine: id }, name: itemName(id), open: { kind: 'office', tab: 'processBoard' }, level: s.machines[id].level });
   for (const [pid, p] of Object.entries(s.partners)) if (p.open) targets.push({ t: { kind: 'partner', partner: pid }, name: 'item.skip', open: { kind: 'office', tab: 'partners' }, level: p.level });
+  for (const pid of b.plates) targets.push({ t: { kind: 'plate', plate: pid }, name: `title.works.${pid}` as TextKey, open: { kind: 'works', plate: pid }, level: s.works[pid]?.level ?? 1 });
   for (const x of targets) {
     if (!levelBinds(cfg, g, x.t, b)) continue;
     const ch = levelCheck(cfg, g, x.t);
@@ -217,7 +273,10 @@ export function advice(cfg: SalvageConfig, g: SalvageGame, now: number): Advice 
   const budget = g.cash + cfg.salvage.advice.minutes * incomeRate(cfg, g) - reserve(cfg, g);
   const list = candidates(cfg, g).filter((a) => a.price <= budget + 1e-9);
   list.sort((a, b) => a.price - b.price);
-  return list[0] ?? null;
+  const a = list[0] ?? null;
+  // 2.13, the bank's one sentence: the purchase is a financeable plate the finance card would offer (P > cash − reserve), the letter seen, no agreement open.
+  if (a && a.action.act === 'buy' && a.open.kind === 'works' && !g.salvage.bank.agreement && loanOffered(cfg, g, a.action.item)) return { ...a, loanHint: true };
+  return a;
 }
 
 /** The item of an advice as a { text } argument (goal.widen's {item}). */
