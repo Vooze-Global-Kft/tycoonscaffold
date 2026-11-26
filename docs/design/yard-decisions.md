@@ -546,6 +546,13 @@ From rung 3 he ranks partners by what a load nets and keeps the floor's room for
 partner's level never lowers what the yard keeps. No purchase may make the yard poorer: the bots
 check every purchase, hire and level for it from now on.
 
+**E45. No purchase makes the yard poorer (RULING2.md section 17).** Buying the motor bench at rung
+2 lowered what the first yard kept by about 30 %: yard hands fed machines and emptied trays before
+they cleared the tipping floor. From now on every purchase, hire and level is walked by the bots
+in every report: the mean change in what the yard keeps is never below -1 %. The hands' order of
+work puts the floor first while it is more than half full (or the rule the measurement finds
+better), and each machine is shown to pay at a crew a player can hire.
+
 ---
 
 ## The first yard: the lead's rulings after its review (25 November)
@@ -1818,3 +1825,46 @@ itself falls. The lead rules:
 16.4 **The first hour.** The bots also play the first hour with `truck.pickFromRung` 1 (the rule
     from the first trip) and print its beats beside the merged ones; the lead decides from that
     table whether the rule starts at rung 1 (as he will for the runs, LEAD L16).
+
+### 17. No purchase makes the yard poorer (09:55; the critic of Phase A found the second case)
+
+The critic of Phase A measured a second purchase of the FIRST yard that makes it poorer, far
+worse than the farm's skips (section 16): buying the motor bench at rung 2 lowers what the real
+yard keeps by about 30 % (seed 31: §33,946 to §23,016 an hour over a capped absence at usual
+prices; a second state §31,067 to §22,254; the same with no runs, that is, on the owner's phone
+today). The likely cause, to be measured before anything is changed: the first yard's order of
+work sends yard hands to feed machines and to empty their trays BEFORE they clear the tipping
+floor; in a yard bound by carrying, a machine whose work adds less than the hands' time it takes
+makes the yard poorer. (The runs of 14.1 gained their sixth for the same reason: hands that stay
+on the floor.) The lead rules:
+
+17.1 **The aim, as a gate for this game from now on.** For every purchase, hire and level a
+    player can make, from fifteen played states at each of minute 30, minute 60, minute 90, day 1
+    and day 3, bought by hand one step at a time: the MEAN change in what the yard keeps an hour
+    (G: a capped absence at usual prices, stock counted) is not below -1 %, and no seed loses
+    more than 4 % (the yard's own noise). The bots run this walk in every report.
+17.2 **The rule for the hands' order of work.** The engineer first measures where the bench's
+    30 % goes (the hands' time by kind of trip, the floor's mass, loads, what is sold by grade,
+    before and after the purchase), then builds the smallest rule that meets 17.1 and keeps every
+    machine worth buying. The lead's first candidate, to be measured against at least one other
+    (each trip valued in scrip a second and the best taken): WHILE THE TIPPING FLOOR IS MORE THAN
+    HALF FULL, A YARD HAND CLEARS THE FLOOR BEFORE HE FEEDS A MACHINE OR EMPTIES ITS TRAY, except
+    for a machine whose work at least doubles the worth of what it takes (from the content at
+    usual prices). Whatever is built: one rule in every presence state; the first choice of a
+    run (14.1), which then goes on as built; the rules that differ with presence on purpose stay
+    as they are; a tick equals a jump; no dead end.
+17.3 **A machine stays worth buying.** With hands enough for the floor each machine raises what
+    the yard keeps: the table of G with and without each machine at two, three and four yard
+    hands is printed; if a machine never pays at any crew a player can hire, its rate or its
+    shares are a content fault and are reported to the lead.
+17.4 **Rated income follows** the order as built (and the driver's rule of section 16); its band
+    (14.10) and its restated monotony (16.3 iv) are measured again.
+17.5 **From which rung, and the first hour.** Sections 16 and 17 fix the first hour too (the
+    bench is bought in it). The engineer measures the first hour with both rules from rung 1
+    (`truck.pickFromRung` and `crew.orderFromRung` 1). IF every beat before the first of the
+    changed moments is unchanged, and the later beats can be brought back into their bands
+    (rung 3 at 55 to 65 minutes; the storyboard's order) by the rung-3 tonnage alone, he sets
+    both keys to 1, retunes that one number, and prints the hour's tables before and after
+    (with the late hour's sales a minute: the aim of §2,000 at minutes 55 to 60 may now be met).
+    IF NOT, both keys stay at 3 and the table goes to the lead. Either way the first yard's
+    pinned figures that move are listed one by one.

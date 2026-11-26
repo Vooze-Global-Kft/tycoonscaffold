@@ -7,7 +7,7 @@
  */
 import { asideOf, collectable } from './bays';
 import { payLot } from './bank';
-import { count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
+import { bankPart, count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
 import { roundMoney } from './money';
 import { shellsLeave } from './things';
 import type { MerchantState, TicketLine } from './types';
@@ -88,6 +88,7 @@ export function roundEvent(x: Ctx, t: number): void {
     // the bank's part (y > 0 only) and the player's part z is earned after it.
     const { y, z } = payLot(x, paid, t);
     const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'collection' as const, buyer: x.c.merchant.id, lines, paid, withBoss, firstGrades, ...(y > 0 ? { bank: { y } } : {}) });
+    bankPart(x, y);
     earn(x, z, t);
     count(x, 'collected');
     const first = firstGrades.length > 0;

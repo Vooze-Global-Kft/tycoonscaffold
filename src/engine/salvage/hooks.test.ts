@@ -49,6 +49,17 @@ vi.mock('./works', () => ({
   worksCredit: (x: { s: { t: number } }, t: number) => H.log.push({ f: 'worksCredit', t, st: x.s.t }),
   worksDepart: (x: { s: { t: number } }, t: number) => H.log.push({ f: 'worksDepart', t, st: x.s.t }),
   worksOpen: (x: { s: { t: number; ladder: { rung: number } } }, t: number) => H.log.push({ f: 'worksOpen', t, rung: x.s.ladder.rung }),
+  // s2a-fix's call sites (their own tests are fix2a.test.ts): as the stubs.
+  WORKS_ACTS: new Set(['commission', 'rack', 'lot', 'crate']),
+  worksOwn: () => {},
+  orderPlate: () => {},
+  worksAct: () => false,
+  worksActHolds: () => true,
+  worksActEnd: () => {},
+  worksLegEnd: () => false,
+  stationTrays: (_x: unknown, base: readonly string[]) => base,
+  worksTrayTrip: () => false,
+  landBody: () => false,
 }));
 vi.mock('./lots', () => ({
   lotsDated: () => H.dated.find((d) => d.kind === 'lot')?.at ?? null,
@@ -283,7 +294,8 @@ describe('rackChoice where a yard hand, the boss or a cutter meets what may be a
     const pieces: GroundPiece[] = [{ uid: 'p0', grade: 'li', g: 10_000, from: null, spec: 0, pile: 'floor', k: 0, claim: null }];
     g = { ...g, salvage: { ...g.salvage, pieces, presenceAt: -1000 } };
     g = R.hire(cfg, g, 'hand', hireCheck(cfg, g, 'hand').price ?? 0, g.salvage.t);
-    const hand = calls('rackChoice').filter((e) => e.role === 'hand');
+    // s2a-fix: a yard hand is also asked of each whole or loose CANDIDATE (th set: the keep-off form); the departure's own ask is th null, once.
+    const hand = calls('rackChoice').filter((e) => e.role === 'hand' && e.th === null);
     expect(hand.length).toBe(1);
     expect(hand[0].th).toBeNull();
     expect(hand[0].who).toBe('hand.0');

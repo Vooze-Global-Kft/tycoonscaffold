@@ -16,6 +16,7 @@ import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
+import { landBody } from './works';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
@@ -133,6 +134,15 @@ function tipNow(x: Ctx, t: number): void {
   const tr = x.s.truck;
   const sk = tr.skip;
   if (!sk) return;
+  // Stage 2 (2.9; s2a-fix): a load that is not a skip (the flatrack's car, the closed battery box) lands at its
+  // own place (works.ts landBody; the stub never does): the trip then ends as a tip does, with no floor slot.
+  if (landBody(x, sk, t)) {
+    tr.skip = null;
+    count(x, `fetched:${sk.partner}`);
+    if (x.away) x.away.loads += 1;
+    x.ev.push({ type: 'tip', partner: sk.partner, things: 0 });
+    return;
+  }
   let things = 0;
   // floorSlot's first free slot for each thing in turn, from one look at the floor.
   const used = new Set<number>();

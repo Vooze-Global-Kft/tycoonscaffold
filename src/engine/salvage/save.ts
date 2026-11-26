@@ -10,8 +10,12 @@
  * FORWARD: a save of layout 2 keeps everything the content still knows: unknown things, pieces, grades,
  * crew roles, partners and shop keys are dropped (their mass is not invented elsewhere); partners,
  * machines and fields the content or the layout added since are filled from a fresh yard; numbers are
- * clamped (no negative grams, no NaN, levels within their tops, at most 50 tickets). A save of another
- * layout, or one that cannot be read, starts afresh. The market clock never goes back (highMs is the
+ * clamped (no negative grams, no NaN, levels within their tops, at most 50 tickets). A save of a NEWER
+ * layout (v > 3, finite: an over-the-air rollback of the app) loads as layout 3, its unknown fields kept
+ * (s2a-fix: it used to start a fresh yard and wipe it). A save of an older layout, or one that cannot be
+ * read, starts afresh. WHAT IS KNOWN is the content WITH the works layer (./layer.ts mergedContent, s2a-fix):
+ * a save may already hold stage-2 grades, things, shop keys, carriers or the tier-4 tool, which are kept
+ * (nothing of the layer is ADDED: partners and machines are filled from the base content's fresh yard). The market clock never goes back (highMs is the
  * larger of the save's and now). POSITIONS ARE NEVER TRUSTED: the boss's presence goes back to a
  * point of the map when it lies outside the yard; the truck's last stop likewise (to its park).
  * The epoch is bumped, so the world snaps.
@@ -20,6 +24,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import type { GameState } from '../types';
 import { freshSalvage } from './create';
 import { RUN_MAX } from './group';
+import { mergedContent, topToolTier } from './layer';
 import { pointOf } from './positions';
 import { repairStage2, STAGE2_KEYS, type Stage2Fields } from './state2';
 import type { BayState, CrewJob, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, RunCourse, RunKind, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
@@ -118,11 +123,13 @@ function planOf(raw: unknown, t: number): TripPlan | null {
 /** Repair a layout-2 or layout-3 salvage state against the content (it comes out as layout 3). */
 export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, now: number): SalvageState {
   const c = cfg.salvage;
+  // What a save may hold: the families WITH the works layer (s2a-fix; the base content itself without one).
+  const k = mergedContent(c);
   const fresh = freshSalvage(c, now);
   const r = { ...fresh, ...raw } as SalvageState;
-  const knownGrade = (gr: unknown) => typeof gr === 'string' && !!c.grades[gr];
-  const knownObj = (o: unknown) => typeof o === 'string' && !!c.objects[o];
-  const shopKeys = new Set([...c.shop, ...c.dayOneList].map((i) => i.key));
+  const knownGrade = (gr: unknown) => typeof gr === 'string' && !!k.grades[gr];
+  const knownObj = (o: unknown) => typeof o === 'string' && !!k.objects[o];
+  const shopKeys = new Set([...k.shop, ...k.dayOneList].map((i) => i.key));
 
   const clock = obj<SalvageState['clock']>(raw.clock);
   const t = Math.max(0, num(raw.t));
@@ -134,8 +141,9 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
     clock: { highMs: Math.max(fresh.clock.highMs, num(clock.highMs)), day: Math.floor(num(clock.day, fresh.clock.day)), startDay: Math.floor(num(clock.startDay, fresh.clock.startDay)) },
     owned: arr<string>(raw.owned).filter((k) => shopKeys.has(k)),
     arriving: arr<SalvageState['arriving'][number]>(raw.arriving).filter((a) => shopKeys.has(a.item) && Number.isFinite(a.at)),
-    tier: Math.max(1, Math.min(3, Math.floor(num(raw.tier, 1)))),
-    carrier: typeof raw.carrier === 'string' && c.carriers[raw.carrier] ? raw.carrier : fresh.carrier,
+    // The tool tier within the merged content's highest tool's (the plasma cutter's 4 once the layer has it; 3 on the first yard's content).
+    tier: Math.max(1, Math.min(topToolTier(k), Math.floor(num(raw.tier, 1)))),
+    carrier: typeof raw.carrier === 'string' && k.carriers[raw.carrier] ? raw.carrier : fresh.carrier,
     load: arr<SalvageState['load'][number]>(raw.load).filter((p) => knownGrade(p.grade) && grams(p.g) > 0),
     things: arr<SalvageState['things'][number]>(raw.things).filter((th) => knownObj(th.obj) && th.at && typeof th.uid === 'string'),
     pieces: arr<SalvageState['pieces'][number]>(raw.pieces).filter((p) => knownGrade(p.grade) && grams(p.g) > 0),
@@ -196,6 +204,13 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   // Partners: every partner of content (a new one starts as a fresh yard has it).
   const rawP = obj<Record<string, PartnerState>>(raw.partners);
   s.partners = Object.fromEntries(Object.keys(c.partners).map((id) => [id, rawP[id] && typeof rawP[id] === 'object' ? { ...fresh.partners[id], ...rawP[id], skips: arr(rawP[id].skips).length ? arr<PartnerState['skips'][number]>(rawP[id].skips) : fresh.partners[id].skips } : fresh.partners[id]]));
+  // A works-layer partner (the bridge partners, 2.9) the save ALREADY holds is kept as saved (s2a-fix): none is
+  // added here (Phase B's worksOpen makes their states when the layer opens). Its skips must be a list.
+  for (const id of Object.keys(k.partners)) {
+    if (id in c.partners) continue;
+    const p = rawP[id];
+    if (p && typeof p === 'object' && Array.isArray(p.skips)) s.partners[id] = { ...p, skips: arr<PartnerState['skips'][number]>(p.skips) };
+  }
 
   // Positions are never trusted.
   const pr = obj<SalvageState['presence']>(raw.presence);
@@ -221,7 +236,17 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   // Stage 2 (contract v3, 2.20): a layout-2 save gets the stage's fields fresh (from `fresh`, already in `r`
   // for every key it lacks: and it lacks them all); a layout-3 save's are repaired. Nothing of the first yard is touched.
   const fresh2 = Object.fromEntries(STAGE2_KEYS.map((k) => [k, fresh[k]])) as Stage2Fields;
-  Object.assign(s, (raw as { v?: unknown }).v === 3 ? repairStage2(raw, fresh2, t) : fresh2);
+  const v = (raw as { v?: unknown }).v;
+  Object.assign(s, typeof v === 'number' && v >= 3 ? repairStage2(raw, fresh2, t) : fresh2);
+  // The plates a save holds: those the content knows (with `works` in the content), levels within the plate's top.
+  const plates = c.works?.plates;
+  if (plates) {
+    for (const id of Object.keys(s.works)) {
+      const def = plates[id];
+      if (!def) delete s.works[id];
+      else s.works[id].level = s.works[id].owned ? Math.max(1, Math.min(def.maxLevel, s.works[id].level)) : 0;
+    }
+  }
   // The merchant's round under way ends no later than the save's clock + loading + the round (RULING2 14.3:
   // a save written on the unmerged branch during the old long round would otherwise load with it under way).
   // Only a LAYOUT-2 save can hold the old long round (it was removed before layout 3 existed).
@@ -238,6 +263,8 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
 export function reconcileSalvage(cfg: SalvageConfig, base: GameState, raw: unknown, now: number): SalvageGame {
   const r = (raw as { salvage?: Partial<SalvageState> } | null)?.salvage;
   const v = (r as { v?: unknown } | undefined)?.v;
-  if (!r || typeof r !== 'object' || (v !== 2 && v !== 3) || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: freshSalvage(cfg.salvage, now) };
+  // Layouts 2 and 3; a NEWER layout (finite v > 3: the app rolled back over the air) loads as layout 3, never a fresh yard.
+  const layoutOk = v === 2 || (typeof v === 'number' && Number.isFinite(v) && v >= 3);
+  if (!r || typeof r !== 'object' || !layoutOk || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: freshSalvage(cfg.salvage, now) };
   return { ...base, salvage: reconcileState(cfg, r, now) };
 }

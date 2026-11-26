@@ -10,6 +10,7 @@ import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { rackChoice } from './reuse';
+import { stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
@@ -136,17 +137,24 @@ function isCable(x: Ctx, grade: string): boolean {
   return inputSet(x, 'hand_stripper').has(grade);
 }
 
-/** Loose things (tier 0) waiting at a place for a yard hand, oldest uid first (cable not while the boss is in the yard). */
-function looseAt(x: Ctx, where: 'dropoff' | 'floor', cap: number, inYard: boolean): ThingState | null {
+/**
+ * Loose things (tier 0) waiting at a place for a yard hand, oldest uid first (cable not while the boss is in the yard).
+ * Stage 2 (2.12, ruling 13.1; s2a-fix): a tagged thing the Yard sale takes is kept off (reuse.ts rackChoice
+ * with the thing: true = not his to carry as scrap; the stub never keeps one off). Asked last, of a candidate.
+ */
+function looseAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, inYard: boolean): ThingState | null {
   const looseCable = (th: ThingState) => inYard && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
-  return x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
+  return x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th) && !rackChoice(x, m, t, th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
-/** A whole workable thing at a place carried at its whole grade (E4), best whole grade first. */
-function wholeAt(x: Ctx, where: 'dropoff' | 'floor', cap: number): ThingState | null {
-  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0);
+/** A whole workable thing at a place carried at its whole grade (E4), best whole grade first; a thing the Yard sale takes kept off (rackChoice, s2a-fix). */
+function wholeAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number): ThingState | null {
+  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0 && !rackChoice(x, m, t, th));
   return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
+
+/** The first yard's machines with an out tray, in a yard hand's order (handDepart step 3; works.ts stationTrays orders the stations from it). */
+const OUT_TRAYS: readonly MachineId[] = ['stripper', 'hand_stripper', 'bench', 'crucible'];
 
 /** What kind of trip the last successful handDepart chose: the kind of the run it starts (2.1, 14.1). */
 type HandKind = Exclude<RunKind, { k: 'cut' }>;
@@ -238,8 +246,14 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
       return true;
     }
   }
-  // (3) out trays (mass, up to his load).
-  for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) {
+  // (3) out trays (mass, up to his load). Stage 2 (2.5.3, S12; s2a-fix): the stations' order is works.ts
+  // stationTrays' (the first yard's list itself while no plate exists); a plate's tray is worksTrayTrip's.
+  for (const sid of stationTrays(x, OUT_TRAYS)) {
+    if (!(sid in s.machines)) {
+      if (worksTrayTrip(x, m, t, sid)) return true;
+      continue;
+    }
+    const id = sid as MachineId;
     const g = trayFree(x, id);
     if (g <= 0) continue;
     const mach = s.machines[id];
@@ -269,7 +283,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   // (4) the drop-off's pieces. Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry:
   // they go with the pieces of their place.
   if (!drop.length) {
-    const looseDrop = looseAt(x, 'dropoff', cap, inYard);
+    const looseDrop = looseAt(x, m, t, 'dropoff', cap, inYard);
     if (looseDrop) return takeLoose(x, m, t, looseDrop, 'dropoff');
   }
   if (drop.length) {
@@ -300,7 +314,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const noCutter = !s.crew.some((c) => c.role === 'cutter');
   const full = dropoffCount(x) >= x.c.dropoff.places;
   if (inYard ? full : noCutter || full) {
-    const th = wholeAt(x, 'dropoff', cap);
+    const th = wholeAt(x, m, t, 'dropoff', cap);
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
@@ -312,7 +326,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   if (!floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
   if (!inYard && noCutter) {
-    const th = wholeAt(x, 'floor', cap);
+    const th = wholeAt(x, m, t, 'floor', cap);
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
@@ -344,7 +358,7 @@ function floorStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolea
   // E35: whole things that need no cutting leave the floor whenever the boss is away, and while he is in
   // the yard once more than half of the floor's room is used; the bigger waiting heap goes first.
   if (!inYard || floorFirst) {
-    const trip = floorWholeTrip(x, cap);
+    const trip = floorWholeTrip(x, m, t, cap);
     if (trip && trip.waiting_g >= floorG) {
       for (const th of trip.things) th.by = m.id;
       m.claims = trip.things.map((th) => `loose:${th.uid}`);
@@ -356,7 +370,7 @@ function floorStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolea
     }
   }
   if (!floor.length) {
-    const looseFloor = looseAt(x, 'floor', cap, inYard);
+    const looseFloor = looseAt(x, m, t, 'floor', cap, inYard);
     if (looseFloor) return takeLoose(x, m, t, looseFloor, 'floor');
     return false;
   }
@@ -398,9 +412,10 @@ function thingLeft_g(x: Ctx, th: ThingState): number {
  * goes; more things for the same place join it while they fit his load (and the hopper's room); `waiting_g`
  * is all such things' grams (the heap the floor's pieces are weighed against). Null when none waits.
  */
-function floorWholeTrip(x: Ctx, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
+function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
   const cands: ThingState[] = [];
-  for (const th of x.s.things) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap) cands.push(th);
+  // A thing the Yard sale takes is kept off (reuse.ts rackChoice, s2a-fix; the stub never keeps one off).
+  for (const th of x.s.things) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap && !rackChoice(x, m, t, th)) cands.push(th);
   if (!cands.length) return null;
   cands.sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
   const dest = floorWholeDest(x, cands[0]);
@@ -604,7 +619,7 @@ function piecesCand(m: CrewMember, pick: GroundPiece[], pile: string): Cand | nu
 }
 
 /** The next trip of the same kind from the same place (the in-place choice of 2.1.2), or null. Claims nothing until `take`. */
-function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: boolean, feedRoom: number): Cand | null {
+function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number): Cand | null {
   const s = x.s;
   switch (kind.k) {
     case 'feed': {
@@ -643,14 +658,14 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
       };
     }
     case 'loose': {
-      const th = looseAt(x, kind.where, cap, inYard);
+      const th = looseAt(x, m, t, kind.where, cap, inYard);
       if (!th) return null;
       return { spot: { thing: th.uid }, grade: pieceSpec(x.c, th.obj, th.cut)?.grade ?? null, g: thingLeft_g(x, th), take: () => ((th.by = m.id), [`loose:${th.uid}`]) };
     }
     case 'floorWhole': {
       // E35 at this departure: in the yard only while more than half of the floor's room is used.
       if (inYard && !(floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000)) return null;
-      const trip = floorWholeTrip(x, cap);
+      const trip = floorWholeTrip(x, m, t, cap);
       if (!trip || trip.dest !== kind.dest) return null;
       return {
         spot: { thing: trip.things[0].uid },
@@ -674,7 +689,7 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
         for (const th of s.things) if (th.at.at === 'dropoff' && !th.by) free++;
         if (free < x.c.dropoff.places) return null;
       }
-      const th = wholeAt(x, kind.where, cap);
+      const th = wholeAt(x, m, t, kind.where, cap);
       if (!th) return null;
       return { spot: { thing: th.uid }, grade: x.c.objects[th.obj]?.whole ?? null, g: x.c.objects[th.obj]?.gross_g ?? 0, take: () => ((th.by = m.id), [th.uid]) };
     }
@@ -702,7 +717,7 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
   let feedRoom = dest !== 'scale' ? hopperRoom(x, dest as MachineId) - claimGrams(x, m.claims) : 0;
   const maxRun = groupCfg(x.c).handRun_s;
   while (loads.length < RUN_MAX) {
-    const c = sameAgain(x, m, kind, cap, inYard, feedRoom);
+    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom);
     if (!c) break;
     const last = loads[loads.length - 1];
     const sp = posOf(x, c.spot);
@@ -1140,6 +1155,8 @@ function cutterLegEnd(x: Ctx, m: CrewMember, t: number): void {
 /** A crew member's leg ends at t (his t1). */
 export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
   if (m.run) landRun(x, m, t);
+  // Stage 2 (s2a-fix): an ordinary leg the works take (a 'rack' job, a plate's feed or tray: works.ts worksLegEnd; the stub never does).
+  else if (worksLegEnd(x, m, t)) return;
   else if (m.role === 'hand') handLegEnd(x, m, t);
   else if (m.role === 'cutter') cutterLegEnd(x, m, t);
   else {
@@ -1168,7 +1185,14 @@ function departHand(x: Ctx, m: CrewMember, t: number): boolean {
     if (m.course) delete m.course;
     return handDepart(x, m, t);
   }
+  // Stage 2 (2.12, ruling 13.1; s2a-fix): a tagged thing for the Yard sale comes first in his order also INSIDE a
+  // run (reuse.ts rackChoice sets him off with it and the run is over; the stub never does). Outside a run
+  // handDepart asks it first itself.
   const c = m.course;
+  if (c && rackChoice(x, m, t, null)) {
+    delete m.course;
+    return true;
+  }
   if (c && c.kind.k !== 'cut' && nextHand(x, m, t, start, c, c.kind)) return true;
   if (c) delete m.course;
   if (!handDepart(x, m, t)) return false;
@@ -1195,7 +1219,7 @@ function kindDest(kind: HandKind): string {
 function nextHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, c: RunCourse, kind: HandKind): boolean {
   const dest = kindDest(kind);
   const cap = x.c.crew.hand.load * 1000;
-  const cand = sameAgain(x, m, kind, cap, bossFresh(x, t), kind.k === 'feed' ? hopperRoom(x, kind.dest) : 0);
+  const cand = sameAgain(x, m, t, kind, cap, bossFresh(x, t), kind.k === 'feed' ? hopperRoom(x, kind.dest) : 0);
   if (!cand) return false;
   const v = handV(x, m);
   const h = x.c.crew.hand.handle_s;

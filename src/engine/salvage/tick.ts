@@ -26,6 +26,7 @@ import { bossActEnd, bossStep } from './hand';
 import { credit, finishPiece, RATE_MACHINES, rerate, rerateAll, workEndsAt } from './machines';
 import { fillSkip, openPartners } from './partners';
 import { roundEvent, roundTry } from './round';
+import { contentAt } from './layer';
 import { lotArrive, lotsDated } from './lots';
 import { arrive, checks } from './rate';
 import { reuseApply, reuseDated } from './reuse';
@@ -308,7 +309,7 @@ export function advanceNoBoss(x: Ctx, seconds: number): void {
 export function nextEvent(cfg: SalvageConfig, g: SalvageGame): QueuedEvent | null {
   const s = g.salvage;
   const nextDayMs = cfg.salvage.board.epochMs + (s.clock.day + 1) * 86_400_000;
-  const live = { cfg, c: cfg.salvage, s, live: true } as unknown as Ctx;
+  const live = { cfg, c: contentAt(cfg.salvage, s), s, live: true } as unknown as Ctx;
   return (eventsOf(live, s.t + Math.max(0, (nextDayMs - s.clock.highMs) / 1000), boostEndsAt(live))[0] ?? null) as QueuedEvent | null;
 }
 

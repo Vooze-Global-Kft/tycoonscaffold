@@ -9,6 +9,7 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { marketDay } from './board';
 import { lotPrice } from './content';
+import { contentAt } from './layer';
 import { commitCash, roundMoney } from './money';
 import { stampSeries } from './series';
 import type { CreditKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
@@ -42,6 +43,17 @@ export interface AwayAcc {
   bought: Record<string, { n: number; spent: number }>;
   /** E34: the deal's deliveries while away (deal.ts dealDeliver). */
   deliveryList: { day: number; g: number; paid: number }[];
+  // ---- stage 2 (s2a-fix, the critic's findings 3 (g) and 17; types.ts AwayCard's v3 fields). away.ts copies each
+  // onto the card only when it holds something (a first-yard card is unchanged) and adds them up across passes.
+  /** § the bank took while away (2.14.4): `money` stays GROSS (the call site adds y to both through `bankPart`). */
+  bank: number;
+  /** Agreements repaid in full while away, in order (bank.ts, Phase B). */
+  repaid: string[];
+  /** Sales at the gate and by the van while away (reuse.ts, Phase B). */
+  rack: { n: number; money: number };
+  van: { n: number; money: number };
+  /** Oversize pieces waiting at the pass's end (lots.ts sets it, Phase B); null: none counted. */
+  lotsWaiting: number | null;
 }
 
 export interface Ctx {
@@ -83,7 +95,8 @@ export const CHECK_EVERY_S = 60;
 export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[] | undefined, live = true): Ctx {
   const s = clone(g.salvage);
   if (!s.counts) s.counts = {};
-  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map() };
+  // The content this state reads (./layer.ts, s2a-fix): the works layer joined once the works opened (counts.bathSet), else the base content itself.
+  return { cfg, c: contentAt(cfg.salvage, s), s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map() };
 }
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */
@@ -150,20 +163,37 @@ export function earn(x: Ctx, amount: number, t: number): void {
 }
 
 /**
+ * The bank's part y of one lot payment (2.14.4), at its call site right after bank.ts payLot and before the
+ * player's part z is earned (s2a-fix): while away the card's money stays GROSS (earn adds z, this adds y) and
+ * its `bank` line sums y. Nothing when y is 0 (the stub's answer), so the first yard is unchanged.
+ */
+export function bankPart(x: Ctx, y: number): void {
+  if (!(y > 0) || !x.away) return;
+  x.away.money = roundMoney(x.away.money + y);
+  x.away.bank = roundMoney(x.away.bank + y);
+}
+
+/**
  * Money in that is NOT a lot payment (stage 2, 2.14.4, B2): an ad reward (`'ad'`, 2.16) or granted scrip
  * (`'grant'`, a pack's S, 2.15.5). It adds to cash and to the lifetime `earned` total ONLY: never to the
  * income buckets (the advice line's budget, incomeRate), never to the away card's money, never through
- * `bank.ts payLot` (the bank takes no share of it). `t` and `kind` decide nothing here; they name the
- * credit for its caller (and for a later stage's books).
+ * `bank.ts payLot` (the bank takes no share of it). `t` decides nothing here; `kind` 'grant' also adds the
+ * amount to the granted total `counts['granted:c']` (hundredths), the part of `earned` no board may rank.
  */
 export function credit(x: Ctx, amount: number, t: number, kind: CreditKind): void {
   void t;
-  void kind;
   const a = roundMoney(amount);
   if (a <= 0) return;
   x.cash = roundMoney(x.cash + a);
   x.earned += a;
   x.dirty = true;
+  // s2a-fix (the critic's minor 17): bought scrip never counts on a board (2.15.5), but `earned` feeds lifetime
+  // earnings, which the missions ('earn') read and a board may: the granted total is kept apart, in hundredths,
+  // so that whoever ranks or counts EARNED money takes it off (counts['granted:c']).
+  if (kind === 'grant') {
+    const c = x.s.counts!;
+    c['granted:c'] = (c['granted:c'] ?? 0) + Math.round(a * 100);
+  }
 }
 
 /** Money out (a purchase, a load's price): never below zero (the checks refuse first). */

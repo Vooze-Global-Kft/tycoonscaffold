@@ -9,7 +9,7 @@
  * state object (the shared store's "nothing changed"). The loop does not call this file: the mode's entry
  * (salvageMode.ts, rules-money's) hands these to the shared store.
  */
-import type { ProductArrival, QuoteOutcome, SalvageConfig, SalvageGame } from './types';
+import type { ProductArrival, ProductListing, QuoteOutcome, SalvageConfig, SalvageGame } from './types';
 
 /** The mode's quote at Buy (the shared store's QuoteFn). Stub: refused (the same object). */
 export function quote(cfg: SalvageConfig, g: SalvageGame, now: number, known: readonly string[], askedMs: number): SalvageGame {
@@ -36,7 +36,7 @@ export function grantProduct(cfg: SalvageConfig, g: SalvageGame, arrival: Produc
 }
 
 /** After every listing (EngineMode.afterListing): the 72 hours on the store's request time. Stub: nothing withdrawn. */
-export function afterListing(cfg: SalvageConfig, g: SalvageGame, listing: { txs: readonly unknown[]; fresh: boolean; requestMs?: number | null }, now: number): SalvageGame {
+export function afterListing(cfg: SalvageConfig, g: SalvageGame, listing: ProductListing, now: number): SalvageGame {
   void cfg;
   void listing;
   void now;

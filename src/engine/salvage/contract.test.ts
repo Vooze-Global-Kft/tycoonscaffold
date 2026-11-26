@@ -224,9 +224,10 @@ describe('2.20 the save: layout 3 accepts layout 2 (the first test written: the 
     raw.salvage.forklift = { x: Number.NaN, y: 1 };
     const back = reconcileSalvage(cfg3, base3(), raw, FIXTURE_NOW).salvage;
     expect(back.works).toEqual({});
-    expect(back.bank.agreement?.taken).toBe(100);
+    // s2a-fix (the critic's minor 14): an agreement saved with taken >= T is repaid (into the history at the save's clock), never open for ever.
+    expect(back.bank.agreement).toBeNull();
+    expect(back.bank.done).toEqual([{ plate: 'shear', T: 100, signedAt: 0, repaidAt: g.salvage.t }]);
     expect(back.bank.letterSeen).toBe(true);
-    expect(back.bank.done).toEqual([]);
     expect(back.iap.pending).toEqual([]);
     expect(back.iap.ledger).toHaveLength(2000);
     expect(back.iap.ageBand).toBeNull();
@@ -250,9 +251,19 @@ describe('2.20 the save: layout 3 accepts layout 2 (the first test written: the 
     expect(reconcileSalvage(cfg3, base3(), rt(g), FIXTURE_NOW).salvage.merchant.endsAt).toBe(s.t + 1e7);
   });
 
-  it('an unknown layout still starts afresh', () => {
+  it('a NEWER layout (v > 3: an over-the-air rollback) loads as layout 3 with its unknown fields kept (s2a-fix); an older or unreadable one starts afresh', () => {
     const g = fixtureGame('m30', base3(), FIXTURE_NOW) as SalvageGame;
-    for (const v of [1, 4, '3', null, undefined]) {
+    for (const v of [4, 7]) {
+      const raw = rt(g) as unknown as { salvage: Record<string, unknown> };
+      raw.salvage.v = v;
+      raw.salvage.book = { pages: 3 };
+      const back = reconcileSalvage(cfg3, base3(), raw, FIXTURE_NOW);
+      expect(back.salvage.t, String(v)).toBe(g.salvage.t);
+      expect(back.salvage.v).toBe(3);
+      expect(back.salvage.things.length).toBe(g.salvage.things.length);
+      expect((back.salvage as unknown as { book: unknown }).book).toEqual({ pages: 3 });
+    }
+    for (const v of [1, '3', null, undefined, Number.NaN, Infinity]) {
       const raw = rt(g) as unknown as { salvage: Record<string, unknown> };
       raw.salvage.v = v;
       const back = reconcileSalvage(cfg3, base3(), raw, FIXTURE_NOW);

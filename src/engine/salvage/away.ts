@@ -89,17 +89,24 @@ function card(x: Ctx, seconds: number, capS: number, absentS: number, runLonger:
     runLonger,
     // engine2-income (E40): the held bays sold to keep the yard running, in order (only when there were any).
     ...((acc as AwayAcc & { heldSold?: string[] }).heldSold?.length ? { heldSold: [...(acc as AwayAcc & { heldSold?: string[] }).heldSold!] } : {}),
+    // Stage 2 (2.14.4, 2.17; s2a-fix): each line only when it holds something, so a first-yard card is unchanged.
+    ...(acc.bank > 0 ? { bank: acc.bank } : {}),
+    ...(acc.repaid.length ? { repaid: [...acc.repaid] } : {}),
+    ...(acc.rack.n > 0 ? { rack: { ...acc.rack } } : {}),
+    ...(acc.van.n > 0 ? { van: { ...acc.van } } : {}),
+    ...(acc.lotsWaiting !== null && acc.lotsWaiting > 0 ? { lotsWaiting: acc.lotsWaiting } : {}),
   } as AwayCard;
 }
 
-/** A sink for the pass's events: only awayReport, passed and rung reach the caller (types.ts MAX_TICK: never item events); the rest are dropped as they come (no 35,000-event array, R3). */
+/** A sink for the pass's events: only awayReport, passed, rung and repaid reach the caller (types.ts MAX_TICK: never item events); the rest are dropped as they come (no 35,000-event array, R3). */
 function awaySink(out: SalvageEvent[] | undefined): SalvageEvent[] {
   const sink: SalvageEvent[] = [];
   sink.push = function push(e: SalvageEvent): number {
     if (out) {
       for (let i = 0; i < arguments.length; i++) {
         const q = arguments[i] as SalvageEvent;
-        if (q.type === 'awayReport' || q.type === 'passed' || q.type === 'rung') out.push(q);
+        // 2.19 (s2a-fix): the away pass emits awayReport, passed, rung and repaid (an agreement repaid in full).
+        if (q.type === 'awayReport' || q.type === 'passed' || q.type === 'rung' || (q as { type: string }).type === 'repaid') out.push(q);
       }
     }
     void e;
@@ -154,7 +161,7 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   const cardS = Math.max(cfg.salvage.away.gapS, (cfg.salvage.away as { cardS?: number }).cardS ?? 60);
   const played = Object.entries(g.salvage.counts ?? {}).some(([k, v]) => k !== 'goalsAt' && (v ?? 0) > 0);
   const showCard = raw > cardS && played;
-  x.away = { lines: {}, money: 0, supplied0: s.ladder.supplied_g, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [] };
+  x.away = { lines: {}, money: 0, supplied0: s.ladder.supplied_g, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [], bank: 0, repaid: [], rack: { n: 0, money: 0 }, van: { n: 0, money: 0 }, lotsWaiting: null };
   // The boss's last sample is stale from the first second of the pass (no boss).
   s.presence = { ...s.presence, moving: false, standingFor: 0 };
   const runLonger = runLongerOf(cfg, g, capS);
@@ -219,6 +226,21 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
       // engine2-income (E40): both passes' held bays sold to keep the yard running.
       const held = [...new Set([...((prev as HeldCard).heldSold ?? []), ...((c as HeldCard).heldSold ?? [])])];
       if (held.length) (s.away as HeldCard).heldSold = held;
+      // Stage 2 (s2a-fix): the bank's line, the repaid agreements and the gate's and the van's sales add up across
+      // passes; the oversize pieces waiting are the latest pass's count. Absent where neither pass had any.
+      const merged = s.away as AwayCard;
+      delete merged.bank;
+      delete merged.repaid;
+      delete merged.rack;
+      delete merged.van;
+      const bank = roundMoney((prev.bank ?? 0) + (c.bank ?? 0));
+      if (bank > 0) merged.bank = bank;
+      const repaid = [...(prev.repaid ?? []), ...(c.repaid ?? [])];
+      if (repaid.length) merged.repaid = repaid;
+      for (const k of ['rack', 'van'] as const) {
+        const n = (prev[k]?.n ?? 0) + (c[k]?.n ?? 0);
+        if (n > 0) merged[k] = { n, money: roundMoney((prev[k]?.money ?? 0) + (c[k]?.money ?? 0)) };
+      }
     } else s.away = c;
     s.beenAway = true;
     x.ev.push({ type: 'awayReport', card: s.away });

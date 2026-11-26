@@ -57,6 +57,12 @@ const num = (v: unknown, d = 0): number => (fin(v) ? v : d);
 const whole = (v: unknown): number => Math.max(0, Math.floor(num(v)));
 const money = (v: unknown): number => Math.max(0, Math.round(num(v) * 100) / 100);
 const dateOrNull = (v: unknown): number | null => (fin(v) ? v : null);
+/**
+ * A DATED END read from a save (s2a-fix, the critic's minor 13): never before the save's clock `t`. The loop
+ * applies no date earlier than s.t (tick.ts eventsOf/firstEvent drop it), so a date saved in the past would
+ * stop its feature for ever; clamped to t it fires at the first instant instead (as runOf and moveOf do).
+ */
+const dueOrNull = (v: unknown, t: number): number | null => (fin(v) ? Math.max(v, t) : null);
 const str = (v: unknown, max = 64): v is string => typeof v === 'string' && v.length > 0 && v.length <= max;
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
@@ -69,7 +75,7 @@ const MAX_PLATES = 64;
 const MAX_PENDING = 16;
 const MAX_DONE = 64;
 
-function heatOf(v: unknown): HeatState | undefined {
+function heatOf(v: unknown, t: number): HeatState | undefined {
   const h = obj(v);
   const phases = ['empty', 'filling', 'heating', 'ready', 'pouring', 'cooling'];
   if (!str(h.recipe) || !phases.includes(h.phase as string) || !fin(h.phaseSince) || !fin(h.lastFeedAt)) return undefined;
@@ -82,7 +88,7 @@ function heatOf(v: unknown): HeatState | undefined {
     heel_g: whole(h.heel_g),
     phase: h.phase as HeatState['phase'],
     phaseSince: h.phaseSince,
-    endsAt: dateOrNull(h.endsAt),
+    endsAt: dueOrNull(h.endsAt, t),
     lastFeedAt: h.lastFeedAt,
     firstPoured: !!h.firstPoured,
     cooling: c && str(c.grade) ? ({ ...(c as object), grade: c.grade, n: whole(c.n), short_g: whole(c.short_g) } as HeatState['cooling']) : null,
@@ -119,10 +125,10 @@ function worksOf(id: string, v: unknown, t: number): WorksState | null {
     tray_g: stock(w.tray_g),
     trayClaim_g: stock(w.trayClaim_g),
     since: num(w.since),
-    commissionAt: dateOrNull(w.commissionAt),
+    commissionAt: dueOrNull(w.commissionAt, t),
   };
   if (w.heat !== undefined) {
-    const h = heatOf(w.heat);
+    const h = heatOf(w.heat, t);
     if (h) out.heat = h;
     else delete out.heat;
   }
@@ -151,7 +157,8 @@ function agreementOf(v: unknown): Agreement | null {
 function pendingOf(v: unknown): PendingQuote | null {
   const q = obj(v);
   if (!str(q.id) || !str(q.product) || !fin(q.S) || !fin(q.atMs) || (q.state !== 'open' && q.state !== 'waiting')) return null;
-  return { id: q.id, product: q.product, S: money(q.S), I: money(q.I), atMs: q.atMs, askedMs: fin(q.askedMs) ? (q.askedMs as number) : null, known: strs(q.known, 1000), state: q.state };
+  const wait = q.state === 'waiting' && (q.wait === 'pending' || q.wait === 'unconfirmed') ? q.wait : null;
+  return { id: q.id, product: q.product, S: money(q.S), I: money(q.I), atMs: q.atMs, askedMs: fin(q.askedMs) ? (q.askedMs as number) : null, known: strs(q.known, 1000), state: q.state, ...(q.wait !== undefined ? { wait } : {}) };
 }
 
 function ledgerOf(v: unknown): LedgerEntry | null {
@@ -175,11 +182,11 @@ export function repairStage2(raw: Partial<SalvageState>, fresh: Stage2Fields, t:
   const routes = Object.fromEntries(Object.entries(obj(raw.routes)).filter(([g, to]) => str(g) && str(to)) as [string, string][]);
 
   const l = obj(raw.lots);
-  const lots: LotsState = { nextAt: dateOrNull(l.nextAt), n: whole(l.n) };
+  const lots: LotsState = { nextAt: dueOrNull(l.nextAt, t), n: whole(l.n) };
 
   const r = obj(raw.reuse);
   const sold = obj(r.sold);
-  const reuse: ReuseState = { nextAt: dateOrNull(r.nextAt), vanAt: dateOrNull(r.vanAt), level: Math.min(99, whole(r.level)), sold: { day: Math.floor(num(sold.day, fresh.reuse.sold.day)), n: whole(sold.n), money: money(sold.money) } };
+  const reuse: ReuseState = { nextAt: dueOrNull(r.nextAt, t), vanAt: dueOrNull(r.vanAt, t), level: Math.min(99, whole(r.level)), sold: { day: Math.floor(num(sold.day, fresh.reuse.sold.day)), n: whole(sold.n), money: money(sold.money) } };
 
   const b = obj(raw.bank);
   const bank: BankState = {
@@ -191,6 +198,13 @@ export function repairStage2(raw: Partial<SalvageState>, fresh: Stage2Fields, t:
       .slice(-MAX_DONE)
       .map((d) => ({ plate: d.plate as string, T: money(d.T), signedAt: d.signedAt as number, repaidAt: d.repaidAt as number })),
   };
+  // s2a-fix (the critic's minor 14): an agreement saved with taken >= T is repaid: it would load open and never
+  // close (payLot takes nothing more from it). It goes into the history, repaid at the save's clock.
+  if (bank.agreement && bank.agreement.taken >= bank.agreement.T) {
+    const a = bank.agreement;
+    bank.done = [...bank.done, { plate: a.plate, T: a.T, signedAt: a.signedAt, repaidAt: t }].slice(-MAX_DONE);
+    bank.agreement = null;
+  }
 
   const i = obj(raw.iap);
   const looks = obj(i.looks);

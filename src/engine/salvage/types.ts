@@ -57,6 +57,7 @@
  */
 import type { GameConfig } from '../../config/schema';
 import type { BAY_KINDS, BOARD_TABS, CardKind as SchemaCardKind, CrewRole, LOOK_SLOTS, MachineId, SalvageContent } from '../../config/schema.salvage';
+import type { ProductArrival as SharedProductArrival, ProductListing as SharedProductListing } from '../mode';
 import type { GameState } from '../types';
 import type { RefusalKey, RefusalKeyV3 } from './refusals';
 import type { TextKey } from './textKeys';
@@ -1884,6 +1885,13 @@ export interface PendingQuote {
   askedMs: number | null;
   known: string[];
   state: 'open' | 'waiting';
+  /**
+   * s2a-fix (RULING2 15.4, 15.11 c): WHY a waiting quote waits, for its row's words: 'pending' (the store
+   * answered pending: "Waiting for approval") or 'unconfirmed' (an error that does not prove nothing was
+   * charged: "The store has not confirmed this purchase yet. If you were charged, your scrip arrives when it
+   * does."). null (or absent, a save made before it) while open; a waiting quote without it reads as pending.
+   */
+  wait?: 'pending' | 'unconfirmed' | null;
 }
 
 /** One granted transaction (never granted twice). `quote` names the pending quote it took. */
@@ -1948,15 +1956,17 @@ export type LotPaymentKind = 'collection' | 'deal' | 'crate' | 'rack' | 'van';
 /** 2.14.4: ad rewards and granted scrip go through `clock.ts credit(x, amount, t, kind)`: cash and `earned` only, never the income buckets, the away card's money or payLot. */
 export type CreditKind = 'ad' | 'grant';
 
-/** The outcome of a pack's sheet as the shared store reports it (src/state/store.ts `QuoteOutcome`, second working copy): the first four withdraw the quote, the last two make it WAITING. Phase B imports the shared type once merged. */
+/**
+ * The outcome of a pack's sheet as the shared store reports it (src/state/store.ts `QuoteOutcome`, merged in
+ * 17a2566): the first four withdraw the quote, 'pending' and 'unconfirmed' make it WAITING (PendingQuote.wait
+ * keeps which). Spelled here because the rules never import src/state (a React module); contract.test.ts
+ * holds it EQUAL to the shared type at compile time (s2a-fix).
+ */
 export type QuoteOutcome = 'cancelled' | 'declined' | 'unavailable' | 'unsaved' | 'pending' | 'unconfirmed';
-/** A purchase arriving at the mode (src/engine/mode.ts `ProductArrival`, second working copy): `own` names the quote whose own sheet returned it; null for a later arrival. Phase B imports the shared type. */
-export interface ProductArrival {
-  productId: string;
-  txId: string;
-  purchasedMs: number | null;
-  own: { atMs: number } | null;
-}
+/** A purchase arriving at the mode: THE SHARED TYPE (src/engine/mode.ts, merged in 17a2566; s2a-fix: no mirror). `own` names the quote whose own sheet returned it; null for a later arrival. */
+export type ProductArrival = SharedProductArrival;
+/** A listing of the store account's transactions handed to `afterListing`: THE SHARED TYPE (src/engine/mode.ts), with the store's own `requestMs` (15.12 a). */
+export type ProductListing = SharedProductListing;
 
 /**
  * v3 (2.19; RULING2 15): the new player actions, with the same shape as SalvageActions (pure; refusals
@@ -1964,8 +1974,9 @@ export interface ProductArrival {
  * - signFinance: `bankOne`, the plate's gate (`rung`, `needsItem`), `notFinanceable`, `bankReserve`, `cash`, `ceiling`, `bankTerms` (retry: the terms now). Then cash −= d, the plate `arriving`, the agreement stored, event `financed`.
  * - setRoute: `notOwned` (station not owned), `noRoute` (it does not take the grade). Event `routeSet`.
  * - setPlateRecipe: as setRecipe (`notOwned`, `heatRunning`, `confirmHeel`); `routed` when the recipe's grade is reserved by another station.
- * - quotePack (the shared store's `quote` function): `packOff`, `packPending`, `packHeadroom`, `quoteUpdated` (shown ≠ now); else appends a PendingQuote {state 'open'} and withdraws an older OPEN quote of the product.
- * - settleQuote (the store's `settle`): the named quote ({product, atMs}) withdrawn or made WAITING; same object if it no longer stands. Never refused.
+ * - quotePack (the shared store's `quote` function): `packOff`, `packPending` (a WAITING quote of the product younger than 24 h of the device's clock, a clock earlier than its atMs counting as elapsed; or `iap.maxStanding` quotes of the product standing), `packHeadroom`, `quoteUpdated` (shown ≠ now); else appends a PendingQuote {state 'open', wait null, askedMs}. An older quote of the product is NEVER withdrawn by a new Buy: it keeps standing and counts in headroom (RULING2 15.12 b).
+ * - settleQuote (the store's `settle`): the named quote ({product, atMs}) withdrawn (cancelled, declined, unavailable, unsaved: event quoteWithdrawn) or made WAITING with `wait` 'pending' or 'unconfirmed'; same object if it no longer stands. Never refused.
+ * THE REFUSAL'S REASON (15.12 f) is not kept in the state: the shared store only says refused, and cardOf derives the row's words from the state at each read (packPending and packHeadroom follow from `iap.pending` and the headroom; a `quoteUpdated` refusal's a → b is the event's, which the screen keeps for the row while the card is open).
  * - setPacksHidden: `packCode` (wrong code when showing again). setAgeBand: `badYear`. chooseLook: `notOwned`.
  * - adPaid: `nothing` (no offer of that kind), `adCap`. Paid through `credit(…, 'ad')`.
  * Racking, cutting an oversize piece, sorting the picking table, commissioning and entering the forklift go
@@ -1988,12 +1999,12 @@ export interface SalvageActions2 {
  * The mode's hooks the shared store calls (salvageMode.ts, rules-money; shapes as `store-shared` built them,
  * notes/store-shared.md "After the attack"): pure and idempotent.
  * - grantProduct: ledger has txId → same; `own` → THAT quote unless its `known` has the id; else the OLDEST standing quote of the product whose `known` lacks it; none → same (another save). cash += S through credit(…, 'grant'); ledger += entry; event `granted`.
- * - afterListing: after every listing; withdraws standing quotes ≥ 72 h old (device clock) that a FRESH listing shows nothing new for.
+ * - afterListing: after every listing, once its arrivals have been routed (grantProduct): only for a FRESH listing with a store request time, every quote still standing whose `askedMs` is at least 72 h before the listing's `requestMs` is withdrawn (event quoteWithdrawn, why 'expired'). The STORE's clock, never the device's (RULING2 15.11 b, 15.12 a); a quote with askedMs null is never withdrawn by time.
  * - adAudience: 'child' for u13, 'teen' for t13, else null.
  */
 export interface SalvageShopHooks {
   grantProduct(cfg: SalvageConfig, g: SalvageGame, arrival: ProductArrival): SalvageGame;
-  afterListing(cfg: SalvageConfig, g: SalvageGame, listing: { txs: { productId: string; txId: string }[]; fresh: boolean }, now: number): SalvageGame;
+  afterListing(cfg: SalvageConfig, g: SalvageGame, listing: ProductListing, now: number): SalvageGame;
   adAudience(cfg: SalvageConfig, g: SalvageGame): 'child' | 'teen' | null;
 }
 
@@ -2141,14 +2152,17 @@ export interface EarnedLookRow {
 
 /**
  * 4.8: a pack's row. offer: "§{S} · about {H} hours of your yard's earnings" with Buy (buyPack); noRoom:
- * "Nothing to spend it on yet", no button; waiting: "Waiting for approval", no button. `updated` when the
- * S shown before moved ("Updated: §a → §b").
+ * "Nothing to spend it on yet", no button; waiting: "Waiting for approval", no button (a quote waiting with
+ * `wait` 'pending', or a further Buy refused while `iap.maxStanding` stand); unconfirmed (s2a-fix, 15.11 c):
+ * "The store has not confirmed this purchase yet. If you were charged, your scrip arrives when it does.", no
+ * button (a quote waiting with `wait` 'unconfirmed'). `updated` when the S shown before moved ("Updated: §a →
+ * §b"). The state is derived from `iap.pending` at each read (cardOf), never stored.
  */
 export interface PackRow {
   product: string;
   H: number;
   S: number;
-  state: 'offer' | 'noRoom' | 'waiting';
+  state: 'offer' | 'noRoom' | 'waiting' | 'unconfirmed';
   updated: { a: number; b: number } | null;
   button: CardButtonV3 | null;
 }

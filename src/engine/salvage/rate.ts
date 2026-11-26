@@ -15,7 +15,7 @@ import { defOf } from './machines';
 import { openPartners } from './partners';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
-import { worksOpen } from './works';
+import { worksOpen, worksOwn } from './works';
 import { floorSlots, pointOf, thingPos } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
@@ -132,6 +132,9 @@ export function own(x: Ctx, item: string, t: number): void {
     void defOf;
   }
   if (item === 'truck') s.truck.owned = true;
+  // Stage 2's purchases (a plate never comes here: works.ts orderPlate; the three-axle truck, the forklift, the
+  // pallet truck, the plasma cutter's own parts): the feature's file (s2a-fix; a stub: nothing).
+  worksOwn(x, item, t);
   x.ev.push({ type: 'owned', item });
   x.dirty = true;
   openPartners(x, t);
@@ -186,7 +189,11 @@ export function checks(x: Ctx, t: number, force = true): void {
   }
   // Stage 2 (2.20, B14): the works layer opens from the STATE, not from the rung event: at every check while
   // the yard stands at or above the works layer's rung and the bath has not been set (works.ts worksOpen).
-  if (s.ladder.rung >= worksRungOf(x.c) && s.counts!.bathSet === undefined) worksOpen(x, t);
+  // Only in LIVE play (s2a-fix, the critic's finding 4): the opening is beat 1 of 1.3 (sign, padlock, bath, goal)
+  // and the away pass's events never reach a screen (salvageOffline passes none; the sink keeps only the away
+  // report, passed, rung and repaid), so opened away its event would be lost and bathSet would keep it from
+  // ever firing again. A rung-3 save opened after hours away therefore opens at its first live instant.
+  if (x.live && s.ladder.rung >= worksRungOf(x.c) && s.counts!.bathSet === undefined) worksOpen(x, t);
   const passed = passedNow(x.cfg, view(x));
   if (passed > s.ladder.passed) {
     const list = x.c.rivals.list;

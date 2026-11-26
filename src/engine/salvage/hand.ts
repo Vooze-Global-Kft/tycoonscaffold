@@ -10,7 +10,9 @@ import { bossFresh, count, standingFor, type Ctx } from './clock';
 import { byValue, carrierCap_g, cutTime, pieceSpec, tierOf, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
 import { openCrewInSight } from './crew';
+import { forkliftStep } from './forklift';
 import { rackChoice } from './reuse';
+import { WORKS_ACTS, worksAct, worksActEnd, worksActHolds, type WorksActKind } from './works';
 import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
 import { weighIn } from './scales';
@@ -138,6 +140,8 @@ export function bossStep(x: Ctx, t: number): void {
     truckBossStep(x, t);
     return;
   }
+  // Stage 2 (2.9; s2a-fix): the boss in the forklift is the forklift's, as at the wheel he is the truck's (stub: never).
+  if (forkliftStep(x, t)) return;
   rerate(x, 'hand_stripper', t);
   crucibleCheckReady(x, t);
   const still = !p.moving;
@@ -155,6 +159,8 @@ export function bossStep(x: Ctx, t: number): void {
     } else if (a.kind === 'weigh') ok = still && atPlace(x, 'scale', p.x, p.y);
     else if (a.kind === 'feed') ok = still && !!a.target && atPlace(x, a.target, p.x, p.y);
     else if (a.kind === 'circle') ok = still && circleAt(x, p.x, p.y) >= 0;
+    // Stage 2's acts (commission, rack, lot, crate; s2a-fix): the works decide whether one holds (stub: it does).
+    else if (WORKS_ACTS.has(a.kind)) ok = worksActHolds(x, a.kind as WorksActKind, t);
     if (ok) return;
     cancelAct(x, t);
   }
@@ -204,6 +210,9 @@ export function bossStep(x: Ctx, t: number): void {
   // Stage 2 (2.12, ruling 13.1): a tagged thing within his sight is his for the Yard sale while a place is
   // free: he lifts it whole, or sets it on the rack in its chalk zone (reuse.ts rackChoice; the stub never acts).
   if (rackChoice(x, 'boss', t, null)) return;
+  // Stage 2 (s2a-fix): the boss's other acts of the works start here (standing at an installed plate, the
+  // picking table, an oversize piece: works.ts worksAct; the stub never acts).
+  if (worksAct(x, t)) return;
   // Pickup (moving or still) and the swap (still).
   const room = room_g(x);
   const cands = pickables(x, p.x, p.y);
@@ -356,7 +365,7 @@ export function bossActEnd(x: Ctx, t: number): void {
     s.load = [];
     for (const p of pieces) dropOnPile(x, p, `circle.${n}`);
     x.ev.push({ type: 'circleDrop', circle: n, pieces: pieces.map((p) => p.uid), g: pieces.reduce((q, p) => q + p.g, 0) });
-  }
+  } else if (WORKS_ACTS.has(a.kind)) worksActEnd(x, a.kind as WorksActKind, t); // stage 2 (s2a-fix): the act's effect (stub: none)
   s.act = { kind: 'none', target: null, since: t, endsAt: null };
   count(x, 'bossActs');
   bossStep(x, t);

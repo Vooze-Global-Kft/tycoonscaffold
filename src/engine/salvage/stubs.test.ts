@@ -143,7 +143,7 @@ describe('credit (2.14.4, B2): an ad reward or granted scrip adds to cash and li
   it('cash and earned rise by the rounded amount; the income buckets and the away card money do not; nothing at or below zero', () => {
     const g = fixtureGame('m30', BASE) as SalvageGame;
     const x = begin(CFG, g, []);
-    x.away = { lines: {}, money: 0, supplied0: 0, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [] };
+    x.away = { lines: {}, money: 0, supplied0: 0, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [], bank: 0, repaid: [], rack: { n: 0, money: 0 }, van: { n: 0, money: 0 }, lotsWaiting: null };
     const buckets = JSON.stringify(x.s.income);
     credit(x, 12.345, x.s.t, 'ad');
     credit(x, 100, x.s.t, 'grant');
