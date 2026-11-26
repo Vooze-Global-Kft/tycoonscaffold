@@ -10,6 +10,17 @@
  */
 export const MEMO_CHECK = { verify: false };
 
+/**
+ * works.ts routeOf's kept answers for one transition (keyed by its Ctx, with the content object they were read on). Here
+ * rather than in works.ts so that the files that drop them (rate.ts, actionsWorks.ts) need nothing of works.ts.
+ */
+export const ROUTES = new WeakMap<object, { c: object; at: Map<string, string | null> }>();
+
+/** engine3: drop the transition's kept routes (works.ts routeOf): call after changing a plate's phase or heat, a route, a recipe or what is owned. */
+export function routesChanged(x: object): void {
+  ROUTES.delete(x);
+}
+
 /** Throw when a memo's kept value differs from the value recomputed (verify mode only). */
 export function memoMismatch(what: string, kept: unknown, fresh: unknown): never {
   throw new Error(`engine3 memo ${what}: kept ${JSON.stringify(kept)} but recomputed ${JSON.stringify(fresh)}`);

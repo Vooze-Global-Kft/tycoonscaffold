@@ -34,7 +34,7 @@ import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock'
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
-import { MEMO_CHECK, memoMismatch } from './memo';
+import { MEMO_CHECK, memoMismatch, ROUTES, routesChanged } from './memo';
 import { roundMoney } from './money';
 import { nearPlace, placeGap, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
@@ -492,12 +492,6 @@ export function routeOf(x: Ctx, grade: string): StationId | 'bay' | null {
   return r;
 }
 
-const ROUTES = new WeakMap<Ctx, { c: SalvageContent; at: Map<string, StationId | 'bay' | null> }>();
-
-/** engine3: drop the transition's kept routes (see routeOf): call after changing a plate's phase or heat, a route, a recipe or what is owned. */
-export function routesChanged(x: Ctx): void {
-  ROUTES.delete(x);
-}
 
 function routeOfNow(x: Ctx, grade: string): StationId | 'bay' | null {
   const set = x.s.routes[grade];
@@ -603,17 +597,24 @@ export function plateFeed(x: Ctx, m: CrewMember, t: number, keep: ((id: string) 
     if (keep && !keep(id)) continue;
     const room = plateRoom(x, id, w);
     if (room <= 0) continue;
+    // engine3: for this plate (running, rate, hands-fed: the guard above) and nothing changing inside the look,
+    // plateAccepts(x, id, p) is its key and route (keyRoute) and room >= p.g, which every piece looked at here already has
+    // (p.g > room is skipped first; the second look filters by it below, as plateAccepts did).
+    const keyRoute = (p: GroundPiece): boolean => {
+      const key = p.whole && d.in.includes(p.whole) ? p.whole : d.in.includes(p.grade) ? p.grade : null;
+      return key !== null && (key !== p.grade || routeOf(x, p.grade) === id);
+    };
     let pile: string | null = null;
     let order = Infinity;
     for (const p of pool) {
       if (p.claim || p.g > room) continue;
       const o = waitsFor(x, p);
-      if (o < 0 || o >= order || !plateAccepts(x, id, p)) continue;
+      if (o < 0 || o >= order || !keyRoute(p)) continue;
       order = o;
       pile = p.pile;
     }
     if (pile === null) continue;
-    const src = pool.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
+    const src = pool.filter((p) => p.pile === pile && !p.claim && p.g <= room && keyRoute(p));
     const pick = chooseFit(x, src, Math.min(cap, room));
     if (!pick.length) continue;
     for (const p of pick) p.claim = m.id;

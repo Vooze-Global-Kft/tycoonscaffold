@@ -16,7 +16,8 @@ import { openPartners, pickFromRung, ratedLoadNet } from './partners';
 import { FLOOR_CLEAR_SHARE, orderFromRung } from './crew';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
-import { routesChanged, worksOpen, worksOwn } from './works';
+import { routesChanged } from './memo';
+import { worksOpen, worksOwn } from './works';
 import { floorSlots, pointOf, thingPos } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 

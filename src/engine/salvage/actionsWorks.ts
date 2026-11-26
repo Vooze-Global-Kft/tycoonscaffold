@@ -16,7 +16,8 @@ import { contentAt } from './layer';
 import { roundMoney } from './money';
 import { checks } from './rate';
 import { bayOf } from './bays';
-import { orderPlate, reratePlate, routeOf, routesChanged, takesGrade } from './works';
+import { routesChanged } from './memo';
+import { orderPlate, reratePlate, routeOf, takesGrade } from './works';
 import { forkliftOut } from './forklift';
 import type { CardAction, GradeId, LevelTarget, PlateId, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, StationId, TxtArgs } from './types';
 
