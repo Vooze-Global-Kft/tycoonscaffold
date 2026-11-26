@@ -4,7 +4,8 @@
  * yard, every bay held, the cash at §50, twelve hours away (the cap runs the yard for part of it). Before the
  * fix the rule took whole bays off Hold for good, on low days too, and the round then took every gram of
  * them. The three assertions of the ruling: the yard runs; every held bay is still held at the end; no more
- * was sold from hold than the loads' prices (within one 0.1 kg step a load). Owner: engine2-fixB.
+ * was sold from hold than the loads' prices (within one 0.1 kg step a load, and the second skip a lot pays for:
+ * bays.ts HOLD_SKIPS, the ruling's fallback). Owner: engine2-fixB.
  */
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -12,6 +13,7 @@ import { SalvageSchema } from '../../config/schema.salvage';
 import * as R from '../salvage';
 import { awayPass } from './away';
 import { away, newBot, playTo, seededCfg, startGame } from './bot';
+import { HOLD_SKIPS } from './bays';
 import { lineAmount } from './money';
 import type { AwayCard, SalvageConfig, SalvageGame } from './types';
 
@@ -52,7 +54,9 @@ describe('Hold everything, cash §50, twelve hours away (the attacker’s case, 
       const sold = card.lines.reduce((a, l) => a + l.money, 0);
       let step = 0;
       for (const l of card.lines) step = Math.max(step, lineAmount(100, l.money / Math.max(1e-9, l.g / 1000)));
-      expect(sold).toBeLessThanOrEqual(50 + (card.spent ?? 0) + card.loads * step + 0.01 * card.loads);
+      // A lot pays for HOLD_SKIPS loads (the ruling's fallback, bays.ts): at most the last lot's extra loads unspent.
+      const dearest = Math.max(0, ...(card.bought ?? []).map((q) => q.spent / Math.max(1, q.n)));
+      expect(sold).toBeLessThanOrEqual(50 + (card.spent ?? 0) + (HOLD_SKIPS - 1) * dearest + card.loads * step + 0.01 * card.loads);
       // The rest of the held stock is still in the bays (Hold kept it), and nothing went below zero.
       expect(out.cash).toBeGreaterThanOrEqual(0);
     }, 600_000);

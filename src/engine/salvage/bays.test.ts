@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../fixtures/salvage';
 import * as R from '../salvage';
 import { awayLines, type AwayData } from '../../ui/salvage/overlays/marketLines';
-import { asideOf, holdRelease, resolveDown, freeOf } from './bays';
+import { HOLD_SKIPS, asideOf, holdRelease, resolveDown, freeOf } from './bays';
 import { dayWord } from './board';
 import { begin, priceAt, dayAt } from './clock';
 import { fullestSkip } from './partners';
@@ -73,7 +73,7 @@ describe('Hold never stops the yard (E40)', () => {
       .sort((a, b) => Number(a.low) - Number(b.low) || b.v - a.v || (a.grade < b.grade ? -1 : 1));
     let cheapest = Infinity;
     for (const id of Object.keys(x.s.partners)) cheapest = Math.min(cheapest, fullestSkip(x, id)?.price ?? Infinity);
-    const need = cheapest - 37.5;
+    const need = HOLD_SKIPS * cheapest - 37.5;
     const held0 = Object.values(x.s.bays).filter((b) => b.held).length;
     const got = holdRelease(x, x.s.t);
     expect(got).toBe(worth[0].grade);
@@ -151,7 +151,9 @@ describe('Hold never stops the yard (E40)', () => {
     const sold = cb.lines.reduce((a, l) => a + l.money, 0);
     const step = Math.max(...Object.keys(C.grades).map((g) => lineAmount(100, priceAt(atCheck(b).x, g, gb.salvage.clock.day))));
     expect(cb.loads).toBeGreaterThan(0);
-    expect(sold).toBeLessThanOrEqual((cb.spent ?? 0) + cb.loads * step + 1e-6);
+    // Each lot pays for HOLD_SKIPS loads ahead: at most one lot's worth more than the loads bought.
+    const dearest = Math.max(...Object.values(C.partners).map(() => 0), ...(cb.bought ?? []).map((q) => q.spent / Math.max(1, q.n)));
+    expect(sold).toBeLessThanOrEqual((cb.spent ?? 0) + HOLD_SKIPS * dearest + cb.loads * step + 1e-6);
   });
 
   it('the away card prints one line a bay sold from hold, only when there was one', () => {

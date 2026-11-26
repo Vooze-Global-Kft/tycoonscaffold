@@ -94,16 +94,19 @@ export function resolveUp(g: number): number {
  *   - the merchant waits and nothing in any bay is collectable (no free stock unheld, nothing set aside),
  *   - the driver is idle at the truck with no trip and no skip on it, and
  *   - a partner's skip is full and the cash less the truck's earmark cannot pay the cheapest full skip,
- * the yard sets aside, from ONE held bay, just what that skip needs at today's price, exactly as the Sell
+ * the yard sets aside, from ONE held bay, just what TWO such skips need at today's price (HOLD_SKIPS), as the Sell
  * button sets a lot aside (`b.aside`: grams, today's price, today's day; the round takes it and the ticket
  * shows that price). The bay: first those whose word of the day is not low, then the one worth most at
- * today's price (its free grams), ties by grade id. The lot: the shortfall (the skip's price less the cash
- * less the earmark) ÷ today's price, resolved UP to the scale's 0.1 kg step, at least one step, at most the
+ * today's price (its free grams), ties by grade id. The lot: the shortfall (HOLD_SKIPS × the skip's price less
+ * the cash less the earmark) ÷ today's price, resolved UP to the scale's 0.1 kg step, at least one step, at most the
  * bay's free grams resolved down (and raised by a step while its amount would still fall short). The bay
  * stays held: no heldBay event. Returns the grade, or null.
  * Recorded for the away card: `counts['holdSold:<grade>']` (the yard second, whole, of the last lot) and the
  * pass's list `x.away.heldSold` (away.ts copies it onto the card).
  */
+/** How many of the cheapest full skip one lot from hold pays for (RULING2.md 14.6: two, the ruling's fallback). */
+export const HOLD_SKIPS = 2;
+
 export function holdRelease(x: Ctx, t: number): string | null {
   const s = x.s;
   if (x.live) return null;
@@ -136,7 +139,9 @@ export function holdRelease(x: Ctx, t: number): string | null {
     if (better) best = { grade, v, low, free: g, price };
   }
   if (!best) return null;
-  const need = cheapest - Math.max(0, have);
+  // RULING2.md 14.6's fallback, taken: with one skip a lot the bots' day-word Hold lost 19 to 22 % over three
+  // days against the same days without Hold (more than the tenth allowed), so a lot covers TWO skips.
+  const need = HOLD_SKIPS * cheapest - Math.max(0, have);
   let g = Math.min(best.free, Math.max(100, resolveUp((need / best.price) * 1000)));
   while (g < best.free && lineAmount(g, best.price) < need - 1e-9) g += 100;
   bayOf(x, best.grade).aside.push({ g, price: best.price, day });
