@@ -253,7 +253,8 @@ function walk2Row(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: st
   }
   const seen = new Set<string>();
   for (const it of [...contentAt(cfg.salvage, g.salvage).shop, ...cfg.salvage.dayOneList]) {
-    if (it.kind === 'crew' || seen.has(it.key)) continue;
+    // an owned plate is not for sale (its card levels it): buyCheck reads the shop's owned list only
+    if (it.kind === 'crew' || seen.has(it.key) || it.key in g.salvage.works) continue;
     seen.add(it.key);
     const ck = buyCheck(cfg, g, it.key as never);
     if (ck.price !== null && !ck.refusal) steps.push([`buy ${it.key}`, () => R.buy(cfg, g, it.key as never, ck.price!, t)]);

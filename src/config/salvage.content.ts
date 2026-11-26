@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
     "content2-bots (26 Nov, REPORT8 round 2, RULING2.md 19.1): works plate prices from the measured gain, price = max(works.floor, tau_r x dE), dE the mean over seeds 1 to 5 of what the yard keeps more an hour (G at usual prices, a capped absence) with the plate bought at its planned moment on the normal hand, every earlier plate of that sitting owned (scripts/content/bots/plates.json): crane 30,000 -> 3,000, shear 40,000 -> 3,000, baler 9,000 -> 3,000, analyser 6,000 -> 29,100, depollution 80,000 -> 3,000, granulator 24,000 -> 3,000, shredder 600,000 -> 419,000, eddy 250,000 -> 3,000, sorter 300,000 -> 3,000, rotary 450,000 -> 77,600, induction 350,000 -> 171,000, breaker 200,000 -> 38,100, smelter 400,000 -> 27,500",
     "content2-bots (26 Nov, stage 2's measurement, REPORT8 round 1): ladder.rungs n 5 10,000 -> 5,000 t (yard-stage2.md 2.22: rung 5 at day 4 to 6; at 10,000 t no bot reached it in eight days, about 700 t a sitting at rung 4; 5,000 t comes at sitting 10, day 5, on the normal hand; theta_5 follows by thetaShare: 120,000 -> 60,000 a material)",
     "owner1-rules (26 Nov, RULING-owner1.md H7): ladder rung 2 2.4 -> 2.8 t and rung 3 28.5 -> 31.5 t (both `rung2`/`rung3` and `rungs`): H1 to H4 brought rung 2 two minutes and rung 3 four and a half minutes earlier on the bots (15 seeds, 2 routes; 3.6 t was tried and put rung 2 at 15.8 min and the torch out of its band; notes/owner1-rules.md)",
@@ -1441,8 +1442,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
       // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
       { n: 4, t: 1000, range: 8 },
-      // content2-bots round 1 (REPORT8): 10,000 -> 5,000 t (rung 5 at day 4 to 6: 10,000 t came after day 8 on every seed)
-      { n: 5, t: 5000, range: 9 },
+      // content2-bots (REPORT8): round 1 10,000 -> 5,000 t (10,000 t came after day 8 on every seed); round 3 5,000 -> 3,600 t
+      // (RULING2.md 19.3: rung 5 within about two sittings of the stage's last goal purchase, which came at sitting 5 or 6)
+      { n: 5, t: 3600, range: 9 },
       { n: 6, t: 50000, range: 10 },
       { n: 7, t: 200000, range: 11 },
       { n: 8, t: 600000, range: 12 },
@@ -1608,7 +1610,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     floorI: 2000,
     period_s: 240,
     firstVisitor_s: 30,
-    batchFactor: 1.5,
+    // content2-bots round 3 (REPORT8): 1.5 -> 1.25 (the Yard sale and the van 5.9 % of day 1, 5.3 % of days 2 and 3: aim 2 to 5 %)
+    batchFactor: 1.25,
     vanPeriod_s: 1800,
     firstThing: "bath",
   },
