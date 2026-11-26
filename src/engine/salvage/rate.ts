@@ -13,7 +13,7 @@ import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
 import { openPartners, pickFromRung, ratedLoadNet } from './partners';
-import { orderFromRung } from './crew';
+import { FLOOR_CLEAR_SHARE, orderFromRung } from './crew';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
 import { worksOpen, worksOwn } from './works';
@@ -308,7 +308,7 @@ function slotSpacing(c: Ctx['c'], at: 'floor' | 'dropoff', n: number): number {
  * a thing that needs no cutting is carried as it is (E35: from the floor to the bench's or the powered
  * stripper's hopper when it is their input and they are owned; from the drop-off to the scale).
  */
-function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff', cutP: number, cutV: number, walkM: number): Unit {
+function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff', cutP: number, cutV: number, walkM: number, raw = false): Unit {
   const u = emptyUnit();
   const o = c.objects[obj];
   if (!o) return u;
@@ -349,7 +349,9 @@ function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff
     const sp = pieceSpec(c, obj, k);
     if (!sp) continue;
     u.cut += cutTime(c, obj, sp.g, cutP);
-    const d = dest(sp.grade);
+    // `raw` (RULING2.md 17.4, the hands' rule on a floor over half full): the floor's cut pieces go to the scale with
+    // the floor's pile (crew.ts floorStep), not to their machine.
+    const d = raw && where === 'floor' ? null : dest(sp.grade);
     if (d) u.machKg[d] += sp.g / 1000;
     else {
       u.scaleKg += sp.g / 1000;
@@ -397,6 +399,13 @@ export interface RatedTerms {
     cutUse: number;
     carryUse: number;
   };
+  /**
+   * RULING2.md 16.5: each open partner's RANK, § a second: its rated net a load (partners.ts ratedLoadNet) over the
+   * time the load costs the yard's slowest step for it: the greatest of the truck's round trip, its cutting seconds
+   * over the cutters the yard has and its carrying seconds over the yard hands it has (this replay's own per-load
+   * terms). The hired driver's rank from truck.pickFromRung (truck.ts bestLoad) and this replay's (rateQueue).
+   */
+  rank?: Record<string, number>;
 }
 
 /** The hands' carrying a unit needs, by kind of trip: seconds and trips (2.3.1 item 2, as corrected). */
@@ -437,6 +446,7 @@ const copyTerms = (t: RatedTerms): RatedTerms => ({
   truck: { ...t.truck },
   carryBy: { ...t.carryBy },
   detail: t.detail ? { ...t.detail, trips: { ...t.detail.trips }, kgBy: { ...t.detail.kgBy }, machH: { ...t.detail.machH } } : undefined,
+  rank: t.rank ? { ...t.rank } : undefined,
 });
 
 /**
@@ -516,6 +526,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const driver = s.crew.find((m) => m.role === 'driver');
   const F = driverRoundF(c, driver?.level ?? 1);
   const dv = c.truck.v * c.truck.driverFactor * F;
+  const buildParts = (raw: boolean): QueuePart[] => {
   const parts: QueuePart[] = [];
   if (driver && s.truck.owned) {
     for (const [id, p] of Object.entries(c.partners)) {
@@ -528,13 +539,16 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       const u = emptyUnit();
       let asFound = 0;
       for (const [obj, n] of Object.entries(p.skip)) {
-        addUnit(u, unitOf(c, s, obj, 'floor', cutP, cutV, floorWalk), n);
+        addUnit(u, unitOf(c, s, obj, 'floor', cutP, cutV, floorWalk, raw), n);
         for (const [grade, g, k] of specsOf(c, obj)) asFound += n * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
       }
       const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
-      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u, wc: 0, wh: 0, cq: null as unknown as Carry, net: ratedLoadNet(c, id) });
+      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u, wc: 0, wh: 0, cq: null as unknown as Carry, net: ratedLoadNet(c, id), rank: 0 });
     }
   }
+  return parts;
+  };
+  let parts = buildParts(false);
 
   // 2. What a unit needs of each step, seconds.
   const tripS = (m: number) => (2 * m) / handV + 2 * h.handle_s;
@@ -543,6 +557,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const meltIns = new Set<string>();
   if (crucibleOn) for (const r of Object.values(c.machines.crucible.recipes)) for (const g of Array.isArray(r[0]) ? (r[0] as string[]) : [r[0] as string]) meltIns.add(g);
   const handsRule = s.ladder.rung >= orderFromRung(c);
+  let rawFloor = false;
   const carryOf = (u: Unit, where: 'floor' | 'dropoff'): Carry => {
     const mean = u.scaleKg > 0 ? u.m2 / u.scaleKg : 0;
     const fill = Math.max(1, h.load - mean / 2);
@@ -566,7 +581,8 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
         // RULING2.md 17.4 (engine2-dispatch): under the hands' rule the tray waits for a floor at most half full or for
         // the tray to be full, so it is fetched in full loads (measured: the batch-and-a-trip term charged twice the
         // real tray seconds on the carry-bound day-1 yards).
-        const k = u.machKg[id] / h.load + feeds;
+        // On a floor over half full (rawFloor) the tray waits until it is full (crew.ts orderPlan): full loads only.
+        const k = u.machKg[id] / h.load + (rawFloor ? 0 : feeds);
         out.tray += k * tray;
         n.tray += k;
       } else {
@@ -588,14 +604,30 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
     return out;
   };
   const sumC = (q: Carry) => q.scale + q.whole + q.feed + q.tray;
+  const dCarryQ = carryOf(drop, 'dropoff');
+  const dCarry = sumC(dCarryQ);
+  let fullCut = 0;
+  let fullCarry = 0;
+  let fullTruck = 0;
   const cutHave = 3600 * cutters.length;
   const carryHave = 3600 * hands.length;
   const truckHave = driver && s.truck.owned ? 3600 : 0;
+  let rank: Record<string, number> = {};
+  const prep = () => {
+  rank = {};
   for (const p of parts) {
     p.cq = carryOf(p.u, 'floor');
     p.wc = p.u.cut;
     p.wh = sumC(p.cq);
+    // RULING2.md 16.5: net over the slowest step's time for the load (the truck's round trip, the cutting at the
+    // yard's cutters, the carrying at its hands).
+    p.rank = p.net / Math.max(1e-9, p.trip, cutters.length ? p.wc / cutters.length : 0, p.wh / hands.length);
+    rank[p.id] = p.rank;
   }
+  fullCut = drop.cut + parts.reduce((a, p) => a + p.max * p.wc, 0);
+  fullCarry = dCarry + parts.reduce((a, p) => a + p.max * p.wh, 0);
+  fullTruck = parts.reduce((a, p) => a + p.max * p.trip, 0);
+  };
   // 3. The partners' loads first (rateQueue), at the steps' whole hour; then the drop-off with what they leave.
   const finish = (q: QueueResult, f: number): RatedTerms => {
     const took = emptyUnit();
@@ -642,15 +674,12 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       carryBy,
       sales: roundMoney(v.sales),
       spent: roundMoney(spent),
+      rank,
       detail: { trips: nBy, kgTrip: nBy.scale > 0 ? took.scaleKg / nBy.scale : 0, kgBy: v.kg, machH: v.machH, truckShare: q.truckShare, floorKg: q.floorKg, cutUse: cutHave > 0 ? cutUsed / cutHave : 0, carryUse: carryUsed / carryHave },
     };
   };
   const share = (need: number, left: number) => (need > 1e-9 ? Math.max(0, left / need) : Infinity);
-  const dCarryQ = carryOf(drop, 'dropoff');
-  const dCarry = sumC(dCarryQ);
-  const fullCut = drop.cut + parts.reduce((a, p) => a + p.max * p.wc, 0);
-  const fullCarry = dCarry + parts.reduce((a, p) => a + p.max * p.wh, 0);
-  const fullTruck = parts.reduce((a, p) => a + p.max * p.trip, 0);
+  prep();
   // The partners' loads FIRST (engine2-income2, measured: the drop-off's things arrived 11 an hour against
   // its 72 on day 1, 38 to 60 at rung 3's entry): while the tipping floor is over half full the hands serve
   // it before the drop-off (crew.ts handDepart, FLOOR_CLEAR_SHARE), so the loads are replayed at the steps'
@@ -665,11 +694,25 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const rules = s.ladder.rung >= pickFromRung(c) || s.ladder.rung >= orderFromRung(c);
   const fCut = rules ? Math.min(1, share(drop.cut, cutHave)) : 1;
   const cutForLoads = rules ? Math.max(0, cutHave - fCut * drop.cut) : cutHave;
-  const q = rateQueue(c, parts, cutForLoads, carryHave, s.ladder.rung >= pickFromRung(c));
-  const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
-  const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
-  const f = rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft));
-  return finish(q, f);
+  const play = (): { q: QueueResult; f: number } => {
+    const q = rateQueue(c, parts, cutForLoads, carryHave, s.ladder.rung >= pickFromRung(c));
+    const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
+    const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
+    return { q, f: rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
+  };
+  let r = play();
+  // RULING2.md 17.4 (engine2-dispatch, after the check: finding F3): under the hands' rule, while the replay's floor is
+  // over half full the yard hands clear it first (crew.ts orderPlan) and the floor's cut pieces of a machine's input go
+  // to the scale with the floor's pile (floorStep): the machines get the floor's whole things only (E35) and their
+  // trays wait. The loads are replayed again so (measured, seed 104 minute 30: the hands' feed and tray seconds 189 an
+  // hour in the yard against 880 in the replay that fed every piece).
+  if (handsRule && r.q.floorKg > FLOOR_CLEAR_SHARE * c.floorRoom_kg) {
+    parts = buildParts(true);
+    rawFloor = true;
+    prep();
+    r = play();
+  }
+  return finish(r.q, r.f);
 }
 
 /** One open partner as the replay sees it (rateQueue): its load's unit, price, mass, truck phases and work. */
@@ -692,6 +735,8 @@ interface QueuePart {
   cq: Carry;
   /** Its rated net a load (partners.ts ratedLoadNet): the driver's rank from truck.pickFromRung (RULING2.md 16.2). */
   net: number;
+  /** Its rank (RULING2.md 16.5: net over the slowest step's seconds for the load; RatedTerms.rank). */
+  rank: number;
 }
 
 interface QueueResult {
@@ -764,8 +809,8 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
       lastM = m;
     }
     let pick = -1;
-    // RULING2.md 16.2: from truck.pickFromRung the replay follows the driver's rule (truck.ts bestLoad): the full
-    // skip of the best-ranked partner (rated net a load; equal: full first), taken when it fits, else waited for
+    // RULING2.md 16.2, 16.5: from truck.pickFromRung the replay follows the driver's rule (truck.ts bestLoad): the full
+    // skip of the best-ranked partner (QueuePart.rank; equal: full first), taken when it fits, else waited for
     // (a lesser load is not taken while it waits; a load heavier than the whole floor is passed over, as there).
     let wantMass = Infinity;
     if (byNet) {
@@ -778,7 +823,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
         }
         const a = parts[sk.k];
         const b = parts[skips[pick].k];
-        if (a.net > b.net || (a.net === b.net && (sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && a.id < b.id)))) pick = i;
+        if (a.rank > b.rank || (a.rank === b.rank && (sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && a.id < b.id)))) pick = i;
       }
       if (pick >= 0 && m + parts[skips[pick].k].mass > room + 1e-9) {
         wantMass = parts[skips[pick].k].mass;
@@ -891,6 +936,24 @@ function valueOf(c: Ctx['c'], s: Ctx['s'], u: Unit): { sales: number; kg: Record
     kg[b] = (kg[b] ?? 0) + m;
   }
   return { sales, kg, machH };
+}
+
+/**
+ * RULING2.md 16.5: the hired driver's rank of each open partner (RatedTerms.rank), read from the cache of I without a
+ * copy (the idle driver asks at every instant he waits). Null when I has no replay of the loads (no yard hand, no
+ * driver, no truck): the driver then ranks by the rated net a load alone.
+ */
+export function loadRanks(c: Ctx['c'], s: Ctx['s']): Readonly<Record<string, number>> | null {
+  const key = assetKey(c, s);
+  let byKey = rateCache.get(c);
+  if (!byKey) rateCache.set(c, (byKey = new Map()));
+  let t = byKey.get(key);
+  if (!t) {
+    t = ratedCompute(c, s);
+    if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
+    byKey.set(key, t);
+  }
+  return t.rank && Object.keys(t.rank).length ? t.rank : null;
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */

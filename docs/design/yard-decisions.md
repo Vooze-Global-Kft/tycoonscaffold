@@ -1894,3 +1894,25 @@ on the floor.) The lead rules:
     earn half of this morning's with the old rules too (the engineer's 5c). The comparison of new
     against old over three days (16.3 ii) is run by the bots' engineer after the join, on bots
     that play the stage.
+
+16.8 **The driver's rule must beat the yard hands' rule alone, or it goes (12:50, after the
+    independent check).** The check measured on ten new seeds: the hands' rule (17.2) alone
+    raises what the yard keeps by about a tenth on every seed; the driver's rule as first built
+    (net a load, waiting for room) then LOSES 10 to 14 % on every yard with one level-2 cutter
+    and 13 to 15 % over the bots' three days. So in the one pass of fixes: (1) measure the walk
+    of 17.1 with the hands' rule ALONE (`truck.pickFromRung` beyond the ladder): if a farm level
+    no longer lowers what the yard keeps there (mean not below -1 %, no seed below -4 %), the
+    driver keeps the first yard's rule (the key stays beyond the ladder; the code stays as an
+    option for later stages) and 16.1 and 16.5 are not shipped; (2) if the farm's fault is still
+    there, build 16.5's rank and ship it ONLY if, on the same states and over the bots' days, it
+    keeps at least what the hands' rule alone keeps (mean within -1 %, no seed below -4 %) and
+    clears the farm's and the demolition's rows; if neither (1) nor (2) holds, ship the hands'
+    rule alone and report the farm's row to the lead with its numbers. (3) The bench in a yard of
+    two cutters and two hands (-1.7 to -1.9 % on means, the worst seed -6.4 %; it was -26 %): one
+    honest try in this pass; if it stays, the lead accepts it as within the yard's noise at that
+    crew and the bots watch the row. (4) Rated income: the band again on the rules as shipped;
+    the feed term as the check proposes. (5) NOT changed: rated income never reads a switch (the
+    crucible's "Take from bays"): a player who turns it off earns less and gains nothing (I4).
+    (6) For the bots' tuning, not this pass: a farm skip beyond the third adds nothing on any
+    seed: no level a player can buy may add exactly nothing (a lower top level or a rising fill
+    rate).

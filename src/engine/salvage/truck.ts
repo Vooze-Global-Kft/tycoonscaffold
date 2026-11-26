@@ -17,6 +17,7 @@ import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
 import { landBody } from './works';
+import { loadRanks } from './rate';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
@@ -312,9 +313,11 @@ export function driverDepart(x: Ctx, t: number): boolean {
 }
 
 /**
- * RULING2.md 16.1 (b) to (e), from rung `truck.pickFromRung`: the load the hired driver departs for. Every open
- * partner with a full skip is ranked by its rated net a load (partners.ts ratedLoadNet, from the content alone; equal
- * nets: the skip full longest, then the partner's id). He takes the best-ranked one the yard can pay for whose load
+ * RULING2.md 16.1 (b) to (e) with 16.5's rank, from rung `truck.pickFromRung`: the load the hired driver departs for.
+ * Every open partner with a full skip is ranked by its rated net a load over the time the load costs the yard's
+ * slowest step (rate.ts loadRanks: the truck's round trip, its cutting over the cutters, its carrying over the hands;
+ * from the content and the yard's assets, cached on rated income's asset key; without a replay, the net alone); equal
+ * ranks: the skip full longest, then the partner's id. He takes the best-ranked one the yard can pay for whose load
  * fits the tipping floor (b); while a BETTER-ranked partner has a full skip the yard can pay for that does not fit,
  * he takes nothing and waits: the floor's room is kept for the load that pays best (c). A skip the yard cannot pay
  * for blocks nobody (e; Hold's rule 14.6 is bays.ts holdRelease's, unchanged), nor does one heavier than the whole
@@ -323,6 +326,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
 function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullAt: number; price: number; mass: number } | null {
   const s = x.s;
   let top: { partner: string; fullAt: number; price: number; mass: number; net: number; fits: boolean } | null = null;
+  let ranks: Readonly<Record<string, number>> | null | undefined;
   for (const id in s.partners) {
     if (!x.c.partners[id]) continue;
     const sk = fullestSkip(x, id);
@@ -331,7 +335,8 @@ function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullA
     // 'floor' is asked after the cash: such a skip is one the yard can pay for that does not fit now.
     const blocks = why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000;
     if (why && !blocks) continue;
-    const net = ratedLoadNet(x.c, id);
+    if (ranks === undefined) ranks = loadRanks(x.c, s);
+    const net = ranks ? (ranks[id] ?? -Infinity) : ratedLoadNet(x.c, id);
     if (!top || net > top.net || (net === top.net && (sk.fullAt < top.fullAt || (sk.fullAt === top.fullAt && id < top.partner)))) top = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g, net, fits: !why };
   }
   return top && top.fits ? { partner: top.partner, fullAt: top.fullAt, price: top.price, mass: top.mass } : null;
