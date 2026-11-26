@@ -4,7 +4,8 @@
  * `forDeal_g`) are parts of `g`, never extra.
  */
 import { dayWord } from './board';
-import type { Ctx } from './clock';
+import { dayAt, priceAt, type Ctx } from './clock';
+import { fullestSkip } from './partners';
 import { resolveGrams } from './money';
 import type { BayState } from './types';
 
@@ -79,6 +80,60 @@ export function releaseHolds(x: Ctx): void {
     x.ev.push({ type: 'heldBay', grade, on: false });
     x.dirty = true;
   }
+}
+
+/**
+ * E40 (stage 2 2.2; RULING2.md 10.5; H1): HOLD NEVER STOPS THE YARD. While the boss is away (the away
+ * pass: no boss acts), at an instant's checks (after the round and the driver's departure, 2.12 steps 4
+ * to 6) when
+ *   - the merchant waits and nothing in any bay is collectable,
+ *   - the driver is idle at the truck with no trip and no skip on it, and
+ *   - a partner's skip is full and the cash cannot pay the cheapest full skip,
+ * the held bay worth most at today's price (its free grams: nothing set aside by Sell, reserved for the
+ * crucible or the deal) leaves Hold, ONE bay at a time; the caller lets the round load it at once. The
+ * bay stays unheld (Hold is the player's to set again). Returns the grade, or null.
+ * Recorded for the away card: `counts['holdSold:<grade>']` (the release's yard second) and the pass's
+ * list `x.away.heldSold` (away.ts copies it onto the card).
+ */
+export function holdRelease(x: Ctx, t: number): string | null {
+  const s = x.s;
+  if (x.live) return null;
+  if (s.merchant.phase !== 'waiting') return null;
+  const tr = s.truck;
+  const d = s.crew.find((m) => m.role === 'driver');
+  if (!d || d.job !== 'idle' || !tr.owned || tr.trip || tr.by !== null || tr.skip) return null;
+  let cheapest = Infinity;
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const sk = fullestSkip(x, id);
+    if (sk && sk.price < cheapest) cheapest = sk.price;
+  }
+  if (!(cheapest > x.cash - (tr.earmark?.money ?? 0) + 1e-9) || !Number.isFinite(cheapest)) return null;
+  let best: { grade: string; v: number } | null = null;
+  const day = dayAt(x, t);
+  for (const grade of Object.keys(s.bays)) {
+    const { free, aside } = collectable(x, grade);
+    if (free > 0 || aside > 0) return null; // the round has something to take: Hold is not what stops it
+    const b = s.bays[grade];
+    if (!b.held) continue;
+    const g = resolveDown(freeOf(b));
+    if (g <= 0) continue;
+    const v = (g / 1000) * priceAt(x, grade, day);
+    if (!best || v > best.v + 1e-9 || (Math.abs(v - best.v) <= 1e-9 && grade < best.grade)) best = { grade, v };
+  }
+  if (!best) return null;
+  const b = s.bays[best.grade];
+  b.held = false;
+  delete s.counts![`heldDay:${best.grade}`];
+  s.counts![`holdSold:${best.grade}`] = t;
+  x.ev.push({ type: 'heldBay', grade: best.grade, on: false });
+  const acc = x.away as (typeof x.away & { heldSold?: string[] }) | null;
+  if (acc) {
+    const list = (acc.heldSold ??= []);
+    if (!list.includes(best.grade)) list.push(best.grade);
+  }
+  x.dirty = true;
+  return best.grade;
 }
 
 void resolveGrams;

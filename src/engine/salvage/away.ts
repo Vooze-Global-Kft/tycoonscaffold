@@ -7,7 +7,7 @@
  */
 import { releaseHolds } from './bays';
 import { marketDay } from './board';
-import { begin, finish, priceAt, type Ctx } from './clock';
+import { begin, finish, priceAt, type AwayAcc, type Ctx } from './clock';
 import { dealDeliver, dealReprice } from './deal';
 import { cancelAct } from './hand';
 import { floorGrams, lineAmount, roundMoney } from './money';
@@ -16,6 +16,9 @@ import { driverTakesOver } from './truck';
 import type { AwayCard, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
 const DAY_MS = 86_400_000;
+
+/** engine2-income (E40): the card's list of held bays sold to keep the yard running (types.ts AwayCard.heldSold: requests.md). */
+type HeldCard = AwayCard & { heldSold?: string[] };
 
 /** E33: the away cap in hours on rung `rung` (1-based) with or without the Night watch. */
 export function awayCapH(c: SalvageConfig['salvage'], rung: number, night: boolean): number {
@@ -79,7 +82,9 @@ function card(x: Ctx, seconds: number, capS: number, absentS: number, runLonger:
     net: roundMoney(acc.money - acc.spent),
     deliveryList: acc.deliveryList,
     runLonger,
-  };
+    // engine2-income (E40): the held bays sold to keep the yard running, in order (only when there were any).
+    ...((acc as AwayAcc & { heldSold?: string[] }).heldSold?.length ? { heldSold: [...(acc as AwayAcc & { heldSold?: string[] }).heldSold!] } : {}),
+  } as AwayCard;
 }
 
 /** A sink for the pass's events: only awayReport, passed and rung reach the caller (types.ts MAX_TICK: never item events); the rest are dropped as they come (no 35,000-event array, R3). */
@@ -202,6 +207,9 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
         unsold: roundMoney(Math.max(0, (prev.bayDelta ?? prev.unsold ?? 0) + (c.bayDelta ?? 0))),
         deliveryList: [...(prev.deliveryList ?? []), ...(c.deliveryList ?? [])],
       };
+      // engine2-income (E40): both passes' held bays sold to keep the yard running.
+      const held = [...new Set([...((prev as HeldCard).heldSold ?? []), ...((c as HeldCard).heldSold ?? [])])];
+      if (held.length) (s.away as HeldCard).heldSold = held;
     } else s.away = c;
     s.beenAway = true;
     x.ev.push({ type: 'awayReport', card: s.away });

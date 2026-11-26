@@ -7,12 +7,14 @@ import { checkGoals } from './goals';
 import { rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
-import { convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP, vpk } from './content';
+import { convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP } from './content';
 import { roundMoney } from './money';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
 import { openPartners } from './partners';
+import { holdRelease } from './bays';
+import { roundTry } from './round';
 import { floorSlots, pointOf, thingPos } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
@@ -54,22 +56,22 @@ export function ratedCapacity(cfg: SalvageConfig, g: SalvageGame): number {
   return ratedOf(cfg.salvage, g.salvage);
 }
 
-/** A thing's remaining value at usual prices (its pieces still on it at vpk, and its shell), § (stage 2 2.3.3). */
+/** A thing's remaining value at usual prices (its pieces still on it at usual prices, and its shell), § (stage 2 2.3.3). */
 function thingValue(c: Ctx['c'], obj: string, cut: number, shell: boolean): number {
   const o = c.objects[obj];
   if (!o) return 0;
   if (shell) return 0; // a stripped shell's grams are already in its bay (weighed in whole where it stands)
-  let v = o.shell ? (o.shell.g / 1000) * vpk(c, o.shell.grade) : 0;
+  let v = o.shell ? (o.shell.g / 1000) * usualP(c, o.shell.grade) : 0;
   const n = pieceCount(c, obj);
   for (let k = Math.max(0, cut); k < n; k++) {
     const sp = pieceSpec(c, obj, k);
-    if (sp) v += (sp.g / 1000) * vpk(c, sp.grade);
+    if (sp) v += (sp.g / 1000) * usualP(c, sp.grade);
   }
   return v;
 }
 
 /**
- * The value at usual prices (p̄, the converter at its assay; content.ts vpk) of every unsold stock in the
+ * The value at usual prices (p̄, the converter at its assay: usualP) of every unsold stock in the
  * yard, § (stage 2 2.3.3, ruling I5: the gate's "value of unsold stock"): the bays, the trays, the hoppers
  * and the piece in work, the pot, the merchant's flatbed, pieces on the ground and carried, things in the
  * yard at the value of the pieces still on them, the skip on the truck. Skips standing at a partner are
@@ -77,11 +79,11 @@ function thingValue(c: Ctx['c'], obj: string, cut: number, shell: boolean): numb
  */
 export function stockValue(c: Ctx['c'], s: Ctx['s']): number {
   let v = 0;
-  for (const [grade, b] of Object.entries(s.bays)) v += (b.g / 1000) * vpk(c, grade);
-  const pv = (p: { grade: string; g: number }) => (p.g / 1000) * vpk(c, p.grade);
+  for (const [grade, b] of Object.entries(s.bays)) v += (b.g / 1000) * usualP(c, grade);
+  const pv = (p: { grade: string; g: number }) => (p.g / 1000) * usualP(c, p.grade);
   for (const id of ['hand_stripper', 'stripper', 'bench', 'crucible'] as const) {
     const m = s.machines[id];
-    for (const [grade, g] of Object.entries(m.tray_g)) v += (g / 1000) * vpk(c, grade);
+    for (const [grade, g] of Object.entries(m.tray_g)) v += (g / 1000) * usualP(c, grade);
     for (const p of m.hopper) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
     const w = m.work;
     if (w) {
@@ -97,11 +99,11 @@ export function stockValue(c: Ctx['c'], s: Ctx['s']): number {
   if (rec) {
     const ins = Array.isArray(rec[0]) ? (rec[0] as string[]) : [rec[0] as string];
     const out = rec[1] as string;
-    if (cr.chargeBy) for (const [grade, g] of Object.entries(cr.chargeBy)) v += (g / 1000) * vpk(c, grade);
-    else v += (cr.charge_g / 1000) * vpk(c, ins[0]);
-    v += (cr.heel_g / 1000) * vpk(c, out);
+    if (cr.chargeBy) for (const [grade, g] of Object.entries(cr.chargeBy)) v += (g / 1000) * usualP(c, grade);
+    else v += (cr.charge_g / 1000) * usualP(c, ins[0]);
+    v += (cr.heel_g / 1000) * usualP(c, out);
   }
-  for (const l of s.merchant.lot) v += (l.g / 1000) * vpk(c, l.grade);
+  for (const l of s.merchant.lot) v += (l.g / 1000) * usualP(c, l.grade);
   for (const p of s.pieces) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
   for (const p of s.load) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
   for (const m of s.crew) for (const p of m.load) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
@@ -151,6 +153,9 @@ const view = (x: Ctx): SalvageGame => ({ cash: x.cash, lifetimeEarnings: 0, salv
 
 /** 2.14 step 6: partners opening, the rung (ladder.ts rungReached), rivals passed (rivals.ts passedNow), the deal offer, goals (goals.ts checkGoals). */
 export function checks(x: Ctx, t: number, force = true): void {
+  // E40 (stage 2 2.2): while the boss is away a held bay goes back to the round when Hold would stop the
+  // yard (bays.ts holdRelease), one bay a check, and the round loads it at once.
+  if (holdRelease(x, t)) roundTry(x, t);
   if (!force && !x.dirty) return;
   if (!force && !x.live && t - x.checkedAt < CHECK_EVERY_S) return;
   x.dirty = false;
@@ -525,6 +530,17 @@ export function ratedIncome(c: Ctx['c'], s: Ctx['s']): number {
   return ratedTerms(c, s).I;
 }
 
+/** Facade `ratedIncome(cfg, g)`: I, § an hour, net (2.3). */
 export function ratedIncomeCfg(cfg: SalvageConfig, g: SalvageGame): number {
   return ratedIncome(cfg.salvage, g.salvage);
+}
+
+/** Facade `ratedTerms(cfg, g)`: I and its terms (feed taken, what binds, each step's seconds). */
+export function ratedTermsCfg(cfg: SalvageConfig, g: SalvageGame): RatedTerms {
+  return ratedTerms(cfg.salvage, g.salvage);
+}
+
+/** Facade `stockValue(cfg, g)`: unsold stock at usual prices, § (the gate's G, 2.3.3). */
+export function stockValueCfg(cfg: SalvageConfig, g: SalvageGame): number {
+  return stockValue(cfg.salvage, g.salvage);
 }

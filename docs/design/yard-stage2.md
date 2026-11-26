@@ -955,6 +955,8 @@ L1: the baler is bought with cash; the letter comes with the first financeable p
 
 ### 11.3 Points for the lead
 
+**The lead has answered N1 to N8** (26 November, 03:55; the working folder's `stage2/LEAD.md`, copied here): N1 the away bench's gate is 250 ms (ruling 13.9); an index of pieces by pile and uid may be added if it changes no state. N2 accepted, provided the checks' cadence depends only on the state (no fresh boss), never on ticking or jumping. N3 the migration SETS `iap.sessions2At` for a first-yard save at rung 2 or more. N4 confirmed: the Yard sale's pace reads I₀ with its floor. N5 accepted. N6 confirmed: content tiers only. N7 confirmed: such a thing is cut; the first bath waits by the canopy. N8 a third development row, "Start at rung 3 with the cash for a loan", is the row the owner's line names for the bank loan; a preset test proves the letter shows. Where a passage above still says otherwise (2.20's migration, 1.2 and 4.8's development rows), these answers are right.
+
 **N1. Answered by ruling 13.9.** The bench's gate for stage 2 is 250 ms; the built 175 ms meets it, and the run limits stay as built (decision 38). Still owed by the engine step, not a question: the three days at the twice-a-day habit with grouping off and on (G2), and `awaybench.test.ts`'s limit set to the gate.
 
 **N2. The away pass checks every 60 s.** To save time the built away pass runs the rung, rivals, deal and goal checks at most every 60 s of yard time (was 5 s) and at its end; live play checks at every instant. On the bench's yards and the bot hour it changed no state, but it is one more way in which present differs from away (G1 allows it), and a goal or a rung reached away is dated up to 60 s late. Written as built (2.1.1, item 4). Accept?

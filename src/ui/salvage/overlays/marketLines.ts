@@ -99,6 +99,8 @@ export type AwayData = AwayCard & {
   next?: Txt | null;
   /** Grade lines the selector left out (its own cut), counted into "+ n more". */
   moreLines?: number;
+  /** E40 (engine2-income): held bays sold while away to keep the yard running. */
+  heldSold?: string[];
 };
 
 /** rules-book's away selector (R.awayView, announced 19:55) as it may come: every field optional here. */
@@ -116,6 +118,7 @@ export interface AwayViewLike {
   passed?: string[];
   next?: Txt | null;
   runLonger?: AwayData['runLonger'];
+  heldSold?: string[];
 }
 
 /** The state's away card with rules-book's selector laid over it where it gives a field (its numbers win). */
@@ -138,6 +141,7 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
     passed: (v.passed ?? a.passed) as AwayCard['passed'],
     next: v.next !== undefined ? v.next : a.next,
     runLonger: v.runLonger !== undefined ? v.runLonger : a.runLonger,
+    heldSold: v.heldSold ?? a.heldSold,
   };
 }
 
@@ -148,7 +152,7 @@ export function withAwayView(a: AwayData, v: AwayViewLike | null | undefined): A
  * grade lines (five at most, three at large type) and "+ n more". At large type the loads bought are
  * one line (their total), so the rivals passed stay above the fold at 667 x 375 (P19).
  */
-export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; unsold: Txt | null; news: Txt[]; next: Txt | null; lines: Txt[] } {
+export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt | null; money: Txt[]; net: Txt | null; unsold: Txt | null; held: Txt[]; news: Txt[]; next: Txt | null; lines: Txt[] } {
   const head: Txt = { key: 'away.head', args: { t: { secs: a.absentS ?? a.seconds }, c: { secs: a.seconds } } };
   const rl = a.runLonger ?? null;
   const longer: Txt | null = !rl ? null : 'item' in rl ? { key: 'away.longerNight', args: { c: { secs: rl.capS } } } : { key: 'away.longerRung', args: { c: { secs: rl.capS } } };
@@ -166,13 +170,15 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   }
   // join3: right under Net, what the time away left in the bays not yet sold (the rules' own figure).
   const unsold: Txt | null = net && (a.unsold ?? 0) > 0 ? { key: 'away.unsold', args: { x: { money: a.unsold! } } } : null;
+  // engine2-income (E40, H1): one line a held bay sold to keep the yard running, printed only when there was one.
+  const held: Txt[] = (a.heldSold ?? []).map((grade): Txt => ({ key: 'away.heldSold', args: { grade: { grade } } }));
   const news: Txt[] = [];
   if (a.deliveryList?.length) for (const d of a.deliveryList) news.push({ key: 'ticket.dealDelivery', args: { kg: { mass_g: d.g, step: 'lot' }, x: { money: d.paid } } });
   else if (a.deliveries > 0) news.push({ key: 'away.deliveries', args: { n: { n: a.deliveries } } });
   // desk2 (4c): at a large font scale two or more rivals passed fold into one line, so 'Next: ...' stays in sight.
   if (large && a.passed.length >= 2) news.push({ key: 'away.passedN', args: { n: { n: a.passed.length } } });
   else for (const r of a.passed) news.push({ key: 'away.passed', args: { rival: { name: `${r}.chip` } } });
-  if (!net && !news.length) news.unshift({ key: 'away.nothing' });
+  if (!net && !news.length && !held.length) news.unshift({ key: 'away.nothing' });
   // The next step: rules-book's, else the rules' hint (printed once: it can be the "nothing" line itself).
   let next: Txt | null = a.next ?? a.hint ?? null;
   if (next && news.some((t) => t.key === next!.key && JSON.stringify(t.args ?? {}) === JSON.stringify(next!.args ?? {}))) next = null;
@@ -182,7 +188,7 @@ export function awayLines(a: AwayData, large = false): { head: Txt; longer: Txt 
   const lines = a.lines.slice(0, max).map((l): Txt => ({ key: 'away.line', args: { grade: { grade: l.grade }, kg: { mass_g: l.g, step: 'lot' }, x: { money: l.money } } }));
   const rest = Math.max(0, a.lines.length - max) + (a.moreLines ?? 0);
   if (rest > 0) lines.push({ key: 'ticket.more', args: { n: { n: rest } } });
-  return { head, longer, money, net, unsold, news, next, lines };
+  return { head, longer, money, net, unsold, held, news, next, lines };
 }
 
 // ------------------------------------------------------------------------------- the clipboard's tickets

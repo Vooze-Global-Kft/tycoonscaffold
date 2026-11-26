@@ -38,6 +38,9 @@ export { createSalvage, freshSalvageCfg as freshSalvage, isSalvage, stockThings,
 export { activeIncomeRate, advanceSalvage, incomeRate, jump, nextEvent, steadyIncomeRate, tick } from './salvage/tick';
 export { awayCapS, salvageOffline } from './salvage/away';
 export { ratedCapacity } from './salvage/rate';
+// engine2-income (stage 2 2.3, add only): rated income I (§ an hour, net, from assets) and its terms; the
+// value of unsold stock at usual prices (the gate's G). The built incomeRate stays for what reads it today.
+export { ratedIncomeCfg as ratedIncome, ratedTermsCfg as ratedTerms, stockValueCfg as stockValue, type RatedTerms } from './salvage/rate';
 export { ackAway, buy, declineDeal, hire, level, noteSeen, sell, setFromBays, setHold, setPresence, setRecipe, signDeal, skipGoal, stepOut } from './salvage/actions';
 export {
   bayPosCfg as bayPos,

@@ -685,6 +685,8 @@ export interface AwayView {
   spent: number;
   /** sales − spent: what the cash moved by (already in the account; negative: taken from it). */
   net: number;
+  /** E40 (engine2-income): the held bays sold to keep the yard running while away, in order (empty: none; the line is printed only then). */
+  heldSold: string[];
   /** Up to five sold lines, dearest first (cut to three at large type by the screen); `more` the rest. */
   lines: { grade: string; g: number; money: number }[];
   more: number;
@@ -714,6 +716,7 @@ export function awayView(cfg: SalvageConfig, g: SalvageGame): AwayView | null {
     boughtTotal: boughtN > 0 || boughtMoney > 0 ? { n: boughtN, money: boughtMoney } : null,
     spent,
     net: roundMoney(a.money - spent),
+    heldSold: [...((a as AwayCard & { heldSold?: string[] }).heldSold ?? [])],
     lines: sold.slice(0, 5),
     more: Math.max(0, sold.length - 5),
     supplied_g: a.supplied_g,

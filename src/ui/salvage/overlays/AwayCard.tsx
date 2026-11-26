@@ -3,7 +3,8 @@
  * E33, E34): "Away {t} · the yard ran {c}" and what makes it run longer; the money as it was applied
  * ("Sales §x", "{n} loads bought · −§y", "Net +§z (already in your account)": paid when the away pass
  * computed it, BRIEF lesson 5; OK only closes the card, `ackAway` pays nothing); each deal delivery;
- * "In the bays, not yet sold: §u" right under Net (join3); "You passed {rival}."; the next step; then the grade lines the merchant collected (never held stock;
+ * "In the bays, not yet sold: §u" right under Net (join3); "Sold from hold to keep the yard running: {grade}"
+ * under it, one a bay, only when a held bay was sold while away (E40, engine2-income); "You passed {rival}."; the next step; then the grade lines the merchant collected (never held stock;
  * five at most, three at large type) and "+ n more". No ad button in stage 1.
  * Data: `CardData.away` (the state's waiting card); numbers through the facade's formatters.
  */
@@ -29,7 +30,7 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
       </CentredCard>
     );
   }
-  const { head, longer, money, net, unsold, news, next, lines } = awayLines(a, layout.fs >= 1.2);
+  const { head, longer, money, net, unsold, held, news, next, lines } = awayLines(a, layout.fs >= 1.2);
   const footNode = (
       <View style={styles.foot}>
         {ok.map((b, i) => (
@@ -58,6 +59,15 @@ export function AwayCard({ cfg, g, data, onClose }: CardViewProps) {
           ))}
           <Line t={net} size="name" bold lines={2} />
           {unsold ? <Line t={unsold} size="line" lines={2} /> : null}
+          {held.map((t, i) => (
+            <Line key={`held${i}`} t={t} size="line" lines={2} />
+          ))}
+        </View>
+      ) : held.length ? (
+        <View style={styles.money}>
+          {held.map((t, i) => (
+            <Line key={`held${i}`} t={t} size="line" lines={2} />
+          ))}
         </View>
       ) : null}
       {news.map((t, i) => (
