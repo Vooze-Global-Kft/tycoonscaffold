@@ -442,7 +442,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const gBack = b.g;
     playTo(b, b.g.salvage.t + S2_PLAY_S);
     const ps = b.rec.purchases.slice(n0);
-    if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.map((p) => p.key) });
+    if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.filter((p) => p.kind === 'buy').map((p) => p.key) });
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
@@ -487,7 +487,15 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const bought = !!at;
       if (!at) at = [...returns].reverse().find((x) => !x.g.salvage.works[pid] && buyCheck(cfg, { ...x.g, cash: 1e12 }, pid as never).price !== null);
       if (!at) continue;
-      const g = { ...at.g, cash: 1e12 } as R.SalvageGame;
+      // RULING2.md 19.1: from the state at the plate's planned moment WITH EVERY EARLIER PLATE OF THE GOAL ORDER OWNED: the
+      // plates the bot bought before it in the same sitting are bought first (both branches), so a plate that a chain
+      // completes (the eddy behind the shredder) is measured with its feed.
+      let g = { ...at.g, cash: 1e12 } as R.SalvageGame;
+      for (const q of at.bought.slice(0, Math.max(0, at.bought.indexOf(pid)))) {
+        if (!(q in (W?.plates ?? {})) || g.salvage.works[q]) continue;
+        const cq = buyCheck(cfg, g, q as never);
+        if (cq.price !== null && !cq.refusal) g = { ...R.buy(cfg, g, q as never, cq.price, g.salvage.t), cash: 1e12 } as R.SalvageGame;
+      }
       const ck = buyCheck(cfg, g, pid as never);
       if (ck.price === null || ck.refusal) continue;
       const it = contentAt(cfg.salvage, g.salvage).shop.find((i) => i.key === pid) as { deliver_s?: number } | undefined;
