@@ -15,7 +15,8 @@ import { owner1Rules, tierOf } from './content';
 import { idleWhyOf } from './crew';
 import { bossHandleS, hookRefusal } from './truck';
 import { fullestSkip } from './partners';
-import { skipLabelOf } from './cards';
+import { placeCardKind, skipLabelOf } from './cards';
+import { truckFree } from './hand';
 import { chevronOf } from './goals';
 import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripPhasePath } from './positions';
 import type {
@@ -418,7 +419,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     grade: workSpec?.[0] ?? null,
     ring,
     near: workThing ? { kind: 'thing', id: workThing.uid } : place ? { kind: 'place', id: place } : null,
-    button: driving ? 'stepOut' : place && pk ? 'open' : null,
+    button: driving ? 'stepOut' : getInHere(c, s, place) ? 'getIn' : place && pk ? 'open' : null,
     place,
     refusal: refusalOf(c, g),
   };
@@ -438,6 +439,23 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   }
 
   return { t, epoch: s.epoch, boss, things, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: null, arrivals, fixtures, skips, labels, chevron: chevronOf({ salvage: c } as SalvageConfig, g), circles, foreman: { active, left_s: left } };
+}
+
+/**
+ * owner2-hud (ruling 18.4): the one button GETS IN. On foot, the truck free (hand.ts truckFree), no away card
+ * waiting, and his presence within truck.enter + truck.rearm of the truck: "Get in", unless the place whose card
+ * would open (a card kind of its own) has its point nearer him than the truck (a tie goes to the truck; the rack with the truck two metres
+ * off still opens the rack; at the park, whose point the parked truck stands on, the truck wins). The door's
+ * re-arming does not matter: a press sends the cab flag, which seats at the door (actions.ts setPresence).
+ */
+function getInHere(c: SalvageContent, s: SalvageGame['salvage'], place: string | null): boolean {
+  if (s.away || !truckFree(s)) return false;
+  const pr = s.presence;
+  const dt = Math.hypot(pr.x - s.truck.x, pr.y - s.truck.y);
+  if (dt > c.truck.enter + c.truck.rearm) return false;
+  if (!place || placeCardKind(c, place) === null) return true;
+  const p = pointOf(c, place);
+  return dt <= Math.hypot(pr.x - p.x, pr.y - p.y);
 }
 
 /** owner1 V4: the drive line's stop nearest a point (content map.driveLine.stops; none: the gate). */

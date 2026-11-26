@@ -38,11 +38,11 @@ import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
 import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, actorTable, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
-import { VB_SLOTS, VB_STRIDE, arrivalAt, bodyInto, bossDriveV, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
+import { VB_SLOTS, VB_STRIDE, arrivalAt, bodyInto, bossDriveV, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, pressGetIn, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
-import { DEAD, STICK_R, presenceStep, stick } from './stick';
+import { DEAD, STAND_MS, STICK_R, presenceStep, stick } from './stick';
 import { useYardArt, type YardArt } from './useYard';
 import { rulesItems } from './useRulesTable';
 import type { SpriteSheet } from './atlas';
@@ -114,6 +114,11 @@ export interface YardAnim {
   stats: SharedValue<FrameStats>;
   /** Set to 1 by the "Step out" button; the loop clears it when the boss is out. */
   exit: SharedValue<number>;
+  /**
+   * owner2 item 1 (ruling 18.4): set to 1 by the one button in its "Get in" mode; the loop clears it on the next
+   * frame and seats him when he is on foot within reach of the free truck (./motion.ts pressGetIn), else does nothing.
+   */
+  enter: SharedValue<number>;
   /** owner1 H6: where each crew member of the frame's list is drawn this frame (x, y metres per member, in the frame's order; NaN: not drawn). The idle tags follow it. */
   crew: SharedValue<number[]>;
   capacity: number;
@@ -163,32 +168,61 @@ function vehicleInto(L: DrawList, SH: DrawList, V: Float64Array, cell: number, s
   addTo(L, V, key, cell, wx, wy, 0, 0, scale, -1, 1);
 }
 
+/** The sampling of every atlas draw (one object for every run, not one a run). */
+const SAMPLING = { filter: FilterMode.Linear, mipmap: MipmapMode.None };
+
+/** The arrays an atlas run hands drawAtlas, kept from frame to frame (owner2 item 3: no three slices a run). */
+interface RunPool {
+  x: SkRSXform[][];
+  r: SkHostRect[][];
+  c: SkColor[][];
+}
+
+/**
+ * The pool's array `i`, holding `n` entries of `src` from `from` (its length set, its entries replaced). Skia
+ * copies what drawAtlas is given while it records (JsiSkCanvas, native and web), so the array is free again
+ * once the call returns; the host objects in it are the kit's, never freed here.
+ */
+function runArray<T>(pool: T[][], i: number, src: T[], from: number, n: number): T[] {
+  'worklet';
+  let a = pool[i];
+  if (a === undefined) {
+    a = [];
+    pool[i] = a;
+  }
+  a.length = n;
+  for (let j = 0; j < n; j++) a[j] = src[from + j];
+  return a;
+}
+
+/** One run [start, end) of a list: one drawAtlas (mirrored runs inside a canvas flipped about x = 0). Returns 1 when drawn. */
+function flushRun(cv: SkCanvas, L: DrawList, start: number, end: number, runKey: number, X: SkRSXform[], RC: SkHostRect[], C: SkColor[], images: (SkImage | null)[], paint: ReturnType<typeof Skia.Paint>, PO: RunPool, pi: number): number {
+  'worklet';
+  if (end <= start || runKey < 0) return 0;
+  const img = images[runKey >> 1];
+  if (!img) return 0;
+  const from = L.base + start;
+  const n = end - start;
+  const mirror = (runKey & 1) === 1;
+  if (mirror) {
+    cv.save();
+    cv.scale(-1, 1);
+  }
+  cv.drawAtlas(img, runArray(PO.r, pi, RC, from, n), runArray(PO.x, pi, X, from, n), paint, BlendMode.Modulate, runArray(PO.c, pi, C, from, n), SAMPLING);
+  if (mirror) cv.restore();
+  return 1;
+}
+
 /**
  * Draws a list in runs of the same sheet and mirroring: fills the pools at the list's base and calls
- * drawAtlas once per run (mirrored runs inside a canvas flipped about x = 0). Returns the number of draws.
+ * drawAtlas once per run. `pi` is the first pool slot this list may use (the frame's runs so far). Returns
+ * the number of draws.
  */
-function drawRuns(cv: SkCanvas, L: DrawList, sorted: boolean, X: SkRSXform[], RC: SkHostRect[], C: SkColor[], images: (SkImage | null)[], rects: number[][], dens: number[], paint: ReturnType<typeof Skia.Paint>): number {
+function drawRuns(cv: SkCanvas, L: DrawList, sorted: boolean, X: SkRSXform[], RC: SkHostRect[], C: SkColor[], images: (SkImage | null)[], rects: number[][], dens: number[], paint: ReturnType<typeof Skia.Paint>, PO: RunPool, pi: number): number {
   'worklet';
   let runs = 0;
   let start = 0;
   let runKey = -1;
-  const flush = (end: number) => {
-    if (end <= start || runKey < 0) return;
-    const sheet = runKey >> 1;
-    const img = images[sheet];
-    if (img) {
-      const b = L.base;
-      const mirror = (runKey & 1) === 1;
-      if (mirror) {
-        cv.save();
-        cv.scale(-1, 1);
-      }
-      cv.drawAtlas(img, RC.slice(b + start, b + end), X.slice(b + start, b + end), paint, BlendMode.Modulate, C.slice(b + start, b + end), { filter: FilterMode.Linear, mipmap: MipmapMode.None });
-      if (mirror) cv.restore();
-      runs++;
-    }
-    start = end;
-  };
   for (let i = 0; i < L.n; i++) {
     const it = sorted ? L.order[i] : i;
     const p = L.cell[it];
@@ -198,7 +232,8 @@ function drawRuns(cv: SkCanvas, L: DrawList, sorted: boolean, X: SkRSXform[], RC
     const mirror = rest & 1;
     const rk = sheet * 2 + mirror;
     if (rk !== runKey) {
-      flush(i);
+      runs += flushRun(cv, L, start, i, runKey, X, RC, C, images, paint, PO, pi + runs);
+      start = i;
       runKey = rk;
     }
     const r = rects[sheet];
@@ -223,7 +258,7 @@ function drawRuns(cv: SkCanvas, L: DrawList, sorted: boolean, X: SkRSXform[], RC
     }
     c[3] = a;
   }
-  flush(L.n);
+  runs += flushRun(cv, L, start, L.n, runKey, X, RC, C, images, paint, PO, pi + runs);
   return runs;
 }
 
@@ -355,6 +390,7 @@ export function useYardLoop(opts: {
   const near = useSharedValue(-1);
   const stats = useSharedValue<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0, runs: 0 });
   const exit = useSharedValue(0);
+  const enter = useSharedValue(0);
   const crewXY = useSharedValue<number[]>([]);
   const scratch = useSharedValue<any>(null);
 
@@ -396,6 +432,11 @@ export function useYardLoop(opts: {
   const bossV = content && typeof (content.truck as { bossV?: unknown }).bossV === 'number' ? (content.truck as unknown as { bossV: number }).bossV : motion.drive;
   // owner1 V3: the boss's truck inside the fence at most truck.bossYardV (absent: bossV everywhere).
   const bossYardV = content && typeof (content.truck as { bossYardV?: unknown }).bossYardV === 'number' ? Math.min(bossV, (content.truck as unknown as { bossYardV: number }).bossYardV) : bossV;
+  // owner2 item 2: while he stands still a sample every standMs (never slower than the rules' staleS / 2), and one
+  // on the frame his standing reaches feel.workDelay (an act that waits for it can start then).
+  const staleS = content ? content.feel.staleS : NaN;
+  const standMs = staleS > 0 ? Math.min(STAND_MS, (staleS * 1000) / 2) : 100;
+  const workDelay = content ? content.feel.workDelay : NaN;
 
   const onFrame = useCallback(
     (info: FrameInfo) => {
@@ -413,7 +454,7 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array(2), clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN], vb: new Float64Array(12 * VB_STRIDE), pv: new Float64Array(VB_SLOTS * 2).fill(NaN), aside: new Float64Array(128), f2: [0, 0, 0, 0], roofL: new Int32Array(16).fill(-1), roofA: new Float64Array(16).fill(1) };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array([0, 0, 0, 0, NaN, NaN, NaN]), xy: [] as number[], runPool: { x: [], r: [], c: [] }, clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN], vb: new Float64Array(12 * VB_STRIDE), pv: new Float64Array(VB_SLOTS * 2).fill(NaN), aside: new Float64Array(128), f2: [0, 0, 0, 0], roofL: new Int32Array(16).fill(-1), roofA: new Float64Array(16).fill(1) };
         scratch.value = S;
       }
       const st = S.st;
@@ -544,6 +585,16 @@ export function useYardLoop(opts: {
           st[37] = 1;
         }
       }
+      // owner2 item 1 (ruling 18.4): the one button GETS IN. A press ("Get in") is cleared on the next frame; it
+      // seats him exactly as walking in does when he is on foot within reach of the free truck, no Step out waits
+      // for the rules and the stick may steer (no overlay); the rules hear the entering sample at the door below.
+      if (enter.value !== 0) {
+        enter.value = 0;
+        if (pressGetIn(st, Rv.truck, steer, motion.enter)) {
+          entered = true;
+          runOnJS(drivingJS)(true);
+        }
+      }
       const driving = st[5] === 1;
       const speed = driving ? bossDriveV(st[2], YW, bossYardV, bossV) : motion.walk;
       const vx = ux * speed;
@@ -638,8 +689,18 @@ export function useYardLoop(opts: {
       if (st[5] === 0 && exit.value === 1) exit.value = 0;
       const bx = st[5] === 1 ? st[2] : st[0];
       const by = st[5] === 1 ? st[3] : st[1];
-      // Standing still (the rules decide what that does; walking past a thing never works it).
-      const sampleDue = presenceStep(S.pres, dt, steering, info.timestamp);
+      // Standing still (the rules decide what that does; walking past a thing never works it). owner2 item 2: a
+      // sample at once when he got in or out or was moved while still (a snap), else as presenceStep paces them.
+      const PR = S.pres;
+      const mdx = bx - PR[5];
+      const mdy = by - PR[6];
+      const force = st[5] !== PR[4] || (!steering && mdx * mdx + mdy * mdy > MOVE_EPS_M * MOVE_EPS_M);
+      const sampleDue = presenceStep(PR, dt, steering, info.timestamp, standMs, workDelay, force);
+      if (sampleDue || entered) {
+        PR[4] = st[5];
+        PR[5] = bx;
+        PR[6] = by;
+      }
 
       // --- the camera: after the body with a lead, eased; wider while driving; a nudge at the first pour ----
       if (st[27] === 0 && B[6] === B[6]) {
@@ -693,7 +754,7 @@ export function useYardLoop(opts: {
       const pb = body.value;
       if (Math.abs(pb.x - bx) > MOVE_EPS_M || Math.abs(pb.y - by) > MOVE_EPS_M || pb.driving !== st[5]) body.value = { x: bx, y: by, driving: st[5] };
 
-      // --- the presence sample: at most ten times a second --------------------------------------------------
+      // --- the presence sample: ten times a second while steering, about three while still (owner2 item 2) ------
       const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
       const ni = nearestAct(acts, bx, by, bodyR + motion.reach);
       if (near.value !== ni) near.value = ni;
@@ -891,7 +952,11 @@ export function useYardLoop(opts: {
         // The crew: each member walked along the leg the rules gave (from, to, t0, t1), never anywhere else
         // (drawn after the vehicles: they step aside from the moving ones).
         const CR = Rv.crew;
-        const XY: number[] = new Array(Math.floor(CR.length / 14) * 2).fill(NaN);
+        // owner2 item 3: the frame's places in a scratch array; a new array only when someone moved (below).
+        const XY: number[] = S.xy;
+        const nXY = Math.floor(CR.length / 14) * 2;
+        XY.length = nXY;
+        for (let i = 0; i < nXY; i++) XY[i] = NaN;
         for (let o = 0; o + 13 < CR.length; o += 14) {
           if (CR[o + 11] === 1) continue;
           const phase = CR[o + 10];
@@ -929,7 +994,7 @@ export function useYardLoop(opts: {
           const p = pXY[i];
           moved = a === a ? !(p === p) || Math.abs(a - p) > MOVE_EPS_M : p === p;
         }
-        if (moved) crewXY.value = XY;
+        if (moved) crewXY.value = XY.slice(0, nXY);
         // The boss, on foot: walking or pushing, working by tool, pouring, standing; his hand load on his back.
         if (st[5] === 0) {
           const carrier = B[0] > 0 ? B[0] - 1 : -1;
@@ -975,11 +1040,12 @@ export function useYardLoop(opts: {
       // --- one picture: decals, shadows, then the sorted list in runs ---------------------------------------
       sortRuns(L, runA, runB);
       let runs = 0;
+      const PO = S.runPool;
       const picture = createPicture((cv) => {
         if (K === null) return;
-        runs += drawRuns(cv, D, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
-        runs += drawRuns(cv, SHD, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
-        runs += drawRuns(cv, L, true, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint);
+        runs += drawRuns(cv, D, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint, PO, runs);
+        runs += drawRuns(cv, SHD, false, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint, PO, runs);
+        runs += drawRuns(cv, L, true, K.X, K.RC, K.C, K.images, K.rects, K.dens, K.paint, PO, runs);
       });
       pic.value = picture;
       if (IS_WEB) {
@@ -1020,13 +1086,13 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck, enterRules],
+    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck, enterRules, enter, standMs, workDelay],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {
     cb.setActive(run);
     return () => cb.setActive(false);
   }, [run, cb]);
-  return useMemo(() => ({ pic, ground, camera, northSy, body, near, stats, exit, crew: crewXY, capacity: opts.capacity ?? 0 }), [pic, ground, camera, northSy, body, near, stats, exit, crewXY, opts.capacity]);
+  return useMemo(() => ({ pic, ground, camera, northSy, body, near, stats, exit, enter, crew: crewXY, capacity: opts.capacity ?? 0 }), [pic, ground, camera, northSy, body, near, stats, exit, enter, crewXY, opts.capacity]);
 }
 

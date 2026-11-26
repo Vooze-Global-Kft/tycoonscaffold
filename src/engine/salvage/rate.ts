@@ -194,7 +194,12 @@ export function checks(x: Ctx, t: number, force = true): void {
   // and the away pass's events never reach a screen (salvageOffline passes none; the sink keeps only the away
   // report, passed, rung and repaid), so opened away its event would be lost and bathSet would keep it from
   // ever firing again. A rung-3 save opened after hours away therefore opens at its first live instant.
-  if (x.live && s.ladder.rung >= worksRungOf(x.c) && s.counts!.bathSet === undefined) worksOpen(x, t);
+  // join2b (the dispatch check's F5): the opening's DATE (the first lot's nextAt) is the instant the condition
+  // first held: the start of the transition when the yard already stood at the works' rung then (a save at the
+  // rung, or a rung reached away: the first check of a tick and of a jump fall at different instants, the
+  // transition's start does not), else this instant (the rung reached inside the transition, at the same event
+  // in a tick, a jump and ten jumps).
+  if (x.live && s.ladder.rung >= worksRungOf(x.c) && s.counts!.bathSet === undefined) worksOpen(x, t, (x.rung0 ?? s.ladder.rung) >= worksRungOf(x.c) ? x.t0 : t);
   const passed = passedNow(x.cfg, view(x));
   if (passed > s.ladder.passed) {
     const list = x.c.rivals.list;

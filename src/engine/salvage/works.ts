@@ -167,7 +167,7 @@ export function worksDepart(x: Ctx, t: number): void {
  * `backFieldOpen`; oversize pieces dated (lots.ts lotsOpen) and the Yard sale's first moment (reuse.ts
  * reuseOpen; the bath, wave 2).
  */
-export function worksOpen(x: Ctx, t: number): void {
+export function worksOpen(x: Ctx, t: number, since: number = t): void {
   const s = x.s;
   // A content with no works (the first yard's frozen test content) opens nothing.
   if (s.counts!.bathSet !== undefined || !x.cfg.salvage.works) return;
@@ -178,7 +178,7 @@ export function worksOpen(x: Ctx, t: number): void {
   // Wave 2 (2.9): the works layer's partners (the bridge partners) get their state now, closed until their
   // purchase (the three-axle hook-lift) opens them (partners.ts openPartners at the checks).
   for (const id of Object.keys(x.c.partners)) if (!s.partners[id]) s.partners[id] = partnerOf(x.c, id);
-  lotsOpen(x, t);
+  lotsOpen(x, t, since);
   reuseOpen(x, t);
 }
 

@@ -12,7 +12,7 @@ import { REFUSAL_KEYS, REFUSAL_KEYS_V3, type RefusalKey } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
-  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
+  hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'getIn', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
   place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages', 'place.shredder', 'place.rotaryHall', 'place.inductionHall', 'place.leadLine', 'place.yardSale', 'place.oversizePad', 'place.pickingTable', 'place.carPad', 'place.worksBunkers', 'place.worksStillages', 'place.batteryBox', 'place.forklift', 'place.baler', 'place.crane', 'place.depollution', 'place.granulator', 'place.shear', 'place.eddy', 'place.sorter', 'place.smelter'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
@@ -344,6 +344,7 @@ export const TEXT_KEYS = {
     'card.shop.noRoom',
     'card.shop.waiting',
     'card.shop.unconfirmed',
+    'card.shop.alsoWaiting',
     'card.shop.nothingCharged',
     'card.shop.unreachable',
     'card.shop.expired',

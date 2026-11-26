@@ -125,8 +125,11 @@ export function goalValues(cfg: R.SalvageConfig, g: R.SalvageGame | undefined, n
   };
 }
 
-/** The one button's three forms (yard-stage1.md 2.1). */
-export type ButtonMode = 'open' | 'stepOut' | 'blank';
+/** The one button's forms (yard-stage1.md 2.1; owner2-hud, ruling 18.4: "Get in"). */
+export type ButtonMode = 'open' | 'stepOut' | 'getIn' | 'blank';
+
+/** The rules' word on the one button (the frame's FrameBoss.button). */
+export type RulesButton = 'stepOut' | 'open' | 'getIn' | null;
 
 /**
  * owner1-fix finding 4 and 11: the one button's form. At the wheel it is "Step out", everywhere, the truck's park
@@ -136,13 +139,16 @@ export type ButtonMode = 'open' | 'stepOut' | 'blank';
  * mount reset `driving` to false behind the frame loop, which had already put him in the cab); the rules' word
  * cannot. On foot: "Open" at a place whose card has something to show, else blank.
  */
-export function buttonMode(worldDriving: boolean, rulesButton: 'stepOut' | 'open' | null, place: string | null, placeOpens: boolean): ButtonMode {
+export function buttonMode(worldDriving: boolean, rulesButton: RulesButton, place: string | null, placeOpens: boolean): ButtonMode {
   if (worldDriving || rulesButton === 'stepOut') return 'stepOut';
+  // owner2-hud (ruling 18.4): on foot within reach of the free truck the RULES say "Get in" (the frame decides the
+  // reach and which of the truck and a place's card is nearer; the screen computes neither).
+  if (rulesButton === 'getIn') return 'getIn';
   return place && placeOpens ? 'open' : 'blank';
 }
 
 /** The rules' word on the one button (the frame's boss.button; memoised on the state's identity), or null. */
-export function rulesButton(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): 'stepOut' | 'open' | null {
+export function rulesButton(cfg: R.SalvageConfig, g: R.SalvageGame | undefined): RulesButton {
   if (!g?.salvage) return null;
   return R.frame(cfg, g).boss.button;
 }

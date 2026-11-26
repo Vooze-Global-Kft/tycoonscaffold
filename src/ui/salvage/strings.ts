@@ -32,6 +32,7 @@ export const TEXT = {
   loadFull: 'Load full',
   open: 'Open',
   stepOut: 'Step out',
+  getIn: 'Get in', // hud: the one button beside the free truck (owner2-hud, ruling 18.4); the disc box as stepOut
   carryDriving: '{kg}', // hud: the carry chip while driving, after the skip pictogram (the lead's ruling 2, 15:55); kg = { mass_g, step: 'bridge' }
   goalProgress: '{a} / {b}',
   turnSideways: 'Turn your phone sideways',
@@ -648,6 +649,7 @@ export const TEXT = {
   'card.shop.noRoom': 'Nothing to spend it on yet',
   'card.shop.waiting': 'Waiting for approval', // pending (15.4); also the row for as long as it waits (15.11 c)
   'card.shop.unconfirmed': 'The store has not confirmed this purchase yet. If you were charged, your {currency} arrives when it does.', // 15.4, word for word
+  'card.shop.alsoWaiting': 'One purchase is still waiting for approval.', // the lead 11:50: an offer row while a waiting quote of it, past its 24 hours, still stands
   'card.shop.nothingCharged': 'Nothing was charged.', // only when the store refused (15.11 d); a cancel shows nothing
   'card.shop.unreachable': 'The store cannot be reached. Nothing was charged.', // 15.3, 15.12 e
   'card.shop.expired': 'A purchase that was waiting never arrived. Nothing was added.', // 15.11 f, until the card is closed

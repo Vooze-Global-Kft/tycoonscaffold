@@ -212,12 +212,12 @@ export function lotActEnd(x: Ctx, t: number): void {
  * The works open (works.ts worksOpen, `backFieldOpen`; rules-works wave 1): the first lot is dated
  * t + lots.period_s (2.10.1: `nextAt` is first set here, never at creation or migration).
  */
-export function lotsOpen(x: Ctx, t: number): void {
+export function lotsOpen(x: Ctx, t: number, since: number = t): void {
   const L = x.c.lots;
   if (!L || x.s.lots.nextAt !== null) return;
-  // Dated from the START of the transition in which the works open (x.t0), not from the instant inside it: they
-  // open at the first live check, which a run of ticks meets at its first tick's horizon and one jump at its first
-  // event or its own horizon; both are inside the transition that starts at the same yard second, so a tick and a
-  // jump date the first lot alike. Never before t (a date in the past would stop the feature).
-  x.s.lots.nextAt = Math.max(t, x.t0 + L.period_s);
+  // Dated from the instant the works' condition first held (`since`, rate.ts checks; join2b, the dispatch check's
+  // F5): the instant the rung was reached when it was reached inside this transition (a tick, a jump and ten jumps
+  // reach it at the same event), else the start of the transition (a save already at the rung, whose first check
+  // falls at a tick's horizon or a jump's first event). Never before t (a date in the past would stop the feature).
+  x.s.lots.nextAt = Math.max(t, since + L.period_s);
 }

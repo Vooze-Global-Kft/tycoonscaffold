@@ -206,3 +206,30 @@ describe('looks (2.15.1): chosen per slot, only the frame reads them', () => {
     expect(b.salvage.ladder).toEqual(a.salvage.ladder);
   });
 });
+
+describe('the pack row after a waiting quote\'s 24 hours (join2b; the lead, 26 Nov 11:50)', () => {
+  it('within 24 h the waiting row (no Buy, no extra line); after them an offer again WITH alsoWaiting while that quote stands; gone once it is granted', async () => {
+    const { quotePack, settleQuote } = await import('./actionsMoney');
+    const { packHours, packS, WAIT_MS } = await import('./shop');
+    const { salvageEngineMode } = await import('../salvageMode');
+    const cfg = shopCfg();
+    const US = { country: 'US' };
+    const T0 = SHOP_NOW;
+    const g0 = shopGame({ cash: 0 });
+    const S = packS(cfg, g0, packHours(cfg, 'pack2')!);
+    const q = quotePack(cfg, g0, 'pack2', S, T0, [], T0, g0.salvage.t, undefined, US);
+    const g = settleQuote(cfg, q, 'pending', { product: 'pack2', atMs: T0 });
+    const row = (gg: SalvageGame, now: number) => cardOf(cfg, gg, { kind: 'shop' }, now, US).shop!.packs!.find((r) => r.product === 'pack2')!;
+    expect(row(g, T0 + 1)).toMatchObject({ state: 'waiting', button: null });
+    expect(row(g, T0 + 1).alsoWaiting).toBeUndefined();
+    const later = row(g, T0 + WAIT_MS + 1);
+    expect(['offer', 'noRoom']).toContain(later.state);
+    expect(later.alsoWaiting).toBe(true);
+    // another pack's row says nothing of it
+    expect(cardOf(cfg, g, { kind: 'shop' }, T0 + WAIT_MS + 1, US).shop!.packs!.find((r) => r.product === 'pack5')!.alsoWaiting).toBeUndefined();
+    // the approval arrives: the quote is taken, the line goes
+    const granted = salvageEngineMode.grantProduct!(cfg as never, g as never, { productId: 'pack2', txId: 'tx1', purchasedMs: null, own: null }) as SalvageGame;
+    expect(granted.salvage.iap.pending).toHaveLength(0);
+    expect(row(granted, T0 + WAIT_MS + 1).alsoWaiting).toBeUndefined();
+  });
+});

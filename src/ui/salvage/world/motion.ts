@@ -385,6 +385,33 @@ export function bossDriveV(x: number, W: number, yardV: number, laneV: number): 
   return yardV + (laneV - yardV) * u * u * (3 - 2 * u);
 }
 
+/** Metres beyond `enter` that the one button's "Get in" still reaches (the door's re-arm ring of ./frameLoop.ts, content truck.rearm's 0.8). */
+export const GET_IN_SLACK_M = 0.8;
+
+/**
+ * owner2 item 1 (ruling 18.4, "the one button GETS IN"): a press of the disc in its "Get in" mode, on the frame
+ * the loop reads it. Seats him exactly as walking into the truck does (st[5] = 1; the door's arming st[6] is
+ * the walk-in's own business and stays) when ALL hold: he is on foot (st[5] 0), the stick may steer (`steer`:
+ * no overlay, no card), no Step out of the world waits for the rules (st[35] 0), the truck is owned and free
+ * in the rules' table (TR = RulesScene.truck: owned, nobody at its wheel, on no trip: the rules' truckFree;
+ * a truck on its way in is not owned yet), and he stands within enter + GET_IN_SLACK_M of the truck's drawn
+ * place (st[2], st[3]; synced from the rules while nobody holds it). Never while the rules have him seated
+ * (TR[5] 1: then the loop's "who sits in the cab" has put him in already). Returns true when he got in: the
+ * loop then sends the entering sample at the truck's place with the cab flag (enterRules), the rules seat by
+ * the flag at the door (engine actions.ts setPresence). Otherwise it changes nothing. A worklet (tests drive it).
+ */
+export function pressGetIn(st: Float64Array | number[], TR: number[], steer: boolean, enter: number): boolean {
+  'worklet';
+  if (st[5] !== 0 || !steer || st[35] !== 0) return false;
+  if (TR[0] !== 1 || TR[5] !== 0 || TR[6] >= 0) return false;
+  const dx = st[0] - st[2];
+  const dy = st[1] - st[3];
+  const r = enter + GET_IN_SLACK_M;
+  if (!(dx * dx + dy * dy <= r * r)) return false;
+  st[5] = 1;
+  return true;
+}
+
 // =====================================================================================================
 // 5. THE PICTURED VEHICLES' PLACES (the frame loop draws them; the tests replay them): the merchant's
 //    flatbed on its round, the public's car, a purchase arriving. Moved here unchanged from ./frameLoop.ts
