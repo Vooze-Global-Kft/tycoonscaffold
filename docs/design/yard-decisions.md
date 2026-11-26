@@ -1623,3 +1623,23 @@ loads; the state stays bounded. What did not hold, and what the lead rules:
     the yard's own instants, a fair share of claims, full loads only) made the gap larger and is
     not in the code. The machines' grouped segment is removed (it depended on sight and saved
     nothing).
+
+14.10 **RATED INCOME'S GATE, RESTATED (06:20; it replaces 14.5's count and I5's band).** Measured
+    after the fix (`fixB/income-after.txt`): G itself spreads by up to 8 % either way between seeds
+    whose assets are identical, so "17 of 20 moments within 0.9 to 1.1" cannot hold for any I that
+    is computed from assets. And on the engine as it now stands I is biased: about +10 % at rung
+    3's entry, -14 % at day 1, -9 % at day 3 (crews in runs carry more than I's carrying term
+    knows; levels count for too little). THE GATE NOW, at each named moment over at least fifteen
+    seeds, on the flat board and on the normal board: the MEDIAN of I/G within 0.95 to 1.05; at
+    least 13 of 15 seeds within 0.88 to 1.12; none outside 0.80 to 1.25. And I is MONOTONE: no
+    purchase, hire or level lowers it (a test over every asset step on five played states). It is
+    NOT met today. It is owed before any stage-2 rule reads I for money (the bank's limit, a
+    pack's quote, an ad's cap): one calibration step of its own on the merged engine, by one
+    engineer who owns `rate.ts` for it, with the bots' tables before and after.
+
+14.11 **HOLD'S MEASURE COUNTS WHAT IS STILL HELD (06:20).** The second fixer built 14.6 and, when
+    one skip a lot lost about a fifth, its fallback (a lot covers two skips). The day-word holder
+    still shows 10 to 15 % less LIFETIME EARNINGS over three days than the same days without Hold,
+    but part of that is stock it still holds at the end. The bound stays a tenth and is measured
+    as lifetime earnings plus unsold stock at usual prices at the end, on at least 13 of 15 seeds;
+    the bots' report prints both measures.

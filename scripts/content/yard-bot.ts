@@ -14,8 +14,11 @@
  * --only list     beats,hand,away,days,nohand,gate (default all with --report)
  * --json file     write every run's summary there too
  * --handFirst     a what-if: after the fixed goals the bots level the yard hands when pieces wait (bot.ts)
+ * --minutes M     how long the hour runs play (default 90 since REPORT7: E31c's windows to minute 90; the
+ *                 tick-equals-jump gate checks the first 60 minutes); the slow hand plays max(100, M)
+ * --daysSeeds N   the three-day runs (days and the day-word holder) on the first N seeds (default 3)
  * --only income   stage 2 2.3.3's gate (engine2-income): rated income I against the away income an hour G at
- *                 usual prices (board.a 0), at rung 3's entry, the hour's end, day 1 and day 3 (normal hand),
+ *                 usual prices (board.a 0), at rung 2's and rung 3's entry, the hour's end, day 1 and day 3 (normal hand),
  *                 on yards the bots played with prices flat; and (RULING2.md 14.5, engine2-fixB) on yards
  *                 played with the NORMAL price board, G still measured at usual prices, at the hour's end
  *                 and day 1 (the gate: 17 of 20 within 0.9 to 1.1 on ten seeds, none outside 0.85 to 1.15).
@@ -129,7 +132,8 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
   const extra: Record<string, unknown> = {};
   const onMinute = (bb: Bot, m: number) => {
     Rs[m] = ratedCapacity(bb.cfg, bb.g);
-    if (spec.gate && m <= spec.minutes) {
+    // The tick-equals-jump gate runs on the first hour only (REPORT7 plays the hour runs to minute 90).
+    if (spec.gate && m <= Math.min(spec.minutes, 60)) {
       const d = tickJumpGate(bb.cfg, bb.g, bb.now);
       if (d) gate.push(`min ${m}: ${d}`);
     }
@@ -204,24 +208,38 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
     return summary(b, spec, Rs, gate, extra, t0);
   }
   if (spec.kind === 'income' && spec.board === 'normal') {
-    // RULING2.md 14.5: the yard as players play it (the shipped board), I against G at the hour's end and day 1.
-    playTo(b, 3600, onMinute);
-    const rows = [incomeRow(cfg, b.g, spec, 'hour')];
-    for (let k = 0; k < 2; k++) {
+    // RULING2.md 14.5: the yard as players play it (the shipped board), I against G at the hour's end and day 1
+    // (the gate's 20 moments); REPORT7 adds rung 2's and rung 3's entry and day 3 (printed, not gated).
+    let r2: R.SalvageGame | null = null;
+    let r3: R.SalvageGame | null = null;
+    playTo(b, 3600, (bb, m) => {
+      onMinute(bb, m);
+      if (!r2 && bb.g.salvage.ladder.rung >= 2) r2 = bb.g;
+      if (!r3 && bb.g.salvage.ladder.rung >= 3) r3 = bb.g;
+    });
+    const rows = [];
+    if (r2) rows.push(incomeRow(cfg, r2, spec, 'rung2'));
+    if (r3) rows.push(incomeRow(cfg, r3, spec, 'rung3'));
+    rows.push(incomeRow(cfg, b.g, spec, 'hour'));
+    for (let k = 0; k < 6; k++) {
       away(b, 11.75 * 3600);
       playTo(b, b.g.salvage.t + 15 * 60);
+      if (k === 1) rows.push(incomeRow(cfg, b.g, spec, 'day1'));
     }
-    rows.push(incomeRow(cfg, b.g, spec, 'day1'));
+    rows.push(incomeRow(cfg, b.g, spec, 'day3'));
     extra.income = rows;
     return summary(b, spec, Rs, gate, extra, t0);
   }
   if (spec.kind === 'income') {
+    let r2: R.SalvageGame | null = null;
     let r3: R.SalvageGame | null = null;
     playTo(b, 3600, (bb, m) => {
       onMinute(bb, m);
+      if (!r2 && bb.g.salvage.ladder.rung >= 2) r2 = bb.g;
       if (!r3 && bb.g.salvage.ladder.rung >= 3) r3 = bb.g;
     });
     const rows = [];
+    if (r2) rows.push(incomeRow(cfg, r2, spec, 'rung2'));
     if (r3) rows.push(incomeRow(cfg, r3, spec, 'rung3'));
     rows.push(incomeRow(cfg, b.g, spec, 'hour'));
     for (let k = 0; k < 6; k++) {
@@ -237,6 +255,9 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
     // The twice-a-day habit: a first hour, then fifteen minutes every 11.75 hours to the end of day 3.
     playTo(b, 3600, onMinute);
     const sittings: { at_h: number; awayEarned: number; bought: number; cashBefore: number; cashAfter: number; useful: boolean; rank: number }[] = [];
+    const marks: Record<string, { earned: number; t: number; stock: number }> = {};
+    const mark = (k: string) => (marks[k] = { earned: Math.round(b.g.lifetimeEarnings), t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(3), stock: Math.round(R.stockValue(b.cfg, b.g)) });
+    mark('hour');
     let n0 = b.rec.purchases.length;
     for (let k = 0; k < 6; k++) {
       const rank0 = b.rec.minutes.at(-1)?.rank ?? 0;
@@ -249,7 +270,10 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
       const bought = b.rec.purchases.length - n0;
       n0 = b.rec.purchases.length;
       sittings.push({ at_h: Math.round((b.g.salvage.t / 3600) * 10) / 10, awayEarned: Math.round(ae), bought, cashBefore: Math.round(cashBefore), cashAfter: Math.round(b.g.cash), useful: bought > 0, rank: rankBack });
+      if (k === 1) mark('day1');
     }
+    mark('day3');
+    extra.marks = marks;
     extra.sittings = sittings;
     extra.hold = b.rec.hold;
     extra.earned = Math.round(b.g.lifetimeEarnings);
@@ -342,7 +366,8 @@ function beatRow(runs: Summary[], key: string, lo: number, hi: number): string {
 function windows(r: Summary, field: 'sales' | 'net'): number[] {
   const out: number[] = [];
   const at = (m: number) => r.minutes.find((x) => Math.round(x.t / 60) >= m) ?? r.minutes.at(-1)!;
-  for (let w = 0; w < 12; w++) {
+  const n = Math.min(18, Math.floor((r.minutes.at(-1)?.t ?? 0) / 300 + 1e-9));
+  for (let w = 0; w < n; w++) {
     const a = w === 0 ? { earned: 0, loads: 0 } : at(w * 5);
     const b = at((w + 1) * 5);
     const sales = (b.earned - a.earned) / 5;
@@ -356,7 +381,7 @@ function report(all: Summary[], seeds: number[]): string {
   const pick = (f: (s: Spec) => boolean) => all.filter((r) => f(r.spec));
   const hour = (hand: string, habit: string, route = 'A') => pick((s) => s.kind === 'hour' && s.hand === hand && s.habit === habit && s.route === route);
   const N = hour('normal', 'goal');
-  L.push(`REPORT6 tables (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts`);
+  L.push(`REPORT7 tables (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts`);
   L.push('');
   // 0. hard promises
   const broken = all.flatMap((r) => r.broken.map((b) => `${r.spec.kind}/${r.spec.hand}/${r.spec.habit}/${r.spec.route}/s${r.spec.seed} t=${Math.round(b.t)}: ${b.what}`));
@@ -408,27 +433,32 @@ function report(all: Summary[], seeds: number[]): string {
   L.push('');
   // 2. income windows
   L.push('2. SALES AND NET A MINUTE BY FIVE-MINUTE WINDOW (median of seeds)');
-  L.push(`   window          ${Array.from({ length: 12 }, (_, w) => pad(`${w * 5}-${w * 5 + 5}`, 6)).join('')}`);
+  L.push(`   window          ${Array.from({ length: 18 }, (_, w) => pad(`${w * 5}-${w * 5 + 5}`, 6)).join('')}`);
   L.push(`   E28 aim         ${[120, 250, 450, 800, 1300, 1800, 1980, 2178, 2396, 2635, 2899, 3189].map((x) => pad(x, 6)).join('')}`);
   for (const [name, rs] of cols) {
     if (!rs.length) continue;
     for (const f of ['sales', 'net'] as const) {
       const W = rs.map((r) => windows(r, f));
-      L.push(`   ${`${name} ${f}`.padEnd(16)}${Array.from({ length: 12 }, (_, w) => pad(Math.round(med(W.map((x) => x[w]))), 6)).join('')}`);
+      L.push(`   ${`${name} ${f}`.padEnd(16)}${Array.from({ length: 18 }, (_, w) => pad(W.some((x) => x[w] !== undefined) ? Math.round(med(W.map((x) => x[w]).filter((x) => x !== undefined))) : '-', 6)).join('')}`);
     }
   }
-  const falls = N.map((r) => windows(r, 'sales').slice(1).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
+  const falls = N.map((r) => windows(r, 'sales').slice(1, 12).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
   L.push(`   normal goal A: windows under the one before (after minute 5): med ${med(falls)}, max ${Math.max(...falls)}`);
   for (const [name, rs] of cols) {
     if (!rs.length) continue;
     const last = rs.map((r) => windows(r, 'sales')[11]);
-    const late = rs.map((r) => windows(r, 'sales').slice(6).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
-    L.push(`   E31c ${name.padEnd(14)}: sales 55-60 >= §2,000 a minute on ${last.filter((x) => x >= 2000).length}/${rs.length} (med §${Math.round(med(last))}); a window after minute 30 under the one before: ${late.filter((x) => x === 0).length}/${rs.length} runs have none (med ${med(late)}, max ${Math.max(...late)})`);
+    const late = rs.map((r) => windows(r, 'sales').slice(6, 12).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
+    L.push(`   E31c ${name.padEnd(14)}: sales 55-60 >= §2,000 a minute on ${last.filter((x) => x >= 2000).length}/${rs.length} (med §${Math.round(med(last))}); a window in minutes 30-60 under the one before: ${late.filter((x) => x === 0).length}/${rs.length} runs have none (med ${med(late)}, max ${Math.max(...late)})`);
+    const w90 = rs.map((r) => windows(r, 'sales')).filter((w) => w.length >= 18);
+    if (w90.length) {
+      const late90 = w90.map((w) => w.slice(12, 18).filter((x, i, a) => i > 0 && x < a[i - 1]).length);
+      L.push(`        ${''.padEnd(14)}  minutes 60-90 (runs played to 90): sales 85-90 med §${Math.round(med(w90.map((w) => w[17])))}, >= §2,000 on ${w90.filter((w) => w[17] >= 2000).length}/${w90.length}; windows 60-90 mean §${Math.round(med(w90.map((w) => w.slice(12, 18).reduce((a, x) => a + x, 0) / 6)))} against 55-60 §${Math.round(med(w90.map((w) => w[11])))}; a window in 60-90 under the one before: med ${med(late90)}, max ${Math.max(...late90)}`);
+    }
   }
   L.push('');
   // 3. tonnes, rank, cash, R through the hour
   L.push('3. THROUGH THE HOUR (normal goal A, median): supplied t, rank, cash §, rated capacity t/h, reserve §');
-  for (const m of [5, 10, 15, 20, 25, 30, 40, 50, 60]) {
+  for (const m of [5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90]) {
     const row = N.map((r) => r.minutes.find((x) => Math.round(x.t / 60) >= m) ?? r.minutes.at(-1)!);
     L.push(`   min ${pad(m, 2)}  ${pad((med(row.map((x) => x.supplied_g)) / 1e6).toFixed(2), 6)} t  rank ${pad(med(row.map((x) => x.rank)), 2)}  cash ${pad(Math.round(med(row.map((x) => x.cash))), 7)}  R ${pad(med(row.map((x) => x.R)).toFixed(1), 6)}  reserve ${pad(Math.round(med(row.map((x) => x.reserve))), 6)}`);
   }
@@ -548,7 +578,20 @@ function report(all: Summary[], seeds: number[]): string {
       const d = days.find((x) => x.spec.seed === h.spec.seed);
       return d ? (h.extra.earned as number) / (d.extra.earned as number) - 1 : NaN;
     });
-    L.push(`   the day-word holder against the same days without Hold: ${g.map((x) => `${(x * 100).toFixed(1)} %`).join(', ')} (aim <= +3 %)`);
+    L.push(`   the day-word holder against the same days without Hold, lifetime earnings at day 3: ${g.map((x) => `${(x * 100).toFixed(1)} %`).join(', ')} (E40 after RULING2.md 14.6: lose at most a tenth)`);
+    type Mk = Record<string, { earned: number; t: number; stock: number }>;
+    for (const at of ['day1', 'day3']) {
+      const q = hold.map((h) => {
+        const d = days.find((x) => x.spec.seed === h.spec.seed);
+        const a = (h.extra.marks as Mk | undefined)?.[at];
+        const z = (d?.extra.marks as Mk | undefined)?.[at];
+        if (!a || !z) return null;
+        return { seed: h.spec.seed, e: a.earned / z.earned - 1, es: (a.earned + a.stock) / (z.earned + z.stock) - 1, t: a.t / z.t - 1, hs: a.stock, ns: z.stock };
+      }).filter((x): x is { seed: number; e: number; es: number; t: number; hs: number; ns: number } => !!x);
+      if (!q.length) continue;
+      const pc = (x: number) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)} %`;
+      L.push(`   ${at}: holder / without Hold, earnings ${q.map((x) => pc(x.e)).join(' ')} (med ${pc(med(q.map((x) => x.e)))}; within a tenth on ${q.filter((x) => x.e >= -0.1).length}/${q.length}); earnings + stock at usual prices ${q.map((x) => pc(x.es)).join(' ')} (med ${pc(med(q.map((x) => x.es)))}); supplied t ${q.map((x) => pc(x.t)).join(' ')}; stock held §${q.map((x) => `${Math.round(x.hs / 1000)}k/${Math.round(x.ns / 1000)}k`).join(' ')}`);
+    }
   }
   const nh = pick((s) => s.kind === 'nohand');
   if (nh.length) {
@@ -578,12 +621,12 @@ function incomeSection(L: string[], all: Summary[]): void {
         : '8b. THE SAME ON YARDS PLAYED WITH THE NORMAL PRICE BOARD (RULING2.md 14.5; G still at usual prices, board.a 0; gate: 17 of 20 moments within 0.9-1.1, none outside 0.85-1.15)',
     );
     const all20: number[] = [];
-    for (const at of ['rung3', 'hour', 'day1', 'day3']) {
+    for (const at of ['rung2', 'rung3', 'hour', 'day1', 'day3']) {
       const rows = inc.map((r) => ({ r, x: (r.extra.income as Row[]).find((x) => x.at === at) })).filter((q): q is { r: Summary; x: Row } => !!q.x);
       if (!rows.length) continue;
       const q = rows.map(({ x }) => x.I / x.G);
-      all20.push(...q);
-      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds${board === 'flat' ? ' (aim 13 of 15 at rung3 and day3)' : ''}; I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
+      if (board === 'flat' || at === 'hour' || at === 'day1') all20.push(...q);
+      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds${board === 'flat' ? ' (aim 13 of 15 at rung3 and day3)' : at === 'hour' || at === 'day1' ? ' (gated)' : ' (printed, not gated)'}; I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
       for (const { r, x } of rows) {
         L.push(`      s${pad(r.spec.seed, 3)} t ${mmss(x.t)} rung ${x.rung} ran ${x.ran_h.toFixed(1)} h: G §${pad(Math.round(x.G), 6)} (sales ${Math.round(x.sales)} − loads ${Math.round(x.spent)} + stock ${Math.round(x.stock)})  I §${pad(Math.round(x.I), 6)} (sales ${Math.round(x.Isales)} − loads ${Math.round(x.Ispent)}, binds ${x.bind})  I/G ${(x.I / x.G).toFixed(3)}`);
       }
@@ -615,7 +658,8 @@ async function main(): Promise<void> {
   const only = (arg('only', 'beats,hand,away,days,nohand,gate,income') ?? '').split(',');
   const jobs = Number(arg('jobs', '2'));
   const specs: Spec[] = [];
-  const base = { kind: 'hour' as const, minutes: 60 };
+  // REPORT7: the hour runs are played to minute 90 (E31c: the first half hour after rung 3 shows what the runs do).
+  const base = { kind: 'hour' as const, minutes: Number(arg('minutes', '90')) };
   // --only income alone: only the income runs (flat board on every seed, the normal board on ten seeds:
   // seeds 1..10 or the --seeds given when fewer), and only section 8 in the report.
   const incomeOnly = only.length === 1 && only[0] === 'income';
@@ -625,13 +669,13 @@ async function main(): Promise<void> {
       specs.push({ ...base, hand: 'normal', habit: 'all', route: 'A', seed });
       if (routes.includes('B')) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'B', seed });
       specs.push({ ...base, hand: 'brisk', habit: 'goal', route: 'A', seed });
-      specs.push({ ...base, hand: 'slow', habit: 'goal', route: 'A', seed, minutes: 100 });
+      specs.push({ ...base, hand: 'slow', habit: 'goal', route: 'A', seed, minutes: Math.max(100, base.minutes) });
     }
     if (only.includes('hand')) specs.push({ ...base, kind: 'manager', hand: 'normal', habit: 'goal', route: 'A', seed, manager: true });
     if (only.includes('income')) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'flat' });
   }
   if (only.includes('income')) for (const seed of seeds.slice(0, 10)) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'normal' });
-  const few = seeds.slice(0, Math.min(3, seeds.length));
+  const few = seeds.slice(0, Math.min(Number(arg('daysSeeds', '3')), seeds.length));
   for (const seed of few) {
     if (only.includes('days')) {
       specs.push({ kind: 'days', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed });
