@@ -354,11 +354,6 @@ export interface RunLoad {
   grade: GradeId | null;
   pickAt: number;
   dropAt: number;
-  /**
-   * engine2-fixA: picked up already (at the first instant at or after `pickAt`, crew.ts catchUp): what it
-   * took is on his carrier (`CrewMember.load`) until it is delivered. Only a run's first load can be.
-   */
-  picked?: true;
 }
 
 /** One thing of a cutter's run: its walk's end and its whole cut's end. */

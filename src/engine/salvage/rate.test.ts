@@ -65,6 +65,26 @@ describe('rated income I (2.3)', () => {
     expect(R.ratedIncome(cfg, { ...game('m30'), cash: 1e9 })).toBe(i0);
   });
 
+  it('counts the crucible only once it can run with nobody there: owned and poured at least once (14.5); its switches still move nothing', () => {
+    const s = structuredClone(game('m30').salvage);
+    s.machines.crucible.owned = false;
+    const without = I(s);
+    const never = structuredClone(s);
+    never.machines.crucible.owned = true;
+    never.counts = { ...(never.counts ?? {}), poured: 0 };
+    expect(I(never)).toBe(without);
+    const poured = structuredClone(never);
+    poured.counts!.poured = 1;
+    const i1 = I(poured);
+    expect(i1).toBeGreaterThanOrEqual(without);
+    // I4: with the crucible counted, its recipe, Take from bays and Hold move nothing.
+    const sw = structuredClone(poured);
+    sw.machines.crucible.fromBays = !sw.machines.crucible.fromBays;
+    sw.machines.crucible.recipe = sw.machines.crucible.recipe === 'brass' ? 'alu' : 'brass';
+    for (const b of Object.values(sw.bays)) b.held = !b.held;
+    expect(I(sw)).toBe(i1);
+  });
+
   it('never falls when an asset is added: a level of a yard hand, a cutter or the driver, a partner level', () => {
     const s = game('m30').salvage;
     const i0 = I(s);

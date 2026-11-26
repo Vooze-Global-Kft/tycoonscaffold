@@ -15,7 +15,6 @@ import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, sp
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
 const RATE_FED: Exclude<MachineId, 'crucible'>[] = ['stripper', 'bench'];
-
 function posOf(x: Ctx, spot: Spot): { x: number; y: number } {
   return spotPos(x.c, spot, x.s.things, x.s.truck);
 }
@@ -734,15 +733,6 @@ function deliverLoad(x: Ctx, m: CrewMember, items: Piece[], dest: string, t: num
   if (left.length) weighIn(x, left, m.id, t, at);
 }
 
-/** What a run's load takes: on his carrier already when it was picked up (catchUp), else picked now. */
-function takeLoad(x: Ctx, m: CrewMember, L: RunLoad, t: number): Piece[] {
-  if (!L.picked) return pickClaims(x, m, L.claims, t);
-  const items = m.load;
-  m.load = [];
-  delete L.picked;
-  return items;
-}
-
 /** Land a hand's run's loads whose drop is at or before `upto`, in order, at yard second t. Returns the first not landed. */
 function landLoads(x: Ctx, m: CrewMember, t: number, upto: number): number {
   const run = m.run!;
@@ -752,62 +742,16 @@ function landLoads(x: Ctx, m: CrewMember, t: number, upto: number): number {
   for (; i < loads.length; i++) {
     const L = loads[i];
     if (L.dropAt > upto + RUN_EPS) break;
-    deliverLoad(x, m, takeLoad(x, m, L, t), dest, t, L.dropAt);
+    deliverLoad(x, m, pickClaims(x, m, L.claims, t), dest, t, L.dropAt);
   }
   return i;
 }
 
-/**
- * engine2-fixA (14.2: what the plan cannot see): a planned run's work is not held to its one dated end. At
- * every instant of the yard (any event's, crewDepart), each run picks up the load whose pick-up is due (onto
- * his carrier: the pieces leave their pile, a tray's grams leave the tray) and delivers every load, but the
- * last, whose drop is due (weighed in dated at its own drop, or fed); a cutter's run cuts every thing, but
- * the last, whose cut is due. So the floor's room, the bays, the hoppers and the trays see a run's work at
- * the first instant at or after the trip's own pick-up or drop, as a trip-by-trip yard sees it at that
- * instant. The run's last trip lands at its dated end as before. A tick and a jump share their instants, so
- * they still agree exactly; the instants are the yard's own (none is added).
- */
-function catchUp(x: Ctx, m: CrewMember, t: number): void {
-  const run = m.run!;
-  if (run.cuts) {
-    while (run.cuts.length > 1 && run.cuts[0].cutEnd <= t + RUN_EPS) {
-      const C = run.cuts[0];
-      const at = posOf(x, { thing: C.thing });
-      landCuts(x, m, t, C.cutEnd, 1);
-      run.cuts.shift();
-      run.t0 = C.cutEnd;
-      run.start = [at.x, at.y];
-      run.k = run.cuts.length;
-    }
-    return;
-  }
-  const loads = run.loads;
-  if (!loads) return;
-  const dest = run.dest ?? 'scale';
-  for (;;) {
-    const L = loads[0];
-    if (!L) return;
-    if (!L.picked) {
-      if (L.pickAt > t + RUN_EPS) return;
-      m.load = pickClaims(x, m, L.claims, t);
-      L.claims = [];
-      L.picked = true;
-    }
-    if (loads.length < 2 || L.dropAt > t + RUN_EPS) return;
-    deliverLoad(x, m, takeLoad(x, m, L, t), dest, t, L.dropAt);
-    loads.shift();
-    const d = posOf(x, destSpotOf(dest));
-    run.t0 = L.dropAt;
-    run.start = [d.x, d.y];
-    run.k = loads.length;
-  }
-}
-
-/** Land a cutter's run's things whose cut ends at or before `upto` (at most `max`): each cut whole, its pieces on its place's pile. */
-function landCuts(x: Ctx, m: CrewMember, t: number, upto: number, max = Infinity): number {
+/** Land a cutter's run's things whose cut ends at or before `upto`: each cut whole, its pieces on its place's pile. */
+function landCuts(x: Ctx, m: CrewMember, t: number, upto: number): number {
   const cuts = m.run!.cuts ?? [];
   let i = 0;
-  for (; i < cuts.length && i < max; i++) {
+  for (; i < cuts.length; i++) {
     const C = cuts[i];
     if (C.cutEnd > upto + RUN_EPS) break;
     const th = thingOf(x, C.thing);
@@ -906,6 +850,7 @@ export function openRun(x: Ctx, m: CrewMember, t: number): void {
   const spots = loads.map((L) => posOf(x, L.spot));
   const i = landLoads(x, m, t, t);
   delete m.run;
+  m.load = [];
   m.carries = null;
   if (i >= loads.length) {
     delete m.dest;
@@ -927,7 +872,7 @@ export function openRun(x: Ctx, m: CrewMember, t: number): void {
     return;
   }
   const at = spots[i];
-  const items = takeLoad(x, m, L, t);
+  const items = pickClaims(x, m, L.claims, t);
   m.claims = [];
   if (!items.length) {
     delete m.dest;
@@ -1083,7 +1028,7 @@ function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
 
 /** Set out on the first of `cands` (a leg), or plan the run from it when out of sight and planned ahead. */
 function startCut(x: Ctx, m: CrewMember, t: number, job: CrewJob, where: 'dropoff' | 'floor', cands: ThingState[], P: number, start: { x: number; y: number }, t0: number): void {
-  if (planAhead(x, 'cut') && !bossSees(x, t, [start], [where])) {
+  if (planAhead(x) && !bossSees(x, t, [start], [where])) {
     groupCutter(x, m, t, job, cands, P, start, t0);
     return;
   }
@@ -1193,7 +1138,6 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
 
 /** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
 export function crewDepart(x: Ctx, t: number): void {
-  for (const m of x.s.crew) if (m.run) catchUp(x, m, t);
   for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
   for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') departHand(x, m, t);
 }
@@ -1220,7 +1164,7 @@ function departHand(x: Ctx, m: CrewMember, t: number): boolean {
   PLAN = null;
   if (kind) {
     m.course = { t0: t, job: m.job, kind };
-    if (planAhead(x, 'hand')) groupHand(x, m, t, start, kind, t);
+    if (planAhead(x)) groupHand(x, m, t, start, kind, t);
   }
   return true;
 }
@@ -1251,7 +1195,7 @@ function nextHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numbe
   if (kind.k === 'feed' || kind.k === 'floorWhole') m.cut = null;
   leg(x, m, c.job, 'walkTo', cand.spot, t, h);
   m.dest = dest;
-  if (planAhead(x, 'hand')) groupHand(x, m, t, start, kind, c.t0);
+  if (planAhead(x)) groupHand(x, m, t, start, kind, c.t0);
   return true;
 }
 

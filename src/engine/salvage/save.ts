@@ -177,10 +177,6 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
       continue;
     }
     const st = Array.isArray((m.run as Partial<CrewRun> | null)?.start) ? (m.run as CrewRun).start : null;
-    // engine2-fixA: what the broken run had picked up (on his carrier) goes back on the ground, by the floor.
-    const carried = arr<SalvageState['load'][number]>(m.load).filter((p) => knownGrade(p.grade) && grams(p.g) > 0 && typeof p.uid === 'string');
-    let k = s.pieces.filter((p) => p.pile === 'floor').length;
-    for (const p of carried) s.pieces.push({ ...p, pile: 'floor', k: k++, claim: null });
     delete m.run;
     delete m.dest;
     for (const p of s.pieces) if (p.claim === m.id) p.claim = null;

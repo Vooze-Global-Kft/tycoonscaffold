@@ -8,7 +8,6 @@
  */
 import { boostFactor, boostOn, bossFresh, count, heard, type Ctx } from './clock';
 import { machineInputs, machinePlace, machineShares, sumStock } from './content';
-import { bossSees, planAhead } from './group';
 import { pointOf } from './positions';
 import type { MachineId, MachineState, Piece } from './types';
 
@@ -174,27 +173,12 @@ export function start(x: Ctx, id: MachineId, t: number): void {
   if (m.hopper.length) {
     if (trayFull(x, id)) status = 'trayFull';
     else {
-      let piece = m.hopper.shift()!;
+      const piece = m.hopper.shift()!;
       const r = rateOf(x, id, t);
-      // 2.1: a segment started with no boss within sight of the machine takes every hopper piece of its
-      // grade with it (one dated end; credited by the cumulative rule over their summed grams). The hand
-      // stripper runs only while the boss stands at it, so it is never grouped.
-      let n = 1;
-      if (id !== 'hand_stripper' && m.hopper.length && planAhead(x, 'mach') && !bossSees(x, t, [], [machinePlace(id)])) {
-        let g = piece.g;
-        const rest: Piece[] = [];
-        for (const q of m.hopper) {
-          if (q.grade === piece.grade) {
-            g += q.g;
-            n++;
-          } else rest.push(q);
-        }
-        if (n > 1) {
-          m.hopper = rest;
-          piece = { ...piece, g };
-        }
-      }
-      m.work = { piece, startAt: t, rate_kg_s: r, credited: {}, base_g: 0, ...(n > 1 ? { n } : {}) };
+      // engine2-fixA (RULING2.md 14.1): a machine takes one hopper piece at a time in every presence state
+      // (the engine step's grouped segment, by sight, is gone: it saved nothing on the bench and made the
+      // hopper's room differ with the boss's sight). A saved segment (`work.n`) still finishes as it was.
+      m.work = { piece, startAt: t, rate_kg_s: r, credited: {}, base_g: 0 };
       status = r > 0 ? 'working' : 'waiting';
     }
   }
