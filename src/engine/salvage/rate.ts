@@ -236,11 +236,13 @@ interface Unit {
   /** Grams a kilogram of each grade weighed in or fed (kg by grade); machine inputs by machine. */
   kg: Record<string, number>;
   machKg: Record<'stripper' | 'bench', number>;
+  /** Of machKg: whole things that need no cutting carried off the floor to the hopper (E35: several a trip, up to a load). */
+  machWholeKg: Record<'stripper' | 'bench', number>;
   /** Mean piece mass of what goes to the scale (for the trip's fill), kg·kg (Σ m²; ÷ scaleKg is the mass-weighted mean). */
   m2: number;
 }
 
-const emptyUnit = (): Unit => ({ cut: 0, scaleKg: 0, wholeKg: 0, feeds: { stripper: 0, bench: 0 }, kg: {}, machKg: { stripper: 0, bench: 0 }, m2: 0 });
+const emptyUnit = (): Unit => ({ cut: 0, scaleKg: 0, wholeKg: 0, feeds: { stripper: 0, bench: 0 }, kg: {}, machKg: { stripper: 0, bench: 0 }, machWholeKg: { stripper: 0, bench: 0 }, m2: 0 });
 
 function addUnit(a: Unit, b: Unit, k: number): void {
   a.cut += k * b.cut;
@@ -250,6 +252,7 @@ function addUnit(a: Unit, b: Unit, k: number): void {
   for (const id of ['stripper', 'bench'] as const) {
     a.feeds[id] += k * b.feeds[id];
     a.machKg[id] += k * b.machKg[id];
+    a.machWholeKg[id] += k * b.machWholeKg[id];
   }
   for (const [g, v] of Object.entries(b.kg)) a.kg[g] = (a.kg[g] ?? 0) + k * v;
 }
@@ -290,8 +293,10 @@ function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff
       const sp = pieceSpec(c, obj, k);
       if (!sp) continue;
       const d = where === 'floor' ? dest(sp.grade) : null;
-      if (d) u.machKg[d] += sp.g / 1000;
-      else {
+      if (d) {
+        u.machKg[d] += sp.g / 1000;
+        u.machWholeKg[d] += sp.g / 1000;
+      } else {
         u.scaleKg += sp.g / 1000;
         u.m2 += (sp.g / 1000) * (o.gross_g / 1000);
         put(sp.grade, sp.g / 1000);
@@ -356,12 +361,15 @@ export interface RatedTerms {
  *    the driver's run uses, truck.ts planTrip: out, hook, back, weigh, tip, park, at his level's F).
  * 2. Steps: cutting (the cutters' seconds: each piece's cut time at their mean power, and the walk between
  *    things) and carrying (the yard hands' seconds: pieces to the scale in trips as full as whole pieces
- *    allow, one feed trip and one tray trip a thing for each powered machine's input, whole things one a
- *    trip), each trip 2 × the walk ÷ his speed + 2 × handle_s.
- * 3. The feed is taken as the yard takes it: the drop-off's (nothing paid) first, then the partners' loads,
- *    lightest skip first (the tipping floor's room lets the lightest through first while cutting or carrying
- *    binds; RULING2.md 14.5), or the same number from each when only the truck binds (the earliest-full
- *    rule), each as far as every step's seconds allow (I3: capacity beyond the feed adds nothing).
+ *    allow, whole things one a trip; RULING2.md 14.5: a powered machine's input from a load in ONE feed
+ *    trip (the floor's one pile; a thing's pieces at the drop-off: a trip a thing), whole things that need
+ *    no cutting carried off the floor to the hopper several a trip, and its tray fetched at every hand's
+ *    choice while it works through the batch: batch seconds ÷ (one trip ÷ the hands), at least what full
+ *    loads of the output need), each trip 2 × the walk ÷ his speed + 2 × handle_s.
+ * 3. The feed is taken as the yard takes it: the drop-off's (nothing paid) first, then the partners' loads
+ *    by the driver's own rule played over three hours (queue below: the skip full first that the tipping
+ *    floor has room for; the floor cleared at the pace of the slower of the cutters and the hands), I3:
+ *    capacity beyond the feed adds nothing.
  * 4. Value (I4): each kilogram at usual prices as weighed, the powered stripper's and the bench's inputs
  *    at their outputs, the crucible's brass and aluminium inputs at the ingot (the recipe that pays more a
  *    kilogram first, within the crucible's s_per_kg; only once poured at least once, RULING2.md 14.5),
@@ -393,13 +401,15 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const driver = s.crew.find((m) => m.role === 'driver');
   const F = driverRoundF(c, driver?.level ?? 1);
   const dv = c.truck.v * c.truck.driverFactor * F;
-  const parts: { id: string; max: number; trip: number; price: number; mass: number; u: Unit }[] = [];
+  const parts: { id: string; max: number; trip: number; hookS: number; tipS: number; fill_s: number; level: number; price: number; mass: number; u: Unit }[] = [];
   if (driver && s.truck.owned) {
     for (const [id, p] of Object.entries(c.partners)) {
       const ps = s.partners[id];
       if (!ps?.open && !s.owned.includes(p.opens)) continue;
       const lane = laneM(c, id);
-      const trip = (routeM(c, 'park', 'gate') + lane) / dv + c.truck.handle_s / F + (lane + routeM(c, 'gate', 'weighbridge')) / dv + c.weigh_s / F + routeM(c, 'weighbridge', 'floor') / dv + c.truck.handle_s / F + routeM(c, 'floor', 'park') / dv;
+      const hookS = (routeM(c, 'park', 'gate') + lane) / dv + c.truck.handle_s / F;
+      const tipS = hookS + (lane + routeM(c, 'gate', 'weighbridge')) / dv + c.weigh_s / F + routeM(c, 'weighbridge', 'floor') / dv + c.truck.handle_s / F;
+      const trip = tipS + routeM(c, 'floor', 'park') / dv;
       const u = emptyUnit();
       let asFound = 0;
       for (const [obj, n] of Object.entries(p.skip)) {
@@ -407,7 +417,7 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
         for (const [grade, g, k] of specsOf(c, obj)) asFound += n * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
       }
       const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
-      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, price: roundMoney(p.k * asFound), mass, u });
+      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u });
     }
   }
 
@@ -422,19 +432,25 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
     const out = { scale: (u.scaleKg / fill) * tripS(scaleFrom[where]), whole: u.wholeKg > 0 ? (u.wholeKg / Math.min(h.load, u.wholeKg)) * tripS(scaleFrom[where]) : 0, feed: 0, tray: 0 };
     for (const id of ['stripper', 'bench'] as const) {
       if (!u.feeds[id]) continue;
+      // E35: whole things off the floor to the hopper, several a trip up to a load (crew.ts floorStep);
+      // the cut pieces of the machine's input as below.
+      const wholeKg = where === 'floor' ? u.machWholeKg[id] : 0;
+      const pieceKg = u.machKg[id] - wholeKg;
       // RULING2.md 14.5 (engine2-fixB): the machine trips as the yard hands make them (crew.ts handDepart's
       // order: feed (1) and the out trays (3) come before the drop-off and the floor). A load's things are cut
       // on the tipping floor and their pieces lie in its ONE pile, so a load's input goes to the hopper in one
       // feed trip (a batch); at the drop-off each thing's pieces lie beside it (a batch a thing). While the
       // machine works through a batch every hand's choice finds grams in its tray, so the tray is fetched once
-      // a choice: batch seconds ÷ the seconds between the hands' choices (one trip ÷ the hands), at least once.
+      // a choice: batch seconds ÷ the seconds between the hands' choices (one trip ÷ the hands), and at least
+      // as often as full loads of the batch's output need.
       const batches = where === 'floor' ? 1 : u.feeds[id];
       const d = c.machines[id] as { rate: number; lev?: number };
       const rate = d.rate * (1 + (d.lev ?? 0) * Math.max(0, s.machines[id].level - 1));
       const batchS = u.machKg[id] / batches / Math.max(1e-9, rate);
       const chooseS = tripS(scaleFrom.floor) / hands.length;
-      out.feed += batches * tripS(machFrom(id, where));
-      out.tray += batches * Math.max(1, batchS / chooseS) * tripS(trayTo(id));
+      if (pieceKg > 1e-9) out.feed += batches * tripS(machFrom(id, where));
+      if (wholeKg > 1e-9) out.feed += (wholeKg / h.load) * tripS(machFrom(id, where));
+      out.tray += batches * Math.max(u.machKg[id] / batches / h.load, batchS / chooseS) * tripS(trayTo(id));
     }
     return out;
   };
@@ -448,7 +464,6 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   // 3. Take the feed best first while every step has seconds left.
   let cutLeft = cutHave;
   let carryLeft = carryHave;
-  let truckLeft = truckHave;
   let bind: RatedTerms['bind'] = 'feed';
   const took = emptyUnit();
   const share = (need: number, left: number) => (need > 1e-9 ? Math.max(0, left / need) : Infinity);
@@ -460,14 +475,6 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   cutLeft -= f * dCut;
   carryLeft -= f * dCarry;
   const dropTaken = f * per;
-  // The partners' loads IN THE ORDER THE YARD TAKES THEM (RULING2.md 14.5, engine2-fixB; it replaces I2's
-  // "the order that keeps the most", which the attack measured overstating by up to a fifth on yards played
-  // with the normal board): the driver hooks the skip that was full first AND that the tipping floor has
-  // room for (truck.ts driverDepart, hookRefusal 'floor'). While cutting or carrying binds, the floor stands
-  // full and its room comes back a little at a time, so the LIGHTEST skip fits first: loads are taken
-  // lightest first. While only the truck binds, every skip waits full and the earliest-full rule takes them
-  // in turn: the same number of loads from each (each at most its partner's rate).
-  parts.sort((a, b) => a.mass - b.mass || (a.id < b.id ? -1 : 1));
   const carryBy = { scale: 0, whole: 0, feed: 0, tray: 0 };
   const addBy = (q: typeof carryBy, k: number) => {
     carryBy.scale += k * q.scale;
@@ -476,74 +483,126 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
     carryBy.tray += k * q.tray;
   };
   addBy(carryParts(drop, 'dropoff'), f);
-  /** The loads in turn while the truck binds: the largest common number k (each partner min(its rate, k)) that every step's seconds allow. */
-  const inTurn = () => {
-    const at = (k: number) => {
-      let cn = 0;
-      let hn = 0;
-      let tn = 0;
-      for (const p of parts) {
-        const q = Math.min(p.max, k);
-        cn += q * p.u.cut;
-        hn += q * carryNeed(p.u, 'floor');
-        tn += q * p.trip;
-      }
-      return { cn, hn, tn };
+  /**
+   * The partners' loads AS THE YARD TAKES THEM (RULING2.md 14.5, engine2-fixB; it replaces I2's "the order
+   * that keeps the most", which the attack measured overstating by up to a fifth on yards played with the
+   * normal board). The driver's own rule (truck.ts driverDepart, hookRefusal 'floor'), played over a few
+   * hours with the assets alone: each partner's L skips fill in fill_s from the moment the driver hooks the
+   * one before; when he is free he hooks the skip that was full FIRST among those the tipping floor has room
+   * for (its grams now plus the skip's within floorRoom_kg); the load is on the floor from its tip; the floor
+   * is cleared load after load at the pace of the slower of the cutters and the yard hands (the seconds each
+   * load needs of each, at what the drop-off leaves them). Counted: the loads hooked in the second and third
+   * hours (the first fills the floor).
+   */
+  const queue = () => {
+    if (!parts.length) return { n: {} as Record<string, number>, u: emptyUnit(), paid: 0, why: bind };
+    const room = c.floorRoom_kg;
+    const cutRate = cutLeft / 3600;
+    const carryRate = carryLeft / 3600;
+    const work = parts.map((p) => {
+      const wc = p.u.cut > 1e-9 ? (cutRate > 1e-9 ? p.u.cut / cutRate : Infinity) : 0;
+      const wh = carryNeed(p.u, 'floor');
+      const wh2 = wh > 1e-9 ? (carryRate > 1e-9 ? wh / carryRate : Infinity) : 0;
+      return { W: Math.max(wc, wh2), wc, wh: wh2 };
+    });
+    const skips: { k: number; fullAt: number }[] = [];
+    parts.forEach((p, k) => {
+      for (let q = 0; q < p.level; q++) skips.push({ k, fullAt: (q * p.fill_s) / p.level });
+    });
+    const floor: { k: number; at: number; rem: number }[] = []; // loads tipped (or to be tipped at `at`), FIFO
+    let clock = 0;
+    let workedTo = 0;
+    const massNow = () => {
+      let m = 0;
+      for (const L of floor) if (L.at <= clock + 1e-9) m += work[L.k].W > 0 && Number.isFinite(work[L.k].W) ? parts[L.k].mass * (L.rem / work[L.k].W) : parts[L.k].mass;
+      return m;
     };
-    const fits = (k: number) => {
-      const r = at(k);
-      return r.cn <= cutLeft + 1e-6 && r.hn <= carryLeft + 1e-6 && r.tn <= truckLeft + 1e-6;
-    };
-    let lo = 0;
-    let hi = Math.max(...parts.map((p) => p.max));
-    if (!fits(hi)) {
-      for (let i = 0; i < 60; i++) {
-        const mid = (lo + hi) / 2;
-        if (fits(mid)) lo = mid;
-        else hi = mid;
+    const clearTo = (t: number) => {
+      // FIFO: the head load is worked; the next starts when it is done (and tipped).
+      let now = workedTo;
+      for (const L of floor) {
+        if (now >= t) break;
+        if (L.rem <= 0) continue;
+        const start = Math.max(now, L.at);
+        if (start >= t) break;
+        const d = Math.min(L.rem, t - start);
+        L.rem -= d;
+        now = start + d;
       }
-    } else lo = hi;
+      workedTo = Math.max(workedTo, Math.min(t, now));
+      while (floor.length && floor[0].rem <= 1e-9) floor.shift();
+    };
+    const H = 3 * 3600;
+    const n = parts.map(() => 0);
+    let busy = 0;
+    for (let guard = 0; clock < H && guard < 100_000; guard++) {
+      clearTo(clock);
+      const m = massNow();
+      let pick = -1;
+      for (let i = 0; i < skips.length; i++) {
+        const sk = skips[i];
+        if (sk.fullAt > clock + 1e-9 || m + parts[sk.k].mass > room + 1e-9) continue;
+        if (pick < 0 || sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && parts[sk.k].id < parts[skips[pick].k].id)) pick = i;
+      }
+      if (pick < 0) {
+        // Wait for the next skip to fill, or for the floor to clear room for the lightest full skip.
+        let next = Infinity;
+        let lightest = Infinity;
+        for (const sk of skips) {
+          if (sk.fullAt > clock + 1e-9) next = Math.min(next, sk.fullAt);
+          else lightest = Math.min(lightest, parts[sk.k].mass);
+        }
+        if (Number.isFinite(lightest)) {
+          let D = m + lightest - room;
+          let dt = 0;
+          for (const L of floor) {
+            const W = work[L.k].W;
+            if (L.rem <= 0 || !(W > 0) || !Number.isFinite(W)) continue;
+            const rate = parts[L.k].mass / W;
+            const avail = rate * L.rem;
+            if (avail >= D - 1e-9) {
+              dt += Math.max(0, D) / rate;
+              D = 0;
+              break;
+            }
+            D -= avail;
+            dt += L.rem;
+          }
+          if (D <= 1e-9) next = Math.min(next, clock + dt + 1e-6);
+        }
+        if (!Number.isFinite(next)) break;
+        clock = Math.max(next, clock + 1e-6);
+        continue;
+      }
+      const sk = skips[pick];
+      const p = parts[sk.k];
+      if (clock >= 3600) {
+        n[sk.k] += 1;
+        busy += Math.min(p.trip, H - clock);
+      }
+      sk.fullAt = clock + p.hookS + p.fill_s;
+      if (Number.isFinite(work[sk.k].W)) floor.push({ k: sk.k, at: clock + p.tipS, rem: work[sk.k].W });
+      clock += p.trip;
+    }
     const u = emptyUnit();
-    const n: Record<string, number> = {};
+    const out: Record<string, number> = {};
     let paid = 0;
-    for (const p of parts) {
-      const q = Math.min(p.max, lo);
-      if (q <= 0) continue;
-      n[p.id] = q;
+    let wc = 0;
+    let wh = 0;
+    parts.forEach((p, k) => {
+      const q = n[k] / 2;
+      if (q <= 0) return;
+      out[p.id] = q;
       addUnit(u, p.u, q);
       paid += q * p.price;
-    }
-    const r = at(lo);
-    const slack = { cut: share(r.cn, cutLeft), carry: share(r.hn, carryLeft), truck: share(r.tn, truckLeft) };
-    const why: RatedTerms['bind'] = lo >= Math.max(...parts.map((p) => p.max)) - 1e-9 ? bind : slack.cut <= slack.carry && slack.cut <= slack.truck ? 'cut' : slack.carry <= slack.truck ? 'carry' : 'truck';
-    return { n, u, paid, why };
+      wc += q * work[k].wc;
+      wh += q * work[k].wh;
+    });
+    const short = parts.some((p, k) => n[k] / 2 < p.max - 1e-9);
+    const why: RatedTerms['bind'] = !short ? bind : busy / (2 * 3600) > 0.97 ? 'truck' : wc >= wh ? 'cut' : 'carry';
+    return { n: out, u, paid, why };
   };
-  const fill = (order: typeof parts) => {
-    let cl = cutLeft;
-    let hl = carryLeft;
-    let tl = truckLeft;
-    let why: RatedTerms['bind'] = bind;
-    const u = emptyUnit();
-    const n: Record<string, number> = {};
-    let paid = 0;
-    for (const p of order) {
-      const cn = p.u.cut;
-      const hn = carryNeed(p.u, 'floor');
-      const lim = Math.min(share(cn, cl), share(hn, hl), share(p.trip, tl));
-      const k = Math.min(p.max, lim);
-      if (k < p.max - 1e-9 && why === 'feed') why = lim === share(cn, cl) ? 'cut' : lim === share(hn, hl) ? 'carry' : 'truck';
-      if (k <= 0) continue;
-      n[p.id] = k;
-      addUnit(u, p.u, k);
-      cl -= k * cn;
-      hl -= k * hn;
-      tl -= k * p.trip;
-      paid += k * p.price;
-    }
-    return { n, u, paid, why };
-  };
-  let best = fill(parts);
-  if (best.why === 'truck' && parts.length > 1) best = inTurn();
+  const best = queue();
   const loads = best.n;
   const spent = best.paid;
   bind = best.why;
