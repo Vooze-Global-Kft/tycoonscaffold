@@ -48,7 +48,9 @@ describe('the away bench on the real content', () => {
     // measured 670 to 715 ms (stage 1's limit was 1000). engine2-group (26 November, 03:20, load average 0.6
     // to 0.8): crew trips grouped out of sight (2.1: hands' runs of 30 s, the cutter's of 120 s, the driver's
     // trip planned, the merchant's round 120 s) and the leg-by-leg decisions made cheaper without changing
-    // them: MEASURED_MS below (727 ms before, same machine); the limit is the ruling's 150.
+    // them. Measured (best of 4 here): 173 to 183 ms at load 0.6 to 1.0, 195 to 199 ms at load 1.8 to 2.8
+    // (727 ms before on the same machine; with grouping off the decisions alone give 290 to 350 ms). The limit
+    // is the ruling's 150: NOT MET by this step (notes/engine2-group.md section 4 names what remains).
     expect(best).toBeLessThanOrEqual(150);
   }, 600_000);
 });

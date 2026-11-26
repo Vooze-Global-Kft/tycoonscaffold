@@ -740,20 +740,26 @@ The frozen test content is split by owner (B1): `src/engine/fixtures/salvage.ts`
 | 2.16 | caps and counts by rung (15 + 3 × 4 minutes of I at most, LEAD L3); the away bonus is half of what reached the player after the bank's share, its own line (`AwayCard.bank`, B2); a deferred offer kept until taken or replaced; no away bonus card after an away card that showed a debt (P6, in `hud.test.ts`); no ad button when `showsDebt` on any card or ticket up, and the bottom-bar button not hidden by a financed plate in view (P7) (screen tests in `hud.test.ts`); ad consent asked at the first ad button, never at boot (P9, in the shared ad service's test) |
 | 2.17 | the away card's new lines equal what the absence applied |
 | 2.20 | the first test written: each `l2save` loads into layout 3 with cash, supplied, every stock and every crew member equal; a layout-2 rung-3 save gets the bath at its first tick, the works layer derived from the rung and an absent `counts.bathSet`, not from a rung event (B14); a tool tier above the content's highest is clamped; a crew run whose claims name a missing thing is dropped and its claims released; a layout-3 save round-trips; an open agreement and a pending quote survive |
-| words | every key has text; no banned word; each text fits at 667 and 1.3 |
+| words | every key has text; no banned word; each text fits at 667 and 1.3, in its box (`worksPlateLine` ≤ 31 for every `plate.works.*` second line, `gradeName` ≤ 18 and `gradeShort` ≤ 15 for every new grade, T10, T19); every waste line says "licensed waste carrier"; `/Axle limit 10 t/` is the bridge's one allowed number |
 
 ### 8.2 The bots (`src/engine/salvage/bot.ts`, `scripts/content/yard-bot.ts`)
 
-The first yard's hands and habits stay; the twice-a-day habit runs to rung 5 (a first hour, then 15 minutes every 11.75 h, up to 8 days); every run is on fifteen seeds and two routes and checked on five unseen; each aim is "on 13 of 15 seeds". New bots:
+The first yard's hands and habits stay; the twice-a-day habit runs to rung 5 (a first hour, then 15 minutes every 11.75 h, up to 8 days); every run is on fifteen seeds and two routes and checked on five unseen; each aim is "on 13 of 15 seeds". Every bot opens cards in the goal card's order (E8), so that what a bot meets (the letter above all) does not hang on the order in which a script happens to buy.
+
+**I's gate** (I5, E3): the value I is held against is measured in gate runs with usual prices every day (`board.a` 0): (net cash gained + what the bank took + the value at p̄ of unsold stock at the end − at the start) ÷ the hours the yard ran. I is within 0.9 to 1.1 of it at rung 3's entry and at the end of three days of the first yard's content in Phase A (E12), then at the entry and last purchase of rungs 3, 4 and 5 after Phase B; the table is printed, and a miss names the term that is off and by how much.
+
+**Grouping's bound** (G2): with grouping switched off in the content (`group.fromRung` 99) and on, the three days at the twice-a-day habit give supplied tonnes and cash within 2 % at day 1 and day 3 on 13 of 15 seeds, and the mass crews delivered over a day equal within one run. When the first hour is next measured anyway, the bots also run grouping from rung 1 and the lead decides (LEAD L16).
+
+New bots:
 
 | Bot | Behaviour | Measures |
 |---|---|---|
 | Normal, brisk, slow hands, twice a day | goal card and advice line; commissions what is near | rung 4 day 2 to 3, rung 5 day 4 to 6; a useful purchase every sitting; cash ≤ 2 τ_r of income; I against away net income at the six named moments |
 | Card manager | cards only after the second hire | the working hand ≥ 1.2 × it; no mechanism over three fifths of the gain |
-| Always / never finances | one takes every Bank loan | rung 5 at most a tenth sooner; first loan repaid within about 4 h of running; no bought load a net loss; finance better on a quarter to a half of offers |
+| Always / never finances | one takes every Bank loan | the first "Bank loan" offered within the first two sittings of rung 3 on at least 12 of 15 seeds (LEAD L1; if no rung-3 plate carries it, `bank.minPrice_h` falls; the letter does not wait for rung 4); rung 5 at most a tenth sooner; the first loan repaid before rung 4 on every seed at the twice-a-day habit, the gate (LEAD L5), with the hours PLAYED (aim about four) and the hours of the yard's running (about seven left alone) both printed; no bought load a net loss; an OFFER is a financeable works card opened with P > cash after the letter was seen, offers are printed per seed, and "finance better on a quarter to a half of offers" is reported as met only with at least 3 offers on 13 of 15 seeds, else as not measured (E8) |
 | Packs on / off | buys the largest pack offered at each rung-4 sitting | every aim in both modes; the buyer's lead reported in days; the headroom row on at most a fifth of shop openings |
-| Ad watcher / not | watches every offer | rewards ≤ 4 % of a day; tonnes at day 6 ≤ 1.15 × (day 14 stays in the prototype, D64) |
-| Racker / cutter | racks every tagged thing it can lift / cuts them | Yard sale and van 2 to 5 % of a day, never over 8 %; racking ≥ 1.2 × cutting a minute; present equals away |
+| Ad watcher / not | watches every offer | rewards ≤ 27 minutes of I a day, under 4 % of a day (LEAD L3); tonnes at day 6 ≤ 1.15 × (day 14 stays in the prototype, D64) |
+| Racker / cutter | racks every tagged thing it can lift / cuts them | Yard sale and van 2 to 5 % of a day, never over 8 %; racking ≥ 1.2 × cutting a minute; the sale's pace the same present or away (it is dated by value and I alone; ownership of a tag follows sight, ruling 13.1) |
 | Day-word holder | holds every low day | E40: no absence pays §0 |
 | Steel-max | ferrous plates and levels only | stalls at rung 4 or 5 |
 | No hand | twenty stage-2 states, stick untouched | the next goal purchase reached |
@@ -765,37 +771,37 @@ The first yard's hands and habits stay; the twice-a-day habit runs to rung 5 (a 
 
 The bands (13 of 15 seeds; checked on 5 unseen) are the measures column of 8.2 and 2.22, plus: the first hour's beats in band and rung 3 at 55 to 65 min; each plate paying back in 0.8 to 1.5 τ_r; an hour away ≥ 0.3 of an hour played and an hour played ≥ 1.25 × away (E19).
 
-**The hard promises** are gates on every run and in the tests: shown equals applied (cards, tickets, the finance card, the pack's quote); money comes only from lot payments (2.14.4's list), ad rewards and granted packs, and goes only to purchases, levels, hires, loads, deposits, reagents at a heat's start and the bank's share; nothing costs by the clock; time away is paid once inside the state; a tick equals a jump; no dead end; every amount asked for is possible with what the player has (the deposit leaves the reserve; a pack is offered only within headroom); a locked thing promises nothing; numbers only in content; names by id.
+**The hard promises** are gates on every run and in the tests: shown equals applied (cards, tickets, the finance card, the pack's quote); money comes only from lot payments (2.14.4's list, through `payLot` and `earn`), ad rewards and granted packs (through `credit()`), and goes only to purchases, levels, hires, loads, deposits, reagents at a heat's start and the bank's share; nothing costs by the clock and nothing expires (ruling 13.3); nothing of money or ads before `sessions2At` (ruling 13.2); the public never stands in the working yard (ruling 13.4); time away is paid once inside the state; a tick equals a jump; no dead end; every amount asked for is possible with what the player has (the deposit leaves the reserve; a pack is offered only within headroom); a locked thing promises nothing; numbers only in content; names by id.
 
 ### 8.4 People before tuning
 
-Three people-like players (not the engineers) play the joined stage on an iPhone in Expo Go, both sizes, before any number is tuned for feel (only the gates' numbers are set before, 9.2): 20 minutes from `r3` (the works plots, the bath, the first plate, the letter), 20 minutes from `r4` (the shredder line, the halls, the shop with packs on and off by the development row, the age question, the code), and one person two sittings a day for two days on their own phone. They note with the minute: where they did not know what to do; whether they found the back field, the Yard sale and the crate without the chevron; whether the finance card's numbers read as what happens; whether the shop felt pressed on them; where a walk to a far hall felt long; texts unread. The notes reach the lead before tuning.
+Three people-like players (not the engineers) play the joined stage on an iPhone in Expo Go, both sizes, before any number is tuned for feel (only the gates' numbers are set before, 9.2): 20 minutes from `r3` (the works plots, the bath, the first plate; the letter where the preset's cash meets 2.14.5, else from `r3fin`'s yard before signing), 20 minutes from `r4` (the shredder line, the halls, the shop with packs on and off by the development row, the age question, the code), and one person two sittings a day for two days on their own phone. They note with the minute: where they did not know what to do; whether they found the back field, the Yard sale and the picking table without the chevron; whether the finance card's numbers read as what happens; whether the shop felt pressed on them; where a walk to a far hall felt long; texts unread. The notes reach the lead before tuning.
 
 ### 8.5 The gates
 
-`npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, `npm run check:bundle` (the four other games' bundles unchanged, `modeRegression` green, `entries.test.ts` in step), `python3 scripts/content/build-yard.py --check`, `npx tsx scripts/content/yard/check.ts --all`, `python3 -I scripts/content/yard/build-ids.py --check`, `python3 scripts/audio/yard/render_yard.py --check`, `npx tsx scripts/content/yard-bot.ts --seeds 15 --routes 2 --report --stage 2`, the bench, and a release export with the `__DEV__` row absent.
+`npm run typecheck`, `npm test`, `npm run validate`, `npm run lint:worklets`, `npm run check:bundle` (the four other games' bundles unchanged, `modeRegression` green, `entries.test.ts` in step), `python3 scripts/content/build-yard.py --check`, `npx tsx scripts/content/yard/check.ts --all`, `python3 -I scripts/content/yard/build-ids.py --check`, `python3 scripts/audio/yard/render_yard.py --check`, `npx tsx scripts/content/yard-bot.ts --seeds 15 --routes 2 --report --stage 2`, the bench, and a release export with the `__DEV__` rows (store country, the "Start at" rows, "Back to my yard") absent.
 
 ### 8.6 Every rule: where it is shown, where it is tested
 
 | Rule (section 2) | Shown (sections 3 to 7) | Tested (8.1 to 8.5) |
 |---|---|---|
-| 2.1 grouped runs | the frame's legs from the plan (`CrewRun.k`, `legS`); no new screen | `grouping`, `tickjump`; the bench |
+| 2.1 grouped runs | the frame's legs from the plan (`CrewRun.k`, `legS`): a run in sight shows how many of its loads are lifted and set down by now, a pure function of its dates (G3); no new screen | `grouping`, `tickjump` (same presence state; the 3 % bound); grouping's 2 % bound (8.2); the bench |
 | 2.2 Hold never stops the yard | away card line `away.holdReleased` (2.17, 4) | `held14`; day-word holder bot |
-| 2.3 I | the pack row (4.8), Save up (4.3), lots' "about §x" (4.7), the away bonus (4.9) | 8.1 2.3; I against away net (8.2) |
+| 2.3 I | the pack row (4.8), Save up (4.3), an oversize piece's "about §x once cut" (4.7), the away bonus (4.9) | 8.1 2.3; I's gate (8.2) |
 | 2.4 driver's level, truck2 | the truck's level row; `park2` (3.2); sheet D's tint (6.1) | 8.1 2.4; E31c in the normal-hand bot |
-| 2.5 grades, assay, plates as data | bunkers and stillages (3.3, 6.1); "Analysed" (4.7); Trade Book (4.11) | 8.1 2.5; content checks 5.2 (1), (2) |
+| 2.5 grades, assay, plates as data | bunkers, stillages, the lean-to and the big bags (3.3, 6.1); the price board's tabs (4.11); "Analysed" (4.7); grade names (5.3) | 8.1 2.5; content checks 5.2 (1), (2), (11), (12) |
 | 2.6 buying, commissioning, levels, board | the works plate and card (4.3); the board's pages (4.4); `commission_*` (7) | 8.1 2.6; content check 5.2 (3) |
 | 2.7 yard plates, crane, routes | south-yard plots (3.3); route row (4.7); crane sprites and sounds (6.1, 7) | 8.1 2.6 to 2.8; checker 3.6 (5) |
 | 2.8 back field, lines, halls | back-field plots (3.3); "Weighed at the works" chip; hall phases (6.1); furnace sounds (7) | 8.1 2.6 to 2.8; lead-cut bot |
-| 2.9 bridge partners, vehicles | lane sites (3.3.3, 6.1); the forklift (4.7); `chip.bridgeLimit` (5.3) | 8.1 2.9 |
-| 2.10 lots and the crate | the oversize pad (3.3); lot and crate plates and cards (4.7); `crate_sort` (7) | 8.1 2.10; card-manager bot |
+| 2.9 bridge partners, vehicles | lane sites (3.3.3, 6.1); the ELV pad and the battery box (3.3); the forklift (4.7); `chip.bridgeLimit` "Axle limit 10 t" (5.3) | 8.1 2.9; checker 3.6 (5) |
+| 2.10 oversize pieces and the picking table | the oversize pad (3.3); their plates and cards (4.7); `crate_sort` (7) | 8.1 2.10; card-manager bot |
 | 2.11 rungs, θ, ceilings, caps, rivals | the rung signs (4.10); the chip | 8.1 2.11; steel-max, normal-hand bots; content check 5.2 (4) |
-| 2.12 Yard sale and van | the Yard sale's places and paths (3.3, 3.3.2); tag, card, visitors (4.6); `gate_bell`, `till` (7) | 8.1 2.12; racker bot; content check 5.2 (5) |
-| 2.13 goals, advice, Trade Book | the goal card; the advice line; the book (4.11) | 8.1 2.13; no-hand bot |
+| 2.12 Yard sale and van | the Yard sale's places, the public bay and the paths (3.3, 3.3.2); tag, card, visitors (4.6); `gate_bell`, `till` (7) | 8.1 2.12; racker bot; content check 5.2 (5); checker 3.6 (6) |
+| 2.13 goals, advice | the goal card; the advice line | 8.1 2.13; no-hand bot |
 | 2.14 plant finance | letter, finance card, ticket line, Agreements, away line, tag and ring (4.3, 4.5) | 8.1 2.14; always/never-finance bots; content check 5.2 (8) |
-| 2.15 shop, packs, grants | shop, pack sheet, age question, code pad, Settings (4.8) | 8.1 2.15; packs-on/off bot; `entries.test.ts`; the release export |
-| 2.16 ads | spot button, away bonus card, bottom-bar button (4.9) | 8.1 2.16; `hud.test.ts`; ad-watcher bot; content check 5.2 (6) |
-| 2.17 time away | the away card (4.5, first yard 4.4) | 8.1 2.17; the bench; present-equals-away tests |
+| 2.15 shop, packs, grants | shop, pack sheet, age question, code pad, Settings, the development rows (4.8) | 8.1 2.15; packs-on/off bot; `entries.test.ts`; the shared store tests (9.1); the release export |
+| 2.16 ads | spot button on the price board (4.11), away bonus card, bottom-bar button (4.9) | 8.1 2.16; `hud.test.ts`; ad-watcher bot; content check 5.2 (6) |
+| 2.17 time away | the away card (4.5, first yard 4.4) | 8.1 2.17; the bench; tick equals jump for the same presence state (G1) |
 | 2.18 to 2.19 state and contract | every card (4.2) | `contract.test.ts`; `cards.test.ts` |
 | 2.20 the save | — | 8.1 2.20 (first test written) |
 
