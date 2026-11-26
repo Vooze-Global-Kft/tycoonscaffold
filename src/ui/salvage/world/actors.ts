@@ -666,9 +666,11 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   const last = LAST_ITEMS.get(c);
   let allItems: number[];
   let allSolids: number[];
-  if (last && last.res === res && last.a === A.items && last.b === B && sameNums(last.rest, items)) allItems = last.items;
+  // owner1 phone 2: when identity fails (the frame rebuilds `things` while only a work ring's progress moved),
+  // compare by content: an unchanged list keeps its identity, so the UI thread is never handed an equal copy.
+  if (last && last.res === res && (last.a === A.items || sameNums(last.a, A.items)) && (last.b === B || sameNums(last.b, B)) && sameNums(last.rest, items)) allItems = last.items;
   else allItems = presortItems([...A.items, ...B, ...items]);
-  if (last && last.ra === A.solids && sameNums(last.rsol, solids)) allSolids = last.solids;
+  if (last && (last.ra === A.solids || sameNums(last.ra, A.solids)) && sameNums(last.rsol, solids)) allSolids = last.solids;
   else allSolids = [...A.solids, ...solids];
   LAST_ITEMS.set(c, { res, a: A.items, b: B, rest: items, items: allItems, ra: A.solids, rsol: solids, solids: allSolids });
 

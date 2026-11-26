@@ -56,7 +56,7 @@ export function YardView({ yard, art, anim }: { yard: YardLayout; art: YardArt |
   const skyX = useDerivedValue(() => -SKY_PARALLAX * Math.max(0, Math.min(xMax, anim.camera.value.x)) - 20);
   const skyY = useDerivedValue(() => {
     const cam = anim.camera.value;
-    return (wallTop - cam.y - SH / 2) * cam.zoom + SH / 2 + 4 - SKY_HORIZON;
+    return (wallTop - cam.y - SH / 2) * (cam.zoom > 0 ? cam.zoom : 1) + SH / 2 + 4 - SKY_HORIZON;
   });
   const skyTop = useDerivedValue(() => Math.max(0, skyY.value + 2));
   const x0 = -BEYOND * ppm;

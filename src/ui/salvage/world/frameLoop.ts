@@ -131,6 +131,9 @@ const CAP_SHADOW = 140;
 const CAP_SORT = 1000;
 const CAP = CAP_DECAL + CAP_SHADOW + CAP_SORT;
 const CELL_BASE = 2_000_000;
+/** owner1 phone 4: the smallest change of the camera (points) and of a position (metres) worth a shared-value write. */
+const CAM_EPS_PX = 0.05;
+const MOVE_EPS_M = 0.01;
 const NO_ITEMS: number[] = [];
 const NO_LANE: number[] = [];
 
@@ -322,7 +325,8 @@ export function useYardLoop(opts: {
   const drivingJS = useCallback((on: boolean) => drivingTo.current(on), []);
   const pic = useSharedValue<SkPicture>(empty);
   const ground = useSharedValue<any[]>([{ translateX: 0 }, { translateY: 0 }]);
-  const camera = useSharedValue({ x: 0, y: 0, zoom: 1 });
+  // zoom -1 until the first frame writes it (writes happen only on a change: owner1 phone 4; readers take zoom <= 0 as 1).
+  const camera = useSharedValue({ x: 0, y: 0, zoom: -1 });
   const northSy = useSharedValue(NaN);
   const body = useSharedValue({ x: 0, y: 0, driving: 0 });
   const near = useSharedValue(-1);
@@ -560,10 +564,17 @@ export function useYardLoop(opts: {
       }
       const camX = st[9];
       const camY = st[10];
-      ground.value = [{ translateX: SW / 2 }, { translateY: SH / 2 }, { scale: zoom }, { translateX: -camX - SW / 2 }, { translateY: -camY - SH / 2 }];
-      camera.value = { x: camX, y: camY, zoom };
-      northSy.value = wallY === wallY ? (wallY * ppm * tilt - camY - SH / 2) * zoom + SH / 2 : NaN;
-      body.value = { x: bx, y: by, driving: st[5] };
+      // owner1 phone 4: a shared value is written only when it changed (the camera by more than a twentieth of a
+      // point, the body by more than a centimetre): a still yard re-runs none of the derived values and styles
+      // that read them (the waiting tags, the hook words, the tickets).
+      const pc = camera.value;
+      if (Math.abs(pc.x - camX) > CAM_EPS_PX || Math.abs(pc.y - camY) > CAM_EPS_PX || pc.zoom !== zoom) {
+        ground.value = [{ translateX: SW / 2 }, { translateY: SH / 2 }, { scale: zoom }, { translateX: -camX - SW / 2 }, { translateY: -camY - SH / 2 }];
+        camera.value = { x: camX, y: camY, zoom };
+        northSy.value = wallY === wallY ? (wallY * ppm * tilt - camY - SH / 2) * zoom + SH / 2 : NaN;
+      }
+      const pb = body.value;
+      if (Math.abs(pb.x - bx) > MOVE_EPS_M || Math.abs(pb.y - by) > MOVE_EPS_M || pb.driving !== st[5]) body.value = { x: bx, y: by, driving: st[5] };
 
       // --- the presence sample: at most ten times a second --------------------------------------------------
       const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
@@ -631,7 +642,15 @@ export function useYardLoop(opts: {
           XY[(o / 14) * 2 + 1] = o4[1];
           actors++;
         }
-        if (XY.length > 0 || crewXY.value.length > 0) crewXY.value = XY;
+        // owner1 phone 4: only when someone moved by more than a centimetre (or the crew changed).
+        const pXY = crewXY.value;
+        let moved = pXY.length !== XY.length;
+        for (let i = 0; !moved && i < XY.length; i++) {
+          const a = XY[i];
+          const p = pXY[i];
+          moved = a === a ? !(p === p) || Math.abs(a - p) > MOVE_EPS_M : p === p;
+        }
+        if (moved) crewXY.value = XY;
         // Stress actors (`actors=N`): pictures only, between places.
         for (let hi = 0; hi < hPts.length; hi++) {
           const pts = hPts[hi];

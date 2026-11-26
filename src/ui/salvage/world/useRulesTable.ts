@@ -51,6 +51,8 @@ export { currentResolver };
 
 /** The scene's atlas items (RulesScene.items), on the UI thread; replaced only when the list changed. */
 export const rulesItems = makeMutable<number[]>([]);
+/** Scenes and item lists pushed to the UI thread so far (owner1 phone 3: the development panel's 'push' rates). */
+export const pushCounts = { scenes: 0, items: 0 };
 const NO_ITEMS: number[] = [];
 
 /**
@@ -100,7 +102,16 @@ export function makeRulesPusher(
 export function useRulesTable(yard: YardLayout): SharedValue<RulesScene> {
   const table = useSharedValue<RulesScene>(NO_SCENE);
   useEffect(() => {
-    const { read: push } = makeRulesPusher(yard, () => useGame.getState(), { scene: (s) => (table.value = s), items: (a) => (rulesItems.value = a) });
+    const { read: push } = makeRulesPusher(yard, () => useGame.getState(), {
+        scene: (s) => {
+          pushCounts.scenes++;
+          table.value = s;
+        },
+        items: (a) => {
+          pushCounts.items++;
+          rulesItems.value = a;
+        },
+      });
     push();
     const off = onYardArt(() => push(true));
     const unsub = useGame.subscribe(() => push());

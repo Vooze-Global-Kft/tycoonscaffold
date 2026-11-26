@@ -226,7 +226,9 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
       const z = cv.zoom > 0 ? cv.zoom : 1;
       const now = Date.now() / 1000;
       const open = loadingClock.done.value;
-      const boss = anim.body.value;
+      // The boss by the rules' own presence (frame.boss, at most one sample old), not the frame loop's body:
+      // a JS read of a value the UI thread writes every frame blocks on it (owner1 phone 1).
+      const boss = f.boss && f.boss.x === f.boss.x ? { x: f.boss.x, y: f.boss.y, driving: f.truck.by === 'boss' ? 1 : 0 } : null;
       const shown = items.filter((it) => {
         const near = boss ? Math.hypot(boss.x - it.x, boss.y - it.y) <= NEAR_M : false;
         if (it.near) return near;
@@ -298,7 +300,7 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
     run();
     const t = setInterval(run, LABEL_MS);
     return () => clearInterval(t);
-  }, [cfg, yard, cam, anim.body, size, fontScale, width, height, inT, inL, inR, inB, active, tops, machineTop]);
+  }, [cfg, yard, cam, size, fontScale, width, height, inT, inL, inR, inB, active, tops, machineTop]);
   const W = width;
   const H = height;
   const style = useAnimatedStyle(() => {
@@ -682,7 +684,9 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       const f = R.frame(cfg, g);
       lastFrame.current = f;
       // The rings: each from p0 at t0 to full at t1 (yard seconds), run on from the frame's own second.
-      rings.value = f.things
+      // Built here and written once: never read back on this thread (a JS read of a shared value the UI side has
+      // set since blocks on the UI thread: owner1 phone 1).
+      const rs = f.things
         .filter((t) => t.ring !== null && t.ring !== undefined)
         .map((t) => {
           const s = cfg.salvage.objects[t.obj]?.size;
@@ -691,7 +695,8 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
         });
       // The boss's hook (owner1 T3): its own ring around the truck, from the rules' dated span.
       const hs = f.truck.hookSpan;
-      if (hs && f.truck.by === 'boss') rings.value = [...rings.value, { x: f.truck.x, y: f.truck.y, r: HOOK_RING_M, t: f.t, t0: hs.t0, t1: hs.t1, p0: 0, born: -1, hook: 1 }];
+      if (hs && f.truck.by === 'boss') rs.push({ x: f.truck.x, y: f.truck.y, r: HOOK_RING_M, t: f.t, t0: hs.t0, t1: hs.t1, p0: 0, born: -1, hook: 1 });
+      rings.value = rs;
       // A new epoch (away pass, reconcile, preset): snap, no effect carries across it.
       if (f.epoch !== lastEpoch) {
         lastEpoch = f.epoch;
@@ -701,7 +706,7 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
       // Over a place that wears its name plate, the chevron hovers above the plate.
       const plated = tg ? f.labels.some((l) => l.kind === 'place' && l.id === `place.${tg.id}`) : false;
       chev.value = tg ? { on: 1, x: tg.x, y: tg.y, z: chevronZ(cfg, f, tg.id) + (plated ? 0.9 : 0) } : { on: 0, x: 0, y: 0, z: 0 };
-      if (tg || rings.value.length) wakeRef.current();
+      if (tg || rs.length) wakeRef.current();
     };
     push();
     return useGame.subscribe(push);
@@ -710,7 +715,9 @@ function FxCanvas({ cfg, yard, anim, width, height, insets, active }: { cfg: R.S
   const play = useRef<(events: readonly R.SalvageEvent[], frame?: R.FrameTable) => void>(() => {});
   play.current = (events, frame) => {
     const g = useGame.getState().game as R.SalvageGame;
-    const ctx: FxContext = { content: cfg.salvage, frame: frame ?? lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null), boss: { x: anim.body.value.x, y: anim.body.value.y }, grades };
+    const fr = frame ?? lastFrame.current ?? (g.salvage ? R.frame(cfg, g) : null);
+    // The boss by the rules' presence (frame.boss), not the frame loop's body (owner1 phone 1: no blocking read).
+    const ctx: FxContext = { content: cfg.salvage, frame: fr, boss: fr ? { x: fr.boss.x, y: fr.boss.y } : null, grades };
     const start: FxSpawn[] = [];
     const stop: string[] = [];
     for (const e of events) {

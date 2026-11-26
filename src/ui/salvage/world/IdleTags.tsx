@@ -1,7 +1,8 @@
 /**
  * The waiting workers' tags (./idleTags.ts says what and when; the owner's review, point 2; RULING-owner1 H6):
  * a small paper tag over a yard hand's or cutter's head with the frame's words for why he waits. The list is
- * read at every store change (he departs: the tag goes at that change); the tags' places are laid out on the
+ * read at every store change (he departs: the tag goes at that change; the nearest three by the rules' own presence,
+ * frame.boss, never by a UI-thread value read on the JavaScript thread); the tags' places are laid out on the
  * UI thread every frame from where the frame loop draws each worker (YardAnim.crew) and the camera, so a tag
  * follows a worker walking to his waiting place. Words through the hud's `say`; sizes at the yard's text size
  * (font scale up to 1.3).
@@ -53,8 +54,10 @@ export function IdleTags({ cfg, yard, anim, width, height, insets, active, size,
       if (!g?.salvage) return;
       const f = R.frame(cfg, g);
       const crew = labelsDev.idleDemo ? demoCrew(f.crew) : f.crew;
-      const b = anim.body.value;
-      const next: Shown[] = idleTags(crew, labelsDev.idleDemo ? f.t + 99 : f.t, since, b ? { x: b.x, y: b.y } : null)
+      // Nearest the boss by the rules' own presence (frame.boss, at most one sample old): never a UI-thread value
+      // read here (owner1 phone 1: a JS read of a value the frame loop writes every frame blocks on the UI thread).
+      const b = f.boss;
+      const next: Shown[] = idleTags(crew, labelsDev.idleDemo ? f.t + 99 : f.t, since, b && b.x === b.x && b.y === b.y ? { x: b.x, y: b.y } : null)
         .map((t) => {
           const words = say(t.text, cfg.salvage);
           return { id: t.id, idx: t.idx, words, quiet: t.quiet, w: textWidth(words, size) + m.padX * 2 + 3 };
@@ -68,7 +71,7 @@ export function IdleTags({ cfg, yard, anim, width, height, insets, active, size,
     };
     run();
     return useGame.subscribe(run);
-  }, [cfg, anim.body, active, size, m.padX]);
+  }, [cfg, active, size, m.padX]);
   const L = useMemo(() => hudLayout(width, height, insets, fontScale), [width, height, insets, fontScale]);
   const idx = tags.map((t) => t.idx);
   const ws = tags.map((t) => t.w);

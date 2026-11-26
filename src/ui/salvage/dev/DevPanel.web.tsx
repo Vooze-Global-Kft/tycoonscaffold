@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import type { FrameStats } from '../world/frameLoop';
+import { jsLateLine, startJsLate } from './jsLate';
 import { CardStandIn } from './CardStandIn.web';
 import { DevBoard } from './DevBoard.web';
 
@@ -25,12 +26,20 @@ function numbersOff(): boolean {
 
 export function DevPanel({ stats, top, left, atlas }: { stats: SharedValue<FrameStats>; top: number; left: number; atlas: string }) {
   const [s, setS] = useState<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0 });
+  const [js, setJs] = useState('');
   useEffect(() => {
-    const t = setInterval(() => setS(stats.value), 500);
-    return () => clearInterval(t);
+    const meter = startJsLate();
+    const t = setInterval(() => {
+      setS(stats.value);
+      setJs(jsLateLine(meter.read()));
+    }, 500);
+    return () => {
+      clearInterval(t);
+      meter.stop();
+    };
   }, [stats]);
   const runs = s.runs === undefined ? '' : `  runs ${s.runs}`;
-  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}${runs}  ${atlas}`;
+  const line = `${s.fps.toFixed(1)} fps  worst ${s.worstMs.toFixed(1)} ms (5 s)  actors ${s.actors}  sprites ${s.sprites}${runs}  ${js}  ${atlas}`;
   // Exposed for the preview's screenshot tool (scripts read it from the page).
   (globalThis as { __yardStats?: FrameStats }).__yardStats = s;
   return (
