@@ -11,7 +11,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { pointOf } from './positions';
-import { ratedCapacity } from './rate';
+import { ratedCapacity, ratedIncome } from './rate';
 import type { CrewRole, LevelTarget, MachineId, PartnerId, RefusalKey, RowState, SalvageConfig, SalvageGame, ShopItem, ShopKey, TextKey, Txt, TxtArgs } from './types';
 
 /** What a purchase check returns: the price it would charge (null: nothing to charge), the first refusal, the row's state. */
@@ -111,8 +111,8 @@ export function ceilingFor(cfg: SalvageConfig, g: SalvageGame): number {
   return list[r - 1] ?? Infinity;
 }
 
-/** The ceiling's refusal when R after a purchase (`after`) would pass the rung's ceiling (5.4 "Yard capacity {c} t/h · grows at {t} supplied"). */
-function ceilingRefusal(cfg: SalvageConfig, g: SalvageGame, after: SalvageGame): { key: RefusalKey; args: TxtArgs } | null {
+/** The ceiling's refusal when R after a purchase (`after`) would pass the rung's ceiling (5.4 "Yard capacity {c} t/h · grows at {t} supplied"). Exported for bank.ts signFinance (rules-money). */
+export function ceilingRefusal(cfg: SalvageConfig, g: SalvageGame, after: SalvageGame): { key: RefusalKey; args: TxtArgs } | null {
   const cap = ceilingFor(cfg, g);
   if (!Number.isFinite(cap)) return null;
   const now = ratedCapacity(cfg, g);
@@ -176,10 +176,25 @@ export function hireCheck(cfg: SalvageConfig, g: SalvageGame, role: CrewRole): P
 
 // ============================================================================ levels (E13a, E25)
 
-/** tau(L) minutes (content levels.tau): min(cap, first × growth^(L−1)). */
-export function levelTau(c: SalvageContent, L: number): number {
+/** The first yard's top rung: below and at it every first-yard rule stays exactly as measured (2.11's changes start above it). */
+export const FIRST_YARD_TOP_RUNG = 3;
+
+/**
+ * The level cap, minutes (2.11, E11): content `levels.tau.cap` (540) up to the first yard's top rung; from
+ * rung 4, 60 × tau_r minutes (content `tau_h[rung − 1]`), so that crew, partner and first-yard machine levels
+ * do not pay back in 9 h beside plates at 22 to 45 h. A rung without a tau keeps `levels.tau.cap`.
+ */
+export function levelCapMin(c: SalvageContent, rung: number): number {
+  const cap = c.levels.tau.cap;
+  if (rung <= FIRST_YARD_TOP_RUNG) return cap;
+  const tau = c.tau_h?.[Math.floor(rung) - 1];
+  return typeof tau === 'number' && tau > 0 ? 60 * tau : cap;
+}
+
+/** tau(L) minutes (content levels.tau): min(cap, first × growth^(L−1)); the cap by rung (levelCapMin; rung 1 when not given: the first yard's). */
+export function levelTau(c: SalvageContent, L: number, rung = 1): number {
   const t = c.levels.tau;
-  return Math.min(t.cap, t.first * t.growth ** Math.max(0, L - 1));
+  return Math.min(levelCapMin(c, rung), t.first * t.growth ** Math.max(0, L - 1));
 }
 
 /** Metres between two map points: `map.routes["a-b"]` (either order) if listed, else detour × the straight distance (2.12). */
@@ -301,7 +316,7 @@ export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   const L = levelNow(g, target);
   if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
   const { floor, growth } = levelFloor(c);
-  const v = Math.max(levelTau(c, L) * levelAddsKgMin(cfg, g, target) * marginOf(c, target), floor * growth ** (L - 1));
+  const v = Math.max(levelTau(c, L, g.salvage.ladder.rung) * levelAddsKgMin(cfg, g, target) * marginOf(c, target), floor * growth ** (L - 1));
   return roundPrice(v);
 }
 
@@ -340,16 +355,31 @@ function levelled(g: SalvageGame, target: LevelTarget): SalvageGame {
 
 /**
  * A WORKS PLATE'S LEVEL PRICE (2.6.4, 2.11; s2a-fix, the lead's ruling 1 of 26 Nov 09:50): rules-money's one
- * function for rules-works. The rule: the first yard's level rule (the level's added rated income at full
- * feed times the payback hours) with tau capped at the rung's (`tau_h[rung - 1]`), never below `levels.floor`;
- * null when the plate is not owned, not running or at its top level. PHASE A STUB: null (no plate exists).
+ * function for rules-works. THE RULE AS BUILT: L the plate's level now; ΔI = rated income with the plate one
+ * level up less rated income now (§ an hour, rate.ts ratedIncome on the state's content: what the level adds
+ * at full feed, read from the assets); tau(L) = min(60 × tau_r, levels.tau.first × growth^(L−1)) minutes, tau_r
+ * the rung's (`tau_h[rung − 1]`; a rung without a tau: levels.tau.cap); price = roundPrice(max(tau(L)/60 × ΔI,
+ * levels.floor × floorGrowth^(L−1))). Null when the plate is not in `works`, not running, or at its top level
+ * (the plate's `maxLevel`, at most `works.maxLevel`). While rate.ts counts no plate's terms (2.3.1 step 5,
+ * rules-works' request to engine2), ΔI is 0 and every plate level costs the floor's price.
  */
 export function plateLevelPrice(cfg: SalvageConfig, g: SalvageGame, plate: string): number | null {
-  void cfg;
-  void plate;
-  const w = g.salvage.works[plate];
-  if (!w) return null;
-  return null;
+  const c = contentAt(cfg.salvage, g.salvage);
+  const s = g.salvage;
+  const w = s.works[plate];
+  const def = c.works?.plates[plate];
+  if (!w || !def || w.phase !== 'running') return null;
+  const L = Math.max(1, Math.floor(w.level || 1));
+  const top = Math.min(def.maxLevel, c.works?.maxLevel ?? def.maxLevel);
+  if (L >= top) return null;
+  const up = { ...s, works: { ...s.works, [plate]: { ...w, level: L + 1 } } };
+  const dI = Math.max(0, ratedIncome(c, up) - ratedIncome(c, s));
+  const t = c.levels.tau;
+  const tauR = c.tau_h?.[Math.floor(s.ladder.rung) - 1];
+  const cap = typeof tauR === 'number' && tauR > 0 ? 60 * tauR : t.cap;
+  const tauMin = Math.min(cap, t.first * t.growth ** (L - 1));
+  const { floor, growth } = levelFloor(c);
+  return roundPrice(Math.max((tauMin / 60) * dI, floor * growth ** (L - 1)));
 }
 
 /** A check's refusal as a printable line (refusal.<key> with its arguments), or null. */
@@ -374,20 +404,51 @@ export function materialsOf(c: SalvageContent): string[] {
   return Array.from(new Set(Object.values(c.grades).map((gr) => gr.material).filter((m): m is string => !!m)));
 }
 
-/** Range (2.11): materials whose lifetime supplied products are worth at least ladder.theta at p̄. */
-export function rangeCount(c: SalvageContent, worth: Record<string, number>): number {
-  return materialsOf(c).filter((m) => (worth[m] ?? 0) >= c.ladder.theta).length;
+/**
+ * §1,200 a tonne: 2.11's worth of a tonne in θ_r = max(ladder.theta, ladder.thetaShare × T_r × §1,200). The
+ * specification names no content key for it; content `ladder.thetaPerT` is read when present (a request to
+ * content2 in requests.md), else this value.
+ */
+export const THETA_PER_T = 1200;
+
+/**
+ * θ_r (2.11): the worth at p̄ a material's lifetime supplied products must reach to count toward rung r's
+ * range. Rungs 1 to 3 (and any content without `ladder.thetaShare`): `ladder.theta`, as built; from rung 4
+ * max(theta, thetaShare × T_r × §1,200), T_r rung r's tonnes.
+ */
+export function thetaOf(c: SalvageContent, rung: number): number {
+  const L = c.ladder as SalvageContent['ladder'] & { thetaPerT?: number };
+  if (rung <= FIRST_YARD_TOP_RUNG || !L.thetaShare) return L.theta;
+  const r = rungsOf(c).find((x) => x.n === rung);
+  return Math.max(L.theta, L.thetaShare * (r?.t ?? 0) * (L.thetaPerT ?? THETA_PER_T));
 }
 
-/** The range chips of the table: each material, counted or not. */
-export function rangeChips(c: SalvageContent, worth: Record<string, number>): { material: string; counted: boolean; worth: number }[] {
-  return materialsOf(c).map((m) => ({ material: m, counted: (worth[m] ?? 0) >= c.ladder.theta, worth: worth[m] ?? 0 }));
+/** The rung whose range a yard at rung `rung` works toward (the next one, at most the stage's top). */
+function towardRung(c: SalvageContent, rung: number | undefined): number {
+  return Math.min(topRungOf(c), Math.max(1, Math.floor(rung ?? 0)) + 1);
 }
 
-/** Stage 1 stops at rung 3 (rungs 4 to 9 show on the table with their gates and a padlock, 2.11). */
+/** Range (2.11): materials whose lifetime supplied products are worth at least θ of the rung worked toward (rung + 1; `ladder.theta` up to rung 3). */
+export function rangeCount(c: SalvageContent, worth: Record<string, number>, rung?: number): number {
+  const th = thetaOf(c, towardRung(c, rung));
+  return materialsOf(c).filter((m) => (worth[m] ?? 0) >= th).length;
+}
+
+/** The range chips of the table: each material, counted or not (against θ of the rung worked toward). */
+export function rangeChips(c: SalvageContent, worth: Record<string, number>, rung?: number): { material: string; counted: boolean; worth: number }[] {
+  const th = thetaOf(c, towardRung(c, rung));
+  return materialsOf(c).map((m) => ({ material: m, counted: (worth[m] ?? 0) >= th, worth: worth[m] ?? 0 }));
+}
+
+/** The first yard stops at rung 3 (kept for its readers; the stage's top is content: topRungOf). */
 export const STAGE_TOP_RUNG = 3;
 
-/** The rung a supplied mass and range reach: the highest n ≤ 3 with tonnes and range both met (never below the state's own rung: rungs are not lost). */
+/** The stage's top rung (2.11, B18): content `ladder.topRung`, else the first yard's 3. Rungs above it show a padlock and their tonnage only. */
+export function topRungOf(c: SalvageContent): number {
+  return c.ladder.topRung ?? STAGE_TOP_RUNG;
+}
+
+/** The rung a supplied mass and range reach: the highest n ≤ the stage's top with tonnes and its own range (θ_n) both met (never below the state's own rung: rungs are not lost). */
 export function rungReached(cfg: SalvageConfig, g: SalvageGame): number {
   const c = cfg.salvage;
   const s = g.salvage.ladder;
@@ -395,20 +456,26 @@ export function rungReached(cfg: SalvageConfig, g: SalvageGame): number {
   // read once per content object (rungsOf sorts, materialsOf builds a set).
   let k = ladderMemo.get(c);
   if (!k) {
-    k = { rungs: rungsOf(c).filter((x) => x.n <= STAGE_TOP_RUNG).map((x) => ({ n: x.n, g: Math.round(x.t * 1e6), range: x.range })), materials: materialsOf(c) };
+    const top = topRungOf(c);
+    k = { rungs: rungsOf(c).filter((x) => x.n <= top).map((x) => ({ n: x.n, g: Math.round(x.t * 1e6), range: x.range, theta: thetaOf(c, x.n) })), materials: materialsOf(c) };
     ladderMemo.set(c, k);
   }
   let r = 1;
+  // The range is counted once per θ met (rungs 1 to 3 share ladder.theta: one count, as built).
+  let th = NaN;
   let range = -1;
   for (const x of k.rungs) {
     if (x.n <= r || s.supplied_g < x.g) continue;
-    if (range < 0) range = k.materials.filter((m) => (s.worth[m] ?? 0) >= c.ladder.theta).length;
+    if (x.theta !== th) {
+      th = x.theta;
+      range = k.materials.filter((m) => (s.worth[m] ?? 0) >= th).length;
+    }
     if (range >= x.range) r = x.n;
   }
   return Math.max(s.rung, r);
 }
 
-const ladderMemo = new WeakMap<SalvageContent, { rungs: { n: number; g: number; range: number }[]; materials: string[] }>();
+const ladderMemo = new WeakMap<SalvageContent, { rungs: { n: number; g: number; range: number; theta: number }[]; materials: string[] }>();
 
 /** The rung sign (the rung card): the crane's "{homeYard} · {t} supplied", what the rung opens, the next rung's gate. */
 export function rungSign(c: SalvageContent, n: number): { n: number; t_g: number; range: number; sign: Txt; opens: Txt[]; next: Txt | null } {
@@ -418,6 +485,12 @@ export function rungSign(c: SalvageContent, n: number): { n: number; t_g: number
   const opens: Txt[] = [];
   if (n === 2) opens.push({ key: 'opens.rung2' });
   if (n === 3) opens.push({ key: 'opens.rung3', args: { c: { n: c.ceilings_t_h[2] ?? 0 } } });
+  // Stage 2 (2.11, 1.4; only where the content holds the works): what rungs 3 to 5 open.
+  if (c.works && n <= topRungOf(c)) {
+    if (n === 3) opens.push({ key: 'opens.works' }, { key: 'opens.backfield' }, { key: 'opens.yardSale' });
+    if (n === 4) opens.push({ key: 'opens.shredder' }, { key: 'opens.halls' }, { key: 'opens.lead' });
+    if (n === 5) opens.push({ key: 'opens.levelsOn' });
+  }
   return {
     n,
     t_g: Math.round(r.t * 1e6),
@@ -444,8 +517,8 @@ export interface RungProgress {
 export function rungProgress(cfg: SalvageConfig, g: SalvageGame): RungProgress {
   const c = cfg.salvage;
   const s = g.salvage.ladder;
-  const materials = rangeCount(c, s.worth);
-  const nx = rungsOf(c).find((r) => r.n === s.rung + 1 && r.n <= STAGE_TOP_RUNG);
+  const materials = rangeCount(c, s.worth, s.rung);
+  const nx = rungsOf(c).find((r) => r.n === s.rung + 1 && r.n <= topRungOf(c));
   return {
     supplied_g: s.supplied_g,
     materials,
@@ -462,7 +535,7 @@ export interface RungTile {
   range: number;
   current: boolean;
   open: boolean;
-  /** False past STAGE_TOP_RUNG: nothing opens there in this stage. */
+  /** False past the stage's top rung (topRungOf): nothing opens there in this stage. */
   inStage: boolean;
   /** "Opens at {t} supplied · {r} materials" on a locked tile of this stage; null on an open tile or past the stage. */
   line: Txt | null;
@@ -474,7 +547,7 @@ export function rungTiles(cfg: SalvageConfig, g: SalvageGame): RungTile[] {
   return rungsOf(c).map((r) => {
     const t_g = Math.round(r.t * 1e6);
     const open = r.n <= rung;
-    const inStage = r.n <= STAGE_TOP_RUNG;
+    const inStage = r.n <= topRungOf(c);
     return { n: r.n, t_g, range: r.range, current: r.n === rung, open, inStage, line: !open && inStage ? { key: 'table.locked', args: { t: { tonnes_g: t_g }, r: { n: r.range } } } : null };
   });
 }

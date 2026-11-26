@@ -311,14 +311,14 @@ export function skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: 
 }
 
 /** The screen saw a place's label or opened a card (every "first time" text reads `seen`). Same object when already seen. */
-export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind }, clock: number): SalvageGame {
+export function noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: string }, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
   const s = g.salvage;
   const addPlace = seen.place !== undefined && !s.seen.places.includes(seen.place);
   const addCard = seen.card !== undefined && !s.seen.cards.includes(seen.card);
   // Stage 2 (s2a-fix): the money's part of a sighting (the lender's letter, actionsMoney.ts onSeen; the stub returns the game as it is).
-  if (!addPlace && !addCard) return onSeen(cfg, g, seen);
-  return onSeen(cfg, { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } }, seen);
+  if (!addPlace && !addCard) return onSeen(cfg, g, seen, events);
+  return onSeen(cfg, { ...g, salvage: { ...s, seen: { places: addPlace ? [...s.seen.places, seen.place as string] : s.seen.places, cards: addCard ? [...s.seen.cards, seen.card as CardKind] : s.seen.cards } } }, seen, events);
 }
 
 /** The away card's OK: the card goes (its money was paid when computed). */

@@ -14,8 +14,92 @@ const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
 /** A map point (zero when the content has none: never thrown, the lint reports it). */
 export function pointOf(c: SalvageContent, id: string): { x: number; y: number } {
-  const p = c.map.points[id];
+  // Stage 2 (rules-works): a place of the works layer (map.works.points) that the first layer does not name
+  // (a plate's plot, the car pad, the halls). The first layer's ids read exactly as before (the one id both
+  // name, the field gateway `backfield`, keeps the first layer's point here: mapAt(rung) gives the merged one).
+  const p = c.map.points[id] ?? c.map.works?.points?.[id];
   return p ? { x: p[0], y: p[1] } : { x: 0, y: 0 };
+}
+
+/**
+ * THE MAP A RUNG READS (yard-stage2.md 3.1.1; rules-works): below the works layer's rung the first layer
+ * itself; from it, the first layer with `map.works` merged over it as yard_map.py `merged()` does: points,
+ * footprints and places of the same id REPLACE, new ids are added; the props of `drop.props` and the walls
+ * of `drop.walls` are lifted out; the drive line's rects added and its stops merged; routes and lane merged.
+ * Memoised per content and side. `opened` is true once the works opened (counts.bathSet; layer.ts).
+ */
+export interface MapAt {
+  points: Record<string, [number, number]>;
+  footprints: Record<string, { x: number; y: number; w: number; d: number }>;
+  walls: { x: number; y: number; w: number; d: number }[];
+  routes: Record<string, number>;
+  lane: Record<string, number>;
+  x0: number;
+  dropProps: readonly string[];
+  driveRects: { x0: number; y0: number; w: number; d: number }[];
+  stops: Record<string, [number, number]>;
+}
+const MAPS = new WeakMap<SalvageContent, { base?: MapAt; merged?: MapAt }>();
+export function mapAt(c: SalvageContent, opened: boolean): MapAt {
+  let e = MAPS.get(c);
+  if (!e) MAPS.set(c, (e = {}));
+  const key = opened && c.map.works ? 'merged' : 'base';
+  const hit = e[key];
+  if (hit) return hit;
+  const m = c.map;
+  const dl = m.driveLine;
+  const base: MapAt = {
+    points: { ...m.points } as Record<string, [number, number]>,
+    footprints: { ...(m.footprints as MapAt['footprints']) },
+    walls: [...m.walls],
+    routes: { ...m.routes },
+    lane: { ...m.lane },
+    x0: 0,
+    dropProps: [],
+    driveRects: [...(dl?.rects ?? [])],
+    stops: { ...((dl?.stops ?? {}) as Record<string, [number, number]>) },
+  };
+  if (key === 'base') return (e.base = base);
+  const w = m.works!;
+  const merged: MapAt = {
+    points: { ...base.points, ...(w.points as Record<string, [number, number]>) },
+    footprints: { ...base.footprints, ...(w.footprints as MapAt['footprints']) },
+    walls: base.walls.filter((_, i) => !w.drop.walls.includes(i)),
+    routes: { ...base.routes, ...w.routes },
+    lane: { ...base.lane, ...w.lane },
+    x0: w.x0,
+    dropProps: [...w.drop.props],
+    driveRects: [...base.driveRects, ...w.driveLine.rects],
+    stops: { ...base.stops, ...(w.driveLine.stops as Record<string, [number, number]>) },
+  };
+  return (e.merged = merged);
+}
+
+/** Is (px, py) within `reach` of a place's footprint on the merged map (works places first, then the first layer's)? */
+export function nearPlace(c: SalvageContent, place: string, px: number, py: number, reach: number): boolean {
+  const w = c.map.works;
+  const pt = w?.points?.[place] ?? c.map.points[place];
+  if (!pt) return false;
+  const pl = w?.places?.[place] ?? c.map.places[place];
+  const dx = Math.max(0, Math.abs(px - pt[0]) - (pl?.w ?? 0) / 2);
+  const dy = Math.max(0, Math.abs(py - pt[1]) - (pl?.d ?? 0) / 2);
+  return Math.hypot(dx, dy) <= reach;
+}
+
+/** The gap between two places' footprints on the merged map, metres (0 when they touch or overlap). */
+export function placeGap(c: SalvageContent, a: string, b: string): number {
+  const w = c.map.works;
+  const box = (id: string) => {
+    const pt = w?.points?.[id] ?? c.map.points[id];
+    const pl = w?.places?.[id] ?? c.map.places[id];
+    return pt ? { x: pt[0], y: pt[1], w: pl?.w ?? 0, d: pl?.d ?? 0 } : null;
+  };
+  const A = box(a);
+  const B = box(b);
+  if (!A || !B) return Infinity;
+  const dx = Math.max(0, Math.abs(A.x - B.x) - (A.w + B.w) / 2);
+  const dy = Math.max(0, Math.abs(A.y - B.y) - (A.d + B.d) / 2);
+  return Math.hypot(dx, dy);
 }
 
 /** How many things a zone starts with (the sunflower pattern's N). */

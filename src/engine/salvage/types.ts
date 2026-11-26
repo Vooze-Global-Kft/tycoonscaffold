@@ -889,7 +889,7 @@ export interface SalvageActions {
   stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: number; heading: Heading } | null, clock: number, events?: SalvageEvent[]): SalvageGame;
   skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: number, events?: SalvageEvent[]): SalvageGame;
   /** v3: `plate` with card 'works' (2.14.5, B11): reading a financeable works card under the letter's condition sets `bank.letterSeen` and emits `letter`. */
-  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: PlateId }, clock: number): SalvageGame;
+  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: PlateId }, clock: number, events?: SalvageEvent[]): SalvageGame;
   ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame;
 }
 

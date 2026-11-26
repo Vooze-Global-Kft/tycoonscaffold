@@ -12,7 +12,8 @@ import { roundMoney } from './money';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
-import { openPartners } from './partners';
+import { openPartners, pickFromRung, ratedLoadNet } from './partners';
+import { orderFromRung } from './crew';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
 import { worksOpen, worksOwn } from './works';
@@ -412,7 +413,9 @@ function assetKey(c: Ctx['c'], s: Ctx['s']): string {
   const crew = s.crew.map((m) => `${m.role}${m.level}`).sort().join(',');
   const mach = (['stripper', 'bench', 'crucible'] as const).map((id) => (s.machines[id]?.owned ? `${id}${s.machines[id].level}` : '')).join(',');
   const parts = Object.entries(c.partners).map(([id, p]) => (s.partners[id]?.open || s.owned.includes(p.opens) ? `${id}${Math.max(1, s.partners[id]?.level ?? 1)}` : '')).join(',');
-  return `${crew}|${s.tier}|${mach}|${parts}|${s.truck.owned ? 1 : 0}|${(s.counts?.poured ?? 0) > 0 ? 1 : 0}`;
+  // RULING2.md 16.2, 17.4: which of the driver's and the hands' rules the yard's rung runs (dispatch.ts's keys).
+  const rules = `${s.ladder.rung >= pickFromRung(c) ? 1 : 0}${s.ladder.rung >= orderFromRung(c) ? 1 : 0}`;
+  return `${crew}|${s.tier}|${mach}|${parts}|${s.truck.owned ? 1 : 0}|${(s.counts?.poured ?? 0) > 0 ? 1 : 0}|${rules}`;
 }
 
 /**
@@ -529,7 +532,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
         for (const [grade, g, k] of specsOf(c, obj)) asFound += n * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
       }
       const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
-      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u, wc: 0, wh: 0, cq: null as unknown as Carry });
+      parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u, wc: 0, wh: 0, cq: null as unknown as Carry, net: ratedLoadNet(c, id) });
     }
   }
 
@@ -643,7 +646,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   // it before the drop-off (crew.ts handDepart, FLOOR_CLEAR_SHARE), so the loads are replayed at the steps'
   // whole hour, and the drop-off's things are taken with the seconds the loads leave (nothing is paid for
   // them).
-  const q = rateQueue(c, parts, cutHave, carryHave);
+  const q = rateQueue(c, parts, cutHave, carryHave, s.ladder.rung >= pickFromRung(c));
   const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
   const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
   const f = Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft));
@@ -668,6 +671,8 @@ interface QueuePart {
   wc: number;
   wh: number;
   cq: Carry;
+  /** Its rated net a load (partners.ts ratedLoadNet): the driver's rank from truck.pickFromRung (RULING2.md 16.2). */
+  net: number;
 }
 
 interface QueueResult {
@@ -689,7 +694,7 @@ interface QueueResult {
  * income2: at the steps' WHOLE hour: while the floor is busy the hands serve it before the drop-off).
  * Counted: the loads hooked in the second and third hours (the first fills the floor), halved.
  */
-function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number): QueueResult {
+function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false): QueueResult {
   const room = c.floorRoom_kg;
   const cutRate = cutHave / 3600;
   const carryRate = carryHave / 3600;
@@ -740,11 +745,32 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
       lastM = m;
     }
     let pick = -1;
-    for (let i = 0; i < skips.length; i++) {
-      const sk = skips[i];
-      if (sk.fullAt > clock + 1e-9 || m + parts[sk.k].mass > room + 1e-9) continue;
-      if (pick < 0 || sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && parts[sk.k].id < parts[skips[pick].k].id)) pick = i;
-    }
+    // RULING2.md 16.2: from truck.pickFromRung the replay follows the driver's rule (truck.ts bestLoad): the full
+    // skip of the best-ranked partner (rated net a load; equal: full first), taken when it fits, else waited for
+    // (a lesser load is not taken while it waits; a load heavier than the whole floor is passed over, as there).
+    let wantMass = Infinity;
+    if (byNet) {
+      for (let i = 0; i < skips.length; i++) {
+        const sk = skips[i];
+        if (sk.fullAt > clock + 1e-9 || parts[sk.k].mass > room + 1e-9) continue;
+        if (pick < 0) {
+          pick = i;
+          continue;
+        }
+        const a = parts[sk.k];
+        const b = parts[skips[pick].k];
+        if (a.net > b.net || (a.net === b.net && (sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && a.id < b.id)))) pick = i;
+      }
+      if (pick >= 0 && m + parts[skips[pick].k].mass > room + 1e-9) {
+        wantMass = parts[skips[pick].k].mass;
+        pick = -1;
+      }
+    } else
+      for (let i = 0; i < skips.length; i++) {
+        const sk = skips[i];
+        if (sk.fullAt > clock + 1e-9 || m + parts[sk.k].mass > room + 1e-9) continue;
+        if (pick < 0 || sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && parts[sk.k].id < parts[skips[pick].k].id)) pick = i;
+      }
     if (pick < 0) {
       // Wait for the next skip to fill, or for the floor to clear room for the lightest full skip.
       let next = Infinity;
@@ -753,6 +779,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
         if (sk.fullAt > clock + 1e-9) next = Math.min(next, sk.fullAt);
         else lightest = Math.min(lightest, parts[sk.k].mass);
       }
+      if (byNet && Number.isFinite(wantMass)) lightest = wantMass;
       if (Number.isFinite(lightest)) {
         let D = m + lightest - room;
         let dt = 0;

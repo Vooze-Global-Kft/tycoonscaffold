@@ -7,8 +7,14 @@
  * goes, its noteSeen calls `onSeen` after the note. Same shape as every action: pure, a refusal pushed to
  * `events` with the SAME state returned.
  *
- * PHASE A STUB: the actions refuse with `nothing`; the two hooks return the game they are given.
+ * WAVE 1 (rules-money, 26 Nov): signFinance and the letter (onSeen) are built (bank.ts holds the terms and
+ * the checks). The shop's, the ads' and the looks' actions are wave 2's: they still refuse with `nothing`,
+ * and onAwayClosed still returns the game it is given.
  */
+import { financeCheck, letterDue, agreementOf, shownOf } from './bank';
+import { begin, finish, spend } from './clock';
+import { checks } from './rate';
+import { orderPlate } from './works';
 import type { AdKind, FinanceShown, GradeId, LookSlot, PlateId, QuoteOutcome, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
 const nothing = (g: SalvageGame, events: SalvageEvent[] | undefined): SalvageGame => {
@@ -23,20 +29,41 @@ export function onAwayClosed(cfg: SalvageConfig, g: SalvageGame, closed: NonNull
   return g;
 }
 
-/** The screen saw a place or a card (actions.ts noteSeen, after the note): the lender's letter falls due here (2.14.5, bank.ts). Stub: the game itself. */
-export function onSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: string; card?: string }): SalvageGame {
-  void cfg;
-  void seen;
-  return g;
+/**
+ * The screen saw a place or a card (actions.ts noteSeen, after the note). THE LENDER'S LETTER (2.14.5, B11):
+ * reading a works card `{card: 'works', plate}` the first time the plate is financeable with P > cash −
+ * reserve and cash − reserve ≥ d sets `bank.letterSeen` and emits `letter` (the screen opens the letter
+ * card). Same object otherwise. Nothing else of the bank happens at a sighting.
+ */
+export function onSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: string; card?: string; plate?: string }, events?: SalvageEvent[]): SalvageGame {
+  if (seen.card !== 'works' || !seen.plate || !letterDue(cfg, g, seen.plate)) return g;
+  events?.push({ type: 'letter' });
+  return { ...g, salvage: { ...g.salvage, bank: { ...g.salvage.bank, letterSeen: true } } };
 }
 
-/** Sign the finance card with the terms AS SHOWN (types.ts SalvageActions2). Stub: refused. */
+/**
+ * Sign the finance card with the terms AS SHOWN (2.14.3; types.ts SalvageActions2). Refusals in order
+ * (bank.ts financeCheck): bankOne, owned, the plate's gate (rung, needsItem), notFinanceable (not
+ * financeable, the letter not seen, or a price cash − reserve pays outright), bankReserve, cash (or
+ * earmark), ceiling, bankTerms (retry: sign the terms now). Then cash −= d, the plate is ordered (works.ts
+ * orderPlate, its one path), the agreement is stored with the I read now, event `financed`.
+ */
 export function signFinance(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, shown: FinanceShown, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
-  void plate;
-  void shown;
-  void clock;
-  return nothing(g, events);
+  const ch = financeCheck(cfg, g, plate, shown);
+  if (ch.refusal) {
+    const retry = ch.refusal.key === 'bankTerms' && ch.terms ? { act: 'signFinance' as const, plate, shown: shownOf(ch.terms) } : null;
+    events?.push({ type: 'refused', key: ch.refusal.key, args: ch.refusal.args, retry });
+    return g;
+  }
+  const tm = ch.terms!;
+  const x = begin(cfg, g, events, true);
+  const t = Math.max(clock, x.s.t);
+  spend(x, tm.d);
+  orderPlate(x, plate, t);
+  x.s.bank.agreement = agreementOf(tm, t);
+  x.ev.push({ type: 'financed', plate, F: tm.F, T: tm.T });
+  checks(x, t);
+  return finish(g, x);
 }
 
 /** The shared store's quote function (RULING2 15.3, 15.12, 15.13). Stub: refused. */

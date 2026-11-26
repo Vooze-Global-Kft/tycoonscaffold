@@ -250,3 +250,16 @@ export function trayFree(x: Ctx, id: MachineId): number {
 export function machinePoint(x: Ctx, id: MachineId): { x: number; y: number } {
   return pointOf(x.c, machinePlace(id));
 }
+
+// ============================================================================================ stage 2: stations (B7; rules-works)
+
+/**
+ * B7 (yard-stage2.md 2.5.3): ONE accessor for crew and machine code over the first yard's machines and the
+ * works plates: a first-yard machine id reads `machines`, any other id `works` (undefined when no such plate
+ * has been ordered). The first yard's machines keep their own code paths (this file's functions above, the
+ * crucible's file); the plates' rules are works.ts's and read their state through this accessor too.
+ */
+export function station(s: Pick<import('./types').SalvageState, 'machines' | 'works'>, id: string): MachineState | undefined {
+  if (id in s.machines) return s.machines[id as MachineId];
+  return s.works[id];
+}

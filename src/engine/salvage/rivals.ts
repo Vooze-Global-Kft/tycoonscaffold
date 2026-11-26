@@ -107,7 +107,7 @@ export function tableOf(c: SalvageContent, g: SalvageGame): IndustryTable {
   const above = rows[rank - 2];
   const next = above ? { rival: above.id as RivalId, name: above.name, chip: above.chip, need_g: Math.max(1, above.tonnes_g - s.ladder.supplied_g + 1) } : null;
   const rungs = rungsOf(c).map((r) => ({ ...r, current: r.n === s.ladder.rung, open: r.n <= s.ladder.rung }));
-  return { rows, rank, next, rungs, range: rangeChips(c, s.ladder.worth) };
+  return { rows, rank, next, rungs, range: rangeChips(c, s.ladder.worth, s.ladder.rung) };
 }
 
 /** Facade `industryTable(cfg, g)`. */

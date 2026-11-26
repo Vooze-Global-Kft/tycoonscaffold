@@ -5,9 +5,10 @@
  * price: roundMoney(k × the as-found value at the day's prices). Owner: rules-sim.
  */
 import { dayAt, type Ctx } from './clock';
-import { lotPrice, specsOf } from './content';
+import { convAssay, lotPrice, specsOf } from './content';
 import { roundMoney } from './money';
 import type { SkipState } from './types';
+import type { SalvageContent } from '../../config/schema.salvage';
 
 /** The as-found value of whole things at day D's prices (E3): Σ pieces kg × price × the grade's asFound share. */
 export function asFoundValue(x: Ctx, contents: Record<string, number>, day: number): number {
@@ -64,6 +65,57 @@ export function fullestSkip(x: Ctx, partner: string): SkipState | null {
   const ps = x.s.partners[partner];
   if (!ps?.open) return null;
   return ps.skips.filter((q) => q.phase === 'full').sort((a, b) => a.fullAt - b.fullAt || a.slot - b.slot)[0] ?? null;
+}
+
+// ---------------------------------------------------------------------------------------- the driver's ranking (RULING2.md 16)
+
+/** A grade's price a kilogram at usual prices (p̄; a whole unit of the pm family at the converter's unstepped assay): rate.ts usualP's rule. */
+function usualKg(c: SalvageContent, grade: string): number {
+  const gr = c.grades[grade];
+  if (!gr) return 0;
+  if (gr.family === 'pm') return convAssay(c, 1) / Math.max(1e-9, c.wholeUnits_kg[grade] ?? 1);
+  return gr.pbar;
+}
+
+const LOAD_NET = new WeakMap<SalvageContent, Map<string, number>>();
+
+/**
+ * RULING2.md 16.1 (a): a partner's RATED NET A LOAD, §, from the content alone: its skip's contents at usual prices
+ * as they weigh in (every piece at its grade, and a thing's shell) less the load's price at usual prices
+ * (roundMoney(k × the as-found value at usual prices), as fillSkip prices it on a day of usual prices). Memoised per
+ * content object; a partner not in the content nets -Infinity. The driver (truck.ts driverDepart) and rated
+ * income's replay (rate.ts rateQueue) rank partners by it; a new partner needs no code.
+ */
+export function ratedLoadNet(c: SalvageContent, partner: string): number {
+  let byId = LOAD_NET.get(c);
+  if (!byId) LOAD_NET.set(c, (byId = new Map()));
+  let v = byId.get(partner);
+  if (v === undefined) {
+    const p = c.partners[partner];
+    if (!p) v = -Infinity;
+    else {
+      let worth = 0;
+      let asFound = 0;
+      for (const [obj, n] of Object.entries(p.skip)) {
+        const o = c.objects[obj];
+        if (!o) continue;
+        for (const [grade, g, k] of specsOf(c, obj)) {
+          worth += n * k * (g / 1000) * usualKg(c, grade);
+          asFound += n * k * (g / 1000) * usualKg(c, grade) * (c.grades[grade]?.asFound ?? 1);
+        }
+        if (o.shell) worth += n * (o.shell.g / 1000) * usualKg(c, o.shell.grade);
+      }
+      v = roundMoney(worth - roundMoney(p.k * asFound));
+    }
+    byId.set(partner, v);
+  }
+  return v;
+}
+
+/** The first rung on which the hired driver ranks partners by ratedLoadNet (content `truck.pickFromRung`; absent: never, the first yard's rule). */
+export function pickFromRung(c: SalvageContent): number {
+  const r = (c.truck as { pickFromRung?: unknown }).pickFromRung;
+  return typeof r === 'number' && Number.isFinite(r) ? r : Infinity;
 }
 
 /** Partners open with their purchase (checks, 2.14 step 6). */

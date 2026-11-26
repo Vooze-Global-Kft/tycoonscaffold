@@ -390,6 +390,12 @@ function floorStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolea
   return false;
 }
 
+/** The first rung of the hands' order of work of RULING2.md 17.2 (content `crew.orderFromRung`; absent: never, the first yard's S12). */
+export function orderFromRung(c: Ctx['c']): number {
+  const r = (c.crew as { orderFromRung?: unknown }).orderFromRung;
+  return typeof r === 'number' && Number.isFinite(r) ? r : Infinity;
+}
+
 /** E35: the floor's room share above which a yard hand clears whole uncut things off it while the boss is in the yard. */
 export const FLOOR_CLEAR_SHARE = 0.5;
 

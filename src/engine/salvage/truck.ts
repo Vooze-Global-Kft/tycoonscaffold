@@ -11,7 +11,7 @@ import { boostFactor, count, printTicket, spend, standingFor, ticketBase, type C
 import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './content';
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
-import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
+import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
@@ -282,12 +282,14 @@ export function driverDepart(x: Ctx, t: number): boolean {
   if (tr.skip) return driverFinishes(x, d, t);
   let best: { partner: string; fullAt: number; price: number; mass: number } | null = null;
   const floor = { g: null as number | null };
-  for (const id in s.partners) {
-    if (!x.c.partners[id]) continue;
-    const sk = fullestSkip(x, id);
-    if (!sk || hookRefusal(x, id, false, floor)) continue;
-    if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
-  }
+  if (s.ladder.rung >= pickFromRung(x.c)) best = bestLoad(x, floor);
+  else
+    for (const id in s.partners) {
+      if (!x.c.partners[id]) continue;
+      const sk = fullestSkip(x, id);
+      if (!sk || hookRefusal(x, id, false, floor)) continue;
+      if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+    }
   if (!best) return false;
   const sk = fullestSkip(x, best.partner)!;
   tr.earmark = { money: best.price, floor_g: best.mass };
@@ -307,6 +309,32 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const z = skipZone(x.c, best.partner, sk.slot);
   if (planAhead(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
+}
+
+/**
+ * RULING2.md 16.1 (b) to (e), from rung `truck.pickFromRung`: the load the hired driver departs for. Every open
+ * partner with a full skip is ranked by its rated net a load (partners.ts ratedLoadNet, from the content alone; equal
+ * nets: the skip full longest, then the partner's id). He takes the best-ranked one the yard can pay for whose load
+ * fits the tipping floor (b); while a BETTER-ranked partner has a full skip the yard can pay for that does not fit,
+ * he takes nothing and waits: the floor's room is kept for the load that pays best (c). A skip the yard cannot pay
+ * for blocks nobody (e; Hold's rule 14.6 is bays.ts holdRelease's, unchanged), nor does one heavier than the whole
+ * floor (it could never fit: no dead end). Null: wait.
+ */
+function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullAt: number; price: number; mass: number } | null {
+  const s = x.s;
+  let top: { partner: string; fullAt: number; price: number; mass: number; net: number; fits: boolean } | null = null;
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const sk = fullestSkip(x, id);
+    if (!sk) continue;
+    const why = hookRefusal(x, id, false, floor);
+    // 'floor' is asked after the cash: such a skip is one the yard can pay for that does not fit now.
+    const blocks = why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000;
+    if (why && !blocks) continue;
+    const net = ratedLoadNet(x.c, id);
+    if (!top || net > top.net || (net === top.net && (sk.fullAt < top.fullAt || (sk.fullAt === top.fullAt && id < top.partner)))) top = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g, net, fits: !why };
+  }
+  return top && top.fits ? { partner: top.partner, fullAt: top.fullAt, price: top.price, mass: top.mass } : null;
 }
 
 const PHASES: TripPhase[] = ['walk', 'out', 'hook', 'back', 'weigh', 'tip', 'park'];
