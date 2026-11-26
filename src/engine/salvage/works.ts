@@ -34,6 +34,7 @@ import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock'
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
+import { MEMO_CHECK, memoMismatch } from './memo';
 import { roundMoney } from './money';
 import { nearPlace, placeGap, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
@@ -217,6 +218,7 @@ function plateArrive(x: Ctx, id: string, w: WorksState, t: number): void {
   w.since = t;
   w.status = 'idle';
   w.commissionAt = t + (x.c.works?.selfCommission_s ?? 0);
+  routesChanged(x);
   x.ev.push({ type: 'plateArrived', plate: id });
   x.dirty = true;
 }
@@ -226,6 +228,7 @@ export function commission(x: Ctx, id: string, by: 'boss' | 'self', t: number): 
   const w = x.s.works[id];
   if (!w || w.phase !== 'installed') return;
   w.phase = 'running';
+  routesChanged(x);
   w.commissionAt = null;
   w.commissionedBy = by;
   w.since = t;
@@ -470,6 +473,33 @@ export function takesGrade(x: Ctx, id: string, grade: string): boolean {
  * with Take from bays on); else null (no plate takes it: the first yard's own, the crucible's Take from bays).
  */
 export function routeOf(x: Ctx, grade: string): StationId | 'bay' | null {
+  // engine3: routeOf's answers are kept per transition (ROUTES, keyed by the Ctx and its content object) and dropped by
+  // routesChanged(x) at every place that changes what routeOf, takesGrade and plateMargin read of the state: a plate
+  // ordered, set down or started up (its phase; a hall's heat created), a purchase owned (the crucible's owned flag), a
+  // route or a hall's recipe set (actions, each its own Ctx anyway). Nothing else of the state is read here.
+  let memo = ROUTES.get(x);
+  if (!memo || memo.c !== x.c) ROUTES.set(x, (memo = { c: x.c, at: new Map() }));
+  const kept = memo.at.get(grade);
+  if (kept !== undefined) {
+    if (MEMO_CHECK.verify) {
+      const fresh = routeOfNow(x, grade);
+      if (fresh !== kept) memoMismatch(`routeOf(${grade})`, kept, fresh);
+    }
+    return kept;
+  }
+  const r = routeOfNow(x, grade);
+  memo.at.set(grade, r);
+  return r;
+}
+
+const ROUTES = new WeakMap<Ctx, { c: SalvageContent; at: Map<string, StationId | 'bay' | null> }>();
+
+/** engine3: drop the transition's kept routes (see routeOf): call after changing a plate's phase or heat, a route, a recipe or what is owned. */
+export function routesChanged(x: Ctx): void {
+  ROUTES.delete(x);
+}
+
+function routeOfNow(x: Ctx, grade: string): StationId | 'bay' | null {
   const set = x.s.routes[grade];
   if (set === 'bay') return 'bay';
   if (set !== undefined) {
@@ -655,6 +685,7 @@ export function orderPlate(x: Ctx, plate: string, t: number): void {
   const d = plateDef(x.c, plate);
   if (!d || x.s.works[plate]) return;
   x.s.works[plate] = freshWorks(x, plate, d, t);
+  routesChanged(x);
   x.dirty = true;
   if (heard(x)) x.ev.push({ type: 'plateState', plate, status: 'arriving' });
 }

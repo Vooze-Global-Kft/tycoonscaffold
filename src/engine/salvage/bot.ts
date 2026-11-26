@@ -34,6 +34,8 @@ import { nextGoal } from './goals';
 import { ackAway, buy, declineDeal, hire, level, noteSeen, setHold, setPresence, signDeal, skipGoal, stepOut } from './actions';
 import { dayWordCfg } from './board';
 import { advanceSalvage, jump } from './tick';
+import { awayPass } from './away';
+import { MAX_TICK } from './types';
 import { createSalvage } from './create';
 import { ratedCapacity } from './rate';
 import { lanePath, mapAt, piecePos, pointOf, skipZone, thingPos } from './positions';
@@ -1694,16 +1696,25 @@ export function away(b: Bot, seconds: number): void {
   const t0 = b.g.salvage.t;
   const cash0 = b.g.cash;
   b.now += seconds * 1000;
+  // Hard promise (8.3, stage 2): time away is paid once inside the state, and the card says what the cash moved by:
+  // money (gross) − the bank's share − what was spent. The tick does the away pass first, then 0.1 s of live play
+  // (tick.ts advanceSalvage); the bot makes the same two steps apart, so that the card is compared with the pass alone
+  // (a load the driver hooks in that live tenth is not the card's). The state is the same bit for bit.
+  const c = b.cfg.salvage;
+  const dt = Math.max(0, Math.min(Math.max(MAX_TICK, c.away.gapS), b.opts.dt));
+  // step() below ticks at now + dt: the tick's gap and its pass's end are measured from there (tick.ts advanceSalvage).
+  const gapS = (b.now + dt * 1000 - (b.g.salvage.clock.highMs + dt * 1000)) / 1000;
+  if (worksOpened(b.g.salvage) && gapS > c.away.gapS) {
+    b.g = awayPass(b.cfg, b.g, b.now, b.ev);
+    const card = b.g.salvage.away;
+    if (card) {
+      const moved = b.g.cash - cash0;
+      const said = card.money - (card.bank ?? 0) - (card.spent ?? 0);
+      if (Math.abs(moved - said) > 0.011) b.rec.broken.push({ t: b.g.salvage.t, what: `away card says ${said.toFixed(2)}, cash moved ${moved.toFixed(2)}` });
+    }
+  }
   step(b, b.opts.dt);
   b.rec.away.push({ t: t0, seconds, earned: b.g.lifetimeEarnings - earned0, supplied_g: b.g.salvage.ladder.supplied_g - sup0 });
-  // Hard promise (8.3, stage 2): time away is paid once inside the state, and the card says what the cash moved by:
-  // money (gross) − the bank's share − what was spent. (The one live tick after it may add a few cents: 1 § of slack.)
-  const card = b.g.salvage.away;
-  if (card && worksOpened(b.g.salvage)) {
-    const moved = b.g.cash - cash0;
-    const said = card.money - (card.bank ?? 0) - (card.spent ?? 0);
-    if (Math.abs(moved - said) > 1) b.rec.broken.push({ t: b.g.salvage.t, what: `away card says ${said.toFixed(2)}, cash moved ${moved.toFixed(2)}` });
-  }
 }
 
 /** The shop keys the record shows bought (goal purchases, in order). */

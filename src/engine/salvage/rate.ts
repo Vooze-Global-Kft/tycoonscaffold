@@ -16,7 +16,7 @@ import { openPartners, pickFromRung, ratedLoadNet } from './partners';
 import { FLOOR_CLEAR_SHARE, orderFromRung } from './crew';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
-import { worksOpen, worksOwn } from './works';
+import { routesChanged, worksOpen, worksOwn } from './works';
 import { floorSlots, pointOf, thingPos } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
@@ -133,6 +133,8 @@ export function own(x: Ctx, item: string, t: number): void {
     void defOf;
   }
   if (item === 'truck') s.truck.owned = true;
+  // engine3: what is owned is read by the kept routes (the crucible's owned flag): works.ts routeOf.
+  routesChanged(x);
   // Stage 2's purchases (a plate never comes here: works.ts orderPlate; the three-axle truck, the forklift, the
   // pallet truck, the plasma cutter's own parts): the feature's file (s2a-fix; a stub: nothing).
   worksOwn(x, item, t);
