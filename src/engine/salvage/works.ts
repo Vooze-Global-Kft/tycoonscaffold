@@ -27,7 +27,7 @@
  *   tick): `backFieldOpen`, the bath, `lots.nextAt` (2.10.1) and the `stage2` goals belong here. Until it
  *   sets `counts.bathSet` it is called at every such check.
  */
-import type { PlateDef } from '../../config/schema.salvage';
+import type { PlateDef, SalvageContent } from '../../config/schema.salvage';
 import { bayOf } from './bays';
 import { partnerOf } from './create';
 import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock';
@@ -42,7 +42,7 @@ import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
 import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
-import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, WorksState } from './types';
+import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
 //
@@ -859,6 +859,9 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
   const k = x.c.crane;
   const d = plateDef(x.c, id)!;
   if (!k || placeGap(x.c, d.plot, 'floor') > k.reach_m) return;
+  // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
+  let floorThings: { th: ThingState; o: SalvageContent['objects'][string] }[] | null = null;
+  let floorPieces: GroundPiece[] | null = null;
   for (const to of plateIds(x)) {
     const tw = x.s.works[to];
     const td = plateDef(x.c, to)!;
@@ -868,11 +871,12 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
     const items: string[] = [];
     let g = 0;
     // Whole things on the floor first (the shear's beams and tanks), then loose pieces on the floor.
-    const things = x.s.things
+    floorThings ??= x.s.things
       .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole)
       .map((th) => ({ th, o: x.c.objects[th.obj] }))
-      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj) && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }))
+      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj))
       .sort((a, b) => b.o.gross_g - a.o.gross_g || (a.th.uid < b.th.uid ? -1 : 1));
+    const things = floorThings.filter(({ th, o }) => !th.by && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }));
     for (const { th, o } of things) {
       if (o.gross_g > room) continue;
       th.by = `crane.${id}`;
@@ -880,7 +884,8 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
       g += o.gross_g;
       room -= o.gross_g;
     }
-    const ps = x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole) && plateAccepts(x, to, p));
+    floorPieces ??= x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole));
+    const ps = floorPieces.filter((p) => !p.claim && plateAccepts(x, to, p));
     for (const p of chooseFit(x, ps, room)) {
       p.claim = `crane.${id}`;
       items.push(p.uid);
