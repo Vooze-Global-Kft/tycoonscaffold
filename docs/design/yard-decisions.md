@@ -8,14 +8,16 @@ then part 1, then the first-yard document. File names inside the parts (`RULING.
 are complete here.
 
 - Part 1: the ruling on three competing designs (points 1 to 16), before the specification.
-- Part 2: the first yard's economy after the first numbers prototype (E1 to E36).
+- Part 2: the first yard's economy after the first numbers prototype (E1 to E40; E37 to E40 after the
+  owner's decisions of 26 November).
 - Part 3: the first yard after its review (S1 to S24).
 - Part 4: the first yard's map after the review of the built game (M1 to M7).
 - Part 5: the rulings on the review of the built game, by finding (S, R, H, P, W, L).
 - Part 6: the owner's decisions of 26 November (purchases limited to looks and scrip, bank loans,
   investments, yard sales, companies in the manner of neighbourhoods) and the lead's ruling on them
-  (sections 1 to 8). The specification carries it as D20 to D68 in its section 14, and its amended
-  passages are marked [26 Nov].
+  (sections 1 to 10: sections 9 and 10 are the rulings on what the writer and the critics found, and
+  change sections 1 to 8 where they differ). The specification carries it as D20 to D103 in its
+  section 14, and its amended passages are marked [26 Nov].
 
 ---
 
@@ -495,6 +497,30 @@ it is reworked with the two exchanges in the next stage, where timing a sale is 
 slow hand's first drive is within one and a half times the normal hand's on 11 seeds of 15 (E24
 asks nine of ten): kept as measured.
 
+### After the owner's decisions of 26 November (the ruling RULING2.md)
+
+**E37. E11 amended: credit exists, from rung 3, on works plates only.** E11 now reads: no credit in
+the first hour's shop: tools, carriers, crew and the first machines are bought with cash. From rung
+3 the bank's plant finance exists, on works plates that earn: the bank pays at most four fifths of
+the price and at most min(2 h, 0.15 x tau) of rated income; a flat charge fixed at signing; repaid
+only as a share of the payments for the financed plate's own output grades; no date, nothing that
+grows, no button to repay, cash never below zero (RULING2.md section 3). E4 (no dead end) holds:
+an idle plate pays nothing and its debt waits.
+
+**E38. Rated income, I.** Everything priced in hours of income (scrip packs, the bank's limit, a
+helper's daily limit) uses the scrip an hour the yard would earn with its present assets, no boss,
+at usual prices. It is computed from assets, never from recent sales, and it must agree with the
+measured away income an hour within a tenth at rungs 3 to 5 (RULING2.md 2.1).
+
+**E39. E20 restated for holdings.** With every part in a partner owned, three fifths of a load's
+margin still come from the yard's work: a part takes at most a tenth off a partner's load price
+and is capped to the trade done with that partner when it was bought (RULING2.md 4.2).
+
+**E40. Hold never stops the yard (it replaces E36(c)'s deferral).** While the boss is away and the
+cash cannot pay the next load, the held bay worth most rejoins the merchant's round, one bay at a
+time, and the away card names it. Built with the engine step that opens stage 2 (RULING2.md 10.5).
+
+(Editor's note, `design2-apply`: E37 and E39 above are the economy file's words as the lead wrote them before part 6's sections 9 and 10. Where they differ, part 6 is right: plant finance falls due on what the financed plate makes, whatever its output's destination, at s_p = min(`bank.share`, 0.8 x u_p), collected from the next lot payments (part 6, 10.1 and 10.2), not as a share of the payments for its own output grades; and a holding is a partnership, whose form stage 3 chooses (part 6, 9.7 and 9.10), not "a part in a partner".)
 ---
 
 ## The first yard: the lead's rulings after its review (25 November)
