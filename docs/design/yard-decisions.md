@@ -1956,3 +1956,183 @@ path; no vehicle exceeds 4 m/s inside the fence (the lane pays for it: no table 
 follow the drive line; the frame is built once. And `release.stage` keeps stage 2 dark on the
 owner's phone until its screens exist, so that these fixes, the cheaper time away and the yard
 hands' order of work can go to the phone now.
+
+#### 18.1 The ruling on the behaviour points (13:55; `owner1/RULING-owner1.md`, copied here so that the repository holds it)
+
+The owner's words are in OWNER.txt and at the head of every step. The diagnosis is `notes/owner1-diagnose.md`
+(read it whole: every mechanism, script and number below is from it). This file says what is built. Where it
+differs from the first yard's specification (2.6's "never from the heaps", P11, the trial's price, the truck's
+speeds), this file is right: the specification was measured for its timings, never for what a player sees.
+
+##### Point 2: a helper who stands still (he was idle 70 to 86 % of the time between his hire and the cutter's)
+
+H1. WHAT THE BOSS CUTS AND LEAVES, THE YARD HAND CARRIES (the diagnosis's V1). A yard hand may carry cut
+    pieces that lie beside a thing in a heap's bed when the boss is more than `crew.hand.leaveM` (3 m) from
+    them; they come after the tipping floor in his order of work. Pieces within 3 m of the boss stay his. The
+    chalk circles stay as they are (pieces in a circle first).
+H2. A WHOLE THING AT THE DROP-OFF WHEN HE WOULD OTHERWISE STAND (V2): only when nothing else is offered and
+    the boss is beyond `reach.sight` of it.
+H3. THE CABLE BUNDLE GOES TO THE POWERED STRIPPER (V3, a bug against P11 as written).
+H4. "IN THE YARD" MEANS INSIDE THE FENCE. A boss driving on the lane beyond the gate is away for P11 and E35
+    (today a boss who sits at the farm keeps the hands off whole things and the yard earns nothing).
+H5. NOBODY WAITS ON THE PLATFORM SCALE. A yard hand or cutter with nothing to do walks to a waiting place
+    beside the scale house (content `map.points`: places for as many crew as the yard can hire, clear of the
+    scale, the bays' fronts and the drive line; the checker knows them) as an ordinary dated leg, and waits
+    there. He is offered work again at every event AND at every presence sample while anybody waits (the boss
+    walking away from a heap frees its pieces: nobody may stand until "something else happens").
+H6. HE SAYS WHY. The frame's crew entry carries `idleWhy`: 'nothing' (nothing in the yard to carry or cut),
+    'uncut' (only things that need cutting or a tool the yard lacks), 'yours' (only pieces at the boss's
+    feet), and for a cutter 'tool' (the next thing needs a tool or a tier he has not). The rota's row carries
+    the same. Words (three text files; the words' check at 0 findings), at most 22 characters each, plain:
+    "Nothing to carry", "Waiting for cut pieces", "Leaving those to you", "Needs the torch" (the tool's name by
+    key). The world draws them as a small bubble over a waiting worker (the world's engineer).
+H7. THE FIRST HOUR IS MEASURED AGAIN. H1 to H4 make the hour faster (the diagnosis: about 9 % more earned by
+    minute 60, rung 2 two minutes earlier, rung 3 three). Bring every beat back into its band of
+    docs/design/yard-bots.md by the rung-2 and rung-3 tonnages ALONE (`ladder.rung2.t`, `ladder.rung3.t` and
+    their copies in `rungs`); if a beat cannot be brought back by those two numbers, leave it and report it
+    with the table. Then print: the yard hand's idle share between his hire and the cutter's (the aim: under
+    a third on every style and seed, and never a wait of over 30 s while cut pieces lie anywhere), the
+    purchase walk of ruling 17.1, the hard promises, a tick against a jump.
+
+##### Point 5: the farm's trial container
+
+T1. THE TRIAL LOAD IS FREE at the hook (`partners.partnerFarm.trialPrice` 0; the farm lets the first one go
+    on trust). It can never be refused for cash.
+T2. THE GOAL FOLLOWS THE LOAD. "Fetch the farm's trial load" shows the step the player is at, and the chevron
+    points at it: to the truck (not driving), to the gate and the farm (driving, no skip), "Keep still: hooking"
+    (at the skip, the ring running), "Drive onto the weighbridge" (a skip aboard, not weighed: the chevron on
+    the weighbridge), "Tip it on the floor" (weighed: the chevron on the floor's stop). Stepping out with a
+    skip aboard that is not yet weighed or tipped shows the step's words as a toast and the chevron stays on
+    the truck. The same steps serve every later load the boss fetches himself.
+T3. THE BOSS HOOKS IN 4 SECONDS, not 10 (`truck.bossHandle_s` 4; the hired driver's `handle_s` stays 10, so
+    his trip and every measured table stay). The ring is the rules' (the act's dated end).
+T4. A REFUSAL STAYS ON SCREEN for as long as it holds (the act stays `refused.<why>` and the frame carries the
+    reason and its figure: "Needs §x more", "No room on the floor"): the screens show it on the skip's plate
+    and by the one button until it ends, not as one toast.
+
+##### Point 7: the vehicles
+
+V1. EVERY PHASE OF A TRIP CARRIES ITS OWN PATH (frame.ts; one function in positions.ts shared with the rules'
+    distances): out: park, turn, line, gate, lane, skip; hook: standing at the skip; back: skip, lane, gate,
+    line, weighbridge; weigh: standing on it; tip: weighbridge to the floor's stop; park: the floor's stop,
+    turn, park. No phase is ever drawn along another phase's path (today the park phase draws the whole lane
+    trip in a second and a half: 140 to 290 m/s through the yard, with jumps of up to 285 m: this is what the
+    owner saw). A test walks every phase of every partner's trip: the drawn point is continuous across phase
+    switches (no jump over half a metre) and never faster than the phase's own speed.
+V2. THE DRIVER TIPS AT THE FLOOR'S STOP on the drive line (`driveLine.stops.floor`), as the boss does, never
+    on the floor's centre where people work.
+V3. A YARD'S SPEED IN THE YARD. Inside the fence no vehicle moves faster than `truck.yardV` (4 m/s); beyond
+    the gate the lane's speed is raised so that the TOTAL of every trip, at every driver's level and with the
+    foreman's boost, is what it was to the millisecond (a test over every level): no measured table moves.
+    The boss's own truck: at most `truck.bossYardV` (4.5 m/s) inside the fence and `truck.bossV` 11 on the
+    lane, so that the first drive's beat stays within five seconds of today's.
+V4. WHAT ARRIVES, ARRIVES BY THE DRIVE LINE: the purchase van, the machine flatbed and the merchant's flatbed
+    follow the line to the stop nearest their place and set down there (the thing is then at its place, as the
+    rules date it); no drawn path crosses a solid; no jump at set-down. The map's checker refuses an arrival
+    path through a solid.
+V5. NOBODY GIVES WAY BY RULE (dated legs stay dated). The world draws the nearer of two in front; the review
+    looks again once V1 to V4 are in.
+
+##### Point 1: what the rules hand the screen
+
+L1. `frame()` is computed ONCE for a state and shared (a memo by the state's identity in frame.ts; the hud,
+    the rings, the hints and the labels read the same object), and reuses its unchanged parts (things and
+    pieces change only at events).
+L2. A presence sample that changes nothing but the boss's own position pushes no new scene to the screen (the
+    boss is the screen's own).
+The screen's side (who reads `frame()` and when; the truck's smoothing) is the world's engineer's.
+
+##### The switch: stage 2 stays dark on the owner's phone until its screens exist
+
+S1. Content `release.stage` (1 or 2; absent means 2, so every test and frozen content keeps working; the real
+    content says 1 until the lead changes it). At stage 1: the works never open (no works layer, no stage-2
+    grade, thing, partner, shop item, bay, lot, rack, plate; the stage's goal list is never offered); the
+    ladder's top is rung 3 (rungs 4 and up shown padlocked, as the first yard showed them); no shop row, no
+    pack, no ad offer, no away bonus, no letter, no Agreements tab, no bank; the away caps as the first
+    yard's. What stays ON, because it is the first yard's engine now: runs from rung 3, the yard hands' order
+    of work, Hold's release, the cheaper time away, everything of this ruling.
+S2. Tests: three days of bots at stage 1 touch no stage-2 state (works empty, no agreement, the shop's state
+    as created, lots and reuse undated, no stage-2 event, no stage-2 card or row from any frozen state); a
+    save made at stage 1 loads at stage 2 and opens the works at its first live instant at rung 3 or more; the
+    first hour at stage 1 equals the first hour at stage 2 below rung 3, bit for bit.
+S3. Also in this pass: the test fix2a.test.ts "backFieldOpen is heard exactly once" (its mock of works.ts is
+    bypassed: repair the test so that it tests the rule on the real opening path).
+
+#### 18.2 After the review of the fixes (about 16:45): a player's findings and the lead's rulings
+
+A player and a phone engineer who built none of it looked at the result. The player's verdict was
+"close, not ready": four things would still look broken in the first ten minutes. One pass of fixes
+followed (three engineers: world, hud, rules). Each finding and its ruling:
+
+- Finding 1 (blocking, world): My own worker vanishes. Standing at the tool rack only a helmet tip shows above the roof; walking near the office he is gone for minutes at a time.
+  RULING: A PLAYER ALWAYS SEES HIMSELF. Whenever the boss's position lies under a roof or canopy as it is drawn (the tool rack, the office, the scale house, any shed), that roof is drawn see-through (about a third of its ink, eased over a fifth of a second) for as long as he is under it; crew under a roof are drawn the same way through it. No walkable ground changes. A test over every roofed place of the map: with the boss at its centre and at each edge his sprite is not fully covered. Pictures at the tool rack and the office, looked at.
+- Finding 2 (blocking, world): The merchant's flatbed drives through yard hands who stand on the weighbridge and the drive line. This is the owner's 'running people over', still visible at the right speed.
+  RULING: PEOPLE STEP ASIDE, on the screen only (dated legs stay dated: the lead's V5 stands for the rules). While a moving vehicle's drawn body would overlap a drawn person (the vehicle's width plus 0.4 m either side, over the next second of its dated path), that person is drawn stepped off the vehicle's path to the nearer side, eased out and back, by at most 1.6 m; his rules position is untouched and he arrives where and when the rules say. A person who STANDS on the drive line or the weighbridge while waiting is a rules fault: report in requests.md where the rules made him stand (the rules' engineer moves the waiting places). A test: the played minute-30 state run for five minutes of frames: no frame in which a person's drawn centre is inside a moving vehicle's drawn body.
+- Finding 3 (blocking, rules): Stopping beside the farm's sign, a truck's length short of the skip, does nothing and says nothing. The goal still reads 'Drive out to the load' and only a chevron sits on the skip. The preview's own scripted driver stopped there and went home empty.
+  RULING: THE WHOLE SITE IS THE STOP. A truck that stands still anywhere on the partner's site (from 6 m before its sign to 6 m past its last skip, the lane's width; content: derived from the site's own points, checked by the map's checker) hooks the full skip: the 4 s ring starts wherever it stands. Outside the site but within 15 m of it and standing still, the goal's step reads 'Pull up to the skip' and the chevron stays on the skip (a new step; words within the goal line's box at font scale 1.3). Also the preview's scripted drive route stops inside the site. Test: the reviewer's stop at lane x 236 hooks; a stop 10 m short shows the step and does not hook.
+- Finding 4 (blocking, hud): At 844, after the hook the disc went blank and dim while I was still in the truck, all the way home, during the weigh and during the tip: no 'Step out'. At 667 the same drive kept 'Step out', so it happens only sometimes.
+  RULING: THE DISC NEVER GOES BLANK IN THE TRUCK. The one button's mode comes from the rules (the frame's truck: the boss is at the wheel) and not from the world's own driving flag alone: at the wheel it always reads 'Step out', also at the truck's park (finding 11: never 'Open' while in the truck; a place's card opens only on foot). Find where the flag dropped after the hook at 844 and say it. A test over a whole scripted trip: every frame at the wheel the disc's label is 'Step out'.
+- Finding 5 (important, rules): With the boss standing at the drop-off holding a full load, the yard hand waits beside the platform scale for about 80% of two minutes under 'Leaving those to you'. That is the owner's frozen-helper picture with a label added. 'Those' is unclear, and nothing tells me to move.
+  RULING: THE HELPER CARRIES UNLESS THE BOSS IS ABOUT TO. H1 and H2 of the ruling change: a cut piece in a heap, and a whole thing at the drop-off that the yard hand may carry, are the boss's ONLY while all three hold: he is within crew.hand.leaveM (3 m) of it, his load has room for it, and he has moved or worked within the last crew.hand.leaveS (5 s). Otherwise the yard hand takes it (H2 no longer waits for the boss to be beyond sight, and no longer only when nothing else is offered: whole drop-off things come in his order after the heaps' pieces). The reason 'yours' is given only under those three. The waiting places move to the scale house's wall (content points; clear of the scale's plate, the bays' fronts and the drive line; the checker), and nobody ever waits ON the drive line or the weighbridge (the world's engineer will tell you in requests.md if he sees it). Then the first hour again with the bots (15 seeds, 2 routes): bring rung 2 and rung 3 back into their bands by their two tonnages alone, print the yard hand's idle share between his hire and the cutter's (aim: under a third on the median of every style) and the longest wait with something he may carry lying anywhere (aim: under 15 s), the purchase walk, the hard promises, a tick against a jump.
+- Finding 6 (important, world): The 'Keep still: hooking' pill lies on the skip's label and hides its last lines ('+ 2 more · Net 540 kg'). At 844 I saw no ring in the three frames where the pill showed; at 667 the ring is drawn clearly.
+  RULING: The hook's words stand BELOW the truck (never on the skip's label), and the ring is drawn at 844 as at 667 (find why three frames at 844 showed none: its size, its place behind the label, or its start). Pictures at both sizes during the 4 s.
+- Finding 7 (important, hud): Standing between the tool rack and the weighbridge, the card that opened with the tool rack's list was titled 'Weighbridge'.
+  RULING: A place's card is titled from the place whose rows it shows (the tool rack's list was titled 'Weighbridge' when opened between the two). Find the cause (the card's ref against the nearest place) and pin it with a test at the reviewer's two positions.
+- Finding 8 (important, hud): The first view lists sales worth about §106,000, yet NET reads +§21,580. The load costs (Hob's Farm Clearance, 43 loads, -§41,971) appear only after scrolling, so the first sight looks like the numbers do not add up.
+  RULING: THE AWAY CARD ADDS UP AT FIRST SIGHT. The fixed foot shows, beside NET, one line 'Sold +§x · Loads −§y' (and the bank's share when there is one), from CardData's own totals, so that the first view explains the net without scrolling; both sizes, font scale 1.3.
+- Finding 9 (minor, hud): The goal card repeats itself: 'Tip it on the floor' and then '▸ Tip it on the floor'.
+  RULING: Hide the goal's step line when its words equal the goal's own.
+- Finding 10 (minor, rules): 'Net 540 kg · §0.00' and a red 'Bought for §0.00' read as if the load is worthless or broken.
+  RULING: A FREE LOAD SAYS FREE. The trial load's skip label and its weighbridge ticket say 'Free trial load' (label) and 'Free: the farm's trial' (ticket line) instead of §0.00 and a red 'Bought for §0.00': the ticket's data carries a flag the screens print (tell the hud's engineer its name in requests.md); words in the three text files, the check at 0 findings.
+- Finding 11 (minor, hud): Sitting in the truck at the park the disc reads 'Open' (the park card), and the truck put me in the driver's seat while the shop card was still open.
+  RULING: With finding 4: at the wheel the disc reads 'Step out' everywhere; the park's card opens only on foot; entering the truck closes an open card first.
+- Finding 12 (minor, hud): 'Washing machine · signed in · gate drop-off' toasts keep coming while I am at the farm, 180 m away.
+  RULING: Drop-off toasts ('signed in') are held while the boss is beyond the gate and shown as one line when he is back inside ('{n} things signed in at the gate'), if any.
+- Finding 13 (minor, world): Two empty dashed circles with an X near the weighbridge look like unfinished art. At m5 the ghost-thumb hint sits on top of the stripper bench.
+  RULING: An EMPTY chalk circle is drawn faint (a quarter of its ink); the ghost thumb's hint never sits on a machine or a place's label (move it to free ground near the stick's rest).
+- Finding 14 (minor, hud): The crane's sign reads 'Cinder Lane Yard · 2.8 t supplied' while the line below reads 'You: 9.01 t supplied'. They look contradictory.
+  RULING: The rung sign's own line reads 'Opened at {t}' (the rung's tonnage) so that it does not contradict 'You: {t} supplied' below it; words in the three text files.
+- Finding 15 (important, rules): A farm level at minute 90 lowers what the yard keeps by 3.8 % on means (it was 0.0 after the yard hands' rule alone).
+  RULING: not now (the lead: it goes to the bots' tuning with stage 2: a lower top level for the farm's skips or the driver's rank of ruling 16.5; print the row again after finding 5's change so that the lead sees whether it moved).
+
+What the one pass measured (15 seeds, four styles): the yard hand's idle share between his hire and
+the cutter's fell from 48 to 63 % to 44 to 52 % (the aim of under a third is NOT met: about 60 % of
+what remains is "nothing cut yet", which no rule about his order of work can change before a cutter
+is hired); the longest wait with something he may carry lying about is over 15 s on 6 of 60 runs
+(worst 26.5 s). Rung 2 moved from 2.8 t to 3.0 t and rung 3 from 31.5 t to 32.2 t to keep the normal
+hand's beats in their bands (rung 2 at 13:12, rung 3 at 59:27); the slow hand's rung 3 is in band on
+7 of 15 runs (it was 12): the bots' tuning with stage 2 looks at it. No hard promise broke on 144
+runs. Finding 15's row (the farm's level at minute 90) reads -3.33 % on means: left for that tuning.
+
+#### 18.3 Who sits in the cab (the lead, about 17:45)
+
+Behind point 5 there was a second cause, found while closing the fixers' requests. The screen and
+the rules each decided for themselves whether the boss sits in the truck: the yard view flips into
+the cab the frame the player steers into the truck; the rules seated him only when a presence
+sample lay within `truck.enter`, the door was armed again (`truck:out`) AND no act of his was still
+running. A pick-up's ring beside the truck (pieces on the floor, a tray) kept him on foot in the
+rules while the screen drove away: a truck the rules thought parked, which hooked nothing, until a
+hired driver took that parked truck on trips: the owner's words exactly. Samples are also coalesced
+after a stall of the JavaScript thread, which could leave the two doors armed differently; and the
+other way round the rules could seat him (the truck pulls up beside him) while the screen kept him
+on foot, the rules' truck then following a walking man.
+
+RULING: THE TWO NEVER DISAGREE ON WHO DRIVES, AND WHAT THE PLAYER SEES IS WHAT THE RULES HAVE.
+- The screen's cab flag is the player's getting in: a presence sample that says "at the wheel" seats
+  the boss whenever the truck stands free (owned, nobody at its wheel, on no trip, not on its way
+  in), cancelling the act that was running (work keeps its progress) and without asking whether the
+  door was armed. The sample's place stays clamped as any sample's (R7), so the truck goes no
+  faster than a truck. The rules' own walk-in stays for a sample without the flag (the truck that
+  pulls up beside him) and for the bots, which never send the flag unseated: no measurement moves.
+- The screen follows the rules back: when the rules seat him, the yard view puts him in the cab;
+  when the truck leaves with the driver before the rules heard he was in it, he is set down; at a
+  snap (a reload, time away) the view takes the rules' word both ways (time away at the wheel gives
+  the truck to the driver: he is on foot when the player returns).
+- Step out: the view tells the rules exactly what it did (at the wheel, still, the truck's place
+  and its heading, one of eight) and waits for their answer; if they refuse, he is back in the cab.
+  The truck no longer turns to an old heading when he steps out.
+- The screens' "driving" flag is said by the frame loop at every snap; the shell no longer resets
+  it on mount (that reset could land after the first frame and blank the button at the wheel).
+Tests: `src/engine/salvage/seat.test.ts`. Seen in the preview: the first drive from the park by the
+gate to the farm, the hook, the weighbridge, the floor; and the same with a Step out at the gate, a
+walk to the weighbridge and back into the truck.
