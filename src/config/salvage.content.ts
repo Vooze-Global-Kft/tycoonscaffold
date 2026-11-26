@@ -1612,24 +1612,26 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
   bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
   // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
-  // The sixteen products themselves are the shared list's (monetization.iap.products, B5: Phase B, with the shared schema).
+  // The sixteen products themselves are the shared list's (monetization.iap.products, B5): build-yard.py writes them from the
+  // names register with the game's prefix `yard_` (the fingerprint's rule: every product id starts with one prefix); lookOf
+  // names them by those ids (content2-bots).
   iap: {
     packsFromRung: 4,
     // RULING2.md 15.12 (b): quotes of one product that may stand at once (the lead, 08:05)
     maxStanding: 3,
     packsOff: ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "CH"],
     lookOf: {
-      colour1: { slot: "colour", value: "look.colour1" },
-      colour2: { slot: "colour", value: "look.colour2" },
-      colour3: { slot: "colour", value: "look.colour3" },
-      colour4: { slot: "colour", value: "look.colour4" },
-      colour5: { slot: "colour", value: "look.colour5" },
-      colour6: { slot: "colour", value: "look.colour6" },
-      dressing1: { slot: "dressing", value: "look.set1" },
-      dressing2: { slot: "dressing", value: "look.set2" },
-      dressing3: { slot: "dressing", value: "look.set3" },
-      dressing4: { slot: "dressing", value: "look.set4" },
-      plaque: { slot: "plaque", value: "look.plaque" },
+      yard_colour1: { slot: "colour", value: "look.colour1" },
+      yard_colour2: { slot: "colour", value: "look.colour2" },
+      yard_colour3: { slot: "colour", value: "look.colour3" },
+      yard_colour4: { slot: "colour", value: "look.colour4" },
+      yard_colour5: { slot: "colour", value: "look.colour5" },
+      yard_colour6: { slot: "colour", value: "look.colour6" },
+      yard_dressing1: { slot: "dressing", value: "look.set1" },
+      yard_dressing2: { slot: "dressing", value: "look.set2" },
+      yard_dressing3: { slot: "dressing", value: "look.set3" },
+      yard_dressing4: { slot: "dressing", value: "look.set4" },
+      yard_plaque: { slot: "plaque", value: "look.plaque" },
     },
     looks: ["colour", "dressing", "plaque", "sign"],
   },

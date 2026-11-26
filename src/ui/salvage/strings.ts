@@ -29,7 +29,8 @@ export const TEXT = {
   rankChipToNext: '{rank} · {t} to next',
   rankChipTop: '{rank} of {n}',
   carry: '{a} / {b} kg',
-  loadFull: 'Load full',
+  // P1 (owner2-fix-hud): what happened and where the load goes (it showed while the chip still had room).
+  loadFull: 'No room: weigh your load at the scale',
   open: 'Open',
   stepOut: 'Step out',
   getIn: 'Get in', // hud: the one button beside the free truck (owner2-hud, ruling 18.4); the disc box as stepOut

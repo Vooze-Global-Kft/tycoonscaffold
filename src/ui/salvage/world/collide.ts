@@ -59,6 +59,61 @@ export function pushOut(out: number[], r: number, solids: readonly number[], o: 
   return true;
 }
 
+/** Numbers per body of a vehicle list (./motion.ts VB_STRIDE: x, y, ux, uy, half length, half width, vx, vy, ...). Kept equal by a test. */
+export const BODY_STRIDE = 13;
+/** Below this speed (m/s) a vehicle stands (./motion.ts MOVING_V). */
+const STAND_V = 0.3;
+
+/**
+ * owner2-fix P2: pushes the circle (out[0], out[1], radius r) out of the turned rectangle of body `o` of VB
+ * (its footprint as drawn: centre, unit facing, half length, half width). Returns true when it moved.
+ */
+export function pushOutBody(out: number[], r: number, VB: readonly number[] | Float64Array, o: number): boolean {
+  const ux = VB[o + 2];
+  const uy = VB[o + 3];
+  const hl = VB[o + 4];
+  const hw = VB[o + 5];
+  const dx = out[0] - VB[o];
+  const dy = out[1] - VB[o + 1];
+  const a = dx * ux + dy * uy;
+  const b = -dx * uy + dy * ux;
+  const ca = Math.max(-hl, Math.min(hl, a));
+  const cb = Math.max(-hw, Math.min(hw, b));
+  const na = a - ca;
+  const nb = b - cb;
+  const d2 = na * na + nb * nb;
+  if (d2 >= r * r) return false;
+  let ta = a;
+  let tb = b;
+  if (d2 > 1e-12) {
+    const d = Math.sqrt(d2);
+    ta = ca + (na / d) * r;
+    tb = cb + (nb / d) * r;
+  } else {
+    // The centre inside the rectangle: out by the nearest side.
+    const ea = hl - Math.abs(a);
+    const eb = hw - Math.abs(b);
+    if (ea < eb) ta = (a < 0 ? -1 : 1) * (hl + r);
+    else tb = (b < 0 ? -1 : 1) * (hw + r);
+  }
+  out[0] = VB[o] + ta * ux - tb * uy;
+  out[1] = VB[o + 1] + ta * uy + tb * ux;
+  return true;
+}
+
+/** Does the circle (x, y, r) overlap the turned rectangle of body `o` of VB? */
+export function overlapsBody(x: number, y: number, r: number, VB: readonly number[] | Float64Array, o: number): boolean {
+  const dx = x - VB[o];
+  const dy = y - VB[o + 1];
+  const a = dx * VB[o + 2] + dy * VB[o + 3];
+  const b = -dx * VB[o + 3] + dy * VB[o + 2];
+  const na = Math.abs(a) - VB[o + 4];
+  const nb = Math.abs(b) - VB[o + 5];
+  const qa = Math.max(0, na);
+  const qb = Math.max(0, nb);
+  return qa * qa + qb * qb < r * r;
+}
+
 /**
  * Keeps a body inside the yard [0, w] x [0, d] or, when `lane` ([x0, x1, y0, y1]) is given, inside the
  * lane east of the gate: a body may cross the east fence only inside the lane's band (the gate), and a
@@ -81,7 +136,7 @@ export function keepInside(out: number[], r: number, w: number, d: number, lane:
  * Moves a circle of radius `r` from (x, y) by (dx, dy) through `solids` (and one extra circle `ex, ey,
  * er` when er > 0: the parked truck), inside the yard [0, w] x [0, d]. Writes the new place into out[0], out[1].
  */
-export function moveBody(out: number[], x: number, y: number, dx: number, dy: number, r: number, solids: readonly number[], w: number, d: number, ex: number, ey: number, er: number, solids2?: readonly number[], lane?: readonly number[]): void {
+export function moveBody(out: number[], x: number, y: number, dx: number, dy: number, r: number, solids: readonly number[], w: number, d: number, ex: number, ey: number, er: number, solids2?: readonly number[], lane?: readonly number[], VB?: readonly number[] | Float64Array, nvb = 0): void {
   // Long steps (a stalled frame) are cut into pieces no longer than the radius, so nothing is tunnelled through.
   const len = Math.sqrt(dx * dx + dy * dy);
   const steps = Math.max(1, Math.min(8, Math.ceil(len / Math.max(0.05, r * 0.9))));
@@ -94,6 +149,14 @@ export function moveBody(out: number[], x: number, y: number, dx: number, dy: nu
       let moved = false;
       for (let o = 0; o + 4 < solids.length; o += 5) if (pushOut(out, r, solids, o)) moved = true;
       if (solids2) for (let o = 0; o + 4 < solids2.length; o += 5) if (pushOut(out, r, solids2, o)) moved = true;
+      // owner2-fix P2: the STANDING vehicles' rectangles (VB, nvb bodies), except one he already stands in at the
+      // start (a vehicle that stopped on him, a Step out at its end): that one lets him out.
+      for (let q = 0; q < nvb; q++) {
+        const o = q * BODY_STRIDE;
+        if (VB![o + 6] * VB![o + 6] + VB![o + 7] * VB![o + 7] >= STAND_V * STAND_V) continue;
+        if (overlapsBody(x, y, r, VB!, o)) continue;
+        if (pushOutBody(out, r, VB!, o)) moved = true;
+      }
       if (er > 0) {
         const qx = out[0] - ex;
         const qy = out[1] - ey;

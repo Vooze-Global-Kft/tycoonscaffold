@@ -175,7 +175,8 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   if (counting && !ref && salvage && ctx) {
     return (
       <FrameProvider value={ctx}>
-        <View pointerEvents="auto" style={[styles.scrim, { top: ctx.layout.band.top }]} />
+        {/* A2 (owner2-fix-hud): the counting card's scrim covers the whole screen, the top band included. */}
+        <View pointerEvents="auto" style={styles.scrim} />
         <CountingCard />
       </FrameProvider>
     );

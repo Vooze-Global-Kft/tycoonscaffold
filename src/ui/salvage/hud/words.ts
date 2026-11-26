@@ -165,6 +165,27 @@ export function heldRefusal(cfg: R.SalvageConfig, g: R.SalvageGame | undefined):
 }
 
 /** The toast's words for an event, or null (pure; ./hud.test.ts). */
+/**
+ * P1 (owner2-fix-hud): the load a "No room" toast speaks of: its pieces (count, grams, the last one picked up).
+ * A piece that does not fit drops beside the thing and leaves the load as it was, so the signature holds.
+ */
+export function loadSig(g: R.SalvageGame | undefined): string {
+  const load = g?.salvage?.load ?? [];
+  let grams = 0;
+  for (const p of load) grams += p.g;
+  return `${load.length}:${grams}:${load.length ? load[load.length - 1].uid : ''}`;
+}
+
+/** P1: "No room" once per load: true when the load differs from the one it was last shown for. */
+export function loadFullOnce(): (sig: string) => boolean {
+  let last: string | null = null;
+  return (sig) => {
+    if (sig === last) return false;
+    last = sig;
+    return true;
+  };
+}
+
 export function toastText(e: R.SalvageEvent, c: R.SalvageContent, cardOpen: boolean): { text: string; refusal: boolean } | null {
   if (e.type === 'loadFull') return { text: say({ key: 'loadFull' }, c), refusal: false };
   if (e.type === 'refused' && !cardOpen) return { text: say({ key: `refusal.${e.key}` as R.TextKey, args: e.args }, c), refusal: true };

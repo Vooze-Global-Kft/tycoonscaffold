@@ -36,6 +36,8 @@ export const useCards = create<CardStack>((set, get) => ({
   note: null,
   open: (ref, tab) => {
     const ui = useSalvageUi.getState();
+    // A2 (owner2-fix-hud): nothing opens under the counting card; only the away card that takes its place.
+    if (ui.counting && ref.kind !== 'away') return;
     if (!ui.stack.includes('panel')) ui.open('panel');
     set({ ref, tab: tab ?? (ref.kind === 'processBoard' ? 'processBoard' : 'rota'), note: null });
   },

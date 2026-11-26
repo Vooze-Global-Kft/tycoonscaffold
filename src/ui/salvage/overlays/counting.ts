@@ -9,12 +9,16 @@
  * The order is a plain object over injected steps (./countingOrder.ts `createCounting`), checked by ./counting.test.ts.
  */
 import { useEffect, useMemo } from 'react';
-import { devBeginAbsence, onPending, pendingAbsence, runPending } from '../../../modes/salvage/returning';
+import { devBeginAbsence, onPending, pendingAbsence, recordPassErrorsWith, runPending } from '../../../modes/salvage/returning';
+import { crash } from '../../../services/firebase';
 import { loadingClock } from '../loading/clock';
 import { useSalvageUi } from '../uiState';
-import { closeCard } from './cardStack';
+import { closeCard, useCards } from './cardStack';
 import { createCounting, type Counting } from './countingOrder';
 import { devCounting } from './devOpen';
+
+// L1: the mode's returning.ts imports no service; the screen hands it the crash recorder.
+recordPassErrorsWith((e, where) => crash.record(e, where));
 
 /** The overlay host's hook: drives the counting card; true while it shows. */
 export function useCounting(): boolean {
@@ -51,10 +55,12 @@ export function useCounting(): boolean {
     const t = setInterval(() => {
       if (!loadingClock.done.value) return;
       clearInterval(t);
-      devBeginAbsence(dev.hours);
+      devBeginAbsence(dev.hours, dev.mode === 'hold');
     }, 250);
     return () => clearInterval(t);
   }, [dev]);
-  useEffect(() => (counting ? ctl.painted() : undefined), [counting, ctl]);
+  // A2: the pass is scheduled only for the counting card that was painted (no card drawn in its place).
+  const covered = useCards((s) => s.ref !== null);
+  useEffect(() => (counting && !covered ? ctl.painted() : undefined), [counting, covered, ctl]);
   return counting;
 }

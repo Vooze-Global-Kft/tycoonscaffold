@@ -4413,47 +4413,47 @@
         "CH"
       ],
       "lookOf": {
-        "colour1": {
+        "yard_colour1": {
           "slot": "colour",
           "value": "look.colour1"
         },
-        "colour2": {
+        "yard_colour2": {
           "slot": "colour",
           "value": "look.colour2"
         },
-        "colour3": {
+        "yard_colour3": {
           "slot": "colour",
           "value": "look.colour3"
         },
-        "colour4": {
+        "yard_colour4": {
           "slot": "colour",
           "value": "look.colour4"
         },
-        "colour5": {
+        "yard_colour5": {
           "slot": "colour",
           "value": "look.colour5"
         },
-        "colour6": {
+        "yard_colour6": {
           "slot": "colour",
           "value": "look.colour6"
         },
-        "dressing1": {
+        "yard_dressing1": {
           "slot": "dressing",
           "value": "look.set1"
         },
-        "dressing2": {
+        "yard_dressing2": {
           "slot": "dressing",
           "value": "look.set2"
         },
-        "dressing3": {
+        "yard_dressing3": {
           "slot": "dressing",
           "value": "look.set3"
         },
-        "dressing4": {
+        "yard_dressing4": {
           "slot": "dressing",
           "value": "look.set4"
         },
-        "plaque": {
+        "yard_plaque": {
           "slot": "plaque",
           "value": "look.plaque"
         }
@@ -6643,10 +6643,128 @@
       },
       "forceTestAds": true,
       "showBanner": false,
-      "interstitials": false
+      "interstitials": false,
+      "initOn": "firstOffer"
     },
     "iap": {
-      "products": []
+      "products": [
+        {
+          "id": "yard_colour1",
+          "kind": "cosmetic",
+          "title": "Yard colours: Cherry red",
+          "description": "Trucks, vests and skips in cherry red.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour2",
+          "kind": "cosmetic",
+          "title": "Yard colours: Indigo",
+          "description": "Trucks, vests and skips in indigo.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour3",
+          "kind": "cosmetic",
+          "title": "Yard colours: Teal",
+          "description": "Trucks, vests and skips in teal.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour4",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mint",
+          "description": "Trucks, vests and skips in mint.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour5",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mustard",
+          "description": "Trucks, vests and skips in mustard.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour6",
+          "kind": "cosmetic",
+          "title": "Yard colours: Lavender",
+          "description": "Trucks, vests and skips in lavender.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_dressing1",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tub garden",
+          "description": "Planters in old tubs around your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing2",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Open day",
+          "description": "Flags and bunting for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing3",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Bench corner",
+          "description": "Benches and a table for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing4",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tidy lines",
+          "description": "Painted kerbs and lines for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_plaque",
+          "kind": "cosmetic",
+          "title": "Founder's plaque",
+          "description": "A bronze plaque for your yard's gate.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_skipAds",
+          "kind": "skipAds",
+          "title": "No ad videos",
+          "description": "Get every ad reward without watching.",
+          "fallbackPrice": "$4.99"
+        },
+        {
+          "id": "yard_pack2",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 2 hours' earnings",
+          "description": "Scrip: about 2 hours of your yard's earnings",
+          "fallbackPrice": "$1.99",
+          "value": 2
+        },
+        {
+          "id": "yard_pack5",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 5 hours' earnings",
+          "description": "Scrip: about 5 hours of your yard's earnings",
+          "fallbackPrice": "$4.99",
+          "value": 5
+        },
+        {
+          "id": "yard_pack10",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 10 hours' earnings",
+          "description": "Scrip: about 10 hours of your yard's earnings",
+          "fallbackPrice": "$9.99",
+          "value": 10
+        },
+        {
+          "id": "yard_pack20",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 20 hours' earnings",
+          "description": "Scrip: about 20 hours of your yard's earnings",
+          "fallbackPrice": "$19.99",
+          "value": 20
+        }
+      ]
     }
   },
   "store": {

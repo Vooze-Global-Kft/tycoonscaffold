@@ -34,6 +34,8 @@ export interface Refusal {
 }
 
 const NOT_SALVAGE: Refusal = { key: 'notBuilt', args: {}, retry: null };
+/** An action pressed while an absence waits for its pass (owner2-fix-hud, A2). */
+const HELD: Refusal = { key: 'nothing', args: {}, retry: null };
 
 type Step = (cfg: R.SalvageConfig, g: R.SalvageGame, clock: number, events: R.SalvageEvent[]) => R.SalvageGame;
 
@@ -41,8 +43,9 @@ type Step = (cfg: R.SalvageConfig, g: R.SalvageGame, clock: number, events: R.Sa
 function act(where: string, fn: Step): Refusal | null {
   const now = salvageNow();
   if (!now) return NOT_SALVAGE;
-  // owner2-hud: while an absence waits for its pass (./returning.ts) nothing is applied to the old state.
-  if (heldForCount()) return null;
+  // owner2-hud: while an absence waits for its pass (./returning.ts) nothing is applied to the old state; A2: and
+  // the screen hears a refusal (null would mean "applied"), the same `nothing` every other "nothing to do" gives.
+  if (heldForCount()) return HELD;
   const events: R.SalvageEvent[] = [];
   let next: R.SalvageGame;
   try {

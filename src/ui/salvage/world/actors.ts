@@ -850,6 +850,8 @@ export function circleFilled(f: Pick<R.FrameTable, 'things' | 'pieces'>, ci: { x
 export const ROOFED_IDS: readonly string[] = ['plant.portacabin', 'plant.toolrack', 'plant.scalehouse', 'plant.sign.posts', 'plant.board.notice'];
 /** Numbers per roof: x0, x1, y0, y1 of its drawn box (metres across, metres x tilt down the screen), its sort key, its static item's index. */
 export const ROOF = 6;
+/** At most this many roofs (the frame loop's per-roof scratch). */
+export const ROOF_MAX = 16;
 /** A roof's ink while somebody stands under it (about a third) and the seconds its ink takes to change. */
 export const ROOF_SEE = 1 / 3;
 export const ROOF_EASE_S = 0.2;
@@ -888,6 +890,28 @@ export function roofTable(c: SalvageContent, statics: readonly number[], res: Re
     const s = (e.drawScale ?? 1) / 40;
     out.push(pt[0] + b.x * s, pt[0] + (b.x + b.w) * s, pt[1] * tilt + b.y * s, pt[1] * tilt + (b.y + b.h) * s, statics[idx * ITEM + 1], idx);
   }
+  // owner2-fix P7 (A PLAYER ALWAYS SEES HIMSELF, as for roofs): the container wall's containers (props of kind
+  // 'wall', 2.6 m high) cover whoever walks behind one (the passage between two of them, a container's north
+  // end): each is see-through while it covers the boss or a worker.
+  for (const p of c.props) {
+    if (p.kind !== 'wall' || out.length / ROOF >= ROOF_MAX) continue;
+    const id = p.d >= p.w ? 'plant.container.ns' : 'plant.container.ew';
+    const e = entryOf(id);
+    if (!e) continue;
+    const cell = res(id, 0, 0);
+    let idx = -1;
+    for (let i = 0; i * ITEM < statics.length; i++) {
+      const o = i * ITEM;
+      if (statics[o + 2] === cell && statics[o + 3] === p.x && statics[o + 4] === p.y) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) continue;
+    const b = cellBounds(e, 0);
+    const s = (e.drawScale ?? 1) / 40;
+    out.push(p.x + b.x * s, p.x + (b.x + b.w) * s, p.y * tilt + b.y * s, p.y * tilt + (b.y + b.h) * s, statics[idx * ITEM + 1], idx);
+  }
   return out;
 }
 
@@ -915,6 +939,42 @@ export function roofInk(a: number, covered: boolean, dt: number): number {
   const want = covered ? ROOF_SEE : 1;
   const step = ((1 - ROOF_SEE) * dt) / ROOF_EASE_S;
   return a < want ? Math.min(want, a + step) : Math.max(want, a - step);
+}
+
+/** owner2-fix P2: the vehicle pictures whose drawn box ./frameLoop.ts hands the step aside (VBOX_* x 8 headings x 4 numbers). */
+export const VBOX_TRUCK = 0;
+export const VBOX_TRUCK_BARE = 1;
+export const VBOX_TRUCK_HOOK = 2;
+export const VBOX_FLATBED = 3;
+export const VBOX_FLATBED_WORKING = 4;
+export const VBOX_VAN = 5;
+export const VBOX_TRAILER = 6;
+const VBOX_IDS = ['vehicle.truck', 'vehicle.truck.bare', 'vehicle.truck.hook', 'vehicle.flatbed', 'vehicle.flatbed.working', 'vehicle.van', 'vehicle.trailer'];
+
+/**
+ * owner2-fix P2: the ground a vehicle's picture covers, per picture and heading (the 8-scheme for the truck's,
+ * the 4-scheme for the others; one heading for the hook and working pictures): west, east, north, south in metres
+ * from its anchor (the manifest's cell bounds at its draw scale, the screen's rise turned back into ground by
+ * `tilt`; a mirrored heading's box mirrored). Index ((kind * 8 + heading) * 4). Pure.
+ */
+export function vehicleBoxes(tilt: number): number[] {
+  const out = new Array(VBOX_IDS.length * 8 * 4).fill(0);
+  VBOX_IDS.forEach((id, kind) => {
+    const e = entryOf(id);
+    if (!e) return;
+    const s = (e.drawScale ?? 1) / 40;
+    for (let h = 0; h < Math.min(8, e.headings); h++) {
+      const m = mirrorOf(e, h);
+      const b = cellBounds(e, m ?? h);
+      const x0 = m !== null ? -(b.x + b.w) : b.x;
+      const o = (kind * 8 + h) * 4;
+      out[o] = x0 * s;
+      out[o + 1] = (x0 + b.w) * s;
+      out[o + 2] = (b.y * s) / tilt;
+      out[o + 3] = ((b.y + b.h) * s) / tilt;
+    }
+  });
+  return out;
 }
 
 /** The x of the container wall (the props of kind 'wall'), or null. */

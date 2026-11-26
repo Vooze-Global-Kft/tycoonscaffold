@@ -1,5 +1,6 @@
 /**
- * One-line toasts by key (yard-stage1.md 5.2, 5.4): "Load full" when the load fills, and a refusal's line
+ * One-line toasts by key (yard-stage1.md 5.2, 5.4): "No room: weigh your load at the scale" when a piece does not
+ * fit the load (once per load: owner2-fix-hud P1), and a refusal's line
  * ("Not enough cash: §12.00 more", "Needs a cutting torch") when an action is refused while no card is open
  * (an open card prints its own refusal on its button). One at a time, the newest replaces the old; it sits
  * at the foot of the free world, centred in the safe area, and never takes a touch.
@@ -9,11 +10,11 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as R from '../../../engine/salvage';
 import { PAL } from '../palette';
-import { useSalvageUi } from '../uiState';
+import { overlaysOpen, useSalvageUi } from '../uiState';
 import { lineH, type HudLayout } from './metrics';
 import { BarText } from './Paper';
 import { yardEvents } from './pump';
-import { barValues, heldRefusal, say, toastText } from './words';
+import { barValues, heldRefusal, loadFullOnce, loadSig, say, toastText } from './words';
 import { useGame } from '../../../state/store';
 
 export const TOAST_MS = 1800;
@@ -35,9 +36,12 @@ export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
     // the toast waits a moment (the state that holds it may land just after the event) and is dropped when the
     // tag carries the same words.
     let held: ReturnType<typeof setTimeout> | undefined;
+    // P1 (owner2-fix-hud): "No room" once per load, not on every piece that does not fit the same load.
+    const roomOnce = loadFullOnce();
     const off = yardEvents.on(['loadFull', 'refused'], (e) => {
       const t = toastText(e, cfg.salvage, useSalvageUi.getState().stack.length > 0);
       if (!t) return;
+      if (e.type === 'loadFull' && !roomOnce(loadSig(useGame.getState().game as R.SalvageGame))) return;
       if (!t.refusal) return show(t, TOAST_MS);
       clearTimeout(held);
       held = setTimeout(() => {
@@ -67,7 +71,9 @@ export function Toasts({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
       clearTimeout(held);
     };
   }, [cfg]);
-  if (!toast) return null;
+  // P4 (owner2-fix-hud): no toast above an overlay's scrim (the counting card's included); it comes back after.
+  const covered = useSalvageUi((s) => overlaysOpen(s) > 0);
+  if (!toast || covered) return null;
   const pt = 12 * L.s;
   const h = lineH(pt) + 12;
   return (
