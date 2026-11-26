@@ -161,7 +161,8 @@ export function worksDepart(x: Ctx, t: number): void {
  */
 export function worksOpen(x: Ctx, t: number): void {
   const s = x.s;
-  if (s.counts!.bathSet !== undefined) return;
+  // A content with no works (the first yard's frozen test content) opens nothing.
+  if (s.counts!.bathSet !== undefined || !x.cfg.salvage.works) return;
   s.counts!.bathSet = 1;
   x.c = mergedContent(x.cfg.salvage);
   x.dirty = true;

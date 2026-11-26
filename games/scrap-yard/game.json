@@ -3351,7 +3351,8 @@
         }
       ],
       "topRung": 5,
-      "thetaShare": 0.01
+      "thetaShare": 0.01,
+      "thetaPerT": 1200
     },
     "ceilings_t_h": [
       6,
@@ -6327,7 +6328,262 @@
       "jumpRatio": 5,
       "autoplayReactS": 0.8,
       "autoplayStandS": 6
-    }
+    },
+    "stage2": [
+      {
+        "id": "rackBath",
+        "text": "goal.rackBath",
+        "target": "firstThing",
+        "via": null,
+        "done": "racked:1",
+        "buy": null,
+        "optional": true,
+        "stall": "chevron"
+      },
+      {
+        "id": "buyBaler",
+        "text": "goal.buyBaler",
+        "target": "baler",
+        "via": null,
+        "done": "plate:baler",
+        "buy": "baler",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "startBaler",
+        "text": "goal.startBaler",
+        "target": "baler",
+        "via": null,
+        "done": "commissioned:baler",
+        "buy": null,
+        "optional": false,
+        "stall": "stand"
+      },
+      {
+        "id": "buyAnalyser",
+        "text": "goal.buyAnalyser",
+        "target": "scalehouse",
+        "via": null,
+        "done": "plate:analyser",
+        "buy": "analyser",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyShear",
+        "text": "goal.buyShear",
+        "target": "shear",
+        "via": null,
+        "done": "plate:shear",
+        "buy": "shear",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyTruckBridge",
+        "text": "goal.buyTruckBridge",
+        "target": "park",
+        "via": null,
+        "done": "owned:truckBridge",
+        "buy": "truckBridge",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "fetchGarage",
+        "text": "goal.fetchGarage",
+        "target": "gate",
+        "via": "truck",
+        "done": "fetched:partner.garage:1",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "fetchPlumbing",
+        "text": "goal.fetchPlumbing",
+        "target": "gate",
+        "via": "truck",
+        "done": "fetched:partner.plumbing:1",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "cutLot",
+        "text": "goal.cutLot",
+        "target": "oversize",
+        "via": null,
+        "done": "lot:1",
+        "buy": null,
+        "optional": true,
+        "stall": "stand"
+      },
+      {
+        "id": "sortCrate",
+        "text": "goal.sortCrate",
+        "target": "crate",
+        "via": null,
+        "done": "crate:1",
+        "buy": null,
+        "optional": true,
+        "stall": "stand"
+      },
+      {
+        "id": "buyDepollution",
+        "text": "goal.buyDepollution",
+        "target": "depollution",
+        "via": null,
+        "done": "plate:depollution",
+        "buy": "depollution",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "widen4",
+        "text": "goal.widen",
+        "target": "advice",
+        "via": null,
+        "done": "repeat",
+        "buy": null,
+        "optional": false,
+        "repeat": true,
+        "stall": null
+      },
+      {
+        "id": "supplyRung4",
+        "text": "goal.supplyRung4",
+        "target": null,
+        "via": null,
+        "done": "rung:4",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyCrane",
+        "text": "goal.buyCrane",
+        "target": "crane",
+        "via": null,
+        "done": "plate:crane",
+        "buy": "crane",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "walkBackfield",
+        "text": "goal.walkBackfield",
+        "target": "backfield",
+        "via": null,
+        "done": "at:backfield",
+        "buy": null,
+        "optional": true,
+        "stall": "chevron"
+      },
+      {
+        "id": "buyShredder",
+        "text": "goal.buyShredder",
+        "target": "shredder",
+        "via": null,
+        "done": "plate:shredder",
+        "buy": "shredder",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyRotary",
+        "text": "goal.buyRotary",
+        "target": "rotary",
+        "via": null,
+        "done": "plate:rotary",
+        "buy": "rotary",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "pourRotary",
+        "text": "goal.pourRotary",
+        "target": "rotary.apron",
+        "via": null,
+        "done": "poured:rotary",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyInduction",
+        "text": "goal.buyInduction",
+        "target": "induction",
+        "via": null,
+        "done": "plate:induction",
+        "buy": "induction",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyBreaker",
+        "text": "goal.buyBreaker",
+        "target": "breaker",
+        "via": null,
+        "done": "plate:breaker",
+        "buy": "breaker",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buySmelter",
+        "text": "goal.buySmelter",
+        "target": "smelter",
+        "via": null,
+        "done": "plate:smelter",
+        "buy": "smelter",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "pourLead",
+        "text": "goal.pourLead",
+        "target": "smelter.apron",
+        "via": null,
+        "done": "poured:smelter",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "widen5",
+        "text": "goal.widen",
+        "target": "advice",
+        "via": null,
+        "done": "repeat",
+        "buy": null,
+        "optional": false,
+        "repeat": true,
+        "stall": null
+      },
+      {
+        "id": "supplyRung5",
+        "text": "goal.supplyRung5",
+        "target": null,
+        "via": null,
+        "done": "rung:5",
+        "buy": null,
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "widenTop",
+        "text": "goal.widen",
+        "target": "advice",
+        "via": null,
+        "done": "repeat",
+        "buy": null,
+        "optional": false,
+        "repeat": true,
+        "stall": null
+      }
+    ]
   },
   "monetization": {
     "ads": {

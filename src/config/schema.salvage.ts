@@ -445,12 +445,10 @@ export const CrewSchema = z.object({
    * getting poorer by a machine (src/engine/salvage/crew.ts orderPlan). Absent: never (the first yard's S12).
    */
   orderFromRung: z.number().int().optional(),
-  /** While both candidates of 17.2 are measured: 'floor' (the lead's) or 'tray'. Removed when one is kept. */
-  orderRule: z.enum(['floor', 'tray']).optional(),
 });
 export type CrewDef = z.infer<typeof CrewSchema>;
 /** The crew's roles (the keys of `crew` that are a role: not the order's keys of RULING2.md 17.2). */
-export type CrewRole = Exclude<keyof CrewDef, 'orderFromRung' | 'orderRule'>;
+export type CrewRole = Exclude<keyof CrewDef, 'orderFromRung'>;
 
 /** The public drop-off (content2 `dropoff`): seconds between arrivals, the first at `first` s, waiting places, the drawn mix [object, weight], the fixed first arrivals. */
 export const DropoffSchema = z.object({
@@ -586,6 +584,8 @@ export const LadderSchema = z.object({
   topRung: z.number().int().min(3).max(9).optional(),
   /** STAGE 2 (2.11): from rung 4, theta_r = max(theta, thetaShare x T_r x §1,200 a tonne); rungs 1 to 3 keep `theta`. */
   thetaShare: z.number().nonnegative().optional(),
+  /** STAGE 2 (2.11; asked by rules-money, 26 Nov): the § a tonne in theta_r = max(theta, thetaShare x T_r x thetaPerT). */
+  thetaPerT: z.number().positive().optional(),
 });
 export type LadderDef = z.infer<typeof LadderSchema>;
 
@@ -948,6 +948,8 @@ const SalvageObject = z.object({
   goals: z.array(GoalSchema).default([]),
   /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
   dayOne: z.array(GoalSchema).default([]),
+  /** STAGE 2 (1.3, 2.13; goals2 and rules-money, 26 Nov): goals.json's `stage2` list, offered from the works' rung. Absent in a first-yard content. */
+  stage2: z.array(GoalSchema).optional(),
   /** The first minutes' teaching timings (goals.json `teach`, seconds and ratios: lessonQuietS, jumpRatio, ...). */
   teach: z.record(z.string(), z.number()).default({}),
   advice: AdviceSchema.default({ minutes: 3, promptGapS: 60, reserveS: 120 }),

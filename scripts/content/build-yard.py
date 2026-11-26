@@ -136,7 +136,7 @@ def build():
     if blk:
         s['text'] = blk
     goals = nodollar(load(GOALS)) if os.path.exists(GOALS) else {}
-    for k in ('goals', 'dayOne', 'teach'):
+    for k in ('goals', 'dayOne', 'teach', 'stage2'):  # stage2: the stage's goal list (goals2, rules-money, 26 Nov)
         if k in goals:
             s[k] = goals[k]
     for fam, extra in (src['pending'] or {}).items():

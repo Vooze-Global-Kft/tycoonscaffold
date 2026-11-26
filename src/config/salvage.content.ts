@@ -1422,6 +1422,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     // STAGE 2 (2.11, B18): the stage's top rung; theta_r from rung 4 = max(theta, thetaShare x T_r x §1,200 a tonne)
     topRung: 5,
     thetaShare: 0.01,
+    thetaPerT: 1200,
   },
   // rungs 1 to 3 as measured (REPORT6); STAGE 2 rungs 4 and 5 (2.11; E30's guard)
   ceilings_t_h: [6, 110, 400, 800, 3500],

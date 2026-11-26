@@ -17,7 +17,6 @@ import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
 import { landBody } from './works';
-import { loadRanks, pickRuleOf } from './rate';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
@@ -323,8 +322,6 @@ export function driverDepart(x: Ctx, t: number): boolean {
  */
 function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullAt: number; price: number; mass: number } | null {
   const s = x.s;
-  const rule = pickRuleOf(x.c);
-  const ranks = rule === 'rate' ? loadRanks(x.c, s) : null;
   let top: { partner: string; fullAt: number; price: number; mass: number; net: number; fits: boolean } | null = null;
   for (const id in s.partners) {
     if (!x.c.partners[id]) continue;
@@ -332,9 +329,9 @@ function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullA
     if (!sk) continue;
     const why = hookRefusal(x, id, false, floor);
     // 'floor' is asked after the cash: such a skip is one the yard can pay for that does not fit now.
-    const blocks = rule !== 'nowait' && why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000;
+    const blocks = why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000;
     if (why && !blocks) continue;
-    const net = rule === 'rate' ? (ranks![id] ?? 0) : ratedLoadNet(x.c, id);
+    const net = ratedLoadNet(x.c, id);
     if (!top || net > top.net || (net === top.net && (sk.fullAt < top.fullAt || (sk.fullAt === top.fullAt && id < top.partner)))) top = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g, net, fits: !why };
   }
   return top && top.fits ? { partner: top.partner, fullAt: top.fullAt, price: top.price, mass: top.mass } : null;

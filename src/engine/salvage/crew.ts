@@ -205,10 +205,10 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   // Stage 2 (2.12, ruling 13.1): a tagged thing for the Yard sale comes FIRST in a yard hand's order while a
   // place is free (reuse.ts rackChoice sets him off with it; the stub never does).
   if (rackChoice(x, m, t, null)) return true;
-  // RULING2.md 17.2 (from rung crew.orderFromRung): which machines' feeds and trays wait (orderWaits).
-  const plan = orderPlan(x, cap);
+  // RULING2.md 17.2 (from rung crew.orderFromRung): while the floor is over half full, which machines' feeds and trays wait for it.
+  const plan = orderPlan(x);
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
-  if (feedStep(x, m, t, cap, free, plan ? (id) => plan.first(id, 'feed') : null)) return true;
+  if (feedStep(x, m, t, cap, free, plan ? plan.first : null)) return true;
   // (2) chalk circles.
   if (circles.length) {
     const pile = circles[0].pile;
@@ -223,7 +223,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   // (3) out trays (mass, up to his load). Stage 2 (2.5.3, S12; s2a-fix): the stations' order is works.ts
   // stationTrays' (the first yard's list itself while no plate exists); a plate's tray is worksTrayTrip's.
-  if (trayStep(x, m, t, cap, plan ? (id) => plan.first(id, 'tray') : null)) return true;
+  if (trayStep(x, m, t, cap, plan ? plan.first : null)) return true;
   // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
   // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
   // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
@@ -231,23 +231,25 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const floorFirst = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
   if (floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
   // RULING2.md 17.2: what waited for the floor goes now, before the drop-off (the feeds, then the trays).
-  const later = plan?.later;
-  if (later) {
-    if (feedStep(x, m, t, cap, free, (id) => later(id, 'feed'))) return true;
-    if (trayStep(x, m, t, cap, (id) => later(id, 'tray'))) return true;
+  if (plan) {
+    if (feedStep(x, m, t, cap, free, plan.later)) return true;
+    if (trayStep(x, m, t, cap, plan.later)) return true;
   }
   return handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop);
 }
 
-/** The two candidates of RULING2.md 17.2 (measured; content crew.orderRule while both are built). */
+/** RULING2.md 17.2's order (orderPlan): the machines whose feed and tray keep their first-yard place, and those that wait for the floor. */
 interface OrderPlan {
-  /** May this machine's feed or tray be taken at its first-yard place in the order? */
-  first: (id: MachineId, kind: 'feed' | 'tray') => boolean;
-  /** Taken after the floor (before the drop-off) instead, or null. */
-  later: ((id: MachineId, kind: 'feed' | 'tray') => boolean) | null;
+  first: (id: MachineId) => boolean;
+  later: (id: MachineId) => boolean;
 }
 
-/** The worth a kilogram of a machine's input becomes at usual prices over the input's own (content only, memoised). */
+/**
+ * What a machine's work does to the worth of what it takes (RULING2.md 17.2's exception), from the content at usual
+ * prices: a kilogram of its input's outputs (the bench's and the strippers' shares; the crucible's best recipe, yield
+ * and dross) over the kilogram's own p̄. Memoised per content object. On the first yard's content none doubles (bench
+ * 1.43, strippers 1.18, crucible 1.79): every machine waits for a floor over half full.
+ */
 const WORTH = new WeakMap<object, Record<string, number>>();
 export function machineWorth(c: Ctx['c'], id: MachineId): number {
   let w = WORTH.get(c);
@@ -269,19 +271,17 @@ export function machineWorth(c: Ctx['c'], id: MachineId): number {
   return w[id];
 }
 
-function orderPlan(x: Ctx, cap: number): OrderPlan | null {
+/**
+ * RULING2.md 17.2, from rung `crew.orderFromRung` (engine2-dispatch, measured against a second candidate: the account
+ * notes/dispatch-engine2.md): WHILE THE TIPPING FLOOR IS MORE THAN HALF FULL, a yard hand clears the floor BEFORE he
+ * feeds a machine or empties its tray, except a machine whose work at least doubles the worth of what it takes
+ * (machineWorth, from the content at usual prices); what waited goes after the floor, before the drop-off. One rule in
+ * every presence state; it chooses the first trip of a run only (14.1: the run then goes on as built). Below the rung,
+ * or with the floor at most half full: null (S12 as in the first yard).
+ */
+function orderPlan(x: Ctx): OrderPlan | null {
   if (x.s.ladder.rung < orderFromRung(x.c)) return null;
-  const rule = (x.c.crew as { orderRule?: string }).orderRule ?? 'floor';
-  if (rule === 'tray') {
-    // Candidate B: an out tray is emptied only when it holds a hand's load, or its machine has stopped (a full
-    // tray, or nothing left to work: the grams would wait for nothing).
-    const ready = (id: MachineId) => trayFree(x, id) >= cap - 1e-9 || x.s.machines[id].status !== 'working';
-    return { first: (id, kind) => kind === 'feed' || ready(id), later: null };
-  }
-  // Candidate A (the lead's): while the tipping floor is more than half full, the floor before a machine's feed
-  // or tray, except a machine whose work at least doubles the worth of what it takes.
-  const full = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
-  if (!full) return null;
+  if (!(floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000)) return null;
   const waits = (id: MachineId) => machineWorth(x.c, id) < 2;
   return { first: (id) => !waits(id), later: (id) => waits(id) };
 }
