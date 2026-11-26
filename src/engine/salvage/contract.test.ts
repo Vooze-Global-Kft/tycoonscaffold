@@ -235,16 +235,19 @@ describe('2.20 the save: layout 3 accepts layout 2 (the first test written: the 
     expect(back.forklift).toBeNull();
   });
 
-  it('a merchant\'s round under way ends no later than the save\'s clock + loading + the round (a save of the old long round)', () => {
+  it('a layout-2 save\'s merchant round under way ends no later than the save\'s clock + loading + the round (the old long round)', () => {
     const g = rt(fixtureGame('m30', base3(), FIXTURE_NOW)) as SalvageGame;
     const s = g.salvage;
     const m = cfg3.salvage.merchant;
     s.merchant = { ...s.merchant, phase: 'away', since: s.t - 5, endsAt: s.t + 50 * m.round_s };
-    const back = reconcileSalvage(cfg3, base3(), rt(g), FIXTURE_NOW).salvage;
+    const back = reconcileSalvage(cfg3, base3(), asLayout2(g), FIXTURE_NOW).salvage;
     expect(back.merchant.endsAt).toBe(s.t + m.load_s + m.round_s);
     // A round as the rules make it is untouched.
     s.merchant = { ...s.merchant, phase: 'away', since: s.t - 5, endsAt: s.t - 5 + m.round_s };
-    expect(reconcileSalvage(cfg3, base3(), rt(g), FIXTURE_NOW).salvage.merchant.endsAt).toBe(s.t - 5 + m.round_s);
+    expect(reconcileSalvage(cfg3, base3(), asLayout2(g), FIXTURE_NOW).salvage.merchant.endsAt).toBe(s.t - 5 + m.round_s);
+    // A layout-3 state is the new engine's (no long round exists there): kept as it is (runs.test.ts parks the merchant out for good).
+    s.merchant = { ...s.merchant, phase: 'away', since: s.t - 5, endsAt: s.t + 1e7 };
+    expect(reconcileSalvage(cfg3, base3(), rt(g), FIXTURE_NOW).salvage.merchant.endsAt).toBe(s.t + 1e7);
   });
 
   it('an unknown layout still starts afresh', () => {

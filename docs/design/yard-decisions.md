@@ -1734,3 +1734,27 @@ store error, and blocked a pack for ever when the device's clock had been wrong.
     (g) Whether a listing called fresh can still come from a cache when the phone is offline is
     checked on a store build (the device list in `notes/store-shared.md`); until then a quote is
     withdrawn at 72 hours only on a listing that the store itself answered.
+
+15.12 **Three holes in 15.6, found by the confirmation of the shared files, closed (08:05).** The
+    seams are confirmed ("stage 2's rules may be built on them"); the holes were in the lead's own
+    rule, and each lost a PAID pack:
+    (a) THE 72 HOURS ARE THE STORE'S, NOT THE DEVICE'S. A player who sets the clock three days
+        forward while a parent's approval waits must not lose the pack. Every listing carries the
+        store's own request time; a quote keeps the request time of the listing read at its Buy
+        (`askedMs`); it is withdrawn only when a FRESH listing whose request time is at least 72
+        hours after `askedMs` has been routed and the quote still stands. No device clock.
+    (b) AN OPEN QUOTE IS NOT WITHDRAWN BY A NEW BUY. (A sheet paid, the app killed before the
+        store listed it, a new Buy, that sheet cancelled: the first payment then found no quote.)
+        A superseded open quote keeps standing, does not block Buy, counts in headroom, and goes
+        by (a). 15.6's "at most one open quote per product" is withdrawn; instead at most
+        `iap.maxStanding` (3) quotes of a product stand at once, and a further Buy is refused with
+        the waiting words.
+    (c) THE 24 HOURS of a waiting quote stay on the device's clock (they decide no grant), but a
+        clock that reads earlier than the quote's `atMs` counts as elapsed, so a clock that was
+        ahead never blocks a pack for long.
+    (d) "OLDEST" IS THE ORDER IN WHICH QUOTES WERE MADE (the list's order), never `atMs`.
+    (e) AT BUY THE LISTING MUST BE FRESH on a real store: if the store's cache could not be
+        cleared and read anew, no sheet opens ("The store cannot be reached. Nothing was charged.").
+    (f) A refused Buy's reason (the quote changed, a pack is waiting, no headroom) is the mode's
+        to keep for its row; the shared store only says refused.
+    The contract's `iap.pending` entry is `{id, product, S, I, atMs, askedMs, known, state}`.

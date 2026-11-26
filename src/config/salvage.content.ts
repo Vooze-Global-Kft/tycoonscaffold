@@ -17,7 +17,7 @@
  * The bots on the real rules (src/engine/salvage/bot.ts, scripts/content/yard-bot.ts) tune it next.
  */
 import type { z } from 'zod';
-import type { SalvageSchema } from './schema.salvage';
+import type { MapWorksInput, SalvageSchema, WorksInput, WorksLayerInput } from './schema.salvage';
 
 /** The content as the schema takes it in (defaults filled by the parse). */
 export type SalvageContentInput = z.input<typeof SalvageSchema>;
@@ -40,8 +40,7 @@ export const SALVAGE_PENDING = { levels: { floor: 1100, floorGrowth: 1.25 } } as
 // `worksLayer`, joined from rung 3 (schema.salvage.ts withWorksLayer), as `map.works` is joined to `map` (3.1).
 // Plate prices are first values until the payback rule's table (bots/plates.json, Phase B) sets them (2.6.4).
 
-type Input = SalvageContentInput;
-type Plates = NonNullable<Input['works']>['plates'];
+type Plates = WorksInput['plates'];
 
 /** The works plates (2.5.3, 2.7, 2.8): level-1 numbers (tune). */
 const PLATES: Plates = {
@@ -50,8 +49,9 @@ const PLATES: Plates = {
   shear: {
     row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 40000, deliver_s: 30, kind: "rate",
     // whole steel things of the torch's tier (tanks certified empty) and unprepared steel pieces; rate = shear.P / hardness
-    in: ["beam", "tank", "plough", "hmsu"], feedBy: "hands",
-    out: { beam: [["hms", 1]], tank: [["hms", 1]], plough: [["hms", 1]], hmsu: [["hms", 1]] },
+    // (the first yard's plough frame is steel too, but no source brings one: 5.2 (2) refuses it as an input)
+    in: ["beam", "tank", "hmsu"], feedBy: "hands",
+    out: { beam: [["hms", 1]], tank: [["hms", 1]], hmsu: [["hms", 1]] },
     lev: 0.15, maxLevel: 10, inbuf: 1500, tray: 2000,
   },
   baler: {
@@ -122,7 +122,7 @@ const PLATES: Plates = {
   },
 };
 
-type MapWorks = NonNullable<Input['map']['works']>;
+type MapWorks = MapWorksInput;
 type PlaceIn = NonNullable<MapWorks['places']>[string];
 /**
  * THE WORKS LAYER OF THE MAP (yard-stage2.md section 3): [x, y, w, d, place] per place, centre and size in
@@ -168,7 +168,7 @@ const WORKS_PLACES: Record<string, [number, number, number, number, Omit<PlaceIn
   worksBays: [-18.5, 30.6, 33, 3, { h: 1.4, solid: true, card: "board", label: "place.worksBunkers" }],
   worksStillages: [-39.2, 30.6, 8.4, 3, { h: 1.4, solid: true, card: "board" }],
   leadArea: [-49.6, 23.5, 12.8, 0.1, { h: 0.01, solid: false, card: false }],
-  "backfield.sign": [0.6, 33.4, 1.6, 0.4, { h: 2, solid: true, card: false, label: "place.backField" }],
+  "backfield.sign": [0.6, 33.4, 1.6, 0.4, { h: 2, solid: true, card: false, label: "place.backfield" }],
   // the first yard's padlocked gate becomes the field gateway (3.2): replaces `backfield` from rung 3
   backfield: [0, 37, 1, 6, { h: 2, solid: false, card: false }],
   // the wall gate's blocks, set along the wall's foot as dressing (3.2: y 30 to 34; moved to 32 to 36 off the granulator's pad)
@@ -210,12 +210,28 @@ const MAP_WORKS: MapWorks = {
   publicGap_m: 3,
   forkliftZone: [{ x0: 42.5, y0: 36.85, w: 2.5, d: 3 }, { x0: 29, y0: 29, w: 16, d: 11 }],
   lane: { garage_m: 430, plumbing_m: 480, barrier_m: 520 },
-  routes: {},
+  // 3.4's walks on the merged map (python3 -I scripts/content/yard_map.py --routes --works; 3.6 (5): scale-crate <= 20, dropoff-reuseRack <= 24, floor-crane <= 10)
+  routes: {
+    "scale-crate": 17.8,
+    "dropoff-reuseRack": 21.3,
+    "floor-reuseRack": 15.2,
+    "floor-crane": 9.3,
+    "crane-shear": 8.1,
+    "crane-baler": 10.5,
+    "forklift-elvPad": 4.4,
+    "elvPad-apron": 4.6,
+    "floor-shear": 17.3,
+    "floor-baler": 19.4,
+    "shear-scale": 27.1,
+    "scale-shredder": 66.5,
+    "scale-rotary": 86.9,
+    "scale-smelter": 118.2,
+  },
   heroWorks: { x0: -31, y0: 15.2, w: 16.7, d: 9.7, places: ["rotary", "rotary.filter", "rotary.apron"] },
 };
 
 /** The works layer of the families (joined from rung 3). */
-const WORKS_LAYER: NonNullable<Input['worksLayer']> = {
+const WORKS_LAYER: WorksLayerInput = {
   // 2.5.1: the sixteen grades (names here as the first yard's; text.json's words lay over them, T10)
   grades: {
     lib: { name: "Baled light iron", pbar: 0.62, family: "fe", material: "lightiron", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "bunker", place: "worksBays", slot: 9 } },
@@ -311,6 +327,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
     "engine2-income (26 Nov, stage 2 2.4, E31/E36a): crew.driver.lev 0.15 -> 0.25 TRIED and put back to 0.15: on the bots (15 seeds) sales at minutes 55-60 were a median §1,698 a minute against §1,720 before (the aim §2,000), and with the truck nearly free (lev 3.0) §1,750: the truck does not bind the late hour, cutting and carrying do (notes/engine2-engine2-income.md)",
     "measure (the bots on the new map, REPORT6.txt): ladder.rungs n 2 2.2 -> 2.4 t (E31d's 2.4 was written to rung2 only and the engine reads ladder.rungs: build-yard.py now refuses the two disagreeing); rung 3 21.5 -> 27.5 t (the nearer stock and join3's advice line brought rung 3 to minute 52; 29.4 t are supplied by minute 60); ceilings_t_h rung 2 90 -> 110 t/h (E30: 1.3 x the 82 t/h the normal hand now reaches on rung 2 with join3's advice line; 90 refused a partner level on 10 of 75 runs near minute 55); the Night watch §2,800 -> §36,000 (E33 with E13: it adds two hours to every long absence, worth a median §61k on one twelve-hour absence from minute 60 (min §56k) and §30k from minute 30, so it pays back in its first night and stays a thing saved for); levels.floor 1500 -> 1100 (E31c: more levels bought in the last half hour); partners fill_s 120 -> 100 and 180 -> 150 again (bots5's values, measured in REPORT5, had not reached this file)",
     "fix pass (content, 25 Nov evening): THE MAP moves to the art director's picture (MAP.md M1-M7): back wall map.north 15.2, working row against it, zone 1 in the wall/east-fence corner by the scale, the drop-off bay by the gate, one drive line (map.driveLine), office and rack south of it; zones.<id>.bed; routes recomputed (scripts/content/yard_map.py)",
@@ -948,7 +965,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 1773.94,
       sprite: "thing.car",
       size: { w: 2.8, d: 1.2, h: 1 },
-      tags: ["carPart", "fuel", "battery"], // STAGE 2 (5.2 (2), (5); content2)
+      tags: ["carPart"], // STAGE 2 (the first yard's car is already drained, W9) (5.2 (2), (5); content2)
       source: { type: "partner", partner: "partnerDemolition", ref: "0012" },
     },
   },
@@ -1392,8 +1409,10 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   ceilings_t_h: [6, 110, 400, 800, 3500],
   // STAGE 2 (2.11, E11): payback hours by rung (null at rungs 1 and 2; tau_4 > 20 h is a fixed lower bound)
   tau_h: [null, null, 9, 22, 45],
-  // E33; STAGE 2 rungs 4 and 5 (2.11)
-  awayCapByRung_h: [0.5, 2, 4, 6, 8],
+  // E33. STAGE 2 (2.11) makes it [0.5, 2, 4, 6, 8] (6 h at rung 4, 8 h at rung 5): HELD at the first yard's three in Phase A,
+  // because the first yard's away card reads the next rung's cap (away.ts runLongerOf loops to the list's end): a fourth
+  // entry would print "from rung 4 it runs six hours" at rung 3 (requests.md, to the loop's owner; build-yard.py warns until then)
+  awayCapByRung_h: [0.5, 2, 4],
   nightWatch_h: 2,
   rivals: {
     rule: "tonnes = T0_t x (1 + g x min(d, 40)), d = market days since the player's first second (E27); the k-th rival below the player shows at most (1 - 0.03 k) x the player (S17)",
@@ -1487,4 +1506,85 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     tcab: "lesson.cab",
     conv: "lesson.conv",
   },
+
+  // ================================================================================= STAGE 2 (yard-stage2.md 5.1)
+  // The works (2.6): commissioning by standing 5 s at a plate or by itself 20 minutes after arrival; levels +0.15 to 10; the price floor.
+  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 10, floor: 3000, plates: PLATES },
+  // The magnet crane (2.7; T1, T24): never a car before depollution, a battery, or copper, brass, bronze, aluminium, lead or stainless.
+  crane: { rate: 50, reach_m: 9, load_kg: 1500, never: ["copper", "brass", "bronze", "alu", "lead", "stainless"], neverObjects: ["elv", "pbb"] },
+  shear: { P: 15 },
+  forklift: { load: 1500, v: 3.5 },
+  depollution: { s: 600 },
+  // Delivered lots, "oversize pieces" (2.10.1): yard seconds, at most four waiting, mu minutes of I by rung, the boss's cut 4 to 10 s.
+  lots: {
+    period_s: 10800,
+    max: 4,
+    mu_min: [null, null, 15, 18, 18],
+    cut_s: [4, 10],
+    kinds: [
+      // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
+      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"] },
+      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"] },
+      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"] },
+      { obj: "propeller", from: "partner.boatyard", line: ["induction"] },
+    ],
+  },
+  // The crate, "the picking table" (2.10.2): no hold time (P2).
+  crate: { share: 0.15, max: 12, sort_s: 3, u: 1.6 },
+  // The Yard sale (2.12).
+  reuse: {
+    slots: 6,
+    levelSlots: 2,
+    levels: 3,
+    share: 0.25,
+    // bath, radiator, bicycle (from a named partner only, "Checked"), crate of brass taps, stove, gate; and their partner-load twins
+    kinds: {
+      bath: {},
+      radiator: {},
+      bike: { fromPartnerOnly: true },
+      taps: {},
+      stove: {},
+      gate: {},
+      bath2: {},
+      radiatorCI: {},
+      ironGate: {},
+      bicycle2: { fromPartnerOnly: true },
+    },
+    never: ["electrical", "sealed", "vessel", "battery", "carPart", "fuel", "childSafety"],
+    factor: 2.5,
+    shareI: [null, null, 0.025, 0.025, 0.025],
+    floorI: 2000,
+    period_s: 240,
+    firstVisitor_s: 30,
+    batchFactor: 1.5,
+    vanPeriod_s: 1800,
+    firstThing: "bath",
+  },
+  // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
+  bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
+  // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
+  // The sixteen products themselves are the shared list's (monetization.iap.products, B5: Phase B, with the shared schema).
+  iap: {
+    packsFromRung: 4,
+    packsOff: ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "CH"],
+    lookOf: {
+      colour1: { slot: "colour", value: "look.colour1" },
+      colour2: { slot: "colour", value: "look.colour2" },
+      colour3: { slot: "colour", value: "look.colour3" },
+      colour4: { slot: "colour", value: "look.colour4" },
+      colour5: { slot: "colour", value: "look.colour5" },
+      colour6: { slot: "colour", value: "look.colour6" },
+      dressing1: { slot: "dressing", value: "look.set1" },
+      dressing2: { slot: "dressing", value: "look.set2" },
+      dressing3: { slot: "dressing", value: "look.set3" },
+      dressing4: { slot: "dressing", value: "look.set4" },
+      plaque: { slot: "plaque", value: "look.plaque" },
+    },
+    looks: ["colour", "dressing", "plaque", "sign"],
+  },
+  // Rewarded ads (2.16; L3): 15 + 3 x 4 = 27 minutes of I a day at most against 0.04 x a day's income; dayHours_h the habit's
+  // production hours by rung (ruling 10.6: 2 x (away cap + Night watch) + 0.3 h played).
+  ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [null, null, 12.3, 16.3, 20.3] },
+  // The entries stage 2 adds to the families above, joined from rung 3 (schema.salvage.ts withWorksLayer).
+  worksLayer: WORKS_LAYER,
 };

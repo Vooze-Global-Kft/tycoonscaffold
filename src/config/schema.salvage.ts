@@ -566,7 +566,7 @@ export const LadderSchema = z.object({
   rungs: z.array(z.object({ n: z.number().int().min(1).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).default([]),
   /**
    * STAGE 2 (yard-stage2.md 2.11, B18; content2): the stage's top rung (the first yard's `STAGE_TOP_RUNG` 3
-   * becomes content). Given, the per-rung lists (`ceilings_t_h`, `tau_h`, `awayCapByRung_h`, `lots.mu_min`,
+   * becomes content). Given, the per-rung lists (`ceilings_t_h`, `tau_h`, `lots.mu_min`,
    * `reuse.shareI`, `ads.dayHours_h`) have exactly this length. Absent (the frozen test content): 3, lists unchecked.
    */
   topRung: z.number().int().min(3).max(9).optional(),
@@ -820,6 +820,10 @@ export const WorksLayerSchema = z.object({
   bays: z.record(id, z.number().positive()).default({}),
 });
 export type WorksLayerDef = z.infer<typeof WorksLayerSchema>;
+/** The content file's input types of the stage-2 blocks (SalvageSchema's own input is the preprocess's unknown). */
+export type WorksInput = z.input<typeof WorksSchema>;
+export type WorksLayerInput = z.input<typeof WorksLayerSchema>;
+export type MapWorksInput = z.input<typeof MapWorksSchema>;
 
 // ---------------------------------------------------------------------------------------- the block
 
@@ -940,7 +944,7 @@ const SalvageObject = z.object({
   const lists: [string, unknown[] | undefined][] = [
     ['ceilings_t_h', s.ceilings_t_h],
     ['tau_h', s.tau_h],
-    ['awayCapByRung_h', s.awayCapByRung_h],
+    // awayCapByRung_h: held at the first yard's three in Phase A (the away card reads the next rung's cap): build-yard.py warns
     ['lots.mu_min', s.lots?.mu_min],
     ['reuse.shareI', s.reuse?.shareI],
     ['ads.dayHours_h', s.ads?.dayHours_h],
@@ -1165,7 +1169,7 @@ export function lintStage2(s0: SalvageContent): string[] {
       if (!p.recipes || !Object.keys(p.recipes).length) out.push(`works.plates.${pid}: a batch plate needs at least one recipe`);
       for (const [rid, r] of Object.entries(p.recipes ?? {})) steps.push({ where: `works.plates.${pid}.recipes.${rid}`, inputs: r.in, outOf: () => r.out, wasteOf: () => r.waste, reagents: r.reagents });
     } else {
-      if (p.kind === 'rate' && p.rate_kg_s === undefined && pid !== 'shear') out.push(`works.plates.${pid}: a rate plate needs rate_kg_s (only the shear's comes from shear.P)`);
+      if (p.kind === 'rate' && p.rate_kg_s === undefined && pid !== 'shear' && p.feedBy !== 'stream') out.push(`works.plates.${pid}: a rate plate needs rate_kg_s (the shear's comes from shear.P, a stream-fed plate runs at its stream)`);
       steps.push({ where: `works.plates.${pid}`, inputs: p.in, outOf: (i) => p.out[i] ?? [], wasteOf: (i) => p.waste[i] ?? [], reagents: p.reagents });
       for (const i of p.in) if (!p.out[i]) out.push(`works.plates.${pid}.out has no entry for its input "${i}" (out is given per input, E7)`);
       for (const k of Object.keys(p.out)) if (!p.in.includes(k)) out.push(`works.plates.${pid}.out names "${k}", which is not one of its inputs`);

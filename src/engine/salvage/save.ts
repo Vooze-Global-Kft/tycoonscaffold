@@ -4,7 +4,7 @@
  * `salvage.v` 3 (stage 2, 2.20; contract2): layouts 2 and 3 load. A LAYOUT-2 SAVE (the first yard, the owner's
  * phone) keeps every field it has and gets the stage-2 fields fresh (./state2.ts `freshStage2`: createdMs the
  * load's time, sessions2At null, lots.nextAt null); a layout-3 save's stage-2 fields are repaired
- * (`repairStage2`). On either: a merchant's round under way ends no later than the save's clock +
+ * (`repairStage2`). On a layout-2 save: a merchant's round under way ends no later than the save's clock +
  * `merchant.load_s` + `merchant.round_s` (a save of the unmerged branch's old long round, 14.3).
  *
  * FORWARD: a save of layout 2 keeps everything the content still knows: unknown things, pieces, grades,
@@ -224,8 +224,9 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   Object.assign(s, (raw as { v?: unknown }).v === 3 ? repairStage2(raw, fresh2, t) : fresh2);
   // The merchant's round under way ends no later than the save's clock + loading + the round (RULING2 14.3:
   // a save written on the unmerged branch during the old long round would otherwise load with it under way).
+  // Only a LAYOUT-2 save can hold the old long round (it was removed before layout 3 existed).
   const mEnd = t + c.merchant.load_s + c.merchant.round_s;
-  if (s.merchant && s.merchant.phase !== 'waiting' && (typeof s.merchant.endsAt !== 'number' || !Number.isFinite(s.merchant.endsAt) || s.merchant.endsAt > mEnd)) s.merchant = { ...s.merchant, endsAt: mEnd };
+  if ((raw as { v?: unknown }).v === 2 && s.merchant && s.merchant.phase !== 'waiting' && (typeof s.merchant.endsAt !== 'number' || !Number.isFinite(s.merchant.endsAt) || s.merchant.endsAt > mEnd)) s.merchant = { ...s.merchant, endsAt: mEnd };
 
   // Lifetime counters (goals.ts) survive as they are; a save without them gets none.
   const counts = (raw as { counts?: Record<string, unknown> }).counts;
