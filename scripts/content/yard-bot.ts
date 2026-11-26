@@ -322,6 +322,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const sittings: Sitting2[] = [];
   const nohandStates: R.SalvageGame[] = [];
   let n0 = b.rec.purchases.length;
+  const returns: { g: R.SalvageGame; bought: string[] }[] = [];
   for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
     newSitting(b);
     const cash0 = b.g.cash;
@@ -330,8 +331,10 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const awayMs = performance.now() - a;
     const card = b.g.salvage.away;
     const cashBack = b.g.cash;
+    const gBack = b.g;
     playTo(b, b.g.salvage.t + S2_PLAY_S);
     const ps = b.rec.purchases.slice(n0);
+    if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.map((p) => p.key) });
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
     sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(R.ratedIncome(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(',') });
@@ -362,8 +365,30 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     }
     nohand.push({ h: +(g.salvage.t / 3600).toFixed(1), next: item, price, absences: reached });
   }
+  // The payback table (2.6.4; --plates): each plate's ΔI at its planned moment, the return of the sitting in which the
+  // normal bot bought it (else the last return at which its gate was met): I a jump of deliver + selfCommission later
+  // with the plate bought and started by itself, against the same jump without it (cash enough for both).
+  const plates: Record<string, { at_h: number; rung: number; I: number; dI: number; bought: boolean }> = {};
+  if (arg('plates') === 'true' && which === 'normal') {
+    const W = contentAt(cfg.salvage, returns[0]?.g.salvage ?? b.g.salvage).works;
+    for (const pid of Object.keys(W?.plates ?? {})) {
+      let at = returns.find((x) => x.bought.includes(pid));
+      const bought = !!at;
+      if (!at) at = [...returns].reverse().find((x) => !x.g.salvage.works[pid] && buyCheck(cfg, { ...x.g, cash: 1e12 }, pid as never).price !== null);
+      if (!at) continue;
+      const g = { ...at.g, cash: 1e12 } as R.SalvageGame;
+      const ck = buyCheck(cfg, g, pid as never);
+      if (ck.price === null || ck.refusal) continue;
+      const it = contentAt(cfg.salvage, g.salvage).shop.find((i) => i.key === pid) as { deliver_s?: number } | undefined;
+      const span = (it?.deliver_s ?? 600) + (W!.selfCommission_s ?? 1200) + 60;
+      const after = R.jump(cfg, R.buy(cfg, g, pid as never, ck.price, g.salvage.t), g.salvage.t + span);
+      const before = R.jump(cfg, g, g.salvage.t + span);
+      const I0 = R.ratedIncome(cfg, before);
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(R.ratedIncome(cfg, after) - I0), bought };
+    }
+  }
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { s2: b.rec.s2, sittings, nohand, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plates: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -433,6 +458,30 @@ function report2(all: Summary[], seeds: number[]): string {
 }
 
 let gameHash = '';
+
+/**
+ * bots/plates.json (2.6.4, the payback rule): per plate the median over the normal runs of ΔI at its planned moment, its
+ * rung, and the price the rule gives: max(works.floor, τ_r × ΔI), τ_r = tau_h[rung − 1] of its gate's rung. build-yard.py's
+ * check (3) compares works.plates.<id>.price with it.
+ */
+function writePlates(all: Summary[], gameFile: string): void {
+  const cfg = loadCfg(gameFile);
+  const c = contentAt(cfg.salvage, { counts: { bathSet: 1 } } as never);
+  const W = c.works!;
+  const rows: Record<string, unknown> = {};
+  for (const pid of Object.keys(W.plates)) {
+    const xs = all.map((r) => (r.extra.plates as Record<string, { at_h: number; rung: number; dI: number; I: number; bought: boolean }> | undefined)?.[pid]).filter((x): x is { at_h: number; rung: number; dI: number; I: number; bought: boolean } => !!x);
+    if (!xs.length) continue;
+    const gateR = Number(String(W.plates[pid].gate).replace('rung', '')) || 3;
+    const tau = c.tau_h?.[gateR - 1] ?? 0;
+    const dI = med(xs.map((x) => x.dI));
+    rows[pid] = { dI, I: med(xs.map((x) => x.I)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.max(W.floor, Math.round(tau * dI)), seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: xs.map((x) => x.dI) };
+  }
+  const out = path.join(ROOT, 'scripts/content/bots/plates.json');
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dI: § an hour of rated income the plate adds at its planned moment on the normal bots\' yards (median of seeds); price: max(works.floor, tau_r x dI).', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows }, null, 1)}\n`);
+  process.stderr.write(`wrote ${out}\n`);
+}
 
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
   if (spec.kind === 'stage2') return run2(base, spec);
@@ -639,7 +688,9 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
         continue;
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
-        const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
+        // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand.
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
         p.on('close', (code) => {
@@ -1009,6 +1060,7 @@ async function main(): Promise<void> {
       specs2 = specs2.filter((_, k) => k % n === i);
     }
     const all2 = await runAll(gameFile, specs2, Number(arg('jobs', '2')));
+    if (arg('plates') === 'true') writePlates(all2, gameFile);
     const json2 = arg('json');
     if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
     process.stdout.write(`${report2(all2, seeds)}\n`);
