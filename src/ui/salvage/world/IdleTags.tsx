@@ -80,6 +80,8 @@ export function IdleTags({ cfg, yard, anim, width, height, insets, active, size,
   const x1 = L.right;
   const top = L.goalY;
   const bottom = height - Math.max(0, insets.bottom);
+  // The one button (bottom right): no tag over it.
+  const bk = [L.button.x - 6, L.button.y - 6, L.button.x + L.button.size + 6, L.button.y + L.button.size + 6];
   const layout = useDerivedValue(() => {
     const XY = anim.crew.value;
     const cam = anim.camera.value;
@@ -94,9 +96,9 @@ export function IdleTags({ cfg, yard, anim, width, height, insets, active, size,
     }
     const left: number[] = [];
     const tops: number[] = [];
-    placeTags(left, tops, ax, ay, ws, h, n, x0, x1, top, bottom);
+    placeTags(left, tops, ax, ay, ws, h, n, x0, x1, top, bottom, bk);
     return { left, tops };
-  }, [n, idx.join(','), ws.join(','), h, ppm, tilt, lift, W, H, x0, x1, top, bottom]);
+  }, [n, idx.join(','), ws.join(','), h, ppm, tilt, lift, W, H, x0, x1, top, bottom, bk.join(',')]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {tags.map((t, i) => (

@@ -71,15 +71,16 @@ export function idleTags(crew: readonly R.FrameCrew[], t: number, since: Map<str
  * over the head; NaN: not drawn this frame), its size (w[i], h). Out: left and top of each (NaN: hidden). Each
  * tag is centred over its anchor with its foot on it, kept inside [x0, x1] and below `top` (the bars); a tag
  * that would touch one already placed (in order of anchor height, the highest first) moves above it, or below
- * it when there is no room above.
+ * it when there is no room above; one that would touch a block (`blocks`: x0, y0, x1, y1 each: the one button)
+ * moves above the block. A worker off the screen's sides (anchor outside [x0, x1]) or below `bottom` gets no tag.
  */
-export function placeTags(left: number[], tops: number[], ax: readonly number[], ay: readonly number[], w: readonly number[], h: number, n: number, x0: number, x1: number, top: number, bottom: number): void {
+export function placeTags(left: number[], tops: number[], ax: readonly number[], ay: readonly number[], w: readonly number[], h: number, n: number, x0: number, x1: number, top: number, bottom: number, blocks: readonly number[] = []): void {
   'worklet';
   const order: number[] = [];
   for (let i = 0; i < n; i++) {
     left[i] = NaN;
     tops[i] = NaN;
-    if (ax[i] === ax[i] && ay[i] === ay[i]) order.push(i);
+    if (ax[i] === ax[i] && ay[i] === ay[i] && ax[i] >= x0 && ax[i] <= x1 && ay[i] <= bottom) order.push(i);
   }
   order.sort((a, b) => ay[a] - ay[b]);
   for (let k = 0; k < order.length; k++) {
@@ -89,6 +90,12 @@ export function placeTags(left: number[], tops: number[], ax: readonly number[],
     // Against the tags already placed: up above the one it touches, else below it.
     for (let pass = 0; pass < 4; pass++) {
       let moved = false;
+      for (let b = 0; b + 3 < blocks.length; b += 4) {
+        if (lx < blocks[b + 2] && lx + w[i] > blocks[b] && ty < blocks[b + 3] && ty + h > blocks[b + 1]) {
+          ty = blocks[b + 1] - h - TAG_GAP;
+          moved = true;
+        }
+      }
       for (let q = 0; q < k; q++) {
         const j = order[q];
         if (!(tops[j] === tops[j])) continue;

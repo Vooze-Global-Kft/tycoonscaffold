@@ -69,9 +69,10 @@ export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | 
       useGame.setState((st) => {
         const gg = st.game as R.SalvageGame;
         const tr = gg?.salvage?.truck;
-        if (!tr?.owned || tr.skip) return {};
+        if (!tr?.owned || (tr.skip && tr.by !== 'driver')) return {};
         const skip = { partner, slot: 0, contents: {}, mass_g: 1_020_000, price: 0, trial: true, weighed: m === 'step=weighed' };
-        return { game: { ...gg, salvage: { ...gg.salvage, truck: { ...tr, skip } } } as unknown as typeof st.game };
+        // The step is the boss's: a truck out with the hired driver is handed to nobody for the sample.
+        return { game: { ...gg, salvage: { ...gg.salvage, truck: { ...tr, skip, by: tr.by === 'driver' ? null : tr.by } } } as unknown as typeof st.game };
       });
     const t = setTimeout(hold, 600);
     const every = setInterval(hold, 1000);

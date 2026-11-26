@@ -57,6 +57,10 @@ describe('a waiting worker says why', () => {
         expect(apart, `${i} ${j}`).toBe(true);
       }
     }
+    // A worker off the side gets no tag; one under the one button's box: the tag goes above the box.
+    placeTags(left, tops, [900, 780], [200, 330], [100, 100], 20, 2, 10, 834, 44, 380, [760, 300, 834, 380]);
+    expect(Number.isNaN(left[0])).toBe(true);
+    expect(tops[1] + 20).toBeLessThanOrEqual(300);
     // A free tag sits with its foot on its anchor, centred.
     placeTags(left, tops, [400], [200], [100], 20, 1, 10, 834, 44, 380);
     expect([left[0], tops[0]]).toEqual([350, 180]);
