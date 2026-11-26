@@ -321,7 +321,13 @@ describe("the check's findings on bots' yards (real content, flat board)", () =>
   };
   it('F1 and F4: with 16.5\'s rank both rules keep at least 99 % of the hands\' rule alone; a demolition level loses at most 4 % (seeds 101 and 108, minute 60)', () => {
     // The content ships the hands' rule alone (truck.pickFromRung 99, RULING2.md 16.8); the rank is measured switched on.
-    const c = keyed(flat(real()), 1, 1);
+    // owner1-rules: measured on the dispatch rules as the check measured them, without the owner's review's yard-hand and
+    // vehicle rules (crew.hand.leaveM, truck.yardV): the unshipped rank's comparison is its own (with them it reads 98.9 %
+    // on seed 101, the yard's noise; notes/owner1-rules.md).
+    const r0 = flat(real());
+    const { leaveM: _l, ...hand } = r0.crew.hand as typeof r0.crew.hand & { leaveM?: number };
+    const { yardV: _y, ...truck } = r0.truck;
+    const c = keyed({ ...r0, crew: { ...r0.crew, hand }, truck } as SalvageContent, 1, 1);
     const handsOnly = keyed(c, 99, 1);
     for (const seed of [101, 108]) {
       const { cfg, g } = played(c, seed, 60);

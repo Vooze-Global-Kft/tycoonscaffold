@@ -150,6 +150,9 @@ describe('the bay chips (L10, S4, W4) and the memo (H13)', () => {
     expect(frameCfg(cfg, { ...g })).toBe(a);
     expect(frameCfg(cfg, { ...g, cash: g.cash + 1 })).not.toBe(a);
     expect(frameCfg(cfg, { ...g, salvage: { ...g.salvage } })).not.toBe(a);
-    expect(frameCfg(cfg, { ...g, salvage: { ...g.salvage } })).toEqual(frameOf(cfg.salvage, g));
+    // owner1 L2: the facade adds the scene stamp (frameCfg); everything else is frameOf's.
+    const { scene, ...f } = frameCfg(cfg, { ...g, salvage: { ...g.salvage } });
+    expect(typeof scene).toBe('number');
+    expect(f).toEqual(frameOf(cfg.salvage, g));
   });
 });

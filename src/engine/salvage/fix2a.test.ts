@@ -22,6 +22,7 @@ import { begin, credit } from './clock';
 import { hireCheck } from './ladder';
 import { contentAt, mergedContent, topToolTier } from './layer';
 import { reconcileSalvage } from './save';
+import { awayPass } from './away';
 import { repairStage2, freshStage2, STAGE2_KEYS } from './state2';
 import type { GroundPiece, ProductArrival, ProductListing, QuoteOutcome, SalvageConfig, SalvageGame, SalvageState, ThingState } from './types';
 
@@ -31,8 +32,6 @@ const H = vi.hoisted(() => ({
   /** bank.ts payLot: the bank's share of each gross, and what it returned. */
   share: 0,
   pays: [] as { gross: number; y: number; z: number }[],
-  /** works.ts worksOpen: a double that opens the works (sets the bath, emits the event). */
-  opens: 0,
 }));
 vi.mock('./reuse', async (orig) => {
   const real = (await orig()) as Record<string, unknown>;
@@ -46,23 +45,14 @@ vi.mock('./bank', () => ({
     return { y, z };
   },
 }));
-vi.mock('./works', async (orig) => {
-  const real = (await orig()) as Record<string, unknown>;
-  return {
-    ...real,
-    worksOpen: (x: { s: { counts: Record<string, number> }; ev: { type: string }[] }) => {
-      H.opens++;
-      x.s.counts.bathSet = 1;
-      x.ev.push({ type: 'backFieldOpen' });
-    },
-  };
-});
+// owner1-rules (RULING-owner1 S3): the works.ts double that counted worksOpen is gone: rate.ts binds the REAL worksOpen
+// (it is evaluated inside the mock factory's own import), so the double was bypassed and its count stayed 0. The rule is
+// tested on the real opening path: the event backFieldOpen and counts.bathSet.
 
 beforeEach(() => {
   H.keepOff.clear();
   H.share = 0;
   H.pays.length = 0;
-  H.opens = 0;
 });
 
 const C = SALVAGE_TEST;
@@ -144,8 +134,11 @@ describe('the works open only in live play (rate.ts checks; the critic\'s findin
     const later = g.salvage.clock.highMs + 6 * 3600 * 1000;
     const off = R.salvageOffline(cfg, g, later).game;
     expect(off.salvage.t).toBeGreaterThan(g.salvage.t);
-    expect(H.opens).toBe(0);
+    // Away: the works never open (no bath, and the away pass's own events hold no opening).
     expect(off.salvage.counts?.bathSet).toBeUndefined();
+    const offEv: R.SalvageEvent[] = [];
+    awayPass(cfg, g, later, offEv);
+    expect(offEv.filter((e) => (e as { type: string }).type === 'backFieldOpen').length).toBe(0);
     let h = R.ackAway(cfg, off);
     const ev: R.SalvageEvent[] = [];
     let ms = later;
@@ -153,8 +146,9 @@ describe('the works open only in live play (rate.ts checks; the critic\'s findin
       ms += 100;
       h = R.advanceSalvage(cfg, h, 0.1, ms, ev);
     }
-    expect(ev.filter((e) => (e as { type: string }).type === 'backFieldOpen').length).toBe(1);
-    expect(H.opens).toBe(1);
+    // Live: opened once, at the first live instant (the first tick after the card closed), never again.
+    const opens = ev.map((e, i) => ((e as { type: string }).type === 'backFieldOpen' ? i : -1)).filter((i) => i >= 0);
+    expect(opens.length).toBe(1);
     expect(h.salvage.counts?.bathSet).toBe(1);
   });
 });

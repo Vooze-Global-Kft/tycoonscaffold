@@ -1026,7 +1026,29 @@ function legacyAwayCap(raw: unknown): unknown {
   return { ...rest, awayCapByRung_h: rest.awayCapByRung_h ?? [old[0]], nightWatch_h: rest.nightWatch_h ?? Math.max(0, old[1] - old[0]) };
 }
 
-export const SalvageSchema = z.preprocess(legacyAwayCap, SalvageObject);
+/**
+ * owner1 S1 (RULING-owner1, "the switch"): the content a build of `release.stage` 1 plays. Stage 2 stays dark: its blocks
+ * (the works and their machines, lots, the crate, the Yard sale, the bank, the shop's products, ads, the works layer of
+ * the families and of the map, the stage's goal list, its glossary terms) are not in the content the rules and the
+ * screens read, and the ladder's top is the first yard's rung 3 (rungs 4 and up shown padlocked). Everything else
+ * (runs from rung 3, the yard hands' order of work, Hold's release, the time away, the owner's review) is the same
+ * content. `release` absent or 2: the content as written. A save made at stage 1 loads at stage 2 unchanged (the works
+ * open at its first live instant at rung 3 or more).
+ */
+export const STAGE2_BLOCKS = ['works', 'crane', 'shear', 'forklift', 'depollution', 'lots', 'crate', 'reuse', 'bank', 'iap', 'ads', 'worksLayer', 'stage2', 'tau_h'] as const;
+export function stageView<T extends { release?: { stage: number }; ladder: { topRung?: number }; map: { works?: unknown }; text?: { glossary?: { fromRung?: number }[] } }>(c: T): T {
+  if ((c.release?.stage ?? 2) >= 2) return c;
+  const out = { ...c } as Record<string, unknown>;
+  for (const k of STAGE2_BLOCKS) delete out[k];
+  const { topRung: _top, ...ladder } = c.ladder as Record<string, unknown>;
+  out.ladder = ladder;
+  const { works: _w, ...map } = c.map as Record<string, unknown>;
+  out.map = map;
+  if (c.text?.glossary) out.text = { ...c.text, glossary: c.text.glossary.filter((g) => (g.fromRung ?? 1) < 3) };
+  return out as T;
+}
+
+export const SalvageSchema = z.preprocess(legacyAwayCap, SalvageObject).transform((c) => stageView(c));
 
 export type SalvageContent = z.infer<typeof SalvageSchema>;
 
