@@ -1009,7 +1009,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -1374,7 +1374,7 @@ async function main(): Promise<void> {
   if (Number(arg('stage', '0')) === 2) {
     const names = (arg('bots', DEFAULT2.join(',')) ?? '').split(',') as Bot2[];
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
