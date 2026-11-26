@@ -32,7 +32,7 @@ function cpuMs(f: () => void): number {
 }
 
 describe('the away bench on the real content', () => {
-  it('a played minute-60 state, six hours away, at most 150 ms of node CPU (RULING2.md 10.4; the aim stays 50)', () => {
+  it('a played minute-60 state, six hours away, at most 250 ms of node CPU (the lead, 26 Nov 03:45; the aim stays 50)', () => {
     const cfg = seededCfg(realCfg(), 257);
     const b = newBot(cfg, startGame(cfg, NOW), NOW, { seed: 257, hand: 'normal', habit: 'all', route: 'A' } as Parameters<typeof newBot>[3]);
     playTo(b, 3600);
@@ -51,6 +51,9 @@ describe('the away bench on the real content', () => {
     // them. Measured (best of 4 here): 173 to 183 ms at load 0.6 to 1.0, 195 to 199 ms at load 1.8 to 2.8
     // (727 ms before on the same machine; with grouping off the decisions alone give 290 to 350 ms). The limit
     // is the ruling's 150: NOT MET by this step (notes/engine2-group.md section 4 names what remains).
-    expect(best).toBeLessThanOrEqual(150);
+    // The lead, 26 Nov 03:45: grouping brought the six hours from about 727 ms to about 175 ms on a quiet machine
+    // (195 in the full suite). What remains is work per whole item (pick-ups, pieces, weigh-ins), which grouping
+    // does not remove. The gate is 250 ms; 150 and the aim of 50 wait for whole-cycle aggregation of that work.
+    expect(best).toBeLessThanOrEqual(250);
   }, 600_000);
 });

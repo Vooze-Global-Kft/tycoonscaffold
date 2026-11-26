@@ -7,7 +7,8 @@ import { checkGoals } from './goals';
 import { rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
-import { driverRoundF, routeM } from './content';
+import { driverRoundF, machineShares, pieceCount, pieceSpec, routeM, vpk } from './content';
+import { roundMoney } from './money';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
 import { defOf } from './machines';
@@ -51,6 +52,63 @@ export function ratedOf(c: Ctx['c'], s: Ctx['s']): number {
 
 export function ratedCapacity(cfg: SalvageConfig, g: SalvageGame): number {
   return ratedOf(cfg.salvage, g.salvage);
+}
+
+/** A thing's remaining value at usual prices (its pieces still on it at vpk, and its shell), § (stage 2 2.3.3). */
+function thingValue(c: Ctx['c'], obj: string, cut: number, shell: boolean): number {
+  const o = c.objects[obj];
+  if (!o) return 0;
+  if (shell) return 0; // a stripped shell's grams are already in its bay (weighed in whole where it stands)
+  let v = o.shell ? (o.shell.g / 1000) * vpk(c, o.shell.grade) : 0;
+  const n = pieceCount(c, obj);
+  for (let k = Math.max(0, cut); k < n; k++) {
+    const sp = pieceSpec(c, obj, k);
+    if (sp) v += (sp.g / 1000) * vpk(c, sp.grade);
+  }
+  return v;
+}
+
+/**
+ * The value at usual prices (p̄, the converter at its assay; content.ts vpk) of every unsold stock in the
+ * yard, § (stage 2 2.3.3, ruling I5: the gate's "value of unsold stock"): the bays, the trays, the hoppers
+ * and the piece in work, the pot, the merchant's flatbed, pieces on the ground and carried, things in the
+ * yard at the value of the pieces still on them, the skip on the truck. Skips standing at a partner are
+ * not the yard's (unpaid). A pure function of the state.
+ */
+export function stockValue(c: Ctx['c'], s: Ctx['s']): number {
+  let v = 0;
+  for (const [grade, b] of Object.entries(s.bays)) v += (b.g / 1000) * vpk(c, grade);
+  const pv = (p: { grade: string; g: number }) => (p.g / 1000) * vpk(c, p.grade);
+  for (const id of ['hand_stripper', 'stripper', 'bench', 'crucible'] as const) {
+    const m = s.machines[id];
+    for (const [grade, g] of Object.entries(m.tray_g)) v += (g / 1000) * vpk(c, grade);
+    for (const p of m.hopper) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
+    const w = m.work;
+    if (w) {
+      // The piece in work less what is already credited to the tray (outputs by its shares).
+      const share = id === 'crucible' ? 1 : machineShares(c, id, w.piece.grade).reduce((a, [, q]) => a + q, 0);
+      const done = Object.values(w.credited).reduce((a, g) => a + g, 0);
+      const left = share > 0 ? Math.max(0, 1 - done / (share * w.piece.g)) : 1;
+      v += left * (w.piece.whole ? thingValue(c, w.piece.whole, 0, false) : pv(w.piece));
+    }
+  }
+  const cr = s.machines.crucible;
+  const rec = c.machines.crucible.recipes[cr.recipe];
+  if (rec) {
+    const ins = Array.isArray(rec[0]) ? (rec[0] as string[]) : [rec[0] as string];
+    const out = rec[1] as string;
+    if (cr.chargeBy) for (const [grade, g] of Object.entries(cr.chargeBy)) v += (g / 1000) * vpk(c, grade);
+    else v += (cr.charge_g / 1000) * vpk(c, ins[0]);
+    v += (cr.heel_g / 1000) * vpk(c, out);
+  }
+  for (const l of s.merchant.lot) v += (l.g / 1000) * vpk(c, l.grade);
+  for (const p of s.pieces) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
+  for (const p of s.load) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
+  for (const m of s.crew) for (const p of m.load) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
+  for (const th of s.things) if (th.at.at !== 'zone') v += thingValue(c, th.obj, th.cut, th.shell === true);
+  const sk = s.truck.skip;
+  if (sk) for (const [obj, n] of Object.entries(sk.contents)) v += n * thingValue(c, obj, 0, false);
+  return roundMoney(v);
 }
 
 // ---------------------------------------------------------------------------------------- purchases
