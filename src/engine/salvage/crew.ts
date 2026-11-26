@@ -685,8 +685,11 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
   if (found.size) {
     const byUid = new Map<string, GroundPiece>();
     for (const [uid, i] of found) byUid.set(uid, s.pieces[i]);
-    const idx = [...found.values()].sort((p, q) => q - p);
-    for (const i of idx) s.pieces.splice(i, 1);
+    // engine3: the claimed pieces taken off in one pass (the others keep their order, as the splices left them).
+    const gone = new Set(found.values());
+    let w = 0;
+    for (let i = 0; i < s.pieces.length; i++) if (!gone.has(i)) s.pieces[w++] = s.pieces[i];
+    s.pieces.length = w;
     for (const c of claims) {
       const q = byUid.get(c);
       if (!q) continue;
@@ -857,20 +860,17 @@ function piecesCand(m: CrewMember, pick: GroundPiece[], pile: string): Cand | nu
 }
 
 /** The next trip of the same kind from the same place (the in-place choice of 2.1.2), or null. Claims nothing until `take`. */
-function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number): Cand | null {
+function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number, pool: GroundPiece[] | null = null): Cand | null {
   const s = x.s;
   switch (kind.k) {
     case 'feed': {
       if (feedRoom <= 0) return null;
-      const inputs = machineInputs(x.c, s, kind.dest);
       const inbuf = (x.c.machines as unknown as Record<string, { inbuf: number }>)[kind.dest].inbuf * 1000;
-      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && inputs.includes(p.grade));
+      const src = pool ? pool.filter((p) => !p.claim) : sameAgainPool(x, kind, inYard).filter((p) => !p.claim);
       return piecesCand(m, choose(x, src, Math.min(cap, inbuf, feedRoom)), kind.pile);
     }
     case 'pile': {
-      const heapPile = kind.pile.startsWith('zone.') || kind.pile.startsWith('beside.');
-      const at = (uid: string) => thingOf(x, uid)?.at ?? null;
-      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && !(inYard && isCable(x, p.grade)) && (!heapPile || waitsAt(x, p) !== null || heapFree(x, p, inYard, at)));
+      const src = pool ? pool.filter((p) => !p.claim) : sameAgainPool(x, kind, inYard).filter((p) => !p.claim);
       return piecesCand(m, choose(x, src, cap), kind.pile);
     }
     case 'tray': {
@@ -937,6 +937,25 @@ function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number
 }
 
 /**
+ * engine3: the pieces a run of kind 'feed' or 'pile' may take next, before the claim test, in the pieces' order: for a
+ * feed those of its pile that are the machine's inputs, for a pile those of the pile that are not cable while the boss
+ * is in the yard and, in a heap's bed, that wait at a place or that he leaves (heapFree). Nothing of it reads a claim:
+ * inside one plan (groupHand) only claims change (each trip's take), so the plan computes it once and each trip takes
+ * the unclaimed ones of it, the same list as the full filter gives (sameAgain's own filter, in the same order).
+ */
+function sameAgainPool(x: Ctx, kind: HandKind, inYard: boolean): GroundPiece[] {
+  const s = x.s;
+  if (kind.k === 'feed') {
+    const inputs = machineInputs(x.c, s, kind.dest);
+    return s.pieces.filter((p) => p.pile === kind.pile && inputs.includes(p.grade));
+  }
+  if (kind.k !== 'pile') return [];
+  const heapPile = kind.pile.startsWith('zone.') || kind.pile.startsWith('beside.');
+  const at = (uid: string) => thingOf(x, uid)?.at ?? null;
+  return s.pieces.filter((p) => p.pile === kind.pile && !(inYard && isCable(x, p.grade)) && (!heapPile || waitsAt(x, p) !== null || heapFree(x, p, inYard, at)));
+}
+
+/**
  * 2.1 (14.1 b, c): PLAN AHEAD the rest of a run from the trip just set out on, when no boss is within
  * sight of its start, its source or its destination: more trips of the same kind from the same place to
  * the same destination while each ends by the run's t0 + group.handRun_s, each with its own two leg ends;
@@ -956,8 +975,10 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
   const loads: RunLoad[] = [{ claims: m.claims, spot: m.to, grade: claimGrade(x, m.claims), pickAt: m.t1, dropAt: m.t1 + dur(src, dpos) }];
   let feedRoom = dest !== 'scale' ? hopperRoom(x, dest as MachineId) - claimGrams(x, m.claims) : 0;
   const maxRun = groupCfg(x.c).handRun_s;
+  // engine3: the run's candidate pieces once (sameAgainPool); each trip takes the unclaimed ones of them.
+  const pool = kind.k === 'pile' || kind.k === 'feed' ? sameAgainPool(x, kind, inYard) : null;
   while (loads.length < RUN_MAX) {
-    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom);
+    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom, pool);
     if (!c) break;
     const last = loads[loads.length - 1];
     const sp = posOf(x, c.spot);

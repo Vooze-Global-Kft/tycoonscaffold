@@ -12,7 +12,7 @@ import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './cont
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
-import { drivePath, pathSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
+import { driveSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
@@ -291,8 +291,9 @@ const pt = (x: Ctx, id: string) => pointOf(x.c, id);
 const yardLimit = (x: Ctx): boolean => x.c.truck.yardV !== undefined;
 
 /** The drive of a path at the trip's speeds, seconds (V3: each segment at its side of the fence's speed). */
-function driveS(x: Ctx, path: { x: number; y: number }[], sp: { vy: number; vl: number }): number {
-  const L = pathSplit(x.c, path);
+function driveS(x: Ctx, from: { x: number; y: number }, to: { x: number; y: number }, sp: { vy: number; vl: number }): number {
+  // engine3: the drive's split kept per content by its two points (positions.ts driveSplit: pathSplit of drivePath).
+  const L = driveSplit(x.c, from, to);
   return L.yard / sp.vy + L.lane / sp.vl;
 }
 
@@ -313,7 +314,7 @@ function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slo
   let at = from;
   for (const ph of ['out', 'back', 'tip', 'park']) {
     const end = tripPhaseEnd(c, ph, partner, slot, at);
-    const L = pathSplit(c, drivePath(c, at, end));
+    const L = driveSplit(c, at, end);
     yard += L.yard;
     lane += L.lane;
     at = end;
@@ -337,7 +338,7 @@ function phaseDrive(x: Ctx, phase: string, from: { x: number; y: number }): numb
   const trip = x.s.truck.trip!;
   const end = tripPhaseEnd(x.c, phase, trip.partner, trip.slot, from);
   if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
-  return driveS(x, drivePath(x.c, from, end), speedsOf(x));
+  return driveS(x, from, end, speedsOf(x));
 }
 
 /** May the idle driver depart now (2.12)? The partner whose skip has been full longest, cash and room allowing; earmarked at departure. */
@@ -543,7 +544,7 @@ function driverFinishes(x: Ctx, d: CrewMember, t: number): boolean {
   let drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
   // V1, V3: along the drive line to the weighbridge's stop, at the yard's speed (no lane: this trip may last longer).
   const sp = yardLimit(x) ? { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) } : null;
-  if (sp) drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+  if (sp) drive = driveS(x, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge'), sp);
   tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive, ...(sp ? { speeds: sp } : {}) };
   tr.earmark = null;
   d.job = 'drive';
@@ -672,7 +673,7 @@ export function driverTakesOver(x: Ctx, t: number): void {
   }
   if (yardLimit(x)) {
     const sp = { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) };
-    const drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+    const drive = driveS(x, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge'), sp);
     tr.trip = { partner: tr.skip.partner, slot: tr.skip.slot, phase: tr.skip.weighed ? 'weigh' : 'back', t0: t, endsAt: t + drive, speeds: sp };
     return;
   }

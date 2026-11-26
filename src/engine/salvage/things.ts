@@ -142,7 +142,11 @@ export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): voi
   // Pieces left beside it go to its place's pile as when a thing is gone.
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
   const beside = `beside.${th.uid}`;
-  for (const q of x.s.pieces.filter((p) => p.pile === beside)) {
+  // engine3: the pieces beside it found in one look, in the pieces' order, before any is moved (as filter's copy was);
+  // none (the common case) allocates nothing.
+  let besides: GroundPiece[] | null = null;
+  for (const p of x.s.pieces) if (p.pile === beside) (besides ??= []).push(p);
+  if (besides) for (const q of besides) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
     gp.claim = q.claim;
@@ -176,7 +180,11 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
   // Pieces left beside it move to its place's pile (a beside.<uid> pile has no thing to stand by any more).
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
   const beside = `beside.${th.uid}`;
-  for (const q of x.s.pieces.filter((p) => p.pile === beside)) {
+  // engine3: the pieces beside it found in one look, in the pieces' order, before any is moved (as filter's copy was);
+  // none (the common case) allocates nothing.
+  let besides: GroundPiece[] | null = null;
+  for (const p of x.s.pieces) if (p.pile === beside) (besides ??= []).push(p);
+  if (besides) for (const q of besides) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
     gp.claim = q.claim;

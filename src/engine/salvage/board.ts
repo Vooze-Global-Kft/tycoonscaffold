@@ -33,6 +33,20 @@ export function secondsToNextDay(c: SalvageContent, ms: number): number {
 
 /** x_f(D) = Σ_{k=0..29} 0.5^k a w_f(D−1−k), w = 2 hash01 − 1. */
 export function boardX(c: SalvageContent, family: string, day: number): number {
+  // engine3: a pure function of the content (board.a, worldSeed), the family and the day: kept per content object.
+  let m = BOARD_X.get(c);
+  if (!m) BOARD_X.set(c, (m = new Map()));
+  const key = `${family}|${day}`;
+  let v = m.get(key);
+  if (v === undefined) {
+    if (m.size >= 4096) m.clear();
+    m.set(key, (v = boardXNow(c, family, day)));
+  }
+  return v;
+}
+const BOARD_X = new WeakMap<object, Map<string, number>>();
+
+function boardXNow(c: SalvageContent, family: string, day: number): number {
   const f = FAMILY[family] ?? hashString(family);
   let x = 0;
   for (let k = 0; k < 30; k++) x += 0.5 ** k * c.board.a * (2 * hash01(c.worldSeed, f, day - 1 - k) - 1);
