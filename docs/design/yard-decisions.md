@@ -1696,3 +1696,24 @@ store error, and blocked a pack for ever when the device's clock had been wrong.
     arrivals back while a sheet is open; the MODE's shop rules own the quotes, their `known`,
     their states, the ledger and every decision above (pure functions of the save, tested there).
     The contract's `iap.pending` entries become `{id, product, S, I, atMs, known, state}`.
+
+14.12 **THE ENGINE STEP AS IT STANDS (07:25, after the confirmation and the bots' REPORT7).**
+    Confirmed by an engineer who wrote none of it: a tick equals a jump on the whole state with the
+    boss walking in and out of sight of runs; an absence cut into passes equals one pass across
+    every rung; mass, the save and 934 actions inside runs are clean; live play below rung 3 is
+    bit for bit the first yard as merged; the long round is gone; the checks follow the state;
+    Hold sells only what the loads need and stays on. The watched yard is no longer the poorer one
+    (over an hour it carries 3 % more tonnes and earns 0.4 % more than the unwatched). Measured by
+    the lead alone on a quiet machine: six hours away 218 ms (gate 250); one tick's median 0.13 ms,
+    99 of 100 under 1 ms, the largest 4.8 ms. The bots (REPORT7): every beat below rung 3 as on the
+    owner's phone; from rung 3 the runs lift sales (minutes 60 to 90: §2,020 a minute against
+    §1,930 without runs); planned ahead against trip by trip within the gate of 14.9; runs against
+    no runs +12 % tonnes at day 1 and +16 % at day 3 (E42).
+    STILL OWED, each with its place: (a) rated income's gate and its monotony (14.10): a
+    calibration step of its own in Phase A, before any rule reads I for money; (b) a yard hand's
+    planned run tests sight only at its first pick-up spot (minor): the loop's engineer in Phase A;
+    (c) Hold: the day-word holder ends three days a median 8.7 % behind the same days without
+    Hold, counting the stock it still holds (10.8 % in lifetime earnings; the worst seed 14.8 %).
+    The lead accepts this as the cost of holding in a yard that grows this fast: the bound is now
+    "a median of at most a tenth, no seed over 15 %", and Hold is looked at again with stage 3's
+    market, where prices swing further. No absence pays nothing (E40's promise): met.
