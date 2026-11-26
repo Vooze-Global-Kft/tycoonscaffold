@@ -37,6 +37,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SalvageSchema } from '../../src/config/schema.salvage';
@@ -496,7 +497,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): void {
     rows[pid] = { dI, I: med(xs.map((x) => x.I)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.max(W.floor, Math.round(tau * dI)), seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: xs.map((x) => x.dI) };
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
-  const out = write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : 'plates.json');
+  const out = write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : path.join(os.tmpdir(), `yard-plates-${process.pid}.json`));
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dI: § an hour of rated income the plate adds at its planned moment on the normal bots\' yards (median of seeds); price: max(works.floor, tau_r x dI).', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows }, null, 1)}\n`);
   process.stderr.write(`wrote ${out}\n`);
