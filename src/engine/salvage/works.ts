@@ -845,6 +845,17 @@ export function worksTrayTrip(x: Ctx, m: CrewMember, t: number, plate: StationId
 
 // ---------------------------------------------------------------------------------------- the magnet crane (2.7)
 
+/** engine3: positions.ts placeGap memoised per content object (a pure function of the content's map and the two ids). */
+const GAPS = new WeakMap<object, Map<string, number>>();
+function gapOf(c: SalvageContent, a: string, b: string): number {
+  let m = GAPS.get(c);
+  if (!m) GAPS.set(c, (m = new Map()));
+  const key = `${a}|${b}`;
+  let v = m.get(key);
+  if (v === undefined) m.set(key, (v = placeGap(c, a, b)));
+  return v;
+}
+
 /** May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? */
 function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
   const k = x.c.crane;
@@ -858,35 +869,68 @@ function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
 function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
   const k = x.c.crane;
   const d = plateDef(x.c, id)!;
-  if (!k || placeGap(x.c, d.plot, 'floor') > k.reach_m) return;
+  if (!k || gapOf(x.c, d.plot, 'floor') > k.reach_m) return;
   // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
-  let floorThings: { th: ThingState; o: SalvageContent['objects'][string] }[] | null = null;
+  // engine3 (time away made cheaper, results unchanged bit for bit; notes/engine3.md): the same choice in plain loops. Inside
+  // one departure nothing that plateAccepts reads changes (a claim is set only on the target the move is made for, and the
+  // move is then made), so for a target `to` that passed the guard below plateAccepts(x, to, p) is exactly: its input key
+  // (plateKey), routeOf(grade) === to when the key is the grade, and plateRoom(to) >= p.g: the route is read once a grade a
+  // departure (craneRoute) and the room once a target. The things are filtered for the target BEFORE they are sorted: the
+  // sort's order is total (gross, then the unique uid), so filtering and sorting commute.
+  let floorThings: ThingState[] | null = null;
   let floorPieces: GroundPiece[] | null = null;
+  let routes: Map<string, StationId | 'bay' | null> | null = null;
+  const routeTo = (grade: string): StationId | 'bay' | null => {
+    routes ??= new Map();
+    let r = routes.get(grade);
+    if (r === undefined) routes.set(grade, (r = routeOf(x, grade)));
+    return r;
+  };
   for (const to of plateIds(x)) {
     const tw = x.s.works[to];
     const td = plateDef(x.c, to)!;
-    if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || placeGap(x.c, d.plot, td.plot) > k.reach_m) continue;
-    let room = Math.min(k.load_kg * 1000, plateRoom(x, to, tw));
+    if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || gapOf(x.c, d.plot, td.plot) > k.reach_m) continue;
+    const roomTo = plateRoom(x, to, tw);
+    let room = Math.min(k.load_kg * 1000, roomTo);
     if (room <= 0) continue;
+    const accepts = (grade: string, whole: string | undefined, g0: number): boolean => {
+      const key = whole && td.in.includes(whole) ? whole : td.in.includes(grade) ? grade : null;
+      if (key === null) return false;
+      if (key === grade && routeTo(grade) !== to) return false;
+      return roomTo >= g0;
+    };
     const items: string[] = [];
     let g = 0;
     // Whole things on the floor first (the shear's beams and tanks), then loose pieces on the floor.
-    floorThings ??= x.s.things
-      .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole)
-      .map((th) => ({ th, o: x.c.objects[th.obj] }))
-      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj))
-      .sort((a, b) => b.o.gross_g - a.o.gross_g || (a.th.uid < b.th.uid ? -1 : 1));
-    const things = floorThings.filter(({ th, o }) => !th.by && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }));
-    for (const { th, o } of things) {
+    if (!floorThings) {
+      floorThings = [];
+      for (const th of x.s.things) {
+        if (th.at.at !== 'floor' || th.by || th.shell || th.cut !== 0) continue;
+        const o = x.c.objects[th.obj];
+        if (o?.whole && craneMayLift(x, o.whole, th.obj)) floorThings.push(th);
+      }
+    }
+    const things: ThingState[] = [];
+    for (const th of floorThings) {
+      const o = x.c.objects[th.obj];
+      if (!th.by && accepts(o.whole!, th.obj, o.gross_g)) things.push(th);
+    }
+    if (things.length > 1) things.sort((a, b) => x.c.objects[b.obj].gross_g - x.c.objects[a.obj].gross_g || (a.uid < b.uid ? -1 : 1));
+    for (const th of things) {
+      const o = x.c.objects[th.obj];
       if (o.gross_g > room) continue;
       th.by = `crane.${id}`;
       items.push(th.uid);
       g += o.gross_g;
       room -= o.gross_g;
     }
-    floorPieces ??= x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole));
-    const ps = floorPieces.filter((p) => !p.claim && plateAccepts(x, to, p));
-    for (const p of chooseFit(x, ps, room)) {
+    if (!floorPieces) {
+      floorPieces = [];
+      for (const p of x.s.pieces) if (!p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole)) floorPieces.push(p);
+    }
+    const ps: GroundPiece[] = [];
+    for (const p of floorPieces) if (!p.claim && accepts(p.grade, p.whole, p.g)) ps.push(p);
+    for (const p of ps.length ? chooseFit(x, ps, room) : ps) {
       p.claim = `crane.${id}`;
       items.push(p.uid);
       g += p.g;
