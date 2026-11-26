@@ -11,6 +11,7 @@
 import { bankRow, loanFoot } from './bank';
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
 import { refusalTxt } from './ladder';
+import { hallBusy } from './halls';
 import { contentAt } from './layer';
 import { begin, dayAt } from './clock';
 import { lotValue } from './lots';
@@ -99,7 +100,7 @@ export function worksCardOf(cfg: SalvageConfig, g: SalvageGame, plate: string): 
     selfStartAt: w?.phase === 'installed' ? w.commissionAt : null,
     level,
     ...(d.recipes
-      ? { recipes: Object.entries(d.recipes).map(([r, rec]) => ({ recipe: r, in: [...rec.in], out: rec.out.map(([o]) => o).filter((o) => !!c.grades[o]), selected: (w?.heat?.recipe ?? '') === r, button: w?.phase === 'running' && w.heat?.recipe !== r ? { label: { key: 'card.recipe' as TextKey, args: { recipe: { text: `recipe.${r}` as TextKey } } }, action: { act: 'setRecipe', recipe: r, confirmHeel: false, plate }, refusal: null } : null })) }
+      ? { recipes: Object.entries(d.recipes).map(([r, rec]) => ({ recipe: r, in: [...rec.in], out: rec.out.map(([o]) => o).filter((o) => !!c.grades[o]), selected: (w?.heat?.recipe ?? '') === r, button: w?.phase === 'running' && w.heat?.recipe !== r ? { label: { key: 'card.recipe' as TextKey, args: { recipe: { text: `recipe.${r}` as TextKey } } }, action: { act: 'setRecipe', recipe: r, confirmHeel: false, plate }, refusal: w.heat && hallBusy(w.heat.phase) ? { key: 'refusal.heatRunning' as TextKey } : null } : null })) }
       : {}),
     ...(d.feedBy === 'bays' && d.kind === 'rate' ? { takesFrom: d.in.filter((k) => !!c.grades[k]).map((k) => ({ grade: k, route: g.salvage.routes[k] ?? (plate as string) })) } : {}),
     permit: d.permit ? (d.permit.endsWith('Lead') ? 'lead' : 'elv') : null,

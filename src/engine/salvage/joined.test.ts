@@ -23,7 +23,7 @@ import { reconcileSalvage } from './save';
 import { buy, hire, level, sell, setHold, setRecipe, setFromBays, signDeal, declineDeal, skipGoal, ackAway } from './actions';
 import { adPaid, chooseLook, quotePack, settleQuote, signFinance } from './actionsMoney';
 import { setPlateRecipe, setRoute } from './actionsWorks';
-import { cardOf } from './cards';
+import { cardOfCfg as cardOf } from './cards';
 import { contentAt } from './layer';
 import { begin } from './clock';
 import { pieceCount, pieceSpec } from './content';
@@ -53,11 +53,11 @@ export function staleBoss(g: SalvageGame): SalvageGame {
   return { ...g, salvage: { ...s, presenceAt: s.t - 100, act: { kind: 'none', target: null, since: s.t, endsAt: null } } } as SalvageGame;
 }
 
-/** The whole state as data, numbers to 1e-6 (the yard clock summed tick by tick drifts by 1e-10), the market clock's high mark left out (a tick raises it to the device's now). */
+/** The whole state as data (keys sorted), numbers to 1e-6 (the yard clock summed tick by tick drifts by 1e-10), the market clock's high mark left out (a tick raises it to the device's now). */
 export function whole(g: SalvageGame): string {
   const { clock, presenceAt, ...rest } = g.salvage as SalvageGame['salvage'] & { presenceAt: number };
   void presenceAt;
-  return JSON.stringify({ cash: Math.round(g.cash * 100), earned: Math.round((g.lifetimeEarnings ?? 0) * 100), day: clock.day, s: rest }, (_k, v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v));
+  return JSON.stringify({ cash: Math.round(g.cash * 100), earned: Math.round((g.lifetimeEarnings ?? 0) * 100), day: clock.day, s: rest }, (_k, v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, (v as Record<string, unknown>)[k]])) : v));
 }
 
 /** The first difference of two whole states, as a short path (for a readable failure). */
@@ -271,8 +271,14 @@ describe('a save in the middle of everything at once reloads and goes on as the 
     expect(g.salvage.things.some((th) => th.at.at === 'rack')).toBe(true);
     const raw = JSON.parse(JSON.stringify(g));
     const base = { ...g, salvage: undefined } as unknown as GameState;
-    const loaded = reconcileSalvage(cfg, base, raw, g.salvage.clock.highMs);
-    expect(sameWhole(loaded, g)).toBeNull();
+    // A load counts itself (`epoch`, the frame's reset): the rest is the yard as it was.
+    const loaded0 = reconcileSalvage(cfg, base, raw, g.salvage.clock.highMs);
+    expect(loaded0.salvage.epoch).toBe(g.salvage.epoch + 1);
+    // and the boss's standing time is not kept across a load (save.ts: a reloaded boss starts standing afresh; he is stale here)
+    const loaded = { ...loaded0, salvage: { ...loaded0.salvage, epoch: g.salvage.epoch, presence: { ...loaded0.salvage.presence, standingFor: g.salvage.presence.standingFor } } };
+    // What a load changes on purpose: save.ts clamps a bay's reserve to its grams (rebuilt by the works at the next instant).
+    const norm = (x: SalvageGame) => ({ ...x, salvage: { ...x.salvage, bays: Object.fromEntries(Object.entries(x.salvage.bays).map(([k, b]) => [k, { ...b, reserved: undefined }])) } }) as SalvageGame;
+    expect(sameWhole(norm(loaded), norm(g))).toBeNull();
     const a = jump(cfg, g, t + 600);
     const b = jump(cfg, loaded, t + 600);
     expect(sameWhole(b, a)).toBeNull();
@@ -366,7 +372,9 @@ describe('every card of every frozen state, and every button on it: applying it 
           if (!out) continue;
           pressed++;
           const what = `${cd.kind} ${JSON.stringify(a).slice(0, 140)}`;
-          // a pressable button is never refused
+          // a pressable button is never refused (but the crucible's and a hall's recipe change with a heel, which asks first and carries its retry: 4.5)
+          const conf = ev.find((e) => e.type === 'refused' && e.key === 'confirmHeel' && !!e.retry);
+          if (conf) continue;
           expect(ev.find((e) => e.type === "refused"), `${what} ${JSON.stringify(ev.find((e) => e.type === "refused"))}`).toBeUndefined();
           const paid = roundMoney(n.g.cash - out.cash);
           if (a.act === 'buy' || a.act === 'hire' || a.act === 'level') expect(paid, what).toBe(roundMoney(a.price));
@@ -393,4 +401,113 @@ describe('every card of every frozen state, and every button on it: applying it 
       void kinds;
     });
   }
+});
+
+const LOT_TICKETS = new Set<Ticket['kind']>(['collection', 'dealDelivery', 'rackSale', 'vanCollection', 'crateLot']);
+
+describe('every lot payment goes through payLot before its ticket (2.14.4)', () => {
+  it('r3fin, an hour minute by minute: every lot ticket printed while the agreement is open carries the bank\'s line at the share; the share\'s sum is what the agreement took; earnings rose by the payments less the bank, nothing else', () => {
+    const cfg = moneyCfg();
+    let g = staleBoss(r3finGame());
+    const share = (cfg.salvage as { bank?: { share: number } }).bank!.share;
+    const a0 = g.salvage.bank.agreement!;
+    const byKind: Record<string, number> = {};
+    let paid = 0;
+    let y = 0;
+    let lastNo = g.salvage.ticketNo;
+    for (let k = 1; k <= 60; k++) {
+      const before = g;
+      g = jump(cfg, g, before.salvage.t + 60);
+      const fresh = g.salvage.tickets.filter((tk) => tk.no >= lastNo);
+      expect(g.salvage.ticketNo - lastNo, 'fewer than 50 tickets a minute (all seen)').toBeLessThan(50);
+      lastNo = g.salvage.ticketNo;
+      for (const tk of fresh) {
+        if (!LOT_TICKETS.has(tk.kind)) continue;
+        const p = (tk as { paid: number }).paid;
+        const b = (tk as { bank?: { y: number } }).bank;
+        byKind[tk.kind] = (byKind[tk.kind] ?? 0) + 1;
+        paid += p;
+        const open = before.salvage.bank.agreement;
+        if (open) {
+          const want = Math.min(roundMoney(share * p), roundMoney(open.T - open.taken));
+          if (want > 0) expect(b?.y, `${tk.kind} ${tk.no}`).toBe(want);
+        }
+        y += b?.y ?? 0;
+      }
+      const ag = g.salvage.bank.agreement;
+      if (!ag) break;
+    }
+    const taken = g.salvage.bank.agreement ? g.salvage.bank.agreement.taken - a0.taken : a0.T - a0.taken;
+    expect(y).toBeGreaterThan(0);
+    expect(roundMoney(y)).toBe(roundMoney(taken));
+    expect(roundMoney((g.lifetimeEarnings ?? 0) - (r3finGame().lifetimeEarnings ?? 0))).toBe(roundMoney(paid - y));
+    // the payments seen by kind (the closed list of 2.14.4 that an hour without the boss can make)
+    expect(byKind.collection).toBeGreaterThan(5);
+    expect((byKind.rackSale ?? 0) + (byKind.vanCollection ?? 0)).toBeGreaterThan(0);
+  });
+});
+
+/** Every button and row id at any depth of a card. */
+function actsOf(cd: CardData): { acts: CardAction['act'][]; opens: string[] } {
+  const acts: CardAction['act'][] = [];
+  const opens: string[] = [];
+  const seen = new Set<unknown>();
+  const visit = (v: unknown) => {
+    if (!v || typeof v !== 'object' || seen.has(v)) return;
+    seen.add(v);
+    const o = v as { action?: CardAction };
+    if (o.action && typeof o.action === 'object' && 'act' in o.action) {
+      acts.push(o.action.act);
+      if (o.action.act === 'open') opens.push(o.action.card.kind);
+    }
+    for (const x of Array.isArray(v) ? v : Object.values(v)) visit(x);
+  };
+  visit(cd);
+  return { acts, opens };
+}
+
+const MONEY_ACTS = new Set<CardAction['act']>(['buyPack', 'buyProduct', 'restorePurchases', 'watchAd']);
+
+describe('the money\'s promises over every card of the joined states (2.14.5, 2.15.2, P1, P8)', () => {
+  const cardsOf = (n: Named) => {
+    const out: CardData[] = [];
+    for (const country of ['US', 'DE', null]) for (const ref of refsOf(n.cfg, n.g)) out.push(cardOf(n.cfg, n.g, ref, SHOP_NOW, { country }));
+    return out;
+  };
+  for (const n of frozen()) {
+    it(`${n.name}: no shop entry and no ad on a card that shows a debt`, () => {
+      for (const cd of cardsOf(n)) {
+        if (!cd.showsDebt) continue;
+        const { acts, opens } = actsOf(cd);
+        expect(acts.filter((a) => MONEY_ACTS.has(a)), cd.kind).toEqual([]);
+        expect(opens.filter((k) => k === 'shop' || k === 'packSheet' || k === 'awayBonus'), cd.kind).toEqual([]);
+      }
+    });
+  }
+  it('r3fin shows a debt somewhere (the walk above is not empty)', () => {
+    const n = frozen().find((f) => f.name === 'r3fin')!;
+    expect(cardsOf(n).some((cd) => cd.showsDebt)).toBe(true);
+  });
+  it('firstHour2min: nothing of money or ads on any card (no shop row, no ad button, no shop data)', () => {
+    const n = frozen().find((f) => f.name === 'firstHour2min')!;
+    for (const g of [n.g, firstHour2min().card]) {
+      for (const country of ['US', 'DE', null]) for (const ref of refsOf(n.cfg, g)) {
+        const cd = cardOf(n.cfg, g, ref, SHOP_NOW, { country });
+        const { acts, opens } = actsOf(cd);
+        expect(acts.filter((a) => MONEY_ACTS.has(a)), cd.kind).toEqual([]);
+        expect(opens.filter((k) => k === 'shop' || k === 'packSheet' || k === 'awayBonus'), cd.kind).toEqual([]);
+        expect(cd.shop, cd.kind).toBeUndefined();
+        expect(cd.bonus, cd.kind).toBeUndefined();
+      }
+    }
+  });
+  it('u13: no shop anywhere (no row, no shop data, no pack)', () => {
+    const n = frozen().find((f) => f.name === 'u13')!;
+    for (const cd of cardsOf(n)) {
+      const { acts, opens } = actsOf(cd);
+      expect(opens.filter((k) => k === 'shop' || k === 'packSheet'), cd.kind).toEqual([]);
+      expect(acts.filter((a) => a === 'buyPack' || a === 'buyProduct'), cd.kind).toEqual([]);
+      expect(cd.shop, cd.kind).toBeUndefined();
+    }
+  });
 });

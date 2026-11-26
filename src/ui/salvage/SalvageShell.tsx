@@ -202,8 +202,9 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       {HERO.store ? null : <HintLayer cfg={cfg} width={width} height={height} insets={insets} zone={zoneRef.current} used={used} active={active} />}
       {HERO.store ? null : <Autoplay cfg={cfg} zone={zoneRef.current} />}
       {shut ? null : <HudLayer cfg={cfg} L={L} camera={anim.camera} yard={yard} body={anim.body} />}
-      {/* The store's hero picture shows no one button either (world-b, L2). */}
-      {shut || HERO.store ? null : <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} onGetIn={() => getIn(anim)} />}
+      {/* The store's hero picture shows no one button either (world-b, L2). owner2-hud (ruling 18.4): "Get in" asks the
+          world to seat him (the frame loop's `enter`, its engineer's side: it sends the rules the entering sample). */}
+      {shut || HERO.store ? null : <OneButton cfg={cfg} L={L} hidden={overlays > 0} onStepOut={() => (anim.exit.value = 1)} onGetIn={() => (anim.enter.value = 1)} />}
       {/* Coins fly over the bars to the cash counter (world-b's layer; touch-through, runs only while one flies). */}
       <CoinLayer />
       {yardSwitches.panel ? <DevPanel stats={anim.stats} top={height - insets.bottom - 26} left={insets.left + Math.round(width * 0.36)} atlas={atlasNote} /> : null}
@@ -212,15 +213,6 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
       <LoadingCurtain />
     </View>
   );
-}
-
-/**
- * owner2-hud (ruling 18.4): the one button's "Get in" asks the world to seat him (the frame loop's `enter`, owned by
- * the world's engineer: requests.md 26 Nov ~18:50); read optionally, so until that side is in a press does nothing.
- */
-function getIn(anim: object): void {
-  const enter = (anim as { enter?: { value: number } }).enter;
-  if (enter) enter.value = 1;
 }
 
 /** The stick's base and knob, moved on the UI thread from the stick's shared value. */

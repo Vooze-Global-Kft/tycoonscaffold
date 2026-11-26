@@ -186,7 +186,8 @@ export function level(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, s
 /** Keep a bay off the merchant's round, or release it (free). */
 export function setHold(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, on: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
   void clock;
-  if (!cfg.salvage.grades[grade]) return refuse(g, events, 'nothing');
+  // join2b: a works-layer grade (its bay is on the price board once the works opened) is read from the content the state reads.
+  if (!contentAt(cfg.salvage, g.salvage).grades[grade]) return refuse(g, events, 'nothing');
   const b = g.salvage.bays[grade];
   if ((b?.held ?? false) === on) return g;
   const x = begin(cfg, g, events, true);
@@ -206,8 +207,10 @@ export function sell(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, shown: 
   if (!b || !b.held) return refuse(g, events, 'nothing');
   const grams = Math.floor(freeOf(b) / 100) * 100;
   if (grams <= 0) return refuse(g, events, 'nothing');
-  const day = marketDay(cfg.salvage, Math.max(now, s.clock.highMs));
-  const price = priceOf(cfg.salvage, grade, day);
+  // join2b: a works-layer grade's price is the merged content's (layer.ts contentAt), as the price board shows it.
+  const cs = contentAt(cfg.salvage, s);
+  const day = marketDay(cs, Math.max(now, s.clock.highMs));
+  const price = priceOf(cs, grade, day);
   if (shown.day !== day || !same(shown.price, price) || shown.grams !== grams) {
     return refuse(g, events, 'priceUpdated', { a: { price: shown.price }, b: { price } }, { act: 'sell', grade, shown: { day, price, grams } });
   }

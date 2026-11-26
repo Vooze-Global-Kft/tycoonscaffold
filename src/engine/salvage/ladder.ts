@@ -133,7 +133,8 @@ export function shopPrice(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): nu
 
 /** The buy check (2.15): owned (owned or arriving), the gate, earmark or cash, ceiling. */
 export function buyCheck(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): PurchaseCheck {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const it = shopItem(c, item);
   if (!it) return { price: null, refusal: { key: 'nothing', args: {} }, state: 'info' };
   if (owns(c, g, item)) return { price: null, refusal: { key: 'owned', args: {} }, state: 'owned' };
@@ -238,7 +239,8 @@ function levelNow(g: SalvageGame, target: LevelTarget): number | null {
 
 /** The rated kilograms a minute one more level of the target adds at full feed (E13a: rated, never measured at a moment). */
 export function levelAddsKgMin(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target) ?? 1;
   if (target.kind === 'partner') {
     const p = c.partners[target.partner];
@@ -319,7 +321,8 @@ function roundPrice(v: number): number {
 export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number | null {
   // Stage 2: a works plate's level has its own rule (plateLevelPrice, the one function rules-works reads).
   if (target.kind === 'plate') return plateLevelPrice(cfg, g, target.plate);
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target);
   if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
   const { floor, growth } = levelFloor(c);
@@ -329,7 +332,8 @@ export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
 
 /** The level check (2.15): notOwned, the levels' gate (E25: levels open at rung 2), topLevel, earmark or cash, ceiling. */
 export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): PurchaseCheck {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target);
   if (L === null || L < 1 || (target.kind === 'plate' && g.salvage.works[target.plate]?.phase !== 'running')) return { price: null, refusal: { key: 'notOwned', args: {} }, state: 'locked' };
   const gate = gateRefusal(c, g, c.levels.opens);
@@ -457,7 +461,8 @@ export function topRungOf(c: SalvageContent): number {
 
 /** The rung a supplied mass and range reach: the highest n ≤ the stage's top with tonnes and its own range (θ_n) both met (never below the state's own rung: rungs are not lost). */
 export function rungReached(cfg: SalvageConfig, g: SalvageGame): number {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const s = g.salvage.ladder;
   // RULING2.md 14.4: the away pass checks the rung at every changed instant, so the content's lists are
   // read once per content object (rungsOf sorts, materialsOf builds a set).
@@ -522,7 +527,8 @@ export interface RungProgress {
 }
 
 export function rungProgress(cfg: SalvageConfig, g: SalvageGame): RungProgress {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const s = g.salvage.ladder;
   const materials = rangeCount(c, s.worth, s.rung);
   const nx = rungsOf(c).find((r) => r.n === s.rung + 1 && r.n <= topRungOf(c));
@@ -549,7 +555,8 @@ export interface RungTile {
 }
 
 export function rungTiles(cfg: SalvageConfig, g: SalvageGame): RungTile[] {
-  const c = cfg.salvage;
+  // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
+  const c = contentAt(cfg.salvage, g.salvage);
   const rung = g.salvage.ladder.rung;
   return rungsOf(c).map((r) => {
     const t_g = Math.round(r.t * 1e6);
