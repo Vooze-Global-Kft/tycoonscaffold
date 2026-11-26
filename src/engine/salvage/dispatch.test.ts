@@ -319,9 +319,10 @@ describe("the check's findings on bots' yards (real content, flat board)", () =>
     const h = o.salvage.away!.seconds / 3600;
     return { G: (o.cash - g.cash + R.stockValue(cfg, o) - v0) / h, h };
   };
-  it('F1 and F4: both rules keep at least 99 % of the hands\' rule alone; a demolition level loses at most 4 % (seeds 101 and 108, minute 60)', () => {
-    const c = flat(real());
-    const handsOnly = { ...c, truck: { ...c.truck, pickFromRung: 99 } } as SalvageContent;
+  it('F1 and F4: with 16.5\'s rank both rules keep at least 99 % of the hands\' rule alone; a demolition level loses at most 4 % (seeds 101 and 108, minute 60)', () => {
+    // The content ships the hands' rule alone (truck.pickFromRung 99, RULING2.md 16.8); the rank is measured switched on.
+    const c = keyed(flat(real()), 1, 1);
+    const handsOnly = keyed(c, 99, 1);
     for (const seed of [101, 108]) {
       const { cfg, g } = played(c, seed, 60);
       const a = G(cfg, g);
@@ -333,8 +334,9 @@ describe("the check's findings on bots' yards (real content, flat board)", () =>
       expect(G(cfg, h, a.h).G, `seed ${seed}: a demolition level`).toBeGreaterThanOrEqual(0.96 * a.G);
     }
   }, 300_000);
-  it('F3: I/G within 0.88 to 1.12 at minute 30 (rung 2, the hands\' rule; seeds 104 and 106)', () => {
+  it('F3: I/G within 0.88 to 1.12 at minute 30 (rung 2, the hands\' rule as shipped; seeds 104 and 106)', () => {
     const c = flat(real());
+    expect(orderFromRung(c)).toBeLessThanOrEqual(2);
     for (const seed of [104, 106]) {
       const { cfg, g } = played(c, seed, 30);
       const r = R.ratedIncome(cfg, g) / G(cfg, g).G;

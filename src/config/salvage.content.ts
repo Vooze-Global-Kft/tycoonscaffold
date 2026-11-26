@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
     "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
     "engine2-income (26 Nov, stage 2 2.4, E31/E36a): crew.driver.lev 0.15 -> 0.25 TRIED and put back to 0.15: on the bots (15 seeds) sales at minutes 55-60 were a median §1,698 a minute against §1,720 before (the aim §2,000), and with the truck nearly free (lev 3.0) §1,750: the truck does not bind the late hour, cutting and carrying do (notes/engine2-engine2-income.md)",
@@ -1132,8 +1133,10 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   walk: 4,
   pick_s: 0.15,
   weigh_s: 0.5,
-  // pickFromRung (RULING2.md 16, engine2-dispatch): the hired driver ranks partners by their rated net a load from rung 1.
-  truck: { v: 12, bossV: 9, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 1 },
+  // pickFromRung (RULING2.md 16, 16.5, 16.8; engine2-dispatch): the rung from which the hired driver ranks partners by what a
+  // load nets a second of the yard's slowest step. 99: beyond the ladder, the first yard's rule (the skip full longest that
+  // fits) everywhere: 16.8 (2) not met over the bots' days (notes/dispatch-engine2.md "After the check"); 1 switches it on.
+  truck: { v: 12, bossV: 9, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
