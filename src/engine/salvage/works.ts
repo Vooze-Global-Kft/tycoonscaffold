@@ -889,18 +889,115 @@ function gapOf(c: SalvageContent, a: string, b: string): number {
 
 /** May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? */
 function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
-  const k = x.c.crane;
+  // engine3: a pure function of the content, the grade and the object: kept per content object.
+  let byGrade = CRANE_LIFT.get(x.c);
+  if (!byGrade) CRANE_LIFT.set(x.c, (byGrade = new Map()));
+  let byObj = byGrade.get(grade);
+  if (!byObj) byGrade.set(grade, (byObj = new Map()));
+  const key = obj ?? '';
+  let v = byObj.get(key);
+  if (v === undefined) byObj.set(key, (v = craneMayLiftNow(x.c, grade, obj)));
+  return v;
+}
+const CRANE_LIFT = new WeakMap<object, Map<string, Map<string, boolean>>>();
+
+function craneMayLiftNow(c: SalvageContent, grade: string, obj?: string): boolean {
+  const k = c.crane;
   if (!k) return false;
   if (obj && k.neverObjects.includes(obj)) return false;
-  const mat = x.c.grades[grade]?.material;
+  const mat = c.grades[grade]?.material;
   return !(mat && k.never.includes(mat));
 }
 
 /** The crane's next move (one dated move at a time): the first served plate in content order with room, from the tipping floor, best value first within crane.load_kg and the hopper's room. */
 function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
+  // engine3: a departure that made no move is not made again while nothing it reads has changed (craneSame).
+  const memos = CRANE_IDLE.get(x);
+  const memo = memos?.get(id);
+  if (memo && craneSame(x, memo)) {
+    if (MEMO_CHECK.verify && craneDepartNow(x, id, w, t)) memoMismatch(`crane ${id} idle`, 'no move', w.move);
+    return;
+  }
+  if (craneDepartNow(x, id, w, t)) {
+    memos?.delete(id);
+    return;
+  }
+  let m = memos;
+  if (!m) CRANE_IDLE.set(x, (m = new Map()));
+  m.set(id, craneSnap(x));
+}
+
+/**
+ * engine3: what a crane departure that made no move had read, as it stood then: the content, the transition's kept
+ * routes (works.ts routeOf: the same memo object means the same answers), every thing on the tipping floor with its
+ * claim, shell and cut (a thing's uid and object never change), every piece on the floor or beside a thing with its
+ * claim, pile and grams (a piece's uid, grade and whole never change; beside a thing it waits on the floor exactly
+ * when that thing is among the floor's things), and each plate with its phase and its hopper's room. While all of it
+ * is the same, craneDepartNow reads the same values and again makes no move (it changes nothing when it makes none).
+ */
+interface CraneIdle {
+  c: SalvageContent;
+  routes: object | undefined;
+  things: ThingState[];
+  thingV: unknown[];
+  pieces: GroundPiece[];
+  pieceV: unknown[];
+  plates: unknown[];
+}
+const CRANE_IDLE = new WeakMap<Ctx, Map<string, CraneIdle>>();
+
+function cranePlates(x: Ctx, out: unknown[] | null, cmp: unknown[] | null): boolean {
+  let i = 0;
+  for (const id of plateIds(x)) {
+    const w = x.s.works[id];
+    const room = w ? plateRoom(x, id, w) : NaN;
+    if (out) out.push(w, w?.phase, room);
+    else if (cmp![i] !== w || cmp![i + 1] !== w?.phase || !Object.is(cmp![i + 2], room)) return false;
+    i += 3;
+  }
+  return true;
+}
+
+function craneSnap(x: Ctx): CraneIdle {
+  const things: ThingState[] = [];
+  const thingV: unknown[] = [];
+  for (const th of x.s.things) if (th.at.at === 'floor') {
+    things.push(th);
+    thingV.push(th.by, th.shell, th.cut);
+  }
+  const pieces: GroundPiece[] = [];
+  const pieceV: unknown[] = [];
+  for (const p of x.s.pieces) if (p.pile === 'floor' || p.pile.startsWith('beside.')) {
+    pieces.push(p);
+    pieceV.push(p.claim, p.pile, p.g);
+  }
+  const plates: unknown[] = [];
+  cranePlates(x, plates, null);
+  return { c: x.c, routes: ROUTES.get(x), things, thingV, pieces, pieceV, plates };
+}
+
+function craneSame(x: Ctx, m: CraneIdle): boolean {
+  if (m.c !== x.c || m.routes === undefined || m.routes !== ROUTES.get(x)) return false;
+  let i = 0;
+  for (const th of x.s.things) if (th.at.at === 'floor') {
+    if (m.things[i] !== th || m.thingV[3 * i] !== th.by || m.thingV[3 * i + 1] !== th.shell || m.thingV[3 * i + 2] !== th.cut) return false;
+    i++;
+  }
+  if (i !== m.things.length) return false;
+  i = 0;
+  for (const p of x.s.pieces) if (p.pile === 'floor' || p.pile.startsWith('beside.')) {
+    if (m.pieces[i] !== p || m.pieceV[3 * i] !== p.claim || m.pieceV[3 * i + 1] !== p.pile || m.pieceV[3 * i + 2] !== p.g) return false;
+    i++;
+  }
+  if (i !== m.pieces.length) return false;
+  return cranePlates(x, null, m.plates);
+}
+
+/** The crane's departure itself (true when it made a move). */
+function craneDepartNow(x: Ctx, id: string, w: WorksState, t: number): boolean {
   const k = x.c.crane;
   const d = plateDef(x.c, id)!;
-  if (!k || gapOf(x.c, d.plot, 'floor') > k.reach_m) return;
+  if (!k || gapOf(x.c, d.plot, 'floor') > k.reach_m) return false;
   // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
   // engine3 (time away made cheaper, results unchanged bit for bit; notes/engine3.md): the same choice in plain loops. Inside
   // one departure nothing that plateAccepts reads changes (a claim is set only on the target the move is made for, and the
@@ -970,8 +1067,9 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
     if (!items.length) continue;
     const rate = k.rate * (1 + d.lev * Math.max(0, w.level - 1));
     w.move = { items, g, from: 'floor', to, t0: t, end: t + Math.max(1e-3, g / 1000 / rate) };
-    return;
+    return true;
   }
+  return false;
 }
 
 /** The crane's move lands at t: what it holds goes into the hopper; what no longer fits is set down on the floor again (nothing lost). */

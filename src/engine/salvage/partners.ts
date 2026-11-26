@@ -114,7 +114,11 @@ export function setSkipDown(x: Ctx, partner: string, slot: number, t: number): v
 export function fullestSkip(x: Ctx, partner: string): SkipState | null {
   const ps = x.s.partners[partner];
   if (!ps?.open) return null;
-  return ps.skips.filter((q) => q.phase === 'full').sort((a, b) => a.fullAt - b.fullAt || a.slot - b.slot)[0] ?? null;
+  // engine3: the first by (fullAt, slot), found in one pass (the sort's comparator is a total order: a partner's slots are
+  // distinct; a NaN fullAt is never stored), so the same skip as filter + sort + [0].
+  let best: SkipState | null = null;
+  for (const q of ps.skips) if (q.phase === 'full' && (best === null || q.fullAt - best.fullAt < 0 || (q.fullAt - best.fullAt === 0 && q.slot - best.slot < 0))) best = q;
+  return best;
 }
 
 // ---------------------------------------------------------------------------------------- the driver's ranking (RULING2.md 16)

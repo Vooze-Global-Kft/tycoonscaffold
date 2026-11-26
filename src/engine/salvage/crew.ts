@@ -647,12 +647,21 @@ function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things
   for (const th of x.s.things) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap && !rackChoice(x, m, t, th)) cands.push(th);
   if (!cands.length) return null;
   cands.sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
-  const dest = floorWholeDest(x, cands[0]);
+  // engine3: nothing changes inside this function, so a thing's destination is a function of its next piece's grade
+  // alone here (floorWholeDest reads the machines as they stand): asked once a grade.
+  const dests = new Map<string, MachineId | 'scale'>();
+  const destOf = (th: ThingState): MachineId | 'scale' => {
+    const grade = pieceSpec(x.c, th.obj, th.cut)?.grade ?? '';
+    let d = dests.get(grade);
+    if (d === undefined) dests.set(grade, (d = floorWholeDest(x, th)));
+    return d;
+  };
+  const dest = destOf(cands[0]);
   let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), thingLeft_g(x, cands[0])));
   const things: ThingState[] = [];
   let g = 0;
   for (const th of cands) {
-    if (floorWholeDest(x, th) !== dest) continue;
+    if (destOf(th) !== dest) continue;
     const w = thingLeft_g(x, th);
     if (w > room) continue;
     things.push(th);
