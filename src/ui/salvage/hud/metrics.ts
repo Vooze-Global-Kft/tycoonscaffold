@@ -123,6 +123,133 @@ export function textW(text: string, pt: number): number {
   return text.length * pt * CHAR_EM;
 }
 
+// ------------------------------------------------------------------- measured widths (owner1-hud)
+
+/**
+ * Advances of the phone's system font (San Francisco Pro Text) as fractions of the font size: the text
+ * check's table (scripts/content/yard/check.ts measure, which reads scripts/content/office/fit.ts), copied
+ * here because a screen file may not import from scripts/ (the bundle check). hud.test.ts holds the two
+ * equal. Digits are tabular. The owner's first review (point 4) found "Step out" cut in the one button:
+ * an average of 0.56 em a character undercounts capitals, digits and heavy weights.
+ */
+const ADV: Record<string, number> = {
+  ' ': 0.27,
+  a: 0.55, b: 0.6, c: 0.54, d: 0.6, e: 0.56, f: 0.34, g: 0.6, h: 0.59, i: 0.25, j: 0.25, k: 0.53, l: 0.25, m: 0.89,
+  n: 0.59, o: 0.59, p: 0.6, q: 0.6, r: 0.37, s: 0.51, t: 0.35, u: 0.59, v: 0.53, w: 0.79, x: 0.52, y: 0.53, z: 0.52,
+  A: 0.67, B: 0.65, C: 0.7, D: 0.71, E: 0.58, F: 0.56, G: 0.73, H: 0.73, I: 0.27, J: 0.51, K: 0.65, L: 0.55, M: 0.87,
+  N: 0.73, O: 0.76, P: 0.62, Q: 0.76, R: 0.64, S: 0.61, T: 0.61, U: 0.72, V: 0.67, W: 0.97, X: 0.65, Y: 0.64, Z: 0.62,
+  '0': 0.62, '1': 0.62, '2': 0.62, '3': 0.62, '4': 0.62, '5': 0.62, '6': 0.62, '7': 0.62, '8': 0.62, '9': 0.62,
+  '.': 0.27, ',': 0.27, ':': 0.29, ';': 0.29, '!': 0.29, '?': 0.5, "'": 0.22, '"': 0.4, '’': 0.22, '‘': 0.22,
+  '“': 0.4, '”': 0.4, '-': 0.38, '–': 0.55, '—': 1.0, '−': 0.62, '(': 0.35, ')': 0.35,
+  '[': 0.35, ']': 0.35, '{': 0.35, '}': 0.35, '&': 0.69, '/': 0.38, '·': 0.27, '→': 0.8, '↑': 0.6,
+  '↓': 0.6, '↩': 0.8, '×': 0.6, '%': 0.87, '+': 0.62, '=': 0.62, '#': 0.62, '@': 0.95, '*': 0.45,
+  '…': 0.85, '£': 0.62, $: 0.62, _: 0.5, '<': 0.62, '>': 0.62, '|': 0.27, '~': 0.62,
+};
+/** Anything not in the table (§ among them), and wide pictographs. */
+const ADV_DEFAULT = 0.65;
+const ADV_WIDE = 1.2;
+/** The text check's safety margin on every width (until calibrated on a phone) and its bold factor. */
+export const MEASURE_SAFETY = 1.1;
+export const MEASURE_BOLD = 1.06;
+
+function advance(ch: string): number {
+  const hit = ADV[ch];
+  if (hit !== undefined) return hit;
+  const base = ch.normalize('NFD').charAt(0);
+  if (base !== ch && ADV[base] !== undefined) return ADV[base];
+  const cp = ch.codePointAt(0) ?? 0;
+  if (cp >= 0x1f000 || (cp >= 0x2600 && cp <= 0x27bf)) return ADV_WIDE;
+  return ADV_DEFAULT;
+}
+
+/**
+ * The width of `text` at `pt` as the text check measures it (the glyph table, its 10 % margin and, for
+ * the bars' semibold to heavy text, the bold factor). Every fit of the hud measures with this.
+ */
+export function measureW(text: string, pt: number, bold = true): number {
+  let em = 0;
+  for (const ch of text) em += advance(ch);
+  return em * pt * MEASURE_SAFETY * (bold ? MEASURE_BOLD : 1);
+}
+
+/**
+ * What the top bar's chips and the goal card take from their slot before the text (as TopBar.tsx and
+ * GoalCard.tsx draw them): the ladder chip's 8 pt paddings, its 1.3 pt edges, the 16 pt step pictogram
+ * and its 6 pt gap; the carry chip's 6 pt paddings and edges (and while driving the 18 pt skip and its
+ * 6 pt gap); the goal card's 8 pt paddings, edges, the 8 pt dot and its 6 pt gap. Rounded up.
+ */
+export const LADDER_CHROME = 41;
+export const CARRY_CHROME = 15;
+export const CARRY_SKIP = 24;
+export const GOAL_CHROME = 33;
+
+/**
+ * The size of the opened goal card's lines (the next goal, the advice line, a lesson): the goal line's size
+ * `linePt` at most, each line fitted into the card less GOAL_CHROME (the 14 pt indent stands where the dot
+ * is), down to MIN_PT; a line that does not fit at MIN_PT wraps to two lines (`lines` 2) rather than being
+ * cut. One size for all of them, so the card reads as one block.
+ */
+export function goalSubPt(texts: string[], linePt: number, L: Pick<HudLayout, 'goalW' | 's'>): { pt: number; lines: 1 | 2 } {
+  const room = L.goalW - GOAL_CHROME;
+  let pt = linePt;
+  let lines: 1 | 2 = 1;
+  for (const t of texts) {
+    const f = fitText(t, room, Math.ceil(linePt * LINE_EM), 12, L.s);
+    if (f.cut) lines = 2;
+    pt = Math.min(pt, f.pt);
+  }
+  return { pt: Math.max(MIN_PT, pt), lines };
+}
+
+/** The one button's disc edge (OneButton.tsx: a 2 pt ink border) and the air kept inside it. */
+export const DISC_EDGE = 2;
+export const DISC_AIR = 1;
+
+export interface DiscFit {
+  pt: number;
+  /** The label as it is printed, one or two lines (broken between words). */
+  lines: string[];
+  /** The line height the lines are set at. */
+  lineH: number;
+  /** True when no size from the button's 13 pt × s down to MIN_PT fits (never for the game's labels: hud.test.ts). */
+  cut: boolean;
+}
+
+/** Half the chord of a circle of radius r at distance y from its centre (0 outside it). */
+function halfChord(r: number, y: number): number {
+  return y >= r ? 0 : Math.sqrt(r * r - y * y);
+}
+
+/**
+ * The one button's label inside its round disc (point 4 of the owner's review): the largest size from
+ * 13 pt × the bar scale s (yard-style 8: button 13) down to MIN_PT, in half points, at which the label
+ * fits INSIDE THE CIRCLE, measured as the text check measures; at each size one line first, then two
+ * lines broken between words (the break whose longer line is the shortest). A line fits when its width
+ * is within the disc's chord at that line's outer edge, so a two-line label never touches the rim.
+ */
+export function discFit(label: string, size: number, s: number): DiscFit {
+  const r = size / 2 - DISC_EDGE - DISC_AIR;
+  const want = Math.floor(13 * s * 2) / 2;
+  const words = label.split(' ').filter(Boolean);
+  const splits: [string, string][] = [];
+  for (let i = 1; i < words.length; i++) splits.push([words.slice(0, i).join(' '), words.slice(i).join(' ')]);
+  for (let pt = want; pt >= MIN_PT; pt -= 0.5) {
+    const one = Math.ceil(pt * LINE_EM);
+    if (one <= 2 * r && measureW(label, pt) <= 2 * halfChord(r, one / 2)) return { pt, lines: [label], lineH: one, cut: false };
+    const two = Math.floor(pt * LINE_TIGHT);
+    if (splits.length && 2 * two <= 2 * r) {
+      const room = 2 * halfChord(r, two);
+      let best: [string, string] | null = null;
+      for (const sp of splits) {
+        const w = Math.max(measureW(sp[0], pt), measureW(sp[1], pt));
+        if (w <= room && (!best || w < Math.max(measureW(best[0], pt), measureW(best[1], pt)))) best = sp;
+      }
+      if (best) return { pt, lines: [...best], lineH: two, cut: false };
+    }
+  }
+  return { pt: MIN_PT, lines: [label], lineH: Math.ceil(MIN_PT * LINE_EM), cut: true };
+}
+
 export interface Fit {
   /** Font size, points (never under MIN_PT). */
   pt: number;
@@ -136,9 +263,10 @@ export interface Fit {
  * smaller, down to MIN_PT, on one line; else (when `two`) two lines at the largest size that fits both
  * ways; else MIN_PT, cut.
  */
-export function fitText(text: string, w: number, h: number, base: number, s: number, two = false): Fit {
+export function fitText(text: string, w: number, h: number, base: number, s: number, two = false, bold = true): Fit {
   const want = base * s;
-  const oneByW = w / Math.max(1, text.length * CHAR_EM);
+  // Measured as the text check measures (owner1-hud, point 4): the glyph table, its margin, bold.
+  const oneByW = w / Math.max(1e-6, measureW(text, 1, bold));
   const oneByH = h / LINE_EM;
   const one = Math.floor(Math.min(want, oneByW, oneByH) * 2) / 2;
   if (one >= MIN_PT) return { pt: one, lines: 1, cut: false };
@@ -148,10 +276,10 @@ export function fitText(text: string, w: number, h: number, base: number, s: num
     for (let i = 1; i < words.length; i++) {
       const a = words.slice(0, i).join(' ');
       const b = words.slice(i).join(' ');
-      best = Math.min(best, Math.max(a.length, b.length));
+      best = Math.min(best, Math.max(measureW(a, 1, bold), measureW(b, 1, bold)));
     }
     if (Number.isFinite(best)) {
-      const twoPt = Math.floor(Math.min(want, w / (best * CHAR_EM), h / (2 * LINE_TIGHT)) * 2) / 2;
+      const twoPt = Math.floor(Math.min(want, w / best, h / (2 * LINE_TIGHT)) * 2) / 2;
       if (twoPt >= MIN_PT) return { pt: twoPt, lines: 2, cut: false };
     }
   }
@@ -222,7 +350,7 @@ const CASH_CHROME = 20;
 
 /** How wide the cash slot must be for CASH_WIDEST at 15 pt × the bar scale s. */
 export function cashSlotNeed(s: number): number {
-  return Math.ceil(textW(CASH_WIDEST, 15 * s) + coinSize(s) + CASH_CHROME);
+  return Math.ceil(measureW(CASH_WIDEST, 15 * s) + coinSize(s) + CASH_CHROME);
 }
 
 /** Room for the cash text in a slot of width w at bar scale s (the coin and the paddings taken off). */
@@ -238,7 +366,7 @@ export function cashTextW(w: number, s: number): number {
 export function cashFit(text: string, slotW: number, h: number, s: number): Fit {
   const room = cashTextW(slotW, s);
   const want = 15 * s;
-  const byW = room / Math.max(1, text.length * CHAR_EM);
+  const byW = room / Math.max(1e-6, measureW(text, 1));
   const pt = Math.floor(Math.min(want, byW, h / 1.25) * 2) / 2;
   return { pt: Math.max(MIN_PT, pt), lines: 1, cut: pt < MIN_PT };
 }

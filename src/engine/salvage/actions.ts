@@ -12,7 +12,7 @@ import { buyWorks, levelWorks } from './actionsWorks';
 import { contentAt } from './layer';
 import { asideOf, bayOf, freeOf } from './bays';
 import { begin, count, finish, spend } from './clock';
-import { newCrew } from './crew';
+import { anyIdle, crewDepart, newCrew, owner1Rules } from './crew';
 import { crucibleFromBays, pour } from './crucible';
 import { dealSign, dealTerms } from './deal';
 import { bossStep } from './hand';
@@ -79,6 +79,8 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   x.s.presenceAt = clock;
   const t = Math.max(clock, x.s.t);
   bossStep(x, t);
+  // owner1 H5: while anybody waits, every presence sample offers work again (the boss walking away from a heap frees its pieces).
+  if (owner1Rules(x.c) && anyIdle(x.s)) crewDepart(x, t);
   checks(x, t);
   return finish(g, x);
 }

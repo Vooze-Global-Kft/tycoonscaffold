@@ -65,8 +65,8 @@ export function newCrew(x: Ctx, role: CrewMember['role'], t: number): CrewMember
   const m: CrewMember = { id: `${role}.${slot}`, role, slot, name: x.s.crew.length, level: 1, job: 'idle', phase: 'wait', from: { place: 'office' }, to: { xy: [door.x, door.y] }, t0: t, t1: t, carries: null, load: [], claims: [], cut: null };
   x.s.crew.push(m);
   x.s.crew.sort((a, b) => (a.id < b.id ? -1 : 1));
-  if (role === 'hand') departHand(x, m, t);
-  else if (role === 'cutter') cutterDepart(x, m, t);
+  if (role === 'hand') offer(x, m, t, departHand);
+  else if (role === 'cutter') offer(x, m, t, cutterDepart);
   return m;
 }
 
@@ -138,18 +138,55 @@ function isCable(x: Ctx, grade: string): boolean {
 }
 
 /**
+ * owner1 (RULING-owner1 H1 to H5): the review's rules run on a content that carries `crew.hand.leaveM` (the shipped
+ * content; a frozen test content without it keeps the first yard's rules bit for bit, as orderFromRung does).
+ */
+export function owner1Rules(c: Ctx['c']): boolean {
+  return typeof (c.crew.hand as { leaveM?: unknown }).leaveM === 'number';
+}
+
+/**
+ * Is the boss "in the yard" for P11 and E35? A fresh presence; with the review's rules (H4) also INSIDE THE FENCE: a
+ * boss driving on the lane beyond the gate, or standing at a partner's site, is away for the yard hands.
+ */
+export function bossInYard(x: Ctx, t: number): boolean {
+  if (!bossFresh(x, t)) return false;
+  return !owner1Rules(x.c) || x.s.presence.x <= x.c.yard.width + 1e-9;
+}
+
+/**
+ * H1: a cut piece lying in a heap's bed (a zone's pile, or beside a thing that stands in a zone) that a yard hand may
+ * carry: the boss in the yard leaves it more than `crew.hand.leaveM` from him (pieces within that are his), and cable
+ * stays the boss's while he is in the yard (P11). Only with the review's rules; never a piece of a place (waitsAt's).
+ */
+function heapFree(x: Ctx, p: GroundPiece, inYard: boolean, at: (uid: string) => ThingState['at'] | null): boolean {
+  if (!owner1Rules(x.c)) return false;
+  if (!(p.pile.startsWith('zone.') || p.pile.startsWith('beside.'))) return false;
+  if (!inYard) return true;
+  if (isCable(x, p.grade)) return false;
+  const pp = piecePos(x.c, p.pile, p.k, at);
+  return Math.hypot(pp.x - x.s.presence.x, pp.y - x.s.presence.y) > ((x.c.crew.hand as { leaveM?: number }).leaveM ?? 0) + 1e-9;
+}
+
+/** H3: the powered stripper takes a loose cable bundle (owned, with room in its hopper) while the boss is in the yard. */
+function stripperTakes(x: Ctx): boolean {
+  return owner1Rules(x.c) && !!x.s.machines.stripper?.owned && hopperRoom(x, 'stripper') > 0;
+}
+
+/**
  * Loose things (tier 0) waiting at a place for a yard hand, oldest uid first (cable not while the boss is in the yard).
  * Stage 2 (2.12, ruling 13.1; s2a-fix): a tagged thing the Yard sale takes is kept off (reuse.ts rackChoice
  * with the thing: true = not his to carry as scrap; the stub never keeps one off). Asked last, of a candidate.
  */
-function looseAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, inYard: boolean): ThingState | null {
-  const looseCable = (th: ThingState) => inYard && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
+function looseAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, inYard: boolean, cableOk = false): ThingState | null {
+  // H3 (`cableOk`: a trip chosen by the order, not a run's next trip): a cable bundle goes to the powered stripper.
+  const looseCable = (th: ThingState) => inYard && !(cableOk && stripperTakes(x)) && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
   return x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th) && !rackChoice(x, m, t, th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
 /** A whole workable thing at a place carried at its whole grade (E4), best whole grade first; a thing the Yard sale takes kept off (rackChoice, s2a-fix). */
-function wholeAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number): ThingState | null {
-  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0 && !rackChoice(x, m, t, th));
+function wholeAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, ok?: (th: ThingState) => boolean): ThingState | null {
+  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0 && (!ok || ok(th)) && !rackChoice(x, m, t, th));
   return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
@@ -170,8 +207,11 @@ let PLAN: HandKind | null = null;
 function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const s = x.s;
   const cap = x.c.crew.hand.load * 1000;
-  const inYard = bossFresh(x, t);
+  const inYard = bossInYard(x, t);
   const cable = inYard ? inputSet(x, 'hand_stripper') : null;
+  const thAt = (uid: string) => thingOf(x, uid)?.at ?? null;
+  // H1: the cut pieces in the heaps' beds he may carry (after the tipping floor in his order).
+  const heap: GroundPiece[] = [];
   // Nothing anywhere to carry: stay at the stand (offered work again at every later event).
   // Only the piles a yard hand takes from count (2.6: never from the heaps; pieces beside a thing in a zone are the boss's).
   // One pass sorts the free pieces by where they wait (in their order): every list below is a filter of `free`.
@@ -183,7 +223,10 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   for (const p of s.pieces) {
     if (p.claim) continue;
     const w = waitsAt(x, p);
-    if (!w) continue;
+    if (!w) {
+      if (heapFree(x, p, inYard, thAt)) heap.push(p);
+      continue;
+    }
     free.push(p);
     if (cable && cable.has(p.grade)) continue;
     if (w === 'floor') {
@@ -192,7 +235,7 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     } else if (w === 'dropoff') drop.push(p);
     else if (p.pile.startsWith('circle.')) circles.push(p);
   }
-  let any = free.length > 0;
+  let any = free.length > 0 || heap.length > 0;
   if (!any) for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) if (trayFree(x, id) > 0) {
     any = true;
     break;
@@ -235,7 +278,54 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     if (feedStep(x, m, t, cap, free, (id) => plan.later(id, 'feed'))) return true;
     if (trayStep(x, m, t, cap, (id) => plan.later(id, 'tray'), false)) return true;
   }
-  return handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop);
+  if (handDepartRest(x, m, t, cap, inYard, floorFirst, floor, floorG, drop)) return true;
+  return owner1Rules(x.c) ? heapStep(x, m, t, cap, inYard, heap) : false;
+}
+
+/**
+ * H1 and H2 (RULING-owner1), after everything else of his order: (H1) cut pieces in a heap's bed that the boss left
+ * (heapFree), the nearest pile to him first, best pieces first; (H2) else, with the boss in the yard, a whole thing at
+ * the drop-off at its whole grade when the boss is beyond `reach.sight` of it.
+ */
+function heapStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolean, heap: GroundPiece[]): boolean {
+  const s = x.s;
+  if (heap.length) {
+    const me = posOf(x, m.to);
+    const at = (uid: string) => thingOf(x, uid)?.at ?? null;
+    let near = heap[0];
+    let nd = Infinity;
+    for (const p of heap) {
+      const pp = piecePos(x.c, p.pile, p.k, at);
+      const d = Math.hypot(pp.x - me.x, pp.y - me.y);
+      if (d < nd || (d === nd && p.uid < near.uid)) {
+        near = p;
+        nd = d;
+      }
+    }
+    const pick = choose(x, heap.filter((p) => p.pile === near.pile), cap);
+    if (pick.length) {
+      claimPieces(m, pick);
+      PLAN = { k: 'pile', pile: near.pile };
+      leg(x, m, 'dropoff', 'walkTo', { pile: near.pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  if (inYard) {
+    const th = wholeAt(x, m, t, 'dropoff', cap, (q) => {
+      const tp = thingPos(x.c, q.at);
+      return Math.hypot(tp.x - s.presence.x, tp.y - s.presence.y) > x.c.reach.sight + 1e-9;
+    });
+    if (th) {
+      th.by = m.id;
+      m.claims = [th.uid];
+      PLAN = null;
+      leg(x, m, 'wholeThing', 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
+      m.dest = 'scale';
+      return true;
+    }
+  }
+  return false;
 }
 
 /** RULING2.md 17.2's order (orderPlan): the machines whose feed and tray keep their first-yard place, and those that wait for the floor. */
@@ -379,7 +469,7 @@ function handDepartRest(x: Ctx, m: CrewMember, t: number, cap: number, inYard: b
   // (4) the drop-off's pieces. Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry:
   // they go with the pieces of their place.
   if (!drop.length) {
-    const looseDrop = looseAt(x, m, t, 'dropoff', cap, inYard);
+    const looseDrop = looseAt(x, m, t, 'dropoff', cap, inYard, true);
     if (looseDrop) return takeLoose(x, m, t, looseDrop, 'dropoff');
   }
   if (drop.length) {
@@ -443,9 +533,13 @@ function claimPieces(m: CrewMember, ps: GroundPiece[]): void {
 function takeLoose(x: Ctx, m: CrewMember, t: number, th: ThingState, job: CrewJob): boolean {
   th.by = m.id;
   m.claims = [`loose:${th.uid}`];
-  PLAN = { k: 'loose', where: th.at.at === 'dropoff' ? 'dropoff' : 'floor' };
+  // H3: a cable bundle goes to the powered stripper's hopper when it takes it (what does not fit goes on to the
+  // scale at the hopper, handLegEnd); such a trip starts no run (a run's next loose trip goes to the scale).
+  const sp = pieceSpec(x.c, th.obj, th.cut);
+  const toStripper = stripperTakes(x) && !!sp && isCable(x, sp.grade);
+  PLAN = toStripper ? null : { k: 'loose', where: th.at.at === 'dropoff' ? 'dropoff' : 'floor' };
   leg(x, m, job, 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
-  m.dest = 'scale';
+  m.dest = toStripper ? 'stripper' : 'scale';
   return true;
 }
 
@@ -466,7 +560,7 @@ function floorStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolea
     }
   }
   if (!floor.length) {
-    const looseFloor = looseAt(x, m, t, 'floor', cap, inYard);
+    const looseFloor = looseAt(x, m, t, 'floor', cap, inYard, true);
     if (looseFloor) return takeLoose(x, m, t, looseFloor, 'floor');
     return false;
   }
@@ -732,7 +826,9 @@ function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number
       return piecesCand(m, choose(x, src, Math.min(cap, inbuf, feedRoom)), kind.pile);
     }
     case 'pile': {
-      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && !(inYard && isCable(x, p.grade)));
+      const heapPile = kind.pile.startsWith('zone.') || kind.pile.startsWith('beside.');
+      const at = (uid: string) => thingOf(x, uid)?.at ?? null;
+      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && !(inYard && isCable(x, p.grade)) && (!heapPile || waitsAt(x, p) !== null || heapFree(x, p, inYard, at)));
       return piecesCand(m, choose(x, src, cap), kind.pile);
     }
     case 'tray': {
@@ -814,7 +910,7 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
   const h = x.c.crew.hand.handle_s;
   const dur = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(1e-3, legM(x.c, a, b) / v + h);
   const cap = x.c.crew.hand.load * 1000;
-  const inYard = bossFresh(x, t);
+  const inYard = bossInYard(x, t);
   const loads: RunLoad[] = [{ claims: m.claims, spot: m.to, grade: claimGrade(x, m.claims), pickAt: m.t1, dropAt: m.t1 + dur(src, dpos) }];
   let feedRoom = dest !== 'scale' ? hopperRoom(x, dest as MachineId) - claimGrams(x, m.claims) : 0;
   const maxRun = groupCfg(x.c).handRun_s;
@@ -1267,10 +1363,83 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
   }
 }
 
-/** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
+/**
+ * Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's.
+ * owner1 H5: an agent on his way to his waiting place (job 'idle', walking) is offered work too, from where he is on
+ * that leg; one with nothing to do walks to his waiting place (an ordinary dated leg) and waits there.
+ */
 export function crewDepart(x: Ctx, t: number): void {
-  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
-  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') departHand(x, m, t);
+  for (const m of x.s.crew) if (m.role === 'cutter' && m.job === 'idle' && !m.run) offer(x, m, t, cutterDepart);
+  for (const m of x.s.crew) if (m.role === 'hand' && m.job === 'idle' && !m.run) offer(x, m, t, departHand);
+}
+
+/** Is anybody of the yard's crew (a yard hand or a cutter) idle now? (actions.ts: a presence sample offers work again, H5.) */
+export function anyIdle(s: Ctx['s']): boolean {
+  for (const m of s.crew) if ((m.role === 'hand' || m.role === 'cutter') && m.job === 'idle' && !m.run) return true;
+  return false;
+}
+
+/** The waiting places of the map (content `map.points` wait1, wait2, ...), in order; none: the first yard's (he stands where he is). */
+const WAITS = new WeakMap<object, { x: number; y: number }[]>();
+function waitPlaces(c: Ctx['c']): { x: number; y: number }[] {
+  let w = WAITS.get(c);
+  if (!w) {
+    w = [];
+    for (let n = 1; c.map.points[`wait${n}`]; n++) w.push(pointOf(c, `wait${n}`));
+    WAITS.set(c, w);
+  }
+  return w;
+}
+
+/** H5: a crew member's own waiting place: the yard hands from the first, the cutters from the last; null without places. */
+export function waitPlaceOf(c: Ctx['c'], m: Pick<CrewMember, 'role' | 'slot'>): { x: number; y: number } | null {
+  const w = waitPlaces(c);
+  if (!w.length || (m.role !== 'hand' && m.role !== 'cutter')) return null;
+  const n = w.length;
+  return m.role === 'hand' ? w[m.slot % n] : w[(n - 1 - (m.slot % n) + n) % n];
+}
+
+/** Where a member on a straight leg is at t (the leg's interpolation, the frame's from-to). */
+function legAt(x: Ctx, m: CrewMember, t: number): { x: number; y: number } {
+  const a = spotPos(x.c, m.from, x.s.things, x.s.truck);
+  const b = posOf(x, m.to);
+  if (m.phase === 'wait' || m.t1 <= m.t0) return b;
+  const u = Math.max(0, Math.min(1, (t - m.t0) / (m.t1 - m.t0)));
+  return { x: a.x + u * (b.x - a.x), y: a.y + u * (b.y - a.y) };
+}
+
+/**
+ * Offer an idle member work at t (H5). Walking to his waiting place, he is taken off that leg where he is; if nothing
+ * is offered, the leg goes on unchanged. Standing with nothing to do away from his waiting place, he walks there.
+ */
+function offer(x: Ctx, m: CrewMember, t: number, depart: (x: Ctx, m: CrewMember, t: number) => boolean): void {
+  if (m.phase === 'wait') {
+    if (depart(x, m, t)) return;
+    walkToWait(x, m, t);
+    return;
+  }
+  // On his way to the waiting place (job 'idle', walking): from where he is now.
+  const keep = { phase: m.phase, from: m.from, to: m.to, t0: m.t0, t1: m.t1 };
+  idle(m, t, legAt(x, m, t));
+  if (depart(x, m, t)) return;
+  m.phase = keep.phase;
+  m.from = keep.from;
+  m.to = keep.to;
+  m.t0 = keep.t0;
+  m.t1 = keep.t1;
+}
+
+/** H5: an idle member not at his waiting place walks there (an ordinary dated leg, job 'idle'); the leg's end leaves him waiting there. */
+function walkToWait(x: Ctx, m: CrewMember, t: number): void {
+  if (!owner1Rules(x.c)) return;
+  const w = waitPlaceOf(x.c, m);
+  if (!w) return;
+  const here = posOf(x, m.to);
+  if (Math.hypot(here.x - w.x, here.y - w.y) < 0.05) return;
+  leg(x, m, 'idle', 'walkTo', { xy: [w.x, w.y] }, t, 0, here);
+  m.claims = [];
+  m.carries = null;
+  delete m.dest;
 }
 
 /**
@@ -1321,7 +1490,7 @@ function kindDest(kind: HandKind): string {
 function nextHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, c: RunCourse, kind: HandKind): boolean {
   const dest = kindDest(kind);
   const cap = x.c.crew.hand.load * 1000;
-  const cand = sameAgain(x, m, t, kind, cap, bossFresh(x, t), kind.k === 'feed' ? hopperRoom(x, kind.dest) : 0);
+  const cand = sameAgain(x, m, t, kind, cap, bossInYard(x, t), kind.k === 'feed' ? hopperRoom(x, kind.dest) : 0);
   if (!cand) return false;
   const v = handV(x, m);
   const h = x.c.crew.hand.handle_s;
@@ -1342,3 +1511,62 @@ export const crewPending = (m: CrewMember): boolean => !!m.run || (m.phase !== '
 
 void atPlace;
 void piecePos;
+
+// ---------------------------------------------------------------------------------------- why a worker waits (owner1 H6)
+
+/** Why a yard hand or cutter stands idle (RULING-owner1 H6): the frame's crew entry and the rota's row carry it. */
+export type IdleWhy = 'nothing' | 'uncut' | 'yours' | 'tool';
+
+/**
+ * H6: why an idle yard hand or cutter waits, a read of the state (nothing is changed). A yard hand: 'yours' when what
+ * lies about is the boss's for now (pieces within `crew.hand.leaveM` of him in a heap, cable left for him, a whole thing
+ * at the drop-off within his sight); else 'uncut' when only things that need cutting (or a tool the yard lacks) wait;
+ * else 'nothing'. A cutter: 'tool' when a thing at the drop-off or on the floor needs a tier the yard has not (its tier
+ * in `tier`), else 'yours' when the boss works the only things there, else 'nothing'. Null for anybody not idle, the
+ * driver, or a content without the review's rules.
+ */
+export function idleWhyOf(c: Ctx['c'], s: Ctx['s'], m: CrewMember, live = true): { why: IdleWhy; tier?: number } | null {
+  if (m.job !== 'idle' || m.run || !owner1Rules(c) || (m.role !== 'hand' && m.role !== 'cutter')) return null;
+  const x = { c, s, live, cash: 0 } as unknown as Ctx;
+  const t = s.t;
+  const things = s.things.filter((th) => !th.shell && th.at.at !== 'crate' && th.at.at !== 'canopy');
+  if (m.role === 'cutter') {
+    let need = 0;
+    let boss = false;
+    for (const th of things) {
+      if (th.at.at !== 'dropoff' && th.at.at !== 'floor') continue;
+      if ((c.objects[th.obj]?.tier ?? 0) < 1) continue;
+      const tr = tierOf(c, th);
+      if (tr > s.tier) need = need ? Math.min(need, tr) : tr;
+      else if (th.by === 'boss') boss = true;
+    }
+    if (need) return { why: 'tool', tier: need };
+    return { why: boss ? 'yours' : 'nothing' };
+  }
+  const inYard = bossInYard(x, t);
+  const at = (uid: string) => thingOf(x, uid)?.at ?? null;
+  for (const p of s.pieces) {
+    if (p.claim) continue;
+    if (!inYard) continue;
+    const w = waitsAt(x, p);
+    if (w ? isCable(x, p.grade) : (p.pile.startsWith('zone.') || p.pile.startsWith('beside.')) && !heapFree(x, p, inYard, at)) return { why: 'yours' };
+  }
+  let uncut = false;
+  for (const th of things) {
+    if (th.by && th.by !== 'boss') continue;
+    if (th.by === 'boss') return inYard ? { why: 'yours' } : { why: 'uncut' };
+    const o = c.objects[th.obj];
+    if (!o) continue;
+    if (th.at.at === 'dropoff' && inYard && o.whole && th.cut === 0 && (o.tier ?? 0) > 0) {
+      const tp = thingPos(c, th.at);
+      if (Math.hypot(tp.x - s.presence.x, tp.y - s.presence.y) <= c.reach.sight + 1e-9) return { why: 'yours' };
+    }
+    if ((o.tier ?? 0) === 0 && inYard && (th.at.at === 'dropoff' || th.at.at === 'floor')) {
+      const sp = pieceSpec(c, th.obj, th.cut);
+      if (sp && isCable(x, sp.grade)) return { why: 'yours' };
+    }
+    if ((o.tier ?? 0) >= 1 && th.at.at !== 'zone') uncut = true;
+    if ((o.tier ?? 0) >= 1 && th.at.at === 'zone') uncut = true;
+  }
+  return { why: uncut ? 'uncut' : 'nothing' };
+}

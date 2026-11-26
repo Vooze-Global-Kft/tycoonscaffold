@@ -402,6 +402,18 @@ export const TruckSchema = z.object({
    * yard's rule, the skip full longest).
    */
   pickFromRung: z.number().int().optional(),
+  /**
+   * owner1 (RULING-owner1 V3): no vehicle moves faster than this inside the fence, metres a second (the hired driver's
+   * truck, the arrivals, the merchant's flatbed); beyond the gate the lane's speed is raised so that a trip's total is
+   * what it was (truck.ts tripSpeeds). Absent: no yard limit (the first yard's speeds).
+   */
+  yardV: z.number().positive().optional(),
+  /** owner1 V3: the boss's own truck inside the fence, metres a second (bossV is his speed on the lane). Absent: bossV. */
+  bossYardV: z.number().positive().optional(),
+  /** owner1 T3: seconds the BOSS's hook takes (the hired driver's stays handle_s). Absent: handle_s. */
+  bossHandle_s: z.number().nonnegative().optional(),
+  /** owner1 V3: the lane's speed is at most laneMaxF times the driver's speed (a trip started far from the park may then last longer). */
+  laneMaxF: z.number().min(1).optional(),
 });
 export type TruckDef = z.infer<typeof TruckSchema>;
 
@@ -435,7 +447,15 @@ export type MachineId = keyof MachinesDef;
 /** Crew rates (content2 `crew`). */
 export const CrewSchema = z.object({
   /** Yard hand: load kg, speed m/s, +lev a level, handling seconds a trip, top level. */
-  hand: z.object({ load: z.number().positive(), v: z.number().positive(), lev: z.number().nonnegative(), handle_s: z.number().nonnegative(), maxlev: z.number().int().positive() }),
+  hand: z.object({
+    load: z.number().positive(),
+    v: z.number().positive(),
+    lev: z.number().nonnegative(),
+    handle_s: z.number().nonnegative(),
+    maxlev: z.number().int().positive(),
+    /** owner1 H1: cut pieces in a heap's bed farther than this from the boss (metres) are the yard hands' to carry. Absent: never (2.6 "never from the heaps"). */
+    leaveM: z.number().nonnegative().optional(),
+  }),
   /** Cutter: share of the tool's power, +lev a level, cap of that share, top level. */
   cutter: z.object({ share: z.number().positive(), lev: z.number().nonnegative(), cap: z.number().positive(), maxlev: z.number().int().positive() }),
   /** Driver: +lev a level (speed), top level. */
@@ -931,6 +951,11 @@ const SalvageObject = z.object({
   deal: DealSchema.default({ partner: 'foundry', grade: 'ci', gate: 'rung2', series: [], trust: { up: 10, down: 15, start: 50 } }),
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
   away: AwaySchema.default({ gapS: 10, cardS: 60 }),
+  /**
+   * owner1 S1 (RULING-owner1): which stage this build plays. 1: the first yard only (the works never open, the ladder's
+   * top is rung 3, no shop, pack, ad, away bonus, letter, Agreements tab or bank); 2: everything. Absent: 2.
+   */
+  release: z.object({ stage: z.number().int().min(1).max(2) }).optional(),
   group: GroupSchema.optional(),
   // STAGE 2 (yard-stage2.md 5.1; content2): absent in the first yard's test content; nothing below rung 3 reads them.
   works: WorksSchema.optional(),

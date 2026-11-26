@@ -679,6 +679,31 @@ export const TEXT = {
   'away.van': '{reclaimer}: {x}',
   'away.lots': '{n} oversize pieces wait for you', // T11
   'away.lotOne': 'An oversize piece waits for you',
+  // owner1-hud (the owner's review, point 6): the away card as a weighbridge docket; labels, cells and rows
+  'away.labelAway': 'Away',
+  'away.labelRan': 'The yard ran',
+  'away.labelSold': 'Sold',
+  'away.labelBought': 'Bought',
+  'away.labelNet': 'Net',
+  'away.time': '{t}', // t: { secs }
+  'away.grade': '{grade}', // grade: { grade }
+  'away.kg': '{kg}', // kg: { mass_g, step: 'lot' }
+  'away.amount': '{x}', // x: money
+  'away.cost': '−{x}', // x: money (positive), money that went out
+  'away.netUp': '+{x}', // x: money, the net (the card's big number)
+  'away.netDown': '−{x}', // x: money (positive)
+  'away.inAccount': 'Already in your account',
+  'away.fromAccount': 'Taken from your account',
+  'away.salesTotal': 'Sales',
+  'away.partner': '{partner}', // partner: { name }
+  'away.loadsN': '{n} loads',
+  'away.loadOne': '1 load',
+  'away.dealName': 'Deal delivery to {foundry}',
+  'away.rackName': 'Yard sale at the gate',
+  'away.vanName': '{reclaimer}',
+  'away.thingsN': '{n} things',
+  'away.thingOne': '1 thing',
+  'away.bankName': 'To {bank}',
 
   // --- tickets (2.19, 4.5 to 4.7) ---
   'ticket.bankSplit': 'to the bank {y} · to you {z}', // under "Paid {x}" (ticket.paid, bold); ≤ 38 at five figures

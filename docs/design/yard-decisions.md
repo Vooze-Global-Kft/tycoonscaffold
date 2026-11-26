@@ -1935,3 +1935,24 @@ on the floor.) The lead rules:
     the join and the bots: rated income's terms for the van and the Yard sale (its medians are
     0.90 to 0.92 from rung 3 until then); the three days on bots that play the stage (16.7); an
     hour away is now 0.81 of an hour played (E19 asks at most 0.8: the bots' tuning looks at it).
+
+### 18. The owner's first review of the yard on the phone (13:55; the ruling is `owner1/RULING-owner1.md`)
+
+The owner played the first yard on the phone and wrote seven points (OWNER.txt). The diagnosis
+(`notes/owner1-diagnose.md`) found that each was real and why: (2) between his hire and the
+cutter's the helper stood idle 70 to 86 % of the time, on the platform scale, because the first
+yard's rules kept him from everything the boss had cut ("never from the heaps") and from whole
+things while the boss was in the yard, and the screen said nothing; (5) the trial load cost §150
+right after the truck's purchase (refused for cash on a fifth of seeds, with one toast), and the
+goal was only done on the weighbridge, which nothing pointed at: a player who parked and stepped
+out was stuck until a driver was hired; (7) the screen drew the truck's park phase along the whole
+lane trip: 140 to 290 m/s through the yard with jumps of up to 285 m; the driver tipped on the
+floor's centre, on top of the people working there; purchase vans drove through the office; and
+the trucks' real speeds (10.8 to 21.6 m/s) were no yard's; (1) the rules' frame was built twice or
+more at each of about twenty store changes a second. The ruling in one line each: what the boss
+cuts and leaves, the yard hand carries; nobody waits on the scale; a waiting worker says why; the
+trial load is free and the goal follows the load step by step; every phase of a trip has its own
+path; no vehicle exceeds 4 m/s inside the fence (the lane pays for it: no table moves); arrivals
+follow the drive line; the frame is built once. And `release.stage` keeps stage 2 dark on the
+owner's phone until its screens exist, so that these fixes, the cheaper time away and the yard
+hands' order of work can go to the phone now.

@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
     "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
     "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -1002,6 +1003,11 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     north: 15.2,
     points: {
       start: [56.4, 21.6],
+      // owner1 H5: where a yard hand or cutter with nothing to do waits (off the scale, the bays' fronts and the drive line).
+      wait1: [55.0, 20.8],
+      wait2: [55.9, 20.8],
+      wait3: [56.8, 20.8],
+      wait4: [57.7, 20.8],
       gate: [63.5, 25.6],
       dropoff: [61, 21.7],
       scale: [52.8, 20],
@@ -1136,7 +1142,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // pickFromRung (RULING2.md 16, 16.5, 16.8; engine2-dispatch): the rung from which the hired driver ranks partners by what a
   // load nets a second of the yard's slowest step. 99: beyond the ladder, the first yard's rule (the skip full longest that
   // fits) everywhere: 16.8 (2) not met over the bots' days (notes/dispatch-engine2.md "After the check"); 1 switches it on.
-  truck: { v: 12, bossV: 9, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99 },
+  // owner1 (RULING-owner1 V3, T3): yardV / bossYardV inside the fence, the lane pays for it (bossV 9 -> 11 on the lane); the boss hooks in 4 s.
+  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 4 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
@@ -1154,7 +1161,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     },
   },
   crew: {
-    hand: { load: 80, v: 3, lev: 0.25, handle_s: 2, maxlev: 20 },
+    // owner1 H1: leaveM, pieces in a heap's bed farther than 3 m from the boss are the yard hands'.
+    hand: { load: 80, v: 3, lev: 0.25, handle_s: 2, maxlev: 20, leaveM: 3 },
     cutter: { share: 0.4, lev: 0.25, cap: 0.95, maxlev: 20 },
     driver: { lev: 0.15, maxlev: 20 },
     // RULING2.md 17 (engine2-dispatch): the hands clear a floor over half full before a machine's feed or tray, from rung 1.
@@ -1180,7 +1188,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       fill_s: 100,
       k: 0.85,
       trialMass_kg: 530,
-      trialPrice: 150,
+      // owner1 T1: the farm lets the first load go on trust (150 -> 0).
+      trialPrice: 0,
       trialPrepared: 545,
       skipMass_kg: 703,
       skipPrice: 958,
@@ -1506,6 +1515,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   },
   foreman: { boost: 0.25, windowS: 60, minutesPerDay: 45 },
   away: { gapS: 10 },
+  // owner1 S1: this build plays the first yard only (stage 2 dark until its screens exist); the lead sets 2.
+  release: { stage: 1 },
   // Stage 2, 2.1 (RULING2.md 14.1, 14.3; engine2-fixA): crew work in runs from rung 3, in the boss's sight
   // (trip by trip) and out of it (planned ahead); a yard hand's run 30 s, a cutter's 120 s from its start.
   group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true },

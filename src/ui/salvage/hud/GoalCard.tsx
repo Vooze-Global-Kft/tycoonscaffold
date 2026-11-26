@@ -16,7 +16,7 @@ import { useGame } from '../../../state/store';
 import { useTarget } from '../../hints/targets';
 import { PAL } from '../palette';
 import { useSalvageUi } from '../uiState';
-import { fitText, lineH, type HudLayout } from './metrics';
+import { GOAL_CHROME, fitText, goalSubPt, lineH, type HudLayout } from './metrics';
 import { BarText, Paper } from './Paper';
 import { goalValues } from './words';
 import { hudAnchors } from './anchors';
@@ -44,15 +44,17 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
   const s = L.s;
   const h1 = L.rows.goal - 4;
   const w = L.goalW;
-  const fit = fitText(first + (v.progress ? `  ${v.progress}` : ''), w - 28, h1, 12, s);
+  const fit = fitText(first + (v.progress ? `  ${v.progress}` : ''), w - GOAL_CHROME, h1, 12, s);
   const more = lesson ? [lesson.text] : open ? [v.goal ? v.next : null, v.goal ? v.advice : null].filter((x): x is string => !!x) : [];
   const canOpen = !!v.goal && !!(v.next || v.advice);
-  // The lesson line has its own fit (base 12, down to 11 pt): at the goal line's size a 48-character
-  // lesson overflows the card at font scale 1.3 (strings' layout note, 16:30).
-  const subPt = lesson ? fitText(lesson.text, w - 20, lineH(fit.pt), 12, s).pt : fit.pt;
+  // The opened lines (the next goal, the advice line, a lesson) have their own fit, measured as the text
+  // check measures inside the card less its indent (owner1-hud: a 48-character lesson and a long advice
+  // line were cut at 667 pt): at most the goal line's size, down to 11 pt, two lines rather than cut.
+  const sub = goalSubPt(more, fit.pt, L);
+  const subPt = sub.pt;
   const lh = lineH(Math.max(fit.pt, subPt));
   const tall = more.length > 0;
-  const openH = Math.max(h1, Math.min(84, 8 + lh * (1 + more.length)));
+  const openH = Math.max(h1, Math.min(84, 8 + lh * (1 + more.length * sub.lines)));
   // Tickets keep clear of the card at its real height (P8, W17).
   const cardH = !first ? 0 : tall ? openH : h1;
   useEffect(() => {
@@ -81,7 +83,7 @@ export function GoalCard({ cfg, L }: { cfg: R.SalvageConfig; L: HudLayout }) {
           </View>
           {v.share !== null ? <View style={[styles.meter, { top: h1 - 5, width: Math.round((w - 4) * v.share) }]} /> : null}
           {more.map((t, i) => (
-            <BarText key={i} pt={subPt} weight={lesson ? '700' : i === more.length - 1 && v.advice ? '600' : '500'} color={lesson ? PAL.stamp : PAL.inkSoft} style={styles.sub}>
+            <BarText key={i} pt={subPt} lines={sub.lines} weight={lesson ? '700' : i === more.length - 1 && v.advice ? '600' : '500'} color={lesson ? PAL.stamp : PAL.inkSoft} style={styles.sub}>
               {t}
             </BarText>
           ))}

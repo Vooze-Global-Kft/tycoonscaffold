@@ -7,7 +7,7 @@
 import * as R from '../../../engine/salvage';
 import type { SalvageContent, Ticket, TicketLine } from '../../../engine/salvage';
 import { say } from './words';
-import { textW, ticketHeight, TICKET_PT } from './metrics';
+import { measureW, ticketHeight, TICKET_PT } from './metrics';
 
 /** A ticket's money keeps its hundredths below §1,000 (W11: "tickets keep them"): the facade's R.fmtMoneyExact, as a `ref` argument. */
 function exact(x: number): { ref: string } {
@@ -168,10 +168,11 @@ export function planTicket(v: TicketView, w: number, s: number, c: Content, maxH
   const most = s > 1.15 ? 2 : MAX_ROWS;
   const pt = TICKET_PT.row * s;
   const inner = rowWidth(w);
-  const twoLine = v.rows.some((r) => textW(r.note ? `${r.name} · ${r.note}` : r.name, pt) + textW(r.kg, pt) + textW(r.right, pt) + 16 > inner);
+  // owner1-hud (point 4's matrix): measured as the text check measures, so a one-line row is never cut.
+  const twoLine = v.rows.some((r) => measureW(r.note ? `${r.name} · ${r.note}` : r.name, pt) + measureW(r.kg, pt) + measureW(r.right, pt) + 16 > inner);
   let n = Math.min(most, v.rows.length);
   const small = TICKET_PT.small * s;
-  const legalLines = v.legal.map((l) => (textW(l, small) > inner ? 2 : 1) as 1 | 2);
+  const legalLines = v.legal.map((l) => (measureW(l, small, false) > inner ? 2 : 1) as 1 | 2);
   const extra = legalLines.reduce<number>((a, k) => a + k - 1, 0) * Math.ceil(small * 1.2);
   const hOf = (k: number) => ticketHeight(v.kind, k * (twoLine ? 2 : 1), !!v.lesson, s) + extra;
   while (n > 1 && hOf(n) > maxH) n--;
