@@ -522,8 +522,9 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
 
 /** Departures of idle agents in id order: cutters, then yard hands (2.12 order step 5). The driver is truck.ts's. */
 export function crewDepart(x: Ctx, t: number): void {
-  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') cutterDepart(x, m, t);
-  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') handDepart(x, m, t);
+  const G = globalThis as any;
+  for (const m of x.s.crew) if (m.role === 'cutter' && m.phase === 'wait' && m.job === 'idle') { const ok = cutterDepart(x, m, t); if (G.__eg) G.__eg[(ok ? 'cutOk' : 'cutFail')]++; }
+  for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') { const ok = handDepart(x, m, t); if (G.__eg) G.__eg[(ok ? 'handOk' : 'handFail')]++; }
 }
 
 /** Is this crew member's leg pending (a dated end in the future or now)? */

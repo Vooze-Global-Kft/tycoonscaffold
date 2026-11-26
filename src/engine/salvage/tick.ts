@@ -179,6 +179,7 @@ export function advance(x: Ctx, T: number): void {
       if (++inner > 500) break;
     }
     tail(x, tt);
+    { const G = globalThis as any; if (G.__eg) G.__eg.instants++; }
     if (++guard > 200_000) break;
   }
   if (T > s.t) {
