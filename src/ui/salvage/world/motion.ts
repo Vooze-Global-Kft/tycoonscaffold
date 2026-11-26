@@ -503,8 +503,12 @@ export const VB_STRIDE = 8;
 export const ASIDE_PAD_M = 0.4;
 export const ASIDE_AHEAD_S = 1;
 export const ASIDE_MAX_M = 1.6;
+/** Only when ASIDE_MAX_M would leave a person inside the drawn body itself (crossing its path as it passes, a body turning a corner): clear of it with the pad, at most ASIDE_HARD_M. */
+export const ASIDE_HARD_M = 3;
 /** Time constant of the step aside (out and back), seconds. */
-export const ASIDE_EASE_S = 0.12;
+export const ASIDE_EASE_S = 0.08;
+/** The share of the way out a person drawn INSIDE a body moves in one frame (all of it: only when a body appears on him, a leg switch of the truck at the tipping floor). */
+export const ASIDE_FAST = 1;
 /** Below this speed (m/s) a vehicle stands: nobody steps aside from it. */
 export const MOVING_V = 0.3;
 /** Vehicle slots of the previous-place memory: the truck, the flatbed, the van, its trailer, four arrivals. */
@@ -555,58 +559,68 @@ export function asideTarget(out: number[], px: number, py: number, VB: number[] 
   'worklet';
   let ox = 0;
   let oy = 0;
-  for (let i = 0; i < n; i++) {
+  // Two passes per vehicle: k 0 its footprint swept along its motion (a standing one: its footprint along
+  // its facing), k 1 (moving only) its footprint as DRAWN along its facing, no sweep: a body still turning
+  // through a corner is drawn across its motion.
+  for (let q = 0; q < n * 2; q++) {
+    const i = q >> 1;
+    const k = q & 1;
     const o = i * VB_STRIDE;
     const vx = VB[o + 6];
     const vy = VB[o + 7];
-    const sp = Math.sqrt(vx * vx + vy * vy);
-    if (sp < MOVING_V) continue;
-    // The motion's frame: p along it, q across it (q = (-py, px)).
-    const mx = vx / sp;
-    const my = vy / sp;
     const ux = VB[o + 2];
     const uy = VB[o + 3];
+    const moving = vx * vx + vy * vy >= MOVING_V * MOVING_V;
+    if (k === 1 && !moving) continue;
+    const sp = moving && k === 0 ? Math.sqrt(vx * vx + vy * vy) : 0;
+    // The frame: a along the motion (or the facing), b across it.
+    const mx = sp > 0 ? vx / sp : ux;
+    const my = sp > 0 ? vy / sp : uy;
     const hl = VB[o + 4];
     const hw = VB[o + 5];
-    // The footprint's half extents along and across the motion (a box turned to its facing).
+    // The footprint's half extents along and across that frame (a box turned to its facing).
     const ua = ux * mx + uy * my;
     const ub = -ux * my + uy * mx;
     const ea = hl * Math.abs(ua) + hw * Math.abs(ub) + ASIDE_PAD_M;
     const eb = hl * Math.abs(ub) + hw * Math.abs(ua) + ASIDE_PAD_M;
     const dx = px - VB[o];
     const dy = py - VB[o + 1];
+    // A moving body whose drawn facing is still turning towards its motion (more than about 23 degrees off):
+    // it may be drawn at any heading in between, so the disc it turns in is kept clear, out from its centre.
+    if (k === 1 && Math.abs(ux * vx + uy * vy) < 0.92 * Math.sqrt(vx * vx + vy * vy)) {
+      const r = hl + ASIDE_PAD_M;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < r) {
+        const need = Math.min(ASIDE_HARD_M, r - d);
+        if (need > Math.sqrt(ox * ox + oy * oy)) {
+          ox = d > 1e-6 ? (dx / d) * need : -uy * need;
+          oy = d > 1e-6 ? (dy / d) * need : ux * need;
+        }
+      }
+      continue;
+    }
     const a = dx * mx + dy * my;
     const b = -dx * my + dy * mx;
-    if (a <= -ea || a >= ea + sp * ASIDE_AHEAD_S || b <= -eb || b >= eb) continue;
-    // To the side he is drawn on now.
+    if (a <= -ea || a >= ea + sp * ASIDE_AHEAD_S) continue;
+    // To the side he is drawn on now; nothing to do when his rules place is already clear on that side.
     const bDrawn = b + (-ox0 * my + oy0 * mx);
-    const db = bDrawn < 0 ? -eb - b : eb - b;
-    ox += -my * db;
-    oy += mx * db;
-  }
-  const m = Math.sqrt(ox * ox + oy * oy);
-  if (m > ASIDE_MAX_M) {
-    ox *= ASIDE_MAX_M / m;
-    oy *= ASIDE_MAX_M / m;
+    const side = bDrawn < 0 ? -1 : 1;
+    if (b * side >= eb) continue;
+    let db = side * eb - b;
+    if (b * side >= 0) {
+      // His own side: at most ASIDE_MAX_M, unless that would leave him inside the drawn body itself (a body
+      // turning through a corner is wide across its motion): then clear of it, at most ASIDE_HARD_M.
+      if (Math.abs(db) > ASIDE_MAX_M) db = side * Math.min(ASIDE_HARD_M, Math.max(ASIDE_MAX_M, Math.abs(side * (eb - ASIDE_PAD_M + 0.2) - b)));
+    } else if (a > ea) continue;
+    // else his leg crosses the path while the body passes: held on the side he is drawn on until it has passed.
+    // The strongest push wins (two vehicles never cancel each other out).
+    if (Math.abs(db) > Math.sqrt(ox * ox + oy * oy)) {
+      ox = -my * db;
+      oy = mx * db;
+    }
   }
   out[0] = ox;
   out[1] = oy;
-}
-
-/**
- * One person's drawn place this frame: the rules place (px, py) plus the eased step aside (OFF holds the
- * offset of slot i, two numbers). out[0], out[1] = the drawn place. `snap` sets the offset at once.
- */
-export function stepAside(out: number[], OFF: Float64Array, i: number, px: number, py: number, VB: number[] | Float64Array, n: number, dt: number, snap: boolean): void {
-  'worklet';
-  asideTarget(out, px, py, VB, n, OFF[i * 2], OFF[i * 2 + 1]);
-  const e = snap ? 1 : 1 - Math.exp(-dt / ASIDE_EASE_S);
-  const ox = OFF[i * 2] + (out[0] - OFF[i * 2]) * e;
-  const oy = OFF[i * 2 + 1] + (out[1] - OFF[i * 2 + 1]) * e;
-  OFF[i * 2] = ox;
-  OFF[i * 2 + 1] = oy;
-  out[0] = px + ox;
-  out[1] = py + oy;
 }
 
 /** Is (px, py) inside the drawn body o of VB (its footprint as drawn, no pad)? Pure (the test's measure). */
@@ -617,4 +631,24 @@ export function insideBody(VB: number[] | Float64Array, o: number, px: number, p
   const a = dx * VB[o + 2] + dy * VB[o + 3];
   const b = -dx * VB[o + 3] + dy * VB[o + 2];
   return Math.abs(a) < VB[o + 4] && Math.abs(b) < VB[o + 5];
+}
+
+/**
+ * One person's drawn place this frame: the rules place (px, py) plus the eased step aside (OFF holds the
+ * offset of slot i, two numbers). out[0], out[1] = the drawn place. `snap` sets the offset at once.
+ */
+export function stepAside(out: number[], OFF: Float64Array, i: number, px: number, py: number, VB: number[] | Float64Array, n: number, dt: number, snap: boolean): void {
+  'worklet';
+  asideTarget(out, px, py, VB, n, OFF[i * 2], OFF[i * 2 + 1]);
+  let e = snap ? 1 : 1 - Math.exp(-dt / ASIDE_EASE_S);
+  // Drawn inside a body right now (a vehicle that moved off or turned the very frame he stood by it): out faster.
+  const cx = px + OFF[i * 2];
+  const cy = py + OFF[i * 2 + 1];
+  for (let q = 0; q < n && e < ASIDE_FAST; q++) if (insideBody(VB, q * VB_STRIDE, cx, cy)) e = ASIDE_FAST;
+  const ox = OFF[i * 2] + (out[0] - OFF[i * 2]) * e;
+  const oy = OFF[i * 2 + 1] + (out[1] - OFF[i * 2 + 1]) * e;
+  OFF[i * 2] = ox;
+  OFF[i * 2 + 1] = oy;
+  out[0] = px + ox;
+  out[1] = py + oy;
 }

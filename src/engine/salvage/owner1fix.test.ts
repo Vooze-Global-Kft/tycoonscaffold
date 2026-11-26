@@ -203,7 +203,7 @@ describe('finding 5: the helper carries unless the boss is about to', () => {
     const sh = fp.scalehouse;
     const sc = fp.scale;
     const wb = fp.weighbridge;
-    const rects = C.map.driveLine!.rects;
+    const rects = C.map.driveLine!.rects ?? [];
     for (let n = 1; C.map.points[`wait${n}`]; n++) {
       const w = pointOf(C, `wait${n}`);
       expect(Math.abs(w.y - (sh.y + sh.d / 2))).toBeLessThan(0.8);
