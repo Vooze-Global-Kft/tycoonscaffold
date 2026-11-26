@@ -290,6 +290,17 @@ function orderPlan(x: Ctx): OrderPlan | null {
   return { first: (id, kind) => !waits(id, kind), later: (id, kind) => waits(id, kind) };
 }
 
+/**
+ * RULING2.md 16.6 (the card's reason; no words here): are the yard hands clearing the tipping floor before this
+ * machine's feed and tray (17.2's order holds: the rung reached, the floor over half full, and the machine one that
+ * waits for it)? A read of the state: nothing is changed.
+ */
+export function waitsForFloor(c: Ctx['c'], s: Ctx['s'], id: MachineId): boolean {
+  if (!s.machines[id]?.owned || !s.crew.some((m) => m.role === 'hand')) return false;
+  const plan = orderPlan({ c, s } as unknown as Ctx);
+  return !!plan && plan.later(id, 'feed');
+}
+
 /** handDepart's (1): feed a machine with room for its input (`only`: the machines asked now; null: all). */
 function feedStep(x: Ctx, m: CrewMember, t: number, cap: number, free: GroundPiece[], only: ((id: MachineId) => boolean) | null): boolean {
   const s = x.s;

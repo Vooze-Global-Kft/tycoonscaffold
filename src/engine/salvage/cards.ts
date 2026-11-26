@@ -16,6 +16,8 @@ import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, l
 import { driverRoundF, machineShares } from './content';
 import { awayCapH } from './away';
 import { roundMoney } from './money';
+import { keptForBetter } from './truck';
+import { waitsForFloor } from './crew';
 import { lastPassed, tableOf } from './rivals';
 import type {
   CardContext,
@@ -307,7 +309,10 @@ export function skipLabelOf(c: SalvageContent, g: SalvageGame, partner: string, 
     const room = c.floorRoom_kg * 1000 - floorMass(c, g);
     if (sk.mass_g > room) refusal = { key: 'refusal.floor', args: { kg: { mass_g: sk.mass_g, step: 'lot' } } };
   }
-  return { partner, slot, state, net_g: sk.mass_g, things, price: sk.price, refusal, fullInS, fullAt: sk.fullAt };
+  const lab: SkipLabel = { partner, slot, state, net_g: sk.mass_g, things, price: sk.price, refusal, fullInS, fullAt: sk.fullAt };
+  // RULING2.md 16.6: the reason a ready skip stands (the words are Phase C's).
+  if (!refusal && state !== 'filling' && keptForBetter(c, g, partner)) lab.kept = true;
+  return lab;
 }
 
 /** Grams on the tipping floor now (things whole and loose pieces). */
@@ -392,6 +397,8 @@ export function machineCard(c: SalvageContent, g: SalvageGame, id: MachineId): M
               ? { key: 'card.waitingFor', args: { grade: { grade: ins[0] ?? '' } } }
               : { key: 'card.idle' };
   const card: MachineCard = { machine: id, owned: m.owned, level: m.level, status, in: ins, out: outs, rate_g_h: Math.round(rate * 3_600_000), rate, hopper: [...byGrade.values()], hopperCap_g: (def.inbuf ?? 0) * 1000, tray_g: m.tray_g, trayCap_g: (def.tray ?? 0) * 1000 };
+  // RULING2.md 16.6: the reason a machine waits for the yard hands (the words are Phase C's).
+  if (m.owned && m.status !== 'working' && waitsForFloor(c, s, id)) card.floorFirst = true;
   if (id === 'crucible') {
     const pot_g = Math.round(c.machines.crucible.pot * 1000 * (1 + c.machines.crucible.lev * Math.max(0, cr.level - 1)));
     const poursInS = cr.phase === 'heating' && cr.endsAt !== null ? Math.max(0, cr.endsAt - s.t) : null;

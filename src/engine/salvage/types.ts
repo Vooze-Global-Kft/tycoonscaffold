@@ -1183,6 +1183,8 @@ export interface MachineCard {
   trayCap_g: number;
   /** Crucible only. */
   crucible?: { recipe: RecipeId; fromBays: boolean; charge_g: number; pot_g: number; poursInS: number | null; ready: boolean; heel_g: number };
+  /** RULING2.md 16.6 (engine2-dispatch): the yard hands are clearing the tipping floor before this machine's feed and tray (crew.ts waitsForFloor). Absent = false. */
+  floorFirst?: boolean;
 }
 
 /** One two-line row of the price board (4.4). */
@@ -1234,6 +1236,8 @@ export interface SkipLabel {
   refusal: Txt | null;
   fullInS: number | null;
   fullAt: number;
+  /** RULING2.md 16.6 (engine2-dispatch): the hired driver keeps the floor's room for a better load and leaves this ready skip standing (truck.ts keptForBetter). Absent = false. */
+  kept?: boolean;
 }
 
 // ================================================================================================ process board

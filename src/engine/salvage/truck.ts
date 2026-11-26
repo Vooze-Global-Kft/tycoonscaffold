@@ -324,6 +324,12 @@ export function driverDepart(x: Ctx, t: number): boolean {
  * floor (it could never fit: no dead end). Null: wait.
  */
 function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullAt: number; price: number; mass: number } | null {
+  const top = rankTop(x, floor);
+  return top && top.fits ? { partner: top.partner, fullAt: top.fullAt, price: top.price, mass: top.mass } : null;
+}
+
+/** bestLoad's best-ranked full skip among those that may block (payable; fits now: `fits`), or null. */
+function rankTop(x: Ctx, floor: { g: number | null }): { partner: string; fullAt: number; price: number; mass: number; net: number; fits: boolean } | null {
   const s = x.s;
   let top: { partner: string; fullAt: number; price: number; mass: number; net: number; fits: boolean } | null = null;
   let ranks: Readonly<Record<string, number>> | null | undefined;
@@ -339,7 +345,24 @@ function bestLoad(x: Ctx, floor: { g: number | null }): { partner: string; fullA
     const net = ranks ? (ranks[id] ?? -Infinity) : ratedLoadNet(x.c, id);
     if (!top || net > top.net || (net === top.net && (sk.fullAt < top.fullAt || (sk.fullAt === top.fullAt && id < top.partner)))) top = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g, net, fits: !why };
   }
-  return top && top.fits ? { partner: top.partner, fullAt: top.fullAt, price: top.price, mass: top.mass } : null;
+  return top;
+}
+
+/**
+ * RULING2.md 16.6 (the card's reason; no words here): is this partner's full skip one the hired driver leaves standing
+ * because he keeps the tipping floor's room for a better-ranked load that does not fit yet (16.1 c)? True only from
+ * truck.pickFromRung, with the driver hired and idle, the truck owned and free, this skip payable and fitting, and the
+ * best-ranked skip another partner's that does not fit. A read: nothing is changed.
+ */
+export function keptForBetter(c: SalvageContent, g: { cash: number; salvage: Ctx['s'] }, partner: string): boolean {
+  const s = g.salvage;
+  if (s.ladder.rung < pickFromRung(c) || !s.truck.owned || s.truck.by !== null || s.truck.trip || s.truck.skip) return false;
+  if (!s.crew.some((m) => m.role === 'driver' && m.job === 'idle')) return false;
+  const x = { c, s, cash: g.cash } as unknown as Ctx;
+  const floor = { g: null as number | null };
+  if (!fullestSkip(x, partner) || hookRefusal(x, partner, false, floor)) return false;
+  const top = rankTop(x, floor);
+  return !!top && !top.fits && top.partner !== partner;
 }
 
 const PHASES: TripPhase[] = ['walk', 'out', 'hook', 'back', 'weigh', 'tip', 'park'];

@@ -13,9 +13,12 @@ import { FIXTURE_NOW, fixtureGame, SALVAGE_TEST } from '../fixtures/salvage';
 import * as R from '../salvage';
 import { awayPass } from './away';
 import { newBot, playTo, seededCfg, startGame } from './bot';
-import { machineWorth, orderFromRung } from './crew';
+import { machineWorth, orderFromRung, waitsForFloor } from './crew';
+import { keptForBetter } from './truck';
+import { loadRanks } from './rate';
+import { machineCard, skipLabelOf } from './cards';
 import { pickFromRung, ratedLoadNet } from './partners';
-import { hireCheck } from './ladder';
+import { hireCheck, levelCheck } from './ladder';
 import { pieceCount, pieceSpec } from './content';
 import type { GroundPiece, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
@@ -87,6 +90,36 @@ describe("the driver's ranking (RULING2.md 16.1)", () => {
     expect(departed(keyed(bigDemo(SALVAGE_TEST, 6), 1), g)).toBeNull();
   });
 
+  it('16.6: the ready skip the driver leaves standing for the better load carries the reason (kept); not below the rung', () => {
+    const g = twoFull(1000);
+    const c = keyed(bigDemo(SALVAGE_TEST, 6), 1);
+    // The demolition skip full and not fitting, the farm's ready: the farm's label says he keeps the room.
+    const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
+    Object.assign(s.partners.partnerDemolition.skips[0], { phase: 'full', fullAt: s.t - 1, contents: { ...c.partners.partnerDemolition.skip }, mass_g: 3_500_000, price: 100 });
+    const h = { ...g, salvage: s } as SalvageGame;
+    expect(departed(c, h)).toBeNull();
+    expect(keptForBetter(c, h, 'partnerFarm')).toBe(true);
+    expect(keptForBetter(c, h, 'partnerDemolition')).toBe(false);
+    expect(keptForBetter(bigDemo(SALVAGE_TEST, 6), h, 'partnerFarm')).toBe(false);
+    expect(skipLabelOf(c, h, 'partnerFarm', 0)?.kept).toBe(true);
+    expect(skipLabelOf(bigDemo(SALVAGE_TEST, 6), h, 'partnerFarm', 0)?.kept).toBeUndefined();
+  });
+
+  it('16.5: the rank is the net over the slowest step\'s seconds for the load, from the assets (a cutter more raises a cut-bound load)', () => {
+    const c = keyed(bigDemo(SALVAGE_TEST, 6), 1);
+    const g = twoFull(0);
+    const r1 = loadRanks(c, g.salvage)!;
+    expect(r1).toBeTruthy();
+    const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
+    const cut = s.crew.find((m) => m.role === 'cutter')!;
+    s.crew.push({ ...cut, id: 'cutter.9' });
+    const r2 = loadRanks(c, s)!;
+    expect(r2.partnerDemolition).toBeGreaterThan(r1.partnerDemolition);
+    // The same assets, the same rank (cached on rated income's asset key; never the yard's stock or cash).
+    expect(loadRanks(c, { ...g.salvage, pieces: [] })).toEqual(r1);
+    expect(R.ratedTerms(cfgOf(c), g).rank).toEqual(r1);
+  });
+
   it('(e) a skip the yard cannot pay for blocks nobody; one heavier than the whole floor neither', () => {
     expect(departed(keyed(bigDemo(SALVAGE_TEST, 6), 1), twoFull(0, 101))).toBe('partnerFarm');
     expect(departed(keyed(bigDemo(SALVAGE_TEST, 12), 1), twoFull(0))).toBe('partnerFarm');
@@ -137,6 +170,16 @@ describe("the yard hands' order (RULING2.md 17.2)", () => {
 
   it('a floor at most half full: the first yard\'s order from the rung too', () => {
     expect(firstJob(keyed(SALVAGE_TEST, undefined, 1), trayAndFloor(600))).toBe('tray');
+  });
+
+  it('16.6: a machine waiting for the hands on the floor carries the reason (floorFirst); not below the rung, not on a half-empty floor', () => {
+    const c = keyed(SALVAGE_TEST, undefined, 1);
+    const idle = (g: SalvageGame) => ({ ...g, salvage: { ...g.salvage, machines: { ...g.salvage.machines, bench: { ...g.salvage.machines.bench, status: 'idle' } } } }) as SalvageGame;
+    expect(waitsForFloor(c, trayAndFloor(1200).salvage, 'bench')).toBe(true);
+    expect(waitsForFloor(c, trayAndFloor(600).salvage, 'bench')).toBe(false);
+    expect(waitsForFloor(SALVAGE_TEST, trayAndFloor(1200).salvage, 'bench')).toBe(false);
+    expect(machineCard(c, idle(trayAndFloor(1200)), 'bench').floorFirst).toBe(true);
+    expect(machineCard(SALVAGE_TEST, idle(trayAndFloor(1200)), 'bench').floorFirst).toBeUndefined();
   });
 });
 
@@ -253,4 +296,46 @@ describe('mass balances with both rules from rung 1 (test content, a busy yard, 
     expect(hooks).toBeGreaterThan(3);
     expect(inYard(out.salvage)).toBe(came);
   }, 120_000);
+});
+
+/**
+ * The check's findings (dispatch-check, attack/dispatch/findings.test.ts; engine2-dispatch's fix pass): on bots' yards of
+ * the real content, flat board (usual prices), one capped absence with cash enough for every load. F1: the driver's rule
+ * keeps what the hands' rule alone keeps (16.5's rank; 16.1 (a)'s net a load lost 15 % on a one-cutter yard). F4: a
+ * demolition level does not make the yard poorer (it lost 10.5 %). F3: rated income follows the hands' rule at rung 2
+ * (the floor's pieces go to the scale while the floor is over half full; I/G was 0.83).
+ */
+describe("the check's findings on bots' yards (real content, flat board)", () => {
+  const flat = (c: SalvageContent) => ({ ...c, board: { ...c.board, a: 0 } }) as SalvageContent;
+  const G = (cfg: SalvageConfig, g0: SalvageGame, hours?: number): { G: number; h: number } => {
+    const g = { ...g0, cash: 1e7, lastSavedAt: g0.salvage.clock.highMs } as SalvageGame;
+    const v0 = R.stockValue(cfg, g);
+    const ms = hours === undefined ? 24 * 3600_000 : Math.round(hours * 3600_000);
+    const o = awayPass(cfg, g, g.salvage.clock.highMs + ms);
+    const h = o.salvage.away!.seconds / 3600;
+    return { G: (o.cash - g.cash + R.stockValue(cfg, o) - v0) / h, h };
+  };
+  it('F1 and F4: both rules keep at least 99 % of the hands\' rule alone; a demolition level loses at most 4 % (seeds 101 and 108, minute 60)', () => {
+    const c = flat(real());
+    const handsOnly = { ...c, truck: { ...c.truck, pickFromRung: 99 } } as SalvageContent;
+    for (const seed of [101, 108]) {
+      const { cfg, g } = played(c, seed, 60);
+      const a = G(cfg, g);
+      const b = G(seededCfg(cfgOf(handsOnly), seed), g, a.h);
+      expect(a.G, `seed ${seed}: both rules against the hands' rule alone`).toBeGreaterThanOrEqual(0.99 * b.G);
+      const ck = levelCheck(cfg, { ...g, cash: 1e12 } as SalvageGame, { kind: 'partner', partner: 'partnerDemolition' });
+      if (ck.price === null || ck.refusal) continue;
+      const h = R.level(cfg, { ...g, cash: 1e12 } as SalvageGame, { kind: 'partner', partner: 'partnerDemolition' }, ck.price, g.salvage.t);
+      expect(G(cfg, h, a.h).G, `seed ${seed}: a demolition level`).toBeGreaterThanOrEqual(0.96 * a.G);
+    }
+  }, 300_000);
+  it('F3: I/G within 0.88 to 1.12 at minute 30 (rung 2, the hands\' rule; seeds 104 and 106)', () => {
+    const c = flat(real());
+    for (const seed of [104, 106]) {
+      const { cfg, g } = played(c, seed, 30);
+      const r = R.ratedIncome(cfg, g) / G(cfg, g).G;
+      expect(r, `seed ${seed}`).toBeGreaterThanOrEqual(0.88);
+      expect(r, `seed ${seed}`).toBeLessThanOrEqual(1.12);
+    }
+  }, 300_000);
 });
