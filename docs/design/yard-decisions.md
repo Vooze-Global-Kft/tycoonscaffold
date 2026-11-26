@@ -1643,3 +1643,56 @@ loads; the state stays bounded. What did not hold, and what the lead rules:
     but part of that is stock it still holds at the end. The bound stays a tenth and is measured
     as lifetime earnings plus unsold stock at usual prices at the end, on at least 13 of 15 seeds;
     the bots' report prints both measures.
+
+### 15. Paid packs: which purchase belongs to which quote (06:50; after the attack on the shared shop files; it replaces 10.8's date rule and amends the specification's 2.15.4 and 2.15.5)
+
+An engineer who wrote none of it attacked the shared purchase plumbing (`notes/store-attack-money.md`,
+tests in `attack/store/money.test.ts`). It held where it was meant to (one grant per id, the quote
+on disk before the store's sheet, a kill between sheet, grant and save, restore, the four games).
+It did NOT hold where a purchase is matched to a quote: by product and date only. That gave free
+scrip from the account's older purchases (a kill at the sheet, then any old transaction; a clock
+set back at a new save), took a waiting quote away from its approval, lost a paid pack after a
+store error, and blocked a pack for ever when the device's clock had been wrong. The lead rules:
+
+15.1 **No clock decides a grant.** A store date is never compared with the device's clock.
+    `iap.createdMs` stays in the save as information only. (This replaces 10.8's "only
+    transactions dated after the save was created".)
+15.2 **One name for a purchase.** A transaction is known by the id the store's LISTING gives it;
+    the result of a purchase is read through the same listing, never through a second id.
+15.3 **A quote knows what was there before it.** At Buy, before the quote is made, the store asks
+    the listing afresh for the ids of that product (`known`). If it cannot be asked on a real
+    store, no sheet opens ("The store cannot be reached. Nothing was charged."). The quote keeps
+    `known`. A quote is never granted with an id in its `known`, nor with an id in the ledger.
+15.4 **A quote has a state**: OPEN from Buy until the sheet's outcome; WAITING when the store
+    answered pending, or with any error that does not prove nothing was charged. Outcomes that
+    withdraw the quote: the player cancelled; the store refused (not allowed, invalid, product
+    unavailable); no sheet could open. The words: "Nothing was charged." only on those;
+    "Waiting for approval" on pending; "The store has not confirmed this purchase yet. If you
+    were charged, your scrip arrives when it does." on the others.
+15.5 **Who gets an arriving purchase.** The sheet's own result: the id that is new against the
+    quote's `known` goes to THAT quote (shown equals applied: the S on the row). Later arrivals
+    (the listener, the check at start): an id not in the ledger goes to the OLDEST standing quote
+    of its product whose `known` lacks it. With no such quote it belongs to another save and is
+    not granted. While a sheet for a product is open, that product's arrivals are held and
+    replayed when the sheet has answered. A withdraw names its quote; it never drops "the last".
+15.6 **How long a quote stands.** At most ONE open quote per product: a new Buy withdraws an older
+    open one (a purchase that did complete then arrives at the newer quote). A WAITING quote
+    refuses a new Buy of that product ("Waiting for approval") for 24 hours of the device's clock
+    (this clock use decides no grant); after that a new Buy gets its own quote and the old one
+    keeps standing. Any standing quote is withdrawn when a FRESH listing (from the network), at
+    least 72 hours after it was made, shows nothing new for it. Headroom counts every standing
+    quote.
+15.7 **Looks and No ad videos that wait for approval** (the salvage route only; the four games
+    stay exactly as they are): the banner says "Waiting for approval", not that it failed, and
+    the look is applied when its approval arrives, not at the next start.
+15.8 **The small ones**: the check at start reads a fresh listing and is run once more after the
+    listener is subscribed; one native listener per program, removed with its store; when the
+    store's date cannot be read no device time stands in for it.
+15.9 **Accepted until there is a server** (stage 5, with the boards): two devices on one store
+    account. A purchase made on one can also be granted on the other only while that other holds
+    a standing quote of the same product (a deliberate kill at the sheet, or an approval that
+    waits): at most one grant a purchase a device. Bought scrip never counts on a board (2.5).
+15.10 **Where it lives.** The shared store carries purchases and outcomes to the mode and holds
+    arrivals back while a sheet is open; the MODE's shop rules own the quotes, their `known`,
+    their states, the ledger and every decision above (pure functions of the save, tested there).
+    The contract's `iap.pending` entries become `{id, product, S, I, atMs, known, state}`.

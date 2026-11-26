@@ -663,3 +663,27 @@ section is right. Changes of BEHAVIOUR are marked so.
     the first pour and rung 3 are in their bands on 12 to 15 of 15 seeds. Accepted misses: sales of
     §1,757 a minute at the hour's end against §2,000; a long absence after rung 2 buys the rest of
     the goal list; Hold never beats selling at once (reworked with the exchanges in the next stage).
+20. **What the engine step changed under the first yard (26 November, after its attack; behaviour;
+    `yard-stage2.md` 2.1 to 2.4 and 2.17; RULING2.md section 14; E40, E42, E43).** Below rung 3
+    nothing a crew member does changes: with runs off (`group.fromRung` 99) the bot hour and 600
+    ticks are bit-identical to this stage's engine, and the first hour's tables reproduce. From
+    rung 3 (the first yard's last rung, about minute 57) yard hands and cutters work in RUNS, in the
+    boss's sight and out of it alike: a yard hand keeps at one kind of trip from one place to one
+    destination while it ends within 30 s of the run's start, a cutter at one place within 120 s
+    (content `group`), then the order of 2.6 chooses again; out of sight the rest of a run is planned
+    ahead with one dated end (that is what makes time away cheap), in sight it is made trip by trip.
+    The yard clears its floor faster than the leg-by-leg order did (about a sixth more tonnes by day
+    3), accepted as the next stage's baseline. The merchant's round is away its `round_s` watched or
+    not, and a machine takes one hopper piece at a time in every presence state. Away, partners,
+    the rung, rivals and the deal's offer are checked at every instant at which something they read
+    changed, and the goals when the yard clock enters a new minute since `counts.goalsAt` (it was
+    every 5 s of yard time, and once every 60 s in the engine step's first build); nothing is forced
+    at the pass's end, so an absence cut into passes equals one pass. Hold no longer stops the yard
+    (it replaces item 19's last clause and E36(c)): while the boss is away, the merchant waits with
+    nothing to take, the driver is idle and the cash cannot pay the cheapest full skip, the yard
+    sets aside from ONE held bay just what two such skips need at today's price, Hold stays on, and
+    the away card says "Sold from hold to keep the yard going: {grade}". The bench of item 15 is
+    gated at 250 ms of node CPU for six hours away (186 ms measured by the lead at load 0.0); a
+    tick's median at most 0.2 ms, 99 of 100 under 1 ms. Rated income I exists (`rate.ts`) and
+    nothing of the first yard reads it. A first-yard save loads as it was (every new field is
+    optional).

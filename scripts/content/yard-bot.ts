@@ -16,6 +16,7 @@
  * --handFirst     a what-if: after the fixed goals the bots level the yard hands when pieces wait (bot.ts)
  * --minutes M     how long the hour runs play (default 90 since REPORT7: E31c's windows to minute 90; the
  *                 tick-equals-jump gate checks the first 60 minutes); the slow hand plays max(100, M)
+ * --cache dir     keep each run's summary there and read it back on a later call with the same spec
  * --daysSeeds N   the three-day runs (days and the day-word holder) on the first N seeds (default 3)
  * --only income   stage 2 2.3.3's gate (engine2-income): rated income I against the away income an hour G at
  *                 usual prices (board.a 0), at rung 2's and rung 3's entry, the hour's end, day 1 and day 3 (normal hand),
@@ -28,6 +29,7 @@
  * promise prints in the report's first section and makes the exit code 2.
  */
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -315,6 +317,15 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
   const worker = async () => {
     while (next < specs.length) {
       const i = next++;
+      // --cache dir: a run already made with the same spec is read back (a long report survives a restart;
+      // empty the folder whenever the content or the rules change).
+      const cacheDir = arg('cache');
+      const cacheFile = cacheDir ? path.join(cacheDir, `${createHash('sha1').update(JSON.stringify(specs[i])).digest('hex')}.json`) : null;
+      if (cacheFile && fs.existsSync(cacheFile)) {
+        out[i] = JSON.parse(fs.readFileSync(cacheFile, 'utf8')) as Summary;
+        process.stderr.write(':');
+        continue;
+      }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
@@ -324,6 +335,10 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
           resolve(JSON.parse(buf.trim().split('\n').pop()!));
         });
       });
+      if (cacheFile) {
+        fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+        fs.writeFileSync(cacheFile, JSON.stringify(out[i]));
+      }
       process.stderr.write('.');
     }
   };
