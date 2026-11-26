@@ -1605,3 +1605,21 @@ loads; the state stays bounded. What did not hold, and what the lead rules:
 14.8 **THE BENCH.** The gate stays 250 ms for six hours away (13.9), measured alone on a quiet
     machine after these changes. If 14.3 and 14.4 push it over, the saving is taken from the work
     per whole item (the index of pieces by pile the first engineer named), not from the rule.
+
+14.9 **THE GATE OF 14.2, RESTATED AFTER THE FIX (06:10).** The first fixer built 14.1 (the run as
+    the rule, watched or not) and measured the shortcut against it honestly (`notes/engine2-fixA.md`
+    section 4). Two facts. (a) The yard is chaotic: the cutters' power changed by one part in a
+    billion moves one absence's net by up to 4 % (7 of 10 states within 2 %). So no bound on
+    single trajectories can be a gate, and 14.2's "within 2 % on 8 of 10 states / 13 of 15 seeds"
+    is withdrawn. (b) On MEANS the shortcut costs about what the noise does: one capped absence,
+    planned ahead against trip by trip, net -1.0 % (ten states; the noise alone -0.7 %); three
+    days on fifteen seeds, lifetime earnings +0.5 % at day 1 and +1.0 % at day 3 (standard error
+    about 0.8), supplied tonnes +1.4 % and +3.6 %. THE GATE NOW: over at least fifteen seeds (ten
+    states for the single absence), the MEAN difference between `group.ahead` true and false is
+    within 2 % for net and for lifetime earnings and within 5 % for supplied tonnes, with the
+    noise floor printed beside it (the same runs with the cutters' power times 1 + 1e-9). It is
+    met as measured. The rule's own effect (no runs against runs) is about a sixth more tonnes by
+    day 3, watched or not (E42). What was tried to bring plan and trip-by-trip closer (landing at
+    the yard's own instants, a fair share of claims, full loads only) made the gap larger and is
+    not in the code. The machines' grouped segment is removed (it depended on sight and saved
+    nothing).
