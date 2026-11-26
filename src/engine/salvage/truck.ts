@@ -20,6 +20,7 @@ import { landBody } from './works';
 import { loadRanks } from './rate';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
+import { pushThing, spliceThing } from './lookup';
 
 /**
  * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
@@ -163,13 +164,13 @@ function tipNow(x: Ctx, t: number): void {
       // the stub never diverts). A diverted thing takes no floor slot.
       const divert = tipDivert(x, { uid: `f${k}`, obj }, sk.partner, t);
       if (divert) {
-        x.s.things.push({ uid: `f${k}`, obj, at: divert, cut: 0, progress: 0, by: null } as unknown as ThingState);
+        pushThing(x.s.things, { uid: `f${k}`, obj, at: divert, cut: 0, progress: 0, by: null } as unknown as ThingState);
         things++;
         continue;
       }
       while (used.has(slot)) slot++;
       used.add(slot);
-      x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });
+      pushThing(x.s.things, { uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });
       things++;
     }
   }

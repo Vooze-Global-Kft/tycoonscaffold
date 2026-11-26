@@ -5,6 +5,7 @@
 import { hash01 } from './board';
 import { heard, printTicket, ticketBase, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
+import { pieceById, piecesOn, pushPiece, pushThing, spliceThing, splicePiece, thingById, thingsAt } from './lookup';
 import { weighIn } from './scales';
 import type { GroundPiece, Piece, PileKey, ThingState } from './types';
 
@@ -16,14 +17,15 @@ export function dropOnPile(x: Ctx, p: Piece, pile: PileKey): GroundPiece {
 /** Several pieces onto one pile in order, each at the first free index then (one look at the pile for all). */
 export function dropAllOnPile(x: Ctx, ps: readonly Piece[], pile: PileKey): GroundPiece[] {
   const used = new Set<number>();
-  for (const q of x.s.pieces) if (q.pile === pile) used.add(q.k);
+  // engine4: the pile's own pieces (lookup.ts piecesOn: the same pieces in the same order as the filter of s.pieces).
+  for (const q of piecesOn(x.s.pieces, pile)) used.add(q.k);
   const out: GroundPiece[] = [];
   let k = 0;
   for (const p of ps) {
     while (used.has(k)) k++;
     used.add(k);
     const gp: GroundPiece = { uid: p.uid, grade: p.grade, g: p.g, from: p.from, spec: p.spec, ...(p.whole ? { whole: p.whole } : {}), pile, k, claim: null };
-    x.s.pieces.push(gp);
+    pushPiece(x.s.pieces, gp);
     out.push(gp);
   }
   return out;
@@ -55,17 +57,17 @@ export function remainingG(c: Ctx['c'], obj: string, cut: number): number {
 
 /** Take a ground piece off its pile (by uid): the piece, or null. */
 export function takeFromPile(x: Ctx, uid: string): Piece | null {
-  const i = x.s.pieces.findIndex((q) => q.uid === uid);
-  if (i < 0) return null;
-  const q = x.s.pieces[i];
-  x.s.pieces.splice(i, 1);
+  // engine4: the first piece with the uid (findIndex's) by the index, then its place in the array.
+  const q = pieceById(x.s.pieces, uid);
+  if (!q) return null;
+  splicePiece(x.s.pieces, x.s.pieces.indexOf(q));
   const p: Piece = { uid: q.uid, grade: q.grade, g: q.g, from: q.from, spec: q.spec };
   if (q.whole) p.whole = q.whole;
   return p;
 }
 
 export function thingOf(x: Ctx, uid: string | null): ThingState | undefined {
-  return uid ? x.s.things.find((t) => t.uid === uid) : undefined;
+  return uid ? thingById(x.s.things, uid) : undefined;
 }
 
 /** content.ts pieceSpec and pieceCount, memoised per content object (pure functions of the content; read only). */
@@ -144,8 +146,9 @@ export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): voi
   const beside = `beside.${th.uid}`;
   // engine3: the pieces beside it found in one look, in the pieces' order, before any is moved (as filter's copy was);
   // none (the common case) allocates nothing.
-  let besides: GroundPiece[] | null = null;
-  for (const p of x.s.pieces) if (p.pile === beside) (besides ??= []).push(p);
+  // engine4: the pile's list from the index, copied (the moves below change it).
+  const on = piecesOn(x.s.pieces, beside);
+  const besides: GroundPiece[] | null = on.length ? on.slice() : null;
   if (besides) for (const q of besides) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
@@ -160,7 +163,7 @@ export function shellsLeave(x: Ctx, grade: string): void {
   for (const th of [...x.s.things]) {
     if (!th.shell || x.c.objects[th.obj]?.shell?.grade !== grade) continue;
     const i = x.s.things.indexOf(th);
-    if (i >= 0) x.s.things.splice(i, 1);
+    if (i >= 0) spliceThing(x.s.things, i);
     delete x.s.counts![`shell:${th.uid}`];
     x.ev.push({ type: 'thingGone', thing: th.uid });
   }
@@ -169,7 +172,7 @@ export function shellsLeave(x: Ctx, grade: string): void {
 /** The thing leaves the yard's things (cut apart or carried whole); its waste (when cut apart) goes to the rubble skip. */
 export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carriedWhole = false): void {
   const i = x.s.things.indexOf(th);
-  if (i >= 0) x.s.things.splice(i, 1);
+  if (i >= 0) spliceThing(x.s.things, i);
   if (!carriedWhole) {
     const w = x.c.objects[th.obj]?.waste_g ?? 0;
     x.s.waste_g += w;
@@ -182,8 +185,9 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
   const beside = `beside.${th.uid}`;
   // engine3: the pieces beside it found in one look, in the pieces' order, before any is moved (as filter's copy was);
   // none (the common case) allocates nothing.
-  let besides: GroundPiece[] | null = null;
-  for (const p of x.s.pieces) if (p.pile === beside) (besides ??= []).push(p);
+  // engine4: the pile's list from the index, copied (the moves below change it).
+  const on = piecesOn(x.s.pieces, beside);
+  const besides: GroundPiece[] | null = on.length ? on.slice() : null;
   if (besides) for (const q of besides) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
@@ -194,9 +198,7 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
 
 /** How many things wait at the drop-off. */
 export function dropoffCount(x: Ctx): number {
-  let n = 0;
-  for (const t of x.s.things) if (t.at.at === 'dropoff') n++;
-  return n;
+  return thingsAt(x.s.things, 'dropoff').length;
 }
 
 /** The drop-off's arrival (2.12): the next object at the first free place, its slip; the next arrival dated. */
@@ -226,10 +228,10 @@ export function dropoffArrive(x: Ctx, t: number): void {
       r -= w;
     }
   }
-  const used = new Set(x.s.things.filter((q) => q.at.at === 'dropoff').map((q) => (q.at as { slot: number }).slot));
+  const used = new Set(thingsAt(x.s.things, 'dropoff').map((q) => (q.at as { slot: number }).slot));
   let slot = 0;
   while (used.has(slot)) slot++;
-  x.s.things.push({ uid: `d${n}`, obj, at: { at: 'dropoff', slot }, cut: 0, progress: 0, by: null });
+  pushThing(x.s.things, { uid: `d${n}`, obj, at: { at: 'dropoff', slot }, cut: 0, progress: 0, by: null });
   d.n = n + 1;
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'dropOffSlip', thing: obj });
   x.ev.push({ type: 'arrival', kind: 'dropoff', what: obj });
@@ -239,7 +241,7 @@ export function dropoffArrive(x: Ctx, t: number): void {
 
 /** The next free tipping-floor slot. */
 export function floorSlot(x: Ctx): number {
-  const used = new Set(x.s.things.filter((q) => q.at.at === 'floor').map((q) => (q.at as { slot: number }).slot));
+  const used = new Set(thingsAt(x.s.things, 'floor').map((q) => (q.at as { slot: number }).slot));
   let slot = 0;
   while (used.has(slot)) slot++;
   return slot;
@@ -248,7 +250,8 @@ export function floorSlot(x: Ctx): number {
 /** Grams on the tipping floor (things and loose pieces): the hook's room check (2.7). */
 export function floorMass_g(x: Ctx): number {
   let g = 0;
-  for (const th of x.s.things) if (th.at.at === 'floor') g += remainingG(x.c, th.obj, th.cut);
-  for (const p of x.s.pieces) if (p.pile === 'floor') g += p.g;
+  // engine4: the floor's things and pieces by the index (the same items in the same order: the same sum).
+  for (const th of thingsAt(x.s.things, 'floor')) g += remainingG(x.c, th.obj, th.cut);
+  for (const p of piecesOn(x.s.pieces, 'floor')) g += p.g;
   return g;
 }

@@ -41,6 +41,7 @@ import { tagUid, toCorner } from './reuse';
 import { supply } from './round';
 import { hashString } from '../rng';
 import type { ObjectId, PartnerId, ThingAt, ThingState, Ticket, TicketLine } from './types';
+import { pushThing, spliceThing } from './lookup';
 
 const H_CRATE = hashString('crate');
 
@@ -153,7 +154,7 @@ export function crateActEnd(x: Ctx, t: number): void {
     supply(x, grade, g);
   }
   x.s.waste_g += x.c.objects[th.obj]?.waste_g ?? 0;
-  x.s.things.splice(x.s.things.indexOf(th), 1);
+  spliceThing(x.s.things, x.s.things.indexOf(th));
   const { y, z } = payLot(x, paid, t);
   let tk = openTicket(x);
   if (!tk) {

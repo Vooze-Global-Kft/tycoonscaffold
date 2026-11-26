@@ -40,6 +40,7 @@ import { ratedIncome } from './rate';
 import { dropOnPile } from './things';
 import { hashString } from '../rng';
 import type { Piece, ThingState } from './types';
+import { pushThing, spliceThing } from './lookup';
 
 const H_LOT = hashString('lot');
 
@@ -126,7 +127,7 @@ export function lotArrive(x: Ctx, t: number): void {
   let k = 0;
   while (used.has(k)) k++;
   const uid = `lot${n}`;
-  x.s.things.push({ uid, obj: kind.obj, at: { at: 'lot', k }, cut: 0, progress: 0, by: null, g, sender: kind.from });
+  pushThing(x.s.things, { uid, obj: kind.obj, at: { at: 'lot', k }, cut: 0, progress: 0, by: null, g, sender: kind.from });
   st.n = n + 1;
   st.nextAt = waiting + 1 >= L.max ? null : Math.max(st.nextAt, t) + L.period_s;
   if (x.away) x.away.lotsWaiting = waiting + 1;
@@ -189,7 +190,7 @@ export function lotActEnd(x: Ctx, t: number): void {
   const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
   if (!th || th.at.at !== 'lot') return;
   const { specs, waste } = lotSplit(x, th);
-  x.s.things.splice(x.s.things.indexOf(th), 1);
+  spliceThing(x.s.things, x.s.things.indexOf(th));
   let i = 0;
   for (const sp of specs) {
     let left = sp.g;

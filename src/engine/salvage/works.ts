@@ -44,6 +44,7 @@ import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
+import { pushThing, spliceThing } from './lookup';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
 //
@@ -1167,7 +1168,7 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
       for (let i = 0; i < n; i++) {
         const k = (x.s.counts!.floorThings ?? 0) + 1;
         x.s.counts!.floorThings = k;
-        x.s.things.push({ uid: `f${k}`, obj, at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
+        pushThing(x.s.things, { uid: `f${k}`, obj, at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
       }
     x.dirty = true;
     return true;
@@ -1214,7 +1215,7 @@ function carDrained(x: Ctx, id: string, w: WorksState, t: number): void {
   const th = x.s.things.find((q) => q.uid === car.thing);
   if (th) {
     const o = x.c.objects[th.obj];
-    x.s.things.splice(x.s.things.indexOf(th), 1);
+    spliceThing(x.s.things, x.s.things.indexOf(th));
     if (o) {
       for (const sp of o.pieces) {
         const b = bayOf(x, sp[0]);

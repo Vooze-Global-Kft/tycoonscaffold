@@ -13,6 +13,7 @@ import { rackChoice } from './reuse';
 import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
+import { pieceById, piecesOn, piecesUnique, removePieces, thingsAt } from './lookup';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
@@ -681,15 +682,23 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
   const want = new Set<string>();
   for (const c of claims) if (!c.startsWith('tray.') && !c.startsWith('loose:')) want.add(c);
   const found = new Map<string, number>();
-  if (want.size) for (let i = 0; i < s.pieces.length; i++) if (s.pieces[i].claim === m.id && want.has(s.pieces[i].uid)) found.set(s.pieces[i].uid, i);
+  if (want.size) {
+    // engine4: with unique uids the claimed pieces are found by the index (each uid's only piece, if he claimed it) and
+    // their places in the array by indexOf; the same uid -> place pairs as the scan below (which stays for a yard
+    // that should ever hold one uid twice: there the scan keeps the last such place).
+    if (piecesUnique(s.pieces)) {
+      for (const u of want) {
+        const q = pieceById(s.pieces, u);
+        if (q !== undefined && q.claim === m.id) found.set(u, s.pieces.indexOf(q));
+      }
+    } else for (let i = 0; i < s.pieces.length; i++) if (s.pieces[i].claim === m.id && want.has(s.pieces[i].uid)) found.set(s.pieces[i].uid, i);
+  }
   if (found.size) {
     const byUid = new Map<string, GroundPiece>();
     for (const [uid, i] of found) byUid.set(uid, s.pieces[i]);
-    // engine3: the claimed pieces taken off in one pass (the others keep their order, as the splices left them).
-    const gone = new Set(found.values());
-    let w = 0;
-    for (let i = 0; i < s.pieces.length; i++) if (!gone.has(i)) s.pieces[w++] = s.pieces[i];
-    s.pieces.length = w;
+    // engine3: the claimed pieces taken off in one pass (the others keep their order, as the splices left them);
+    // engine4: from the first of them on, the index kept (lookup.ts removePieces).
+    removePieces(s.pieces, [...found.values()].sort((a, b) => a - b));
     for (const c of claims) {
       const q = byUid.get(c);
       if (!q) continue;

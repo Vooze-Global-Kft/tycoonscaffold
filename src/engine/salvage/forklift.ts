@@ -18,6 +18,7 @@ import { bossFresh } from './clock';
 import { plateDef } from './content';
 import { nearPlace } from './positions';
 import { carStart, plateIds } from './works';
+import { pushThing, spliceThing } from './lookup';
 
 /** The boss in (or entering) the forklift at yard second t: true when this step was the forklift's. */
 export function forkliftStep(x: Ctx, t: number): boolean {
@@ -45,7 +46,7 @@ export function forkliftStep(x: Ctx, t: number): boolean {
     const car = x.s.things.find((q) => q.at.at === 'elvPad' && !q.by);
     const o = car ? c.objects[car.obj] : undefined;
     if (car && o && o.gross_g <= capG && nearPlace(c, 'elvPad', p.x, p.y, reach)) {
-      x.s.things.splice(x.s.things.indexOf(car), 1);
+      spliceThing(x.s.things, x.s.things.indexOf(car));
       f.load.push({ uid: car.uid, grade: o.shell?.grade ?? o.pieces[0]?.[0] ?? 'waste', g: o.gross_g, from: null, spec: -1, whole: car.obj });
       x.ev.push({ type: 'pickup', piece: car.uid, grade: f.load[0].grade, g: o.gross_g, by: 'boss' });
       x.dirty = true;
@@ -60,7 +61,7 @@ export function forkliftStep(x: Ctx, t: number): boolean {
     if (x.s.things.some((q) => q.at.at === 'apron' && q.at.plate === id)) continue;
     if (!nearPlace(c, `${id}.apron`, p.x, p.y, reach)) continue;
     f.load = [];
-    x.s.things.push({ uid: load.uid, obj: load.whole, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null });
+    pushThing(x.s.things, { uid: load.uid, obj: load.whole, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null });
     // The bay starts on it at this instant (its drain dated: works.ts carStart).
     if (!w.car) carStart(x, id, w, t);
     x.dirty = true;

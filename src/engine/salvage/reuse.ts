@@ -67,6 +67,7 @@ import type { DatedAdd } from './works';
 import { boostFactor } from './clock';
 import { legM } from './content';
 import type { Spot } from './types';
+import { pushThing, spliceThing } from './lookup';
 
 // A yard hand's leg and rest (works.ts handLeg / handIdle's rule, crew.ts's own: the same speed, handling and event),
 // written here so that reuse.ts does not import works.ts at run time (works.ts imports this file).
@@ -287,7 +288,7 @@ function rackThing(x: Ctx, p: Piece, by: string, t: number): void {
   const empty = used.size === 0;
   let slot = 0;
   while (used.has(slot)) slot++;
-  x.s.things.push({ uid: p.uid, obj: p.whole!, at: { at: 'rack', slot, since: t }, cut: 0, progress: 0, by: null });
+  pushThing(x.s.things, { uid: p.uid, obj: p.whole!, at: { at: 'rack', slot, since: t }, cut: 0, progress: 0, by: null });
   const r = x.s.reuse;
   if (r.nextAt === null) r.nextAt = t + R.firstVisitor_s;
   else if (empty) r.nextAt = Math.max(r.nextAt, t + R.period_s);
@@ -318,7 +319,7 @@ export function rackLegEnd(x: Ctx, m: CrewMember, t: number): void {
   if (p) {
     if (rackCount(x) < rackCap(x)) rackThing(x, p, m.id, t);
     // Defensive (a place is kept for every trip): with none free it stands on the floor again, whole.
-    else x.s.things.push({ uid: p.uid, obj: p.whole!, at: { at: 'floor', slot: floorSlot(x) }, cut: 0, progress: 0, by: null });
+    else pushThing(x.s.things, { uid: p.uid, obj: p.whole!, at: { at: 'floor', slot: floorSlot(x) }, cut: 0, progress: 0, by: null });
   }
   handIdle(m, t, at);
 }
@@ -387,7 +388,7 @@ function visitorBuys(x: Ctx, t: number): void {
   const day = dayAt(x, t);
   const { lines, v, byGrade } = preparedLines(x, th.obj, day);
   const q = roundMoney(R.factor * v);
-  x.s.things.splice(x.s.things.indexOf(th), 1);
+  spliceThing(x.s.things, x.s.things.indexOf(th));
   for (const [grade, g] of Object.entries(byGrade)) supply(x, grade, g);
   const { y, z } = payLot(x, q, t);
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'rackSale' as const, thing: th.obj, uid: th.uid, v, paid: q, lines, ...(y > 0 ? { bank: { y } } : {}) });
@@ -449,7 +450,7 @@ function vanCollects(x: Ctx, t: number): void {
       row.n++;
       row.g += g;
     } else things.push({ obj: th.obj, n: 1, g });
-    x.s.things.splice(x.s.things.indexOf(th), 1);
+    spliceThing(x.s.things, x.s.things.indexOf(th));
   }
   const { y, z } = payLot(x, paid, t);
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'vanCollection' as const, buyer: 'reclaimer', things, lines, paid, ...(y > 0 ? { bank: { y } } : {}) });
@@ -469,5 +470,5 @@ export function reuseOpen(x: Ctx, t: number): void {
   void t;
   const R = x.c.reuse;
   if (!R || !x.c.objects[R.firstThing] || thingOf(x, FIRST_UID)) return;
-  x.s.things.push({ uid: FIRST_UID, obj: R.firstThing, at: { at: 'canopy', k: 0 }, cut: 0, progress: 0, by: null });
+  pushThing(x.s.things, { uid: FIRST_UID, obj: R.firstThing, at: { at: 'canopy', k: 0 }, cut: 0, progress: 0, by: null });
 }
