@@ -290,7 +290,9 @@ export function skipPlate(c: Content, lab: R.SkipLabel): LabelItem {
   if (lab.state !== 'filling') {
     for (const th of lab.things.slice(0, 3)) lines.push(line(say({ key: 'card.skipLine', args: { thing: { thing: th.obj }, n: { n: th.n }, kg: { mass_g: th.g, step: 'lot' } } }, c), LIMITS.skip));
     if (lab.things.length > 3) lines.push(line(say({ key: 'ticket.more', args: { n: { n: lab.things.length - 3 } } }, c), LIMITS.skip, 'muted'));
-    lines.push(line(withPrice(c, say({ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, c), lab.price), LIMITS.skip, 'strong'));
+    // owner1 finding 10: a free trial load says so (not a price of 0.00).
+    const net = say({ key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }, c);
+    lines.push(line(lab.free ? say({ key: 'chip.padlockPrice', args: { x: { text: 'card.skipFree' } } } as R.Txt, c).replace('{why}', net) : withPrice(c, net, lab.price), LIMITS.skip, 'strong'));
   }
   const why = lab.refusal ?? (lab.state === 'filling' && lab.fullInS !== null ? ({ key: 'refusal.filling', args: { t: { secs: lab.fullInS } } } as R.Txt) : null);
   if (why) lines.push(line(say(why, c), LIMITS.skip, 'warn'));

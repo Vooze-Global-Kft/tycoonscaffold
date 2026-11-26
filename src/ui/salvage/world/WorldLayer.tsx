@@ -112,6 +112,9 @@ function WaitTags(p: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; w
  * owner1 T2 / T3 (screens1 finding 5): while the boss's truck hooks, the goal's step ("Keep still: hooking")
  * stands beside the ring on a paper chip, following the truck on the UI thread; it goes with the hook's span.
  */
+/** The hook words' box, points (centred under the truck). */
+const HOOK_HOLD_W = 260;
+
 function HookWords({ cfg, yard, anim, width, height, active }: { cfg: R.SalvageConfig; yard: YardLayout; anim: YardAnim; width: number; height: number; active: boolean }) {
   const size = useLabelSize();
   const [text, setText] = useState('');
@@ -140,8 +143,10 @@ function HookWords({ cfg, yard, anim, width, height, active }: { cfg: R.SalvageC
     const c = cam.value;
     const b = body.value;
     const q = [0, 0];
-    toScreen(q, b.x + HOOK_RING_M + 0.2, b.y, 1.1, c, ppm, tilt, lift, W, H);
-    return { transform: [{ translateX: Math.min(W - 8 - 220, q[0]) }, { translateY: q[1] - size }] };
+    // owner1 play 6: BELOW the truck, under the ring's south edge, centred (never on the skip's plate, which
+    // stands beside the skip on the lane's far side or above it).
+    toScreen(q, b.x, b.y + HOOK_RING_M + 0.15, 0, c, ppm, tilt, lift, W, H);
+    return { transform: [{ translateX: Math.max(8, Math.min(W - 8 - HOOK_HOLD_W, q[0] - HOOK_HOLD_W / 2)) }, { translateY: Math.min(H - Math.ceil(size * 1.4) - 14, q[1] + 2) }] };
   });
   if (!text) return null;
   return (
@@ -229,7 +234,11 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
       // The boss by the rules' own presence (frame.boss, at most one sample old), not the frame loop's body:
       // a JS read of a value the UI thread writes every frame blocks on it (owner1 phone 1).
       const boss = f.boss && f.boss.x === f.boss.x ? { x: f.boss.x, y: f.boss.y, driving: f.truck.by === 'boss' ? 1 : 0 } : null;
+      // owner1 play 6: while the boss's truck hooks, the skip's plate steps aside for the ring (the hook's words
+      // below the truck say what happens); at 844 the plate stood on the road side over the truck and its ring.
+      const hooking = f.truck.hookSpan !== null && f.truck.by === 'boss' && f.t < f.truck.hookSpan.t1;
       const shown = items.filter((it) => {
+        if (hooking && it.kind === 'skip') return false;
         const near = boss ? Math.hypot(boss.x - it.x, boss.y - it.y) <= NEAR_M : false;
         if (it.near) return near;
         if (!it.place) return true;
@@ -264,6 +273,11 @@ function Labels({ cfg, yard, anim, width, height, insets, active }: { cfg: R.Sal
         const bx = (boss.x * v.ppm - cv.x - width / 2) * z + width / 2;
         const by = (boss.y * v.ppm * v.tilt - cv.y - height / 2) * z + height / 2;
         blocks.push({ x0: bx - bw, x1: bx + bw, y0: by - bh, y1: by + 6 });
+        // The hook's ring and its words: no plate on them.
+        if (hooking) {
+          const rr = HOOK_RING_M * v.ppm * z;
+          blocks.push({ x0: bx - rr, x1: bx + rr, y0: by - rr * v.tilt - bh, y1: by + rr * v.tilt + 40 });
+        }
       }
       const hides: Rect[] = [];
       // The ticket up now (the hud's ticketBoxes): a plate it would touch is not shown.
@@ -971,6 +985,6 @@ const styles = StyleSheet.create({
   stem: { position: 'absolute', top: 0, width: 2, backgroundColor: YARD.ink, opacity: 0.7 },
   lockBox: { backgroundColor: YARD.ink, alignItems: 'center', justifyContent: 'center', marginRight: 5 },
   slide: { position: 'absolute', left: 0, top: 0, width: 180, alignItems: 'center' },
-  hookHold: { position: 'absolute', left: 0, top: 0, width: 220, alignItems: 'flex-start' },
+  hookHold: { position: 'absolute', left: 0, top: 0, width: HOOK_HOLD_W, alignItems: 'center' },
   slideText: { color: YARD.inkSoft, fontWeight: '700', backgroundColor: 'rgba(251,251,246,0.85)', paddingHorizontal: 5, borderRadius: 5, overflow: 'hidden' },
 });

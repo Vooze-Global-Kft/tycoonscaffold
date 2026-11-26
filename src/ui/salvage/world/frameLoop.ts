@@ -210,14 +210,16 @@ function drawRuns(cv: SkCanvas, L: DrawList, sorted: boolean, X: SkRSXform[], RC
     const c = C[L.base + i];
     const a = L.al[it];
     const t = L.tint[it];
+    // An atlas colour is UNPREMULTIPLIED (Skia premultiplies it): the alpha goes in c[3] only. (Before owner1
+    // play 1 the rgb was scaled by it too: a sprite at a third of its ink came out dark, not see-through.)
     if (t < 0) {
-      c[0] = a;
-      c[1] = a;
-      c[2] = a;
+      c[0] = 1;
+      c[1] = 1;
+      c[2] = 1;
     } else {
-      c[0] = (((t >> 16) & 255) / 255) * a;
-      c[1] = (((t >> 8) & 255) / 255) * a;
-      c[2] = ((t & 255) / 255) * a;
+      c[0] = ((t >> 16) & 255) / 255;
+      c[1] = ((t >> 8) & 255) / 255;
+      c[2] = (t & 255) / 255;
     }
     c[3] = a;
   }
