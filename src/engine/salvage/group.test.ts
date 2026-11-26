@@ -27,9 +27,11 @@ import { reconcileSalvage } from './save';
 import type { GroundPiece, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, ThingState } from './types';
 
 const C = SALVAGE_TEST;
-type Group = Record<string, number>;
+type Group = Record<string, number | boolean>;
+/** The run limits these tests use unless they say otherwise (test numbers; the game's are in its content). */
+const RUNS = { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true };
 const cfgOf = (group: Group | null, more: Record<string, unknown> = {}): SalvageConfig =>
-  ({ mode: 'salvage', salvage: { ...C, ...(group ? { group } : {}), ...more } }) as unknown as SalvageConfig;
+  ({ mode: 'salvage', salvage: { ...C, ...(group ? { group: { ...RUNS, ...group } } : {}), ...more } }) as unknown as SalvageConfig;
 const LEGS = cfgOf({ fromRung: 99 });
 const base = (cash = 0) => ({ cash, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } }) as never;
 
@@ -293,7 +295,7 @@ describe('a busy yard with grouped runs', () => {
 
   it('below group.fromRung nothing changes: the frozen states advance exactly as the stage-1 engine', async () => {
     const { fixtureGame } = await import('../fixtures/salvage');
-    const dflt = cfgOf(null);
+    const dflt = cfgOf({});
     for (const n of ['m5', 'm15', 'm30'] as const) {
       const g = fixtureGame(n, base(), FIXTURE_NOW);
       expect(g.salvage.ladder.rung).toBeLessThan(groupCfg(dflt.salvage).fromRung);

@@ -14,7 +14,7 @@ import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
-import { bossSees, grouping, RUN_EPS } from './group';
+import { bossSees, planAhead, RUN_EPS } from './group';
 import type { CrewMember, RefusalKey, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
@@ -286,7 +286,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
   // 2.1: with no boss within sight of the truck, the partner's skip zone or the floor, the whole trip is
   // planned now with one dated end (its phases replayed at their planned times when it lands).
   const z = skipZone(x.c, best.partner, sk.slot);
-  if (grouping(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
+  if (planAhead(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
 }
 

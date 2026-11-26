@@ -81,7 +81,7 @@ describe('ticking equals jumping on played states (stale boss)', () => {
 });
 
 /** engine2-group (stage 2, 2.1): the same gate with crew trips GROUPED (from rung 1 on the test content). */
-const grouped = (c: SalvageConfig['salvage'], g: Record<string, number> = { fromRung: 1 }): SalvageConfig => ({ mode: 'salvage', salvage: { ...c, group: g } }) as unknown as SalvageConfig;
+const grouped = (c: SalvageConfig['salvage'], g: Record<string, number | boolean> = { fromRung: 1 }): SalvageConfig => ({ mode: 'salvage', salvage: { ...c, group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true, ...g } } }) as unknown as SalvageConfig;
 
 describe('ticking equals jumping with crew trips grouped (2.1)', () => {
   it('the frozen played states m5, m15, m30 and back, grouped: 60 s each', async () => {

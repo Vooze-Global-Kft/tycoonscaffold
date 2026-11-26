@@ -6,7 +6,7 @@
 import { dayWord } from './board';
 import { dayAt, priceAt, type Ctx } from './clock';
 import { fullestSkip } from './partners';
-import { resolveGrams } from './money';
+import { lineAmount, resolveGrams } from './money';
 import type { BayState } from './types';
 
 export function bayOf(x: Ctx, grade: string): BayState {
@@ -82,18 +82,27 @@ export function releaseHolds(x: Ctx): void {
   }
 }
 
+/** Grams resolved UP to whole 0.1 kg steps (a lot that must cover an amount, 2.2). */
+export function resolveUp(g: number): number {
+  return Math.ceil(Math.max(0, g) / 100 - 1e-9) * 100;
+}
+
 /**
- * E40 (stage 2 2.2; RULING2.md 10.5; H1): HOLD NEVER STOPS THE YARD. While the boss is away (the away
- * pass: no boss acts), at an instant's checks (after the round and the driver's departure, 2.12 steps 4
- * to 6) when
- *   - the merchant waits and nothing in any bay is collectable,
+ * E40 (stage 2 2.2; RULING2.md 10.5 as amended by 14.6; H1): HOLD NEVER STOPS THE YARD, AND STAYS ON. While
+ * the boss is away (the away pass: no boss acts), at an instant's checks (after the round and the driver's
+ * departure, 2.12 steps 4 to 6) when
+ *   - the merchant waits and nothing in any bay is collectable (no free stock unheld, nothing set aside),
  *   - the driver is idle at the truck with no trip and no skip on it, and
- *   - a partner's skip is full and the cash cannot pay the cheapest full skip,
- * the held bay worth most at today's price (its free grams: nothing set aside by Sell, reserved for the
- * crucible or the deal) leaves Hold, ONE bay at a time; the caller lets the round load it at once. The
- * bay stays unheld (Hold is the player's to set again). Returns the grade, or null.
- * Recorded for the away card: `counts['holdSold:<grade>']` (the release's yard second) and the pass's
- * list `x.away.heldSold` (away.ts copies it onto the card).
+ *   - a partner's skip is full and the cash less the truck's earmark cannot pay the cheapest full skip,
+ * the yard sets aside, from ONE held bay, just what that skip needs at today's price, exactly as the Sell
+ * button sets a lot aside (`b.aside`: grams, today's price, today's day; the round takes it and the ticket
+ * shows that price). The bay: first those whose word of the day is not low, then the one worth most at
+ * today's price (its free grams), ties by grade id. The lot: the shortfall (the skip's price less the cash
+ * less the earmark) ÷ today's price, resolved UP to the scale's 0.1 kg step, at least one step, at most the
+ * bay's free grams resolved down (and raised by a step while its amount would still fall short). The bay
+ * stays held: no heldBay event. Returns the grade, or null.
+ * Recorded for the away card: `counts['holdSold:<grade>']` (the yard second, whole, of the last lot) and the
+ * pass's list `x.away.heldSold` (away.ts copies it onto the card).
  */
 export function holdRelease(x: Ctx, t: number): string | null {
   const s = x.s;
@@ -108,8 +117,9 @@ export function holdRelease(x: Ctx, t: number): string | null {
     const sk = fullestSkip(x, id);
     if (sk && sk.price < cheapest) cheapest = sk.price;
   }
-  if (!(cheapest > x.cash - (tr.earmark?.money ?? 0) + 1e-9) || !Number.isFinite(cheapest)) return null;
-  let best: { grade: string; v: number } | null = null;
+  const have = x.cash - (tr.earmark?.money ?? 0);
+  if (!(cheapest > have + 1e-9) || !Number.isFinite(cheapest)) return null;
+  let best: { grade: string; v: number; low: boolean; free: number; price: number } | null = null;
   const day = dayAt(x, t);
   for (const grade of Object.keys(s.bays)) {
     const { free, aside } = collectable(x, grade);
@@ -118,15 +128,19 @@ export function holdRelease(x: Ctx, t: number): string | null {
     if (!b.held) continue;
     const g = resolveDown(freeOf(b));
     if (g <= 0) continue;
-    const v = (g / 1000) * priceAt(x, grade, day);
-    if (!best || v > best.v + 1e-9 || (Math.abs(v - best.v) <= 1e-9 && grade < best.grade)) best = { grade, v };
+    const price = priceAt(x, grade, day);
+    if (!(price > 0)) continue;
+    const v = (g / 1000) * price;
+    const low = dayWord(x.c, grade, day) === 'low';
+    const better = !best || (best.low && !low) || (best.low === low && (v > best.v + 1e-9 || (Math.abs(v - best.v) <= 1e-9 && grade < best.grade)));
+    if (better) best = { grade, v, low, free: g, price };
   }
   if (!best) return null;
-  const b = s.bays[best.grade];
-  b.held = false;
-  delete s.counts![`heldDay:${best.grade}`];
-  s.counts![`holdSold:${best.grade}`] = t;
-  x.ev.push({ type: 'heldBay', grade: best.grade, on: false });
+  const need = cheapest - Math.max(0, have);
+  let g = Math.min(best.free, Math.max(100, resolveUp((need / best.price) * 1000)));
+  while (g < best.free && lineAmount(g, best.price) < need - 1e-9) g += 100;
+  bayOf(x, best.grade).aside.push({ g, price: best.price, day });
+  s.counts![`holdSold:${best.grade}`] = Math.floor(t);
   const acc = x.away as (typeof x.away & { heldSold?: string[] }) | null;
   if (acc) {
     const list = (acc.heldSold ??= []);

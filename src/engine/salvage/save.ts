@@ -17,7 +17,7 @@ import type { GameState } from '../types';
 import { freshSalvage } from './create';
 import { RUN_MAX } from './group';
 import { pointOf } from './positions';
-import type { BayState, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
+import type { BayState, CrewJob, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, RunCourse, RunKind, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
 
 const num = (x: unknown, d = 0): number => (typeof x === 'number' && Number.isFinite(x) ? x : d);
 const grams = (x: unknown): number => Math.max(0, Math.round(num(x)));
@@ -68,6 +68,33 @@ function runOf(raw: unknown, t: number): CrewRun | null {
   }
   const n = (loads ?? cuts)!.length;
   return { ...(r as CrewRun), end: Math.max(r.end, t), k: n, legS: fin(r.legS) ? r.legS : 0 };
+}
+
+const JOBS = new Set(['feed', 'circle', 'tray', 'dropoff', 'wholeThing', 'floor', 'cutDropoff', 'cutFloor']);
+const WHERE = new Set(['dropoff', 'floor']);
+const str = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 64;
+
+/**
+ * 14.1 (d): a crew member's run (its kind, place, destination and start) is kept when well formed and of
+ * a kind his role makes, its start not after the save's clock and its machines known; else dropped (he
+ * chooses by the first yard's order at his next departure). A stage-1 save has none.
+ */
+function courseOf(raw: unknown, role: string, t: number, machines: Set<string>): RunCourse | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Partial<RunCourse>;
+  if (!fin(r.t0) || r.t0 > t || !str(r.job) || !JOBS.has(r.job) || !r.kind || typeof r.kind !== 'object') return null;
+  const k = r.kind as Record<string, unknown>;
+  const mach = (v: unknown) => str(v) && machines.has(v);
+  let kind: RunKind | null = null;
+  if (role === 'cutter') kind = k.k === 'cut' && WHERE.has(k.where as string) ? { k: 'cut', where: k.where as 'dropoff' | 'floor' } : null;
+  else if (role === 'hand') {
+    if (k.k === 'feed' && str(k.pile) && mach(k.dest)) kind = { k: 'feed', pile: k.pile, dest: k.dest as MachineId };
+    else if (k.k === 'pile' && str(k.pile)) kind = { k: 'pile', pile: k.pile };
+    else if (k.k === 'tray' && mach(k.id)) kind = { k: 'tray', id: k.id as MachineId };
+    else if ((k.k === 'loose' || k.k === 'whole') && WHERE.has(k.where as string)) kind = { k: k.k, where: k.where as 'dropoff' | 'floor' };
+    else if (k.k === 'floorWhole' && (k.dest === 'scale' || mach(k.dest))) kind = { k: 'floorWhole', dest: k.dest as MachineId | 'scale' };
+  }
+  return kind ? { t0: r.t0, job: r.job as CrewJob, kind } : null;
 }
 
 function planOf(raw: unknown, t: number): TripPlan | null {
@@ -136,6 +163,12 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
     .map((m) => ({ ...m, level: Math.max(1, Math.min(c.crew[m.role as CrewRole].maxlev, Math.floor(num(m.level, 1)))), load: arr(m.load), claims: arr(m.claims) }));
   // A grouped run (2.1): kept when well formed; a broken one is dropped, its member idle where it began,
   // what it claimed released (pieces and things it held go back to their piles; nothing is invented).
+  for (const m of s.crew) {
+    if (m.course === undefined) continue;
+    const course = courseOf(m.course, m.role, t, new Set(Object.keys(machines)));
+    if (course) m.course = course;
+    else delete m.course;
+  }
   for (const m of s.crew) {
     if (m.run === undefined) continue;
     const run = runOf(m.run, t);

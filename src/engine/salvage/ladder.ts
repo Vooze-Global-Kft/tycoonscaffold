@@ -365,11 +365,24 @@ export const STAGE_TOP_RUNG = 3;
 export function rungReached(cfg: SalvageConfig, g: SalvageGame): number {
   const c = cfg.salvage;
   const s = g.salvage.ladder;
-  const range = rangeCount(c, s.worth);
+  // RULING2.md 14.4: the away pass checks the rung at every changed instant, so the content's lists are
+  // read once per content object (rungsOf sorts, materialsOf builds a set).
+  let k = ladderMemo.get(c);
+  if (!k) {
+    k = { rungs: rungsOf(c).filter((x) => x.n <= STAGE_TOP_RUNG).map((x) => ({ n: x.n, g: Math.round(x.t * 1e6), range: x.range })), materials: materialsOf(c) };
+    ladderMemo.set(c, k);
+  }
   let r = 1;
-  for (const x of rungsOf(c)) if (x.n <= STAGE_TOP_RUNG && s.supplied_g >= Math.round(x.t * 1e6) && range >= x.range) r = Math.max(r, x.n);
+  let range = -1;
+  for (const x of k.rungs) {
+    if (x.n <= r || s.supplied_g < x.g) continue;
+    if (range < 0) range = k.materials.filter((m) => (s.worth[m] ?? 0) >= c.ladder.theta).length;
+    if (range >= x.range) r = x.n;
+  }
   return Math.max(s.rung, r);
 }
+
+const ladderMemo = new WeakMap<SalvageContent, { rungs: { n: number; g: number; range: number }[]; materials: string[] }>();
 
 /** The rung sign (the rung card): the crane's "{homeYard} · {t} supplied", what the rung opens, the next rung's gate. */
 export function rungSign(c: SalvageContent, n: number): { n: number; t_g: number; range: number; sign: Txt; opens: Txt[]; next: Txt | null } {

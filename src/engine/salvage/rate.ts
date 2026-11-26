@@ -151,15 +151,31 @@ export function arrive(x: Ctx, item: string, t: number): void {
 /** The game a book reader sees mid-transition (the draft's cash and state). */
 const view = (x: Ctx): SalvageGame => ({ cash: x.cash, lifetimeEarnings: 0, salvage: x.s }) as unknown as SalvageGame;
 
-/** 2.14 step 6: partners opening, the rung (ladder.ts rungReached), rivals passed (rivals.ts passedNow), the deal offer, goals (goals.ts checkGoals). */
+/**
+ * Are the goals due at yard second t in the away pass (RULING2.md 14.4, stage 2 2.17)? When the yard's clock
+ * has entered a new minute (CHECK_EVERY_S) since `counts.goalsAt`, the yard second (floored) the away pass
+ * last checked them; never checked: due. A function of the STATE, so an absence cut into passes checks them
+ * at the same instants as one pass. The key is a whole second so that a save's sanitising (save.ts floors
+ * counts) keeps it exactly.
+ */
+export function goalsDue(s: Ctx['s'], t: number): boolean {
+  const at = s.counts?.goalsAt;
+  return at === undefined || Math.floor(t / CHECK_EVERY_S) > Math.floor(at / CHECK_EVERY_S);
+}
+
+/**
+ * 2.14 step 6 (stage 2 2.17, RULING2.md 14.4: THE CHECKS FOLLOW THE STATE, NOT THE PASS): at every instant
+ * at which something they read changed (`x.dirty`), live and away alike: partners opening, the rung
+ * (ladder.ts rungReached), rivals passed (rivals.ts passedNow), the deal's offer. The goals (goals.ts
+ * checkGoals) at the same instants live; away only when the clock has entered a new minute since
+ * `counts.goalsAt` (goalsDue). Nothing is forced at the end of an away pass (tick.ts advance).
+ */
 export function checks(x: Ctx, t: number, force = true): void {
-  // E40 (stage 2 2.2): while the boss is away a held bay goes back to the round when Hold would stop the
-  // yard (bays.ts holdRelease), one bay a check, and the round loads it at once.
+  // E40 (stage 2 2.2, RULING2.md 14.6): while the boss is away and Hold would stop the yard, one held bay
+  // sets aside just what the next load needs (bays.ts holdRelease); the round loads it at once.
   if (holdRelease(x, t)) roundTry(x, t);
   if (!force && !x.dirty) return;
-  if (!force && !x.live && t - x.checkedAt < CHECK_EVERY_S) return;
   x.dirty = false;
-  x.checkedAt = t;
   const s = x.s;
   openPartners(x, t);
   const rung = rungReached(x.cfg, view(x));
@@ -178,15 +194,21 @@ export function checks(x: Ctx, t: number, force = true): void {
     s.ladder.passed = passed;
   }
   if (gateReached(x, x.c.deal.gate)) dealOffer(x, t);
-  const before = s.t;
-  s.t = Math.max(s.t, t);
-  const r = checkGoals(x.cfg, view(x));
-  s.t = before;
-  if (r.goals !== s.goals) {
-    s.goals = r.goals;
-    const all = [...x.c.goals, ...x.c.dayOne];
-    for (const id of r.done) x.ev.push({ type: 'goal', n: all.findIndex((d) => d.id === id) + 1, id });
+  if (x.live || goalsDue(s, t)) {
+    if (!x.live) s.counts!.goalsAt = Math.floor(t);
+    const before = s.t;
+    s.t = Math.max(s.t, t);
+    const r = checkGoals(x.cfg, view(x));
+    s.t = before;
+    if (r.goals !== s.goals) {
+      s.goals = r.goals;
+      const all = [...x.c.goals, ...x.c.dayOne];
+      for (const id of r.done) x.ev.push({ type: 'goal', n: all.findIndex((d) => d.id === id) + 1, id });
+    }
   }
+  // What the checks themselves changed (a partner opened, a rung, the offer) needs no second look at the
+  // next instant: each check is a function of the state and gives the same answer again.
+  x.dirty = false;
 }
 
 void count;

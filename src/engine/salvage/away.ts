@@ -134,6 +134,10 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   const capS = awayCapS(cfg, g);
   const A = Math.min(raw, capS);
   const x = begin(cfg, g, awaySink(events), false);
+  // RULING2.md 14.4: the state handed in was checked where it was made (live play checks at every instant,
+  // an away pass at every changed instant), so the pass starts clean: a pass that begins where another ended
+  // looks at the same instants as one pass would.
+  x.dirty = false;
   const s = x.s;
   // The market clock of the pass starts where the player left.
   x.ms0 = Math.max(g.lastSavedAt || 0, g.stats.clockHigh ?? 0, s.clock.highMs);
@@ -143,7 +147,7 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   // join2 (seam a): the card needs a real absence (over away.cardS, a minute) and a game in which something
   // was done (a count of the rules above zero); a stall under the loading curtain is no absence.
   const cardS = Math.max(cfg.salvage.away.gapS, (cfg.salvage.away as { cardS?: number }).cardS ?? 60);
-  const played = Object.values(g.salvage.counts ?? {}).some((v) => (v ?? 0) > 0);
+  const played = Object.entries(g.salvage.counts ?? {}).some(([k, v]) => k !== 'goalsAt' && (v ?? 0) > 0);
   const showCard = raw > cardS && played;
   x.away = { lines: {}, money: 0, supplied0: s.ladder.supplied_g, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [] };
   // The boss's last sample is stale from the first second of the pass (no boss).

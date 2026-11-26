@@ -1,34 +1,31 @@
 /**
- * Grouped runs (stage 2, 2.1; RULING2.md 10.4): from rung `group.fromRung`, crew work that STARTS with
- * no boss within sight is planned at its departure as a run with ONE dated end (crew.ts, truck.ts,
- * round.ts). This file holds what they share: the numbers, the sight test and the opening of runs when
- * the boss comes within sight (hand.ts bossStep). Owner: engine2 (rules-sim's files).
- *
- * The numbers live in content `group` (requests.md asks the content's owner for the schema entry); until
- * the schema carries them a content without `group` uses the first values below (tests set `group` on
- * the parsed content to switch grouping on at any rung, or off with a fromRung beyond the ladder).
+ * Runs (stage 2, 2.1; RULING2.md 10.4 and 14.1): from rung `group.fromRung` a crew member's work is a RUN
+ * (a kind of trip, a place, a destination and a start t0, kept on the member as `course`): at every later
+ * departure he takes the next trip of the same kind while it ends by t0 + the limit, whoever is looking.
+ * Out of the boss's sight the rest of the run is PLANNED AHEAD at its departure with one dated end
+ * (crew.ts, truck.ts, machines.ts); in his sight it is made trip by trip. This file holds what they share:
+ * the numbers (content `group`), the sight test and the bounds. Owner: engine2 (rules-sim's files).
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { bossFresh, type Ctx } from './clock';
 
 export interface GroupCfg {
-  /** The first rung on which runs are grouped (below it every leg is its own event, as in stage 1). */
+  /** The first rung on which crew work in runs (below it every trip is chosen alone, as in stage 1). */
   fromRung: number;
-  /** A yard hand's longest planned run, seconds (his first trip always goes, however long). */
+  /** A yard hand's longest run, seconds from its start t0 (its first trip always goes, however long). */
   handRun_s: number;
-  /** A cutter's longest planned run, seconds (his first thing always goes). */
+  /** A cutter's longest run, seconds from its start t0 (his first thing always goes). */
   cutRun_s: number;
-  /** A merchant's round that leaves with no boss within sight of his stand is away at least this long. */
-  roundAway_s: number;
+  /** Plan the rest of a run ahead at a departure out of the boss's sight (false: every run trip by trip). */
+  ahead: boolean;
 }
 
 /**
- * First values (engine2-group, measured: notes/engine2-group.md section 4). The draft's one `maxRun_s`
- * of 300 s cost a tenth of six hours' sales on five played minute-60 yards (the floor's room binds; a
- * hand's long run holds his pieces and his trips' order); a yard hand's run of 30 s and a cutter's of
- * 120 s kept the five yards' sales within 1 % on average. A content `maxRun_s` (the draft's key) caps both.
+ * A content with no `group` block has no runs (the first yard's rules). The numbers live in content
+ * (src/config/salvage.content.ts `group`); a field missing from a hand-made `group` (tests) means: no
+ * runs (fromRung), single trips (the limits), plan ahead (ahead).
  */
-export const GROUP_DEFAULT: GroupCfg = { fromRung: 3, handRun_s: 30, cutRun_s: 120, roundAway_s: 120 };
+const OFF: GroupCfg = { fromRung: Infinity, handRun_s: 0, cutRun_s: 0, ahead: true };
 
 const CACHE = new WeakMap<SalvageContent, GroupCfg>();
 
@@ -37,22 +34,23 @@ const num = (v: unknown, d: number, min = 0): number => (typeof v === 'number' &
 export function groupCfg(c: SalvageContent): GroupCfg {
   let g = CACHE.get(c);
   if (!g) {
-    const raw = ((c as unknown as { group?: Record<string, unknown> }).group ?? {}) as Record<string, unknown>;
-    const cap = num(raw.maxRun_s, Infinity);
-    g = {
-      fromRung: num(raw.fromRung, GROUP_DEFAULT.fromRung, -Infinity),
-      handRun_s: Math.min(cap, num(raw.handRun_s, GROUP_DEFAULT.handRun_s)),
-      cutRun_s: Math.min(cap, num(raw.cutRun_s, GROUP_DEFAULT.cutRun_s)),
-      roundAway_s: num(raw.roundAway_s, GROUP_DEFAULT.roundAway_s),
-    };
+    const raw = ((c as unknown as { group?: Record<string, unknown> }).group ?? null) as Record<string, unknown> | null;
+    g = raw
+      ? { fromRung: num(raw.fromRung, OFF.fromRung, -Infinity), handRun_s: num(raw.handRun_s, OFF.handRun_s), cutRun_s: num(raw.cutRun_s, OFF.cutRun_s), ahead: typeof raw.ahead === 'boolean' ? raw.ahead : OFF.ahead }
+      : OFF;
     CACHE.set(c, g);
   }
   return g;
 }
 
-/** Are runs grouped on this yard's rung? */
+/** Do crew work in runs on this yard's rung? */
 export function grouping(x: Ctx): boolean {
   return x.s.ladder.rung >= groupCfg(x.c).fromRung;
+}
+
+/** Is the rest of a run planned ahead when it departs out of sight (runs on this rung, and `group.ahead`)? */
+export function planAhead(x: Ctx): boolean {
+  return grouping(x) && groupCfg(x.c).ahead;
 }
 
 /** Is a fresh boss within reach.sight of any of these points or places' footprints at yard second t? */

@@ -7,7 +7,6 @@
  */
 import { asideOf, collectable } from './bays';
 import { count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
-import { bossSees, groupCfg, grouping, RUN_EPS } from './group';
 import { roundMoney } from './money';
 import { shellsLeave } from './things';
 import type { MerchantState, TicketLine } from './types';
@@ -17,24 +16,6 @@ export function supply(x: Ctx, grade: string, g: number): void {
   x.s.ladder.supplied_g += g;
   const gr = x.c.grades[grade];
   if (gr?.material) x.s.ladder.worth[gr.material] = (x.s.ladder.worth[gr.material] ?? 0) + (g / 1000) * gr.pbar;
-}
-
-/** The places the merchant's round is seen from (2.1): his stand and the bays he loads at. */
-const STAND = ['merchant', 'bays'];
-
-/** 2.1: how long a round that leaves at t is away: round_s, or at least group.roundAway_s when grouped and no boss sees his stand. */
-function roundAwayS(x: Ctx, t: number): number {
-  const r = x.c.merchant.round_s;
-  if (!grouping(x) || bossSees(x, t, [], STAND)) return r;
-  return Math.max(r, groupCfg(x.c).roundAway_s);
-}
-
-/** 2.1: a long round the boss now sees is OPENED: the merchant is back when the ordinary round would end, or now. */
-export function openRoundInSight(x: Ctx, t: number): void {
-  const m = x.s.merchant;
-  if (m.phase !== 'away' || m.endsAt === null) return;
-  const short = m.since + x.c.merchant.round_s;
-  if (m.endsAt > short + RUN_EPS && m.endsAt > t + RUN_EPS && bossSees(x, t, [], STAND)) m.endsAt = Math.max(t, short);
 }
 
 /** Start loading if anything is collectable (the merchant waiting); the lot is fixed now. */
@@ -110,7 +91,8 @@ export function roundEvent(x: Ctx, t: number): void {
     x.ev.push({ type: 'roundAway' });
     m.phase = 'away';
     m.since = t;
-    m.endsAt = t + roundAwayS(x, t);
+    // RULING2.md 14.3: the round is away merchant.round_s in every presence state (no long round).
+    m.endsAt = t + x.c.merchant.round_s;
     m.lot = [];
     return;
   }

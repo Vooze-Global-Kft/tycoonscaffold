@@ -318,6 +318,32 @@ export interface CrewMember {
    * `claims` is empty (each load holds its own). Absent on a leg-by-leg member and in a stage-1 save.
    */
   run?: CrewRun;
+  /**
+   * Stage 2, 2.1 (RULING2.md 14.1): the RUN he is on, from rung `group.fromRung`, whoever is looking: the
+   * kind of trip (with its place and destination) and the run's start t0. At every later departure he takes
+   * the next trip of this kind if it ends by t0 + the limit; else the first yard's order chooses again and
+   * a new run starts. Kept through a planned run (`run`), its opening and a save; absent below fromRung and
+   * in a stage-1 save (he chooses by the first yard's order).
+   */
+  course?: RunCourse;
+}
+
+/** The kind of a run's trips (2.1, 14.1): what is carried, from where, to where. */
+export type RunKind =
+  | { k: 'feed'; pile: string; dest: MachineId }
+  | { k: 'pile'; pile: string }
+  | { k: 'tray'; id: MachineId }
+  | { k: 'loose'; where: 'dropoff' | 'floor' }
+  | { k: 'floorWhole'; dest: MachineId | 'scale' }
+  | { k: 'whole'; where: 'dropoff' | 'floor' }
+  /** A cutter's run: things at one place, in his score order. */
+  | { k: 'cut'; where: 'dropoff' | 'floor' };
+
+/** A crew member's run (14.1 d): its kind, the job his legs show, and its start. */
+export interface RunCourse {
+  t0: number;
+  job: CrewJob;
+  kind: RunKind;
 }
 
 /** One trip of a yard hand's run: what it claimed at departure, where it picks, and its own two leg ends. */

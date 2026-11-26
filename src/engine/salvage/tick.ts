@@ -106,6 +106,8 @@ function apply(x: Ctx, e: QueuedEvent): void {
       dealReprice(x, t);
       if (s.foreman.day !== s.clock.day) s.foreman = { ...s.foreman, day: s.clock.day, used_s: 0 };
       releaseHolds(x);
+      // The rivals' tonnes are by the day (rivals.ts rivalDay): the checks look again at this instant (2.17).
+      x.dirty = true;
       return;
     }
     case 'machine':
@@ -190,7 +192,9 @@ export function advance(x: Ctx, T: number): void {
     s.t = T;
   }
   for (const id of RATE_MACHINES) credit(x, id, s.t);
-  checks(x, s.t, !x.live);
+  // Live play looks once more at the horizon; the away pass forces nothing at its end (RULING2.md 14.4: the
+  // checks follow the state, not the pass: an absence cut into passes equals one pass).
+  if (x.live) checks(x, s.t, false);
   // 2.1: what the frame draws of a grouped run (a pure function of its plan and this clock).
   showCrewRuns(x);
   showTrip(x);

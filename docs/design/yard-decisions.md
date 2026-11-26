@@ -518,13 +518,26 @@ measured away income an hour within a tenth at rungs 3 to 5 (RULING2.md 2.1).
 margin still come from the yard's work: a part takes at most a tenth off a partner's load price
 and is capped to the trade done with that partner when it was bought (RULING2.md 4.2).
 
-**E40. Hold never stops the yard (it replaces E36(c)'s deferral).** While the boss is away and the
-cash cannot pay the next load, the held bay worth most rejoins the merchant's round, one bay at a
-time, and the away card names it. Built with the engine step that opens stage 2 (RULING2.md 10.5).
+**E40. Hold never stops the yard (it replaces E36(c)'s deferral; amended after the attack on the
+engine step, RULING2.md 14.6).** While the boss is away and the cash cannot pay the next load, the
+yard sets aside from one held bay just enough, at today's price, to pay for that load: first a bay
+whose word of the day is not low, then the one worth most. Hold stays on; the away card names the
+grade. Built with the engine step that opens stage 2.
 
 **E41. The bank's share is of every sale (it corrects E37's "own output grades").** From signing
 the bank takes a fifth (tune 0.15 to 0.25) of every lot payment until the total is repaid; nothing
 else repays; no date, no button; one agreement at a time in stage 2 (RULING2.md section 11).
+
+**E42. From rung 3 the crew works in runs (RULING2.md 14.1).** A yard hand keeps at one kind of
+trip for up to 30 s and a cutter at one place for up to 120 s before choosing again, in the boss's
+sight and out of it alike; out of sight the run is planned ahead with one dated end (that is what
+makes time away cheap). The first hour below rung 3 is unchanged. From rung 3 the yard clears its
+floor faster than the first yard's leg-by-leg order did (the attacker measured 6 to 17 % more
+tonnes over three days with the limits as first built); that move is accepted as stage 2's
+baseline, and the bots' report on the new engine (REPORT7) states it.
+
+**E43. The merchant's round is the same watched or not (RULING2.md 14.3).** It is never lengthened
+for time away.
 
 ---
 
@@ -1506,3 +1519,89 @@ this ruling:
     CPU (the first hour's tables reproduce exactly; grouping moves six hours' sales by a
     thousandth). The gate for stage 2 is 250 ms; 150 and the aim of 50 wait for whole-cycle
     aggregation of the work per whole item. Run limits as built: yard hands 30 s, cutters 120 s.
+
+### 14. After the attack on the engine step (05:05; it replaces G2 of section 12 and 13.9's run limits, and amends 10.4, 10.5 and E40)
+
+An engineer who wrote none of it attacked the engine step (`attack/engine2/`; seven findings,
+each with its ruling in `attack/engine2/ruled.json`). What held: a tick equals a jump on the whole
+state; an absence cut into many passes equals one pass at a fixed rung; 934 actions pressed
+inside runs broke nothing; mass is exact; absences and a clock set back pay once; an old save
+loads; the state stays bounded. What did not hold, and what the lead rules:
+
+14.1 **THE RUN IS THE RULE, IN SIGHT AND OUT OF SIGHT** (finding 1, blocking). As built, crew out
+    of the boss's sight worked in planned runs (a yard hand keeps at one kind of trip for up to
+    30 s, a cutter at one place for up to 120 s) while crew in his sight chose again by the first
+    yard's order at every departure. Measured by the attacker: the unwatched yard supplied 6 to 17 %
+    more tonnes over three days than the watched one. A yard that does better when nobody looks is
+    wrong in this game. The lead does not go back to single trips (the bench would be about 290 ms
+    and the lever that keeps time away cheap in later stages would be gone). Instead the run is
+    made the rule of the yard from rung `group.fromRung` (3), whoever is looking:
+    (a) A run starts at a departure where the first yard's order chooses the first trip (for a
+        cutter: the first thing). It has a kind, a place, a destination and a start t0. At every
+        later departure inside the run the member takes the next trip of the same kind from the
+        same place to the same destination (the planner's own in-place choice; for a cutter the
+        next thing at the same place in score order), if that trip would end no later than
+        t0 + `group.handRun_s` (a cutter: `group.cutRun_s`). When there is none, or it would end
+        later, the run is over and the first yard's order chooses again. The first trip always goes.
+    (b) OUT OF SIGHT at a departure (no fresh boss within `reach.sight` of the start, the source
+        or the destination), the rest of the run is planned there, claimed, with one dated end:
+        as built. IN SIGHT the member makes the same run trip by trip: each trip an ordinary trip
+        of the first yard (its own leg ends, claims only for the trip under way, landing at its own
+        drop), chosen at its own departure by (a). Nothing a person can see is claimed ahead.
+    (c) A run begun in sight whose member departs out of sight plans the REST of the run (to
+        t0 + the limit). A planned run that comes into sight is opened as built, and its member
+        goes on with the same run trip by trip (kind, place, destination and t0 are kept).
+    (d) The run's kind, place, destination and t0 are kept on the member in the state: saved,
+        optional, bounded; a save without them chooses by the first yard's order.
+    (e) The rules that differ with presence on purpose (pieces only while the boss is in the yard,
+        the floor's whole things, the foreman, the hand stripper) are untouched.
+    (f) A switch for tests and the bots: `group.ahead` (true; false: every run is made trip by trip
+        even out of sight). `group.fromRung` beyond the ladder: no runs at all (the first yard's rules).
+    The numbers of `group` move into the content (schema and `salvage.content.ts`): fromRung 3,
+    handRun_s 30, cutRun_s 120, ahead true.
+
+14.2 **THE GATE, restated (it replaces G2).** Planning ahead is a shortcut and may move little:
+    (i) from the same played state, one capped absence with `ahead` true against false: net within
+    2 % on at least 8 of 10 states (five seeds, minute 60 and day 1); (ii) the bots' three days at
+    the twice-a-day habit, `ahead` true against false: supplied tonnes and LIFETIME EARNINGS within
+    2 % at day 1 and day 3 on at least 13 of 15 seeds (cash at a sitting's end is no measure: the
+    bot spends it at different moments); (iii) no crew trip lost (mass, as tested). Reported, not
+    gated: the same three days with no runs at all (`fromRung` 99): this is what the rule itself
+    does to the yard from rung 3. The lead accepts that move as stage 2's baseline (ECONOMY E42):
+    below rung 3 nothing changes at all, and stage 2's numbers are tuned on the new engine.
+
+14.3 **THE MERCHANT'S ROUND IS NEVER LENGTHENED** (findings 1 and 6). `group.roundAway_s` and the
+    opening of a long round are removed: the round is away `merchant.round_s` in every presence
+    state. Measured by the lead on the bench's state at load 0.0: 186 ms without the long round
+    against 199 ms with it: it saved nothing, moved net by about +2.5 %, and after an absence of a
+    minute it printed a card on which nothing had been paid.
+
+14.4 **THE CHECKS FOLLOW THE STATE, NOT THE PASS** (finding 2). Partners opening, the rung, rivals
+    passed and the deal's offer are checked at every dirty instant away, as in live play. Goals
+    alone keep a timer, and it is the state's: they are checked when the yard's clock enters a new
+    minute since `goalsAt` (kept in the state). Nothing is forced at the end of an away pass. An
+    absence cut into passes equals one pass ALSO when a rung is reached inside it.
+
+14.5 **RATED INCOME IS GATED ON YARDS AS PLAYERS PLAY THEM** (findings 3 and 4). I is held against
+    G (I5) also on states played with the normal price board (G still measured at usual prices):
+    within 0.9 to 1.1 on at least 17 of 20 moments (ten seeds, minute 60 and day 1), and no moment
+    outside 0.85 to 1.15. The carrying term is corrected until it does. The crucible counts in I
+    only once it can run with nobody there (owned and poured at least once).
+
+14.6 **HOLD SELLS ONLY WHAT THE NEXT LOAD NEEDS, AND STAYS ON** (finding 5; it amends 10.5 and
+    E40). When, with the boss away, the merchant waits with nothing to take, the driver is idle
+    with the truck free and the cheapest full skip costs more than the cash: the yard sets aside,
+    from ONE held bay, just enough at today's price to pay for that skip (rounded up to the scale's
+    step, at most what the bay holds), exactly as the Sell button sets a lot aside. The bay: first
+    those whose word of the day is not low, then the one worth most. Hold stays switched on. The
+    away card's line is unchanged. If the bots' three days with the day-word Hold then lose more
+    than a tenth against the same days without Hold, the lot covers two skips instead of one.
+
+14.7 **A TICK'S COST** (finding 7) is measured again on a quiet machine. The promise as it can be
+    kept: median at most 0.2 ms, 99 of 100 ticks under 1 ms; a single tick over 8 ms that is not
+    the runtime collecting garbage is a fault. No landing is spread over ticks (a tick must land
+    what a jump lands).
+
+14.8 **THE BENCH.** The gate stays 250 ms for six hours away (13.9), measured alone on a quiet
+    machine after these changes. If 14.3 and 14.4 push it over, the saving is taken from the work
+    per whole item (the index of pieces by pile the first engineer named), not from the rule.

@@ -7,12 +7,12 @@
 import { boostFactor, bossFresh, heard, type Ctx } from './clock';
 import { cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
-import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
+import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
-import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCut, RunLoad, Spot, ThingState } from './types';
+import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
 const RATE_FED: Exclude<MachineId, 'crucible'>[] = ['stripper', 'bench'];
 
@@ -148,14 +148,8 @@ function wholeAt(x: Ctx, where: 'dropoff' | 'floor', cap: number): ThingState | 
   return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
-/** What kind of trip the last successful handDepart chose: the in-place choice a grouped run repeats (2.1). */
-type HandKind =
-  | { k: 'feed'; pile: string; dest: MachineId }
-  | { k: 'pile'; pile: string }
-  | { k: 'tray'; id: MachineId }
-  | { k: 'loose'; where: 'dropoff' | 'floor' }
-  | { k: 'floorWhole'; dest: MachineId | 'scale' }
-  | { k: 'whole'; where: 'dropoff' | 'floor' };
+/** What kind of trip the last successful handDepart chose: the kind of the run it starts (2.1, 14.1). */
+type HandKind = Exclude<RunKind, { k: 'cut' }>;
 let PLAN: HandKind | null = null;
 
 /**
@@ -651,6 +645,8 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
       return { spot: { thing: th.uid }, grade: pieceSpec(x.c, th.obj, th.cut)?.grade ?? null, g: thingLeft_g(x, th), take: () => ((th.by = m.id), [`loose:${th.uid}`]) };
     }
     case 'floorWhole': {
+      // E35 at this departure: in the yard only while more than half of the floor's room is used.
+      if (inYard && !(floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000)) return null;
       const trip = floorWholeTrip(x, cap);
       if (!trip || trip.dest !== kind.dest) return null;
       return {
@@ -667,7 +663,8 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
       // E4's whole thing goes while no cutter is hired, or (the drop-off) while every place is taken by a
       // thing nobody has claimed: once one is claimed the place is as good as free, so a leg-by-leg hand
       // would go elsewhere next (the drop-off arrives again, the cutter cuts it).
-      const noCutter = !s.crew.some((q) => q.role === 'cutter');
+      // P11 at this departure: in the yard only while every place of the drop-off is taken.
+      const noCutter = !inYard && !s.crew.some((q) => q.role === 'cutter');
       if (!noCutter) {
         if (kind.where !== 'dropoff') return null;
         let free = 0;
@@ -682,11 +679,12 @@ function sameAgain(x: Ctx, m: CrewMember, kind: HandKind, cap: number, inYard: b
 }
 
 /**
- * 2.1: turn the trip handDepart just chose into a RUN when no boss is within sight of its start, its
- * source or its destination: more trips of the same kind from the same place to the same destination
- * while the run stays within group.maxRun_s, each with its own two leg ends; one dated end.
+ * 2.1 (14.1 b, c): PLAN AHEAD the rest of a run from the trip just set out on, when no boss is within
+ * sight of its start, its source or its destination: more trips of the same kind from the same place to
+ * the same destination while each ends by the run's t0 + group.handRun_s, each with its own two leg ends;
+ * one dated end. The trip just set out on always goes (it was chosen by the first yard's order, or it fits).
  */
-function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, kind: HandKind): void {
+function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, kind: HandKind, t0: number): void {
   const dest = m.dest ?? 'scale';
   const destSpot = destSpotOf(dest);
   const dpos = posOf(x, destSpot);
@@ -707,7 +705,7 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
     const sp = posOf(x, c.spot);
     const pickAt = last.dropAt + dur(dpos, sp);
     const dropAt = pickAt + dur(sp, dpos);
-    if (dropAt - t > maxRun + RUN_EPS) break;
+    if (dropAt - t0 > maxRun + RUN_EPS) break;
     loads.push({ claims: c.take(), spot: c.spot, grade: c.grade, pickAt, dropAt });
     feedRoom -= c.g;
   }
@@ -977,41 +975,77 @@ function cutLeft(x: Ctx, th: ThingState, P: number): number {
   return Math.max(0, t - th.progress);
 }
 
-function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
+/** The things a cutter may take at a place, best score first (value per second of cutting, then uid). */
+function cutCands(x: Ctx, where: 'dropoff' | 'floor', P: number): ThingState[] {
   const s = x.s;
+  const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier);
+  if (cands.length < 2) return cands;
+  // The score is a pure function of the thing (memoised for the sort; the order is the same).
+  const scores = new Map<ThingState, number>();
+  const score = (th: ThingState) => {
+    let v = scores.get(th);
+    if (v === undefined) scores.set(th, (v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P))));
+    return v;
+  };
+  cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1));
+  return cands;
+}
+
+/**
+ * A cutter's departure (2.12; 2.1 and 14.1 from group.fromRung): inside a run he takes the next thing at
+ * the run's place in score order if its cut would end by t0 + group.cutRun_s; else the first yard's order
+ * (the drop-off first, then the floor, best score first) chooses and a new run starts here. Out of sight
+ * (and group.ahead) the rest of the run is planned (groupCutter); in sight it is an ordinary leg.
+ */
+function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const P = cutterP(x, m);
-  for (const where of ['dropoff', 'floor'] as const) {
-    const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier);
-    if (!cands.length) continue;
-    // The score is a pure function of the thing (memoised for the sort; the order is the same).
-    const scores = new Map<ThingState, number>();
-    const score = (th: ThingState) => {
-      let v = scores.get(th);
-      if (v === undefined) scores.set(th, (v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeft(x, th, P))));
-      return v;
-    };
-    cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1));
-    const th = cands[0];
-    const job: CrewJob = where === 'dropoff' ? 'cutDropoff' : 'cutFloor';
-    const start = posOf(x, m.to);
-    if (grouping(x) && !bossSees(x, t, [start], [where])) {
-      groupCutter(x, m, t, job, cands, P, start);
-      return true;
+  const runs = grouping(x);
+  if (!runs && m.course) delete m.course;
+  const c = runs ? m.course : undefined;
+  if (c && c.kind.k === 'cut') {
+    const where = c.kind.where;
+    const cands = cutCands(x, where, P);
+    if (cands.length) {
+      const start = posOf(x, m.to);
+      const walkEnd = t + Math.max(1e-3, legM(x.c, start, posOf(x, { thing: cands[0].uid })) / handV(x, m));
+      const cutEnd = walkEnd + Math.max(1e-3, cutLeft(x, cands[0], P));
+      if (cutEnd - c.t0 <= groupCfg(x.c).cutRun_s + RUN_EPS) {
+        startCut(x, m, t, c.job, where, cands, P, start, c.t0);
+        return true;
+      }
     }
-    th.by = m.id;
-    m.claims = [th.uid];
-    m.cut = null;
-    leg(x, m, job, 'walkTo', { thing: th.uid }, t, 0);
+  }
+  if (c) delete m.course;
+  for (const where of ['dropoff', 'floor'] as const) {
+    const cands = cutCands(x, where, P);
+    if (!cands.length) continue;
+    const job: CrewJob = where === 'dropoff' ? 'cutDropoff' : 'cutFloor';
+    if (runs) m.course = { t0: t, job, kind: { k: 'cut', where } };
+    startCut(x, m, t, job, where, cands, P, posOf(x, m.to), t);
     return true;
   }
   return false;
 }
 
+/** Set out on the first of `cands` (a leg), or plan the run from it when out of sight and planned ahead. */
+function startCut(x: Ctx, m: CrewMember, t: number, job: CrewJob, where: 'dropoff' | 'floor', cands: ThingState[], P: number, start: { x: number; y: number }, t0: number): void {
+  if (planAhead(x) && !bossSees(x, t, [start], [where])) {
+    groupCutter(x, m, t, job, cands, P, start, t0);
+    return;
+  }
+  const th = cands[0];
+  th.by = m.id;
+  m.claims = [th.uid];
+  m.cut = null;
+  leg(x, m, job, 'walkTo', { thing: th.uid }, t, 0);
+}
+
 /**
- * 2.1: a cutter's RUN (no boss within sight of him or of the place): things of one place in his score
- * order, each walked to and cut whole, while the run stays within group.maxRun_s (the first always).
+ * 2.1 (14.1 b, c): the rest of a cutter's run PLANNED at this departure (no boss within sight of him or of
+ * the place): things of one place in his score order, each walked to and cut whole, while each cut ends by
+ * the run's t0 + group.cutRun_s (the first always: it was chosen by the first yard's order, or it fits).
  */
-function groupCutter(x: Ctx, m: CrewMember, t: number, job: CrewJob, sorted: ThingState[], P: number, start: { x: number; y: number }): void {
+function groupCutter(x: Ctx, m: CrewMember, t: number, job: CrewJob, sorted: ThingState[], P: number, start: { x: number; y: number }, t0: number): void {
   const v = handV(x, m);
   const maxRun = groupCfg(x.c).cutRun_s;
   const cuts: RunCut[] = [];
@@ -1022,7 +1056,7 @@ function groupCutter(x: Ctx, m: CrewMember, t: number, job: CrewJob, sorted: Thi
     const p = posOf(x, { thing: th.uid });
     const walkEnd = tt + Math.max(1e-3, legM(x.c, here, p) / v);
     const cutEnd = walkEnd + Math.max(1e-3, cutLeft(x, th, P));
-    if (cuts.length && cutEnd - t > maxRun + RUN_EPS) break;
+    if (cuts.length && cutEnd - t0 > maxRun + RUN_EPS) break;
     th.by = m.id;
     cuts.push({ thing: th.uid, walkEnd, cutEnd });
     here = p;
@@ -1109,13 +1143,60 @@ export function crewDepart(x: Ctx, t: number): void {
   for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle') departHand(x, m, t);
 }
 
-/** A yard hand's departure (handDepart), grouped into a run when 2.1 says so. */
+/**
+ * A yard hand's departure (2.1, RULING2.md 14.1). Below group.fromRung: the first yard's order alone
+ * (handDepart). From it, inside a run (`course`) he takes the next trip of the run's kind if it ends by
+ * t0 + group.handRun_s (nextHand); else the run is over, the first yard's order chooses and a new run
+ * starts at this departure. Out of sight (and group.ahead) the rest of the run is planned here (groupHand);
+ * in sight the trip is an ordinary trip.
+ */
 function departHand(x: Ctx, m: CrewMember, t: number): boolean {
   const start = posOf(x, m.to);
   PLAN = null;
+  if (!grouping(x)) {
+    if (m.course) delete m.course;
+    return handDepart(x, m, t);
+  }
+  const c = m.course;
+  if (c && c.kind.k !== 'cut' && nextHand(x, m, t, start, c, c.kind)) return true;
+  if (c) delete m.course;
   if (!handDepart(x, m, t)) return false;
-  if (PLAN && grouping(x)) groupHand(x, m, t, start, PLAN);
+  const kind = PLAN as HandKind | null;
   PLAN = null;
+  if (kind) {
+    m.course = { t0: t, job: m.job, kind };
+    if (planAhead(x)) groupHand(x, m, t, start, kind, t);
+  }
+  return true;
+}
+
+/** The destination of a hand's run of this kind: 'scale' or a machine. */
+function kindDest(kind: HandKind): string {
+  return kind.k === 'feed' || kind.k === 'floorWhole' ? kind.dest : 'scale';
+}
+
+/**
+ * 14.1 (a): the next trip of a hand's run, by the planner's own in-place choice (sameAgain) at this
+ * departure, if it would end (his drop) no later than the run's t0 + group.handRun_s. Sets out on it as an
+ * ordinary trip (claims for this trip only) and, out of sight, plans the rest of the run from it. False:
+ * none, or it would end later (the run is over).
+ */
+function nextHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: number }, c: RunCourse, kind: HandKind): boolean {
+  const dest = kindDest(kind);
+  const cap = x.c.crew.hand.load * 1000;
+  const cand = sameAgain(x, m, kind, cap, bossFresh(x, t), kind.k === 'feed' ? hopperRoom(x, kind.dest) : 0);
+  if (!cand) return false;
+  const v = handV(x, m);
+  const h = x.c.crew.hand.handle_s;
+  const sp = posOf(x, cand.spot);
+  const pickAt = t + Math.max(1e-3, legM(x.c, start, sp) / v + h);
+  const dropAt = pickAt + Math.max(1e-3, legM(x.c, sp, posOf(x, destSpotOf(dest))) / v + h);
+  if (dropAt - c.t0 > groupCfg(x.c).handRun_s + RUN_EPS) return false;
+  m.claims = cand.take();
+  if (kind.k === 'feed' || kind.k === 'floorWhole') m.cut = null;
+  leg(x, m, c.job, 'walkTo', cand.spot, t, h);
+  m.dest = dest;
+  if (planAhead(x)) groupHand(x, m, t, start, kind, c.t0);
   return true;
 }
 

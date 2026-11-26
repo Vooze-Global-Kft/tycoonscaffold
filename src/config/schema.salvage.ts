@@ -513,6 +513,13 @@ const ForemanSchema = z.object({ boost: z.number().nonnegative().default(0.25), 
  * yard bake under the loading curtain, a slow frame) still runs the pass silently, the yard simply ran on.
  */
 const AwaySchema = z.object({ gapS: z.number().positive().default(10), cardS: z.number().nonnegative().default(60) });
+/**
+ * Runs (stage 2, 2.1; RULING2.md 14.1): from rung `fromRung` crew work in runs whoever is looking (a yard
+ * hand's run ends by its start + `handRun_s`, a cutter's by its start + `cutRun_s`, seconds; the first trip
+ * always goes); `ahead`: the rest of a run is planned at a departure out of the boss's sight (false: every
+ * run trip by trip; tests and the bots' comparison). Read by src/engine/salvage/group.ts; no block: no runs.
+ */
+const GroupSchema = z.object({ fromRung: z.number().int(), handRun_s: z.number().nonnegative(), cutRun_s: z.number().nonnegative(), ahead: z.boolean() });
 /** A goal (2.10; goals.json by the goals package): id, text key, the chevron's target, a done condition, an optional purchase. */
 export const GoalSchema = z.object({
   id: id,
@@ -615,6 +622,7 @@ const SalvageObject = z.object({
   deal: DealSchema.default({ partner: 'foundry', grade: 'ci', gate: 'rung2', series: [], trust: { up: 10, down: 15, start: 50 } }),
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
   away: AwaySchema.default({ gapS: 10, cardS: 60 }),
+  group: GroupSchema.optional(),
   goals: z.array(GoalSchema).default([]),
   /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
   dayOne: z.array(GoalSchema).default([]),

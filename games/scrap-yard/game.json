@@ -2716,6 +2716,12 @@
     "away": {
       "gapS": 10
     },
+    "group": {
+      "fromRung": 3,
+      "handRun_s": 30,
+      "cutRun_s": 120,
+      "ahead": true
+    },
     "advice": {
       "minutes": 3,
       "promptGapS": 60,

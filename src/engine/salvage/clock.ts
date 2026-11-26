@@ -61,8 +61,6 @@ export interface Ctx {
   dirty: boolean;
   /** Prices met in this transition (a pure function of the day: memoised here only). */
   prices: Map<string, number>;
-  /** Yard second the checks last ran (the away pass runs them at most every CHECK_EVERY_S). */
-  checkedAt: number;
 }
 
 /**
@@ -75,17 +73,17 @@ export function heard(x: Ctx): boolean {
 }
 
 /**
- * In the away pass the instant's checks (rung, rivals passed, the deal's offer, goals) run at most this
- * often (yard seconds), and at its end. Live play checks at every instant. 60 s (was 5 s; engine2-group:
- * the goal list was a fifth of six hours away once crew legs were cheap): nothing away buys or costs by
- * them; a rung or a rival passed is noticed at most 60 s after the lot that crossed it.
+ * The goals' minute in the away pass (RULING2.md 14.4; rate.ts goalsDue): away, the goal list is checked
+ * only when the yard's clock has entered a new minute of this length since `counts.goalsAt` (the goal list
+ * was a fifth of six hours away once crew legs were cheap). The other checks (partners, the rung, rivals
+ * passed, the deal's offer) run at every instant at which something they read changed, live and away.
  */
 export const CHECK_EVERY_S = 60;
 
 export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[] | undefined, live = true): Ctx {
   const s = clone(g.salvage);
   if (!s.counts) s.counts = {};
-  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map(), checkedAt: -Infinity };
+  return { cfg, c: cfg.salvage, s, cash: g.cash, earned: 0, ev: events ?? [], live, ms0: s.clock.highMs, t0: s.t, away: null, dirty: true, prices: new Map() };
 }
 
 /** The new game from a draft: cash, lifetime earnings and the salvage state. */

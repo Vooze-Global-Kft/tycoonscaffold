@@ -1165,6 +1165,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   },
   foreman: { boost: 0.25, windowS: 60, minutesPerDay: 45 },
   away: { gapS: 10 },
+  // Stage 2, 2.1 (RULING2.md 14.1, 14.3; engine2-fixA): crew work in runs from rung 3, in the boss's sight
+  // (trip by trip) and out of it (planned ahead); a yard hand's run 30 s, a cutter's 120 s from its start.
+  group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true },
   advice: { minutes: 3, promptGapS: 60, reserveS: 60 },
   lessons: {
     li: "lesson.li",
