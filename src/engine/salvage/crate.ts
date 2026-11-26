@@ -12,12 +12,16 @@
  *   instead (`{at: 'crate', k, since: t}`), or null for the floor (the first yard's slot, as before). A car
  *   and a battery never reach a tip (2.9): they arrive by their own bodies.
  * Sorting is the boss's act (`crate`, 2.18), not a dated event of the queue.
+ *
+ * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
+ * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is
+ * clamped to the save's clock (state2.ts repairStage2).
  */
 import type { Ctx } from './clock';
-import type { ObjectId, PartnerId, ThingAtV3 } from './types';
+import type { ObjectId, PartnerId, ThingAt } from './types';
 
 /** Where a tipped thing stands instead of the floor, or null (the floor). Stub: the floor. */
-export function tipDivert(x: Ctx, thing: { uid: string; obj: ObjectId }, partner: PartnerId, t: number): ThingAtV3 | null {
+export function tipDivert(x: Ctx, thing: { uid: string; obj: ObjectId }, partner: PartnerId, t: number): ThingAt | null {
   void x;
   void thing;
   void partner;

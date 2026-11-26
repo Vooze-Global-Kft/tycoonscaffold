@@ -59,12 +59,12 @@ import type { GameConfig } from '../../config/schema';
 import type { BAY_KINDS, BOARD_TABS, CardKind as SchemaCardKind, CrewRole, LOOK_SLOTS, MachineId, SalvageContent } from '../../config/schema.salvage';
 import type { ProductArrival as SharedProductArrival, ProductListing as SharedProductListing } from '../mode';
 import type { GameState } from '../types';
-import type { RefusalKey, RefusalKeyV3 } from './refusals';
+import type { RefusalKey } from './refusals';
 import type { TextKey } from './textKeys';
 
 export type * from '../../config/schema.salvage';
 export { REFUSAL_KEYS, REFUSAL_KEYS_V3 } from './refusals';
-export type { RefusalKey, RefusalKeyAll, RefusalKeyV3 } from './refusals';
+export type { RefusalKey } from './refusals';
 export { TEXT_KEYS } from './textKeys';
 export type { TextKey } from './textKeys';
 
@@ -156,13 +156,11 @@ export interface Presence {
 // ================================================================================================ the state
 
 /** Where a whole thing stands. `k` is its index at that place (thingPos is a pure function of it). */
-export type ThingAt = { at: 'zone'; zone: ZoneId; k: number } | { at: 'dropoff'; slot: number } | { at: 'floor'; slot: number };
-/**
- * v3 (2.18): where a stage-2 thing stands. A union of its own because positions.ts (rules-works'), frame.ts
- * and others match ThingAt exhaustively: Phase B widens `ThingState.at` to `ThingAtV3` when they handle it.
- */
-export type ThingAtV3 =
-  | ThingAt
+export type ThingAt =
+  | { at: 'zone'; zone: ZoneId; k: number }
+  | { at: 'dropoff'; slot: number }
+  | { at: 'floor'; slot: number }
+  // v3 (2.18; s2a-fix: one union, the parallel ThingAtV3 merged): where a stage-2 thing stands.
   // v3 (2.18): `since` (yard second it was set there) orders "the oldest thing" (a visitor takes, the boss sorts); ties by uid.
   /** On the Yard sale, at a place of the rack (`positions.ts rackSlot(slot)`), racked at `since`. */
   | { at: 'rack'; slot: number; since: number }
@@ -200,8 +198,6 @@ export interface ThingState {
   /** v3 (2.10.1): the partner (a register id) whose lorry delivered this lot; printed on its plate. Absent: not a lot. */
   sender?: PartnerId;
 }
-/** v3: a thing where a stage-2 thing may stand (ThingAtV3). Phase B: `ThingState.at` becomes ThingAtV3 and this alias goes. */
-export type ThingStateV3 = Omit<ThingState, 'at'> & { at: ThingAtV3 };
 
 /**
  * A WHOLE PIECE (E17), the same object for its whole life: on the ground, on a load, in a hopper. Its
@@ -332,9 +328,8 @@ export interface CrucibleState extends MachineState {
   cooling: { grade: GradeId; n: number; short_g: number; since?: number; until?: number; by?: string } | null;
 }
 
-export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour';
-/** v3 (2.12): a yard hand racking a tagged thing on the Yard sale (within `crew.hand.load`, while a place is free). Phase B widens CrewJob (crew.ts, save.ts's JOBS, the frame) when racking is built. */
-export type CrewJobV3 = CrewJob | 'rack';
+/** v3 'rack' (2.12): a yard hand racking a tagged thing on the Yard sale (within `crew.hand.load`, while a place is free). */
+export type CrewJob = 'idle' | 'feed' | 'circle' | 'tray' | 'dropoff' | 'wholeThing' | 'floor' | 'cutDropoff' | 'cutFloor' | 'drive' | 'pour' | 'rack';
 export type CrewPhase = 'wait' | 'walkTo' | 'pick' | 'work' | 'walkBack' | 'drop';
 
 /**
@@ -557,14 +552,9 @@ export type QueuedKind =
   | 'skipFull' // a partner's skip is full (ref: `${partner}.${slot}`)
   | 'arrival' // a purchase arrives (ref: shop key)
   | 'boostEnd' // the foreman's boost ends (ref: '')
-  | 'day'; // 00:00 UTC: the board's step, the deal's delivery, the rivals' day (ref: '')
-/**
- * v3 (2.18, B9): stage 2's queue kinds. Within ONE instant they come after 'machine' and before 'round', in
- * this order (STAGE2_QUEUE_ORDER): it decides tick = jump. A union of its own because tick.ts keeps a
- * Record over QueuedKind: Phase B (tick.ts's owner) widens QueuedKind to QueuedKindV3.
- */
-export type QueuedKindV3 =
-  | QueuedKind
+  | 'day' // 00:00 UTC: the board's step, the deal's delivery, the rivals' day (ref: '')
+  // v3 (2.18, B9; s2a-fix: one union): stage 2's kinds. Within ONE instant they come after 'machine' and before
+  // 'round', in this order (STAGE2_QUEUE_ORDER, tick.ts QUEUE_ORDER): it decides tick = jump.
   | 'plate' // a works plate's piece, segment, car or tray event (ref: plate id)
   | 'hall' // a hall's heat, pour or cooling ends; its idle start; its self-pour (ref: plate id)
   | 'commission' // a plate arrives or commissions by itself (ref: plate id)
@@ -793,15 +783,9 @@ export type SalvageEvent =
   | { type: 'goal'; n: number; id: string }
   | { type: 'awayReport'; card: AwayCard }
   | { type: 'heldBay'; grade: GradeId; on: boolean }
-  | { type: 'recipe'; recipe: RecipeId; heelPoured: boolean; plate?: PlateId };
-
-/**
- * v3 (2.19): stage 2's events. A union of their own because the preview's event samples
- * (src/ui/salvage/dev/events.web.ts) and the sound map match SalvageEvent exhaustively: Phase B widens
- * SalvageEvent to SalvageEventAll as those files add them. The away pass emits only awayReport, passed,
- * rung and repaid (and no item events).
- */
-export type SalvageEventV3 =
+  | { type: 'recipe'; recipe: RecipeId; heelPoured: boolean; plate?: PlateId }
+  // ---- v3 (2.19; s2a-fix: one union, the parallel SalvageEventV3 merged). The away pass emits only awayReport,
+  // passed, rung and repaid (and no item events).
   /** Rung 3's works layer opens (derived from rung ≥ 3 with `counts.bathSet` absent: also a migrated save's first tick, B14). */
   | { type: 'backFieldOpen' }
   | { type: 'plateArrived'; plate: PlateId }
@@ -822,11 +806,11 @@ export type SalvageEventV3 =
   /** The picking table is empty (section 7 plays then). */
   | { type: 'crateCleared' }
   | { type: 'racked'; thing: string; slot: number; by: 'boss' | string }
-  | { type: 'rackSold'; thing: string; q: number; ticket: TicketV3 }
+  | { type: 'rackSold'; thing: string; q: number; ticket: Ticket }
   /** A member of the public's walk (wicket, card reader, wicket; the path is the frame's). */
   | { type: 'visitor'; t0: number; t1: number }
   | { type: 'vanDated'; at: number }
-  | { type: 'vanCollected'; ticket: TicketV3 }
+  | { type: 'vanCollected'; ticket: Ticket }
   /** The lender's letter is due (once): the screen opens the `letter` card. */
   | { type: 'letter' }
   | { type: 'financed'; plate: PlateId; F: number; T: number }
@@ -843,20 +827,15 @@ export type SalvageEventV3 =
   | { type: 'adOffered'; kind: AdKind; amount: number }
   | { type: 'adPaid'; kind: AdKind; amount: number }
   /** The boss entered (on) or stepped out of (off) the forklift. */
-  | { type: 'forklift'; on: boolean }
-  /** v3: a stage-2 refusal (its key is not yet a RefusalKey: strings2 gives it text first). */
-  | { type: 'refused'; key: RefusalKeyV3; args: TxtArgs; retry: CardActionAll | null };
-/** Every event of version 3. */
-export type SalvageEventAll = SalvageEvent | SalvageEventV3;
+  | { type: 'forklift'; on: boolean };
 
 export type SalvageEventType = SalvageEvent['type'];
 
 // ================================================================================================ actions
 
 /** What a level is bought for: a crew member (by id), a machine, or a partner's supply (another skip in rotation, E13b). */
-export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId } | { kind: 'partner'; partner: PartnerId };
-/** v3: also a works plate (2.6.4) and the Yard sale's room (2.12). Phase B widens LevelTarget (ladder.ts, cards.ts, actions.ts, advice.ts, bot.ts match it). */
-export type LevelTargetV3 = LevelTarget | { kind: 'plate'; plate: PlateId } | { kind: 'reuse' };
+/** v3 (s2a-fix: one union): also a works plate (2.6.4) and the Yard sale's room (2.12). */
+export type LevelTarget = { kind: 'crew'; id: string } | { kind: 'machine'; machine: MachineId } | { kind: 'partner'; partner: PartnerId } | { kind: 'plate'; plate: PlateId } | { kind: 'reuse' };
 
 /** What Sell showed (2.8 "shown equals applied"): the market day, the price per kg, the grams. */
 export interface SellShown {
@@ -999,21 +978,14 @@ export type Ticket =
    */
   | (TicketBase & { kind: 'collection'; buyer: NameId; lines: TicketLine[]; paid: number; withBoss: boolean; firstGrades: GradeId[]; bank?: TicketBank })
   /** A supply-deal delivery: "{foundry} · {kg} cast iron · §{x}". */
-  | (TicketBase & { kind: 'dealDelivery'; buyer: NameId; grade: GradeId; g: number; paid: number; bank?: TicketBank });
-
-/**
- * v3 (2.19): the stage's new lot tickets. `paid` is GROSS; `bank` is present while an agreement took its
- * share. A union of its own because tickets.ts, cards.ts and the hud's ticket views match Ticket
- * exhaustively: Phase B widens `Ticket` (and `SalvageState.tickets`) to TicketAll as they handle them.
- */
-export type TicketV3 =
+  | (TicketBase & { kind: 'dealDelivery'; buyer: NameId; grade: GradeId; g: number; paid: number; bank?: TicketBank })
+  // ---- v3 (2.19; s2a-fix: one union): the stage's new lot tickets. `paid` is GROSS; `bank` is present while an agreement took its share.
   /** A sale at the gate: "Sold at the gate · {thing} · §q" (q = roundMoney(reuse.factor × v), v its prepared scrap value at that step). */
   | (TicketBase & { kind: 'rackSale'; thing: ObjectId; uid: string; v: number; paid: number; lines: TicketLine[]; bank?: TicketBank })
   /** The reclamation dealer's collection: by thing and kilogram; paid = Σ batchFactor × each batch's prepared value. */
   | (TicketBase & { kind: 'vanCollection'; buyer: NameId; things: { obj: ObjectId; n: number; g: number }[]; lines: TicketLine[]; paid: number; bank?: TicketBank })
   /** One sorting at the picking table ("Sorted by hand · {n} things"): a line a thing; `open` while the boss still sorts (it closes when he walks off or the table is empty). */
   | (TicketBase & { kind: 'crateLot'; n: number; lines: TicketLine[]; paid: number; open: boolean; bank?: TicketBank });
-export type TicketAll = Ticket | TicketV3;
 
 export type TicketKind = Ticket['kind'];
 
@@ -1034,15 +1006,8 @@ export type CardAction =
   | { act: 'declineDeal' }
   | { act: 'skipGoal'; id: string }
   | { act: 'ackAway' }
-  | { act: 'open'; card: CardRef };
-
-/**
- * v3 (2.19, 4.3 to 4.9): the new buttons. A union of their own because src/modes/salvage/actions.ts
- * `press` matches CardAction exhaustively: Phase B (its owner) widens CardAction to CardActionAll.
- */
-export type CardActionV3 =
-  | { act: 'open'; card: CardRefV3 }
-  | { act: 'levelV3'; target: LevelTargetV3; price: number }
+  | { act: 'open'; card: CardRef }
+  // ---- v3 (2.19, 4.3 to 4.9; s2a-fix: one union, the parallel CardActionV3 merged; a plate's or the Yard sale's level is `level`)
   /** Sign the finance card: the terms AS SHOWN (refused with bankTerms when they differ now). */
   | { act: 'signFinance'; plate: PlateId; shown: FinanceShown }
   | { act: 'setRoute'; grade: GradeId; to: StationId | 'bay' }
@@ -1056,11 +1021,9 @@ export type CardActionV3 =
   | { act: 'watchAd'; kind: AdKind; amount: number; grade?: GradeId }
   /** The Settings switch "Scrip packs: shown / hidden": opens the code pad (`packCode`). */
   | { act: 'setPacksHidden'; on: boolean };
-export type CardActionAll = CardAction | CardActionV3;
 
 export interface CardButton {
   label: Txt;
-  /** v3: a stage-2 card's button may carry a CardActionV3 only in the stage-2 data shapes (CardButtonV3). */
   action: CardAction;
   /** Null: pressable. Else why not (the button greys and shows it on press). Set only for row state 'cantAfford'. */
   refusal: Txt | null;
@@ -1081,8 +1044,6 @@ export interface CardRow {
   line: Txt | null;
   /** Null for owned, locked, arriving, top and info rows. */
   button: CardButton | null;
-  /** v3: a row's stage-2 button (a bay's route `setRoute`, the Rota's Shop row, the Settings packs switch); Phase B merges it into `button` when CardAction widens. */
-  buttonV3?: CardButtonV3 | null;
   /** A pictogram sprite (ui.picto.bb, ...). */
   icon: SpriteId | null;
   /** A second line of numbers (the board's five bars, a bay's stock) where the card has one. */
@@ -1099,9 +1060,11 @@ export interface CardRow {
 export type CardRef =
   | { kind: 'place'; place: PlaceId }
   | { kind: 'machine'; machine: MachineId }
-  | { kind: 'office'; tab: 'rota' | 'partners' | 'processBoard' }
+  /** v3: the Agreements tab; the process board's page (4.4: the page of the newest purchase when absent). */
+  | { kind: 'office'; tab: 'rota' | 'partners' | 'processBoard' | 'agreements'; page?: ProcessPage }
   | { kind: 'bay'; grade: GradeId }
-  | { kind: 'board'; focus?: GradeId }
+  /** v3: the price board's family tab (4.11; absent: the bay's tab, else the tab last used). */
+  | { kind: 'board'; focus?: GradeId; tab?: BoardTab }
   | { kind: 'skip'; partner: PartnerId; slot?: number }
   | { kind: 'deal' }
   | { kind: 'table' }
@@ -1110,17 +1073,8 @@ export type CardRef =
   | { kind: 'rung'; n: number }
   | { kind: 'clipboard' }
   | { kind: 'settings' }
-  | { kind: 'help' };
-
-/**
- * v3 (4.2): the new refs. A union of their own because OverlayHost.tsx and the preview's card list match
- * CardRef exhaustively: Phase B (their owners) widens CardRef to CardRefAll.
- */
-export type CardRefV3 =
-  /** The Agreements tab; the process board's page (4.4: the page of the newest purchase when absent). */
-  | { kind: 'office'; tab: 'rota' | 'partners' | 'processBoard' | 'agreements'; page?: ProcessPage }
-  /** The price board's family tab (4.11; absent: the bay's tab, else the tab last used). */
-  | { kind: 'board'; focus?: GradeId; tab?: BoardTab }
+  | { kind: 'help' }
+  // ---- v3 (4.2; s2a-fix: one union, the parallel CardRefV3 merged)
   | { kind: 'works'; plate: PlateId }
   | { kind: 'finance'; plate: PlateId }
   | { kind: 'letter' }
@@ -1133,7 +1087,6 @@ export type CardRefV3 =
   | { kind: 'ageQuestion' }
   | { kind: 'packCode'; mode: 'set' | 'confirm' | 'enter' }
   | { kind: 'awayBonus' };
-export type CardRefAll = CardRef | CardRefV3;
 
 export type CardShape = 'panel' | 'wide' | 'centred';
 
@@ -1155,10 +1108,8 @@ export interface CardData {
   title: Txt;
   /** Lines under the title (the rota's "Site licence · metal dealer", a machine's status, the deal's terms). */
   lead: Txt[];
-  /** Tabs of the office panel (Rota, Partners, Process board), with the open one (refs are `{kind:'office', tab}`). */
+  /** Tabs of the office panel (Rota, Partners, Process board, v3 Agreements), with the open one (refs are `{kind:'office', tab}`; v3 the process board's pages). */
   tabs?: { ref: CardRef; title: Txt; open: boolean }[];
-  /** v3: the office's tabs with Agreements (4.2), and the process board's pages (4.4); Phase B merges them into `tabs` when CardRef widens. */
-  tabsV3?: { ref: CardRefAll; title: Txt; open: boolean }[];
   rows: CardRow[];
   /** Buttons at the foot (Sign / Not now, OK). */
   foot: CardButton[];
@@ -1243,7 +1194,7 @@ export interface BoardRow {
   /** On a held bay, how long Hold lasts (E32): "Held until a high day, two days at most"; null when not held. */
   heldLine?: Txt | null;
   /** v3 (2.16, 4.9): the spot buyer beside Sell on a held bay ("Video · +§x", or "Bonus · +§x" with No ad videos); null when not offered (before the second session, the day's count used, a debt on screen). */
-  spot?: CardButtonV3 | null;
+  spot?: CardButton | null;
   /** v3 (2.8.1): grams of this bay reserved for stations (Sell refuses them: `routed`). */
   reservedFor?: { station: StationId; g: number }[];
 }
@@ -1277,9 +1228,8 @@ export interface SkipLabel {
 
 // ================================================================================================ process board
 
-export type PlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed';
-/** v3 (4.2, B19): `arriving` (on the machine flatbed) and `installed` (here, not yet started up) for works plates. Phase B widens Plate.state (ProcessBoard.tsx matches PlateState). Until then a works plate carries it in `Plate.stateV3`. */
-export type PlateStateV3 = PlateState | 'arriving' | 'installed';
+/** v3 (4.2, B19; s2a-fix: one union): `arriving` (on the machine flatbed) and `installed` (here, not yet started up) for works plates. */
+export type PlateState = 'lit' | 'owned' | 'buyable' | 'locked' | 'greyed' | 'arriving' | 'installed';
 
 export interface Plate {
   id: string;
@@ -1293,8 +1243,6 @@ export interface Plate {
   button: CardButton | null;
   /** v3: a financed plate's ring, taken ÷ T (0 to 1); it prints no amount and is not a debt display (P7). */
   ring?: number;
-  /** v3: the plate's state where it is `arriving` or `installed` (then `state` reads 'owned'). */
-  stateV3?: PlateStateV3;
   /** v3: the sub-plate riveted to a hall's plate (its filter: bought with the hall, never alone). */
   sub?: Txt | null;
 }
@@ -1737,7 +1685,7 @@ export type ActKind = 'none' | 'work' | 'pickup' | 'weigh' | 'feed' | 'strip' | 
  * B9: the queue's stage-2 kinds in their order within one instant: after 'machine', before 'round'
  * (the first yard's order of the other kinds is tick.ts's and does not change).
  */
-export const STAGE2_QUEUE_ORDER = ['plate', 'hall', 'commission', 'crane', 'lot', 'visitor', 'van'] as const satisfies readonly QueuedKindV3[];
+export const STAGE2_QUEUE_ORDER = ['plate', 'hall', 'commission', 'crane', 'lot', 'visitor', 'van'] as const satisfies readonly QueuedKind[];
 
 // ------------------------------------------------------------------------------------------------ works
 
@@ -2038,9 +1986,9 @@ export interface WorksCard {
   /** Installed: "Stand here to start · {s} s" and "Starts by itself in {t}". */
   commission_s: number;
   selfStartAt: number | null;
-  level: { level: number; max: number; pct: number; button: CardButtonV3 | null; state: RowState } | null;
+  level: { level: number; max: number; pct: number; button: CardButton | null; state: RowState } | null;
   /** Halls: their recipes ("Brass", "Bronze"), the one in use, and a button each. */
-  recipes?: { recipe: RecipeId; in: GradeId[]; out: GradeId[]; selected: boolean; button: CardButtonV3 | null }[];
+  recipes?: { recipe: RecipeId; in: GradeId[]; out: GradeId[]; selected: boolean; button: CardButton | null }[];
   /** Bay-fed plates: "Takes from: Light iron · Car body", each with its route now. */
   takesFrom?: { grade: GradeId; route: StationId | 'bay' }[];
   /** The depollution bay: its car on the apron ("End-of-life car · ref. {ref}") and the drain's end. */
@@ -2048,8 +1996,8 @@ export interface WorksCard {
   /** The rota's licence row this plate brings when started up (T21). */
   permit?: 'elv' | 'lead' | null;
   foot: {
-    buy: CardButtonV3 | null;
-    loan: CardButtonV3 | null;
+    buy: CardButton | null;
+    loan: CardButton | null;
     /** "You pay now §{d} · §{x} more" while cash − reserve < d. */
     loanShort: { d: number; more: number } | null;
     /** "Save up (about {h} h {m} m)": (P − cash) ÷ I, or ÷ (I − bank.share × G) while an agreement is open; null when Buy is pressable or no loan is offered. */
@@ -2076,8 +2024,8 @@ export interface FinanceTerms {
   shareWords?: Txt;
   /** I read now (the terms move only when assets do). */
   I: number;
-  sign: CardButtonV3;
-  notNow: CardButtonV3;
+  sign: CardButton;
+  notNow: CardButton;
   /** The first refusal that stands now (bankOne, bankReserve, cash, ceiling, bankTerms, a gate), or null. */
   refusal: Txt | null;
 }
@@ -2106,7 +2054,7 @@ export interface YardSaleCard {
   nextVisitorInS: number | null;
   soldToday: { n: number; money: number };
   /** "More room · {a} → {b} places" with its Level button; null at the top. */
-  level: { level: number; max: number; from: number; to: number; button: CardButtonV3 | null; state: RowState } | null;
+  level: { level: number; max: number; from: number; to: number; button: CardButton | null; state: RowState } | null;
   /** The trade corner: "[reclamation dealer] · {n} batches · van in {t}". */
   corner: { dealer: NameId; batches: number; vanInS: number | null };
 }
@@ -2138,7 +2086,7 @@ export interface ShopLookRow {
   owned: boolean;
   inUse: boolean;
   /** Buy (buyProduct) when not owned; Use (chooseLook) when owned and not in use; null in use. */
-  button: CardButtonV3 | null;
+  button: CardButton | null;
 }
 
 /** 4.8: an earned look (sign styles of rungs reached, the foundry's plate): no price. */
@@ -2149,7 +2097,7 @@ export interface EarnedLookRow {
   inUse: boolean;
   /** Not yet earned: "Reach rung {n}". */
   opensAtRung: number | null;
-  button: CardButtonV3 | null;
+  button: CardButton | null;
 }
 
 /**
@@ -2166,7 +2114,7 @@ export interface PackRow {
   S: number;
   state: 'offer' | 'noRoom' | 'waiting' | 'unconfirmed';
   updated: { a: number; b: number } | null;
-  button: CardButtonV3 | null;
+  button: CardButton | null;
 }
 
 /**
@@ -2176,9 +2124,20 @@ export interface PackRow {
 export interface ShopCard {
   looks: ShopLookRow[];
   earned: EarnedLookRow[];
-  noAds: { product: string; owned: boolean; button: CardButtonV3 | null } | null;
+  noAds: { product: string; owned: boolean; button: CardButton | null } | null;
   packs: PackRow[] | null;
   /** The store country read at this opening (`storefrontCountry()`, unknown = null = packs off). */
+  country: string | null;
+}
+
+/**
+ * s2a-fix (the critic's finding 7; for rules-money, cards.ts and the facade): what a card needs that is not in
+ * the state. The store country is read by the screen at each opening (src/services/region.ts
+ * `storefrontCountry()`, store only; unknown = null = packs off) and handed to `cardOf` (and the Settings and
+ * Help cards) as this argument; the rules decide packsOff, the rung, the age band and the hidden code from it
+ * and the state (2.15.3), so no screen computes it. Pinned by a u13 test and an unknown-country test (Phase B).
+ */
+export interface CardContext {
   country: string | null;
 }
 
@@ -2187,8 +2146,8 @@ export interface PackSheetCard {
   product: string;
   S: number;
   H: number;
-  buy: CardButtonV3;
-  notNow: CardButtonV3;
+  buy: CardButton;
+  notNow: CardButton;
 }
 
 /** 4.8: the age question (four digits, no default): OK only for a year in [minYear, maxYear]. */
@@ -2208,8 +2167,8 @@ export interface BonusCard {
   kind: AdKind;
   amount: number;
   video: boolean;
-  take: CardButtonV3;
-  later: CardButtonV3 | null;
+  take: CardButton;
+  later: CardButton | null;
 }
 
 // ------------------------------------------------------------------------------------------------ the frame (stage 2)
@@ -2243,11 +2202,4 @@ export interface FrameForklift {
   car: boolean;
 }
 
-/** v3: a button of a stage-2 card's data (its action may be a CardActionV3; its refusal may name a stage-2 key). */
-export interface CardButtonV3 {
-  label: Txt;
-  action: CardActionAll;
-  refusal: Txt | null;
-  /** A stage-2 refusal key while it has no text key yet (strings2): the screen prints `refusal.<key>` once it exists. */
-  refusalKey?: RefusalKeyV3 | null;
-}
+

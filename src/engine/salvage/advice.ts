@@ -112,6 +112,7 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
 export function levelBinds(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, b = binding(cfg, g)): boolean {
   if (target.kind === 'machine') return b.machines.includes(target.machine);
   if (target.kind === 'partner') return b.partners.includes(target.partner);
+  if (target.kind !== 'crew') return false; // a plate's or the Yard sale's level (stage 2): rules-works' (Phase B)
   const role = g.salvage.crew.find((m) => m.id === target.id)?.role;
   return role === 'cutter' ? b.cutter : role === 'hand' ? b.hand : role === 'driver' ? b.driver : false;
 }

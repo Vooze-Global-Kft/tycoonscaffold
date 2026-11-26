@@ -10,6 +10,10 @@
  * - `lotArrive(x, t)` at that instant: the lot set down, `nextAt` = max(nextAt, t) + period, or null when
  *   the arrival makes `lots.max` (B9).
  * Cutting a lot is the boss's act (`lot`, 2.18), not a dated event of the queue.
+ *
+ * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
+ * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is
+ * clamped to the save's clock (state2.ts repairStage2).
  */
 import type { Ctx } from './clock';
 

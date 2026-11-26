@@ -6,10 +6,10 @@
  */
 export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem', 'rung', 'ceiling', 'tool2', 'tool3', 'tooHeavy', 'topLevel', 'noPlace', 'filling', 'loadCash', 'floor', 'weighFirst', 'heatRunning', 'noTruck', 'noTorch', 'stopFirst', 'nothing', 'priceUpdated', 'confirmHeel', 'notBuilt'] as const;
 /**
- * CONTRACT VERSION 3 (stage 2, yard-stage2.md 2.19; contract2, 26 November): the new refusal keys. They
- * are a list of their own only until `strings2` gives each its text key `refusal.<key>` (textKeys.ts derives
- * the text keys of REFUSAL_KEYS, and strings.ts must define exactly those): Phase B then moves them into
- * REFUSAL_KEYS and drops this list. Which action returns which: types.ts `SalvageActions2`.
+ * CONTRACT VERSION 3 (stage 2, yard-stage2.md 2.19; contract2, 26 November): the new refusal keys, listed
+ * apart as DATA (the keys version 3 added; textKeys.ts derives `refusal.<key>` from both lists, strings2 has
+ * their words). s2a-fix (the lead's ruling of 09:50): ONE type, `RefusalKey`, holds both lists; the parallel
+ * unions RefusalKeyV3 and RefusalKeyAll are gone. Which action returns which: types.ts `SalvageActions2`.
  * - bankOne: an agreement is open ("One loan at a time. This one is repaid as you sell.").
  * - bankReserve: cash − deposit would fall below the driver's reserve ("Kept for the next load: §x").
  * - bankTerms: the terms shown differ from the terms now (as priceUpdated; retry carries the terms now).
@@ -28,7 +28,5 @@ export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem'
  * Gates reuse `rung` and `needsItem`; money reuses `cash` and `ceiling`; "nothing offered" reuses `nothing`.
  */
 export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap'] as const;
-export type RefusalKeyV3 = (typeof REFUSAL_KEYS_V3)[number];
-export type RefusalKey = (typeof REFUSAL_KEYS)[number];
-/** Every refusal key of version 3 (stage 1 and stage 2). Phase B: RefusalKey becomes this once strings2 has the texts. */
-export type RefusalKeyAll = RefusalKey | RefusalKeyV3;
+/** Every refusal key of version 3 (stage 1 and stage 2). */
+export type RefusalKey = (typeof REFUSAL_KEYS)[number] | (typeof REFUSAL_KEYS_V3)[number];

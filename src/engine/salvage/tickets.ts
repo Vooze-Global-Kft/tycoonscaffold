@@ -264,6 +264,13 @@ export function ticketView(t: Ticket): TicketView {
       };
     case 'dropOffSlip':
       return { head: { key: 'ticket.dropOffSlip', args: { thing: { thing: t.thing } } }, date, lines: [], more: null, value: null, legal: [], lesson: null };
+    // Stage 2's lot tickets (s2a-fix widened the union; their grade rows and the bank's lines are rules-money's, Phase B).
+    case 'rackSale':
+      return { head: { key: 'ticket.rackSale', args: { thing: { thing: t.thing }, x: { exact: t.paid } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
+    case 'vanCollection':
+      return { head: { key: 'ticket.vanCollection', args: { reclaimer: { name: t.buyer } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
+    case 'crateLot':
+      return { head: { key: 'ticket.crateLot', args: { n: { n: t.n } } }, date, lines: [], more: null, value: { key: 'ticket.paid', args: { x: { money: t.paid } } }, legal: [], lesson: null };
   }
 }
 

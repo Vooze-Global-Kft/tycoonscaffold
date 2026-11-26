@@ -559,7 +559,7 @@ function ceilingSeen(b: Bot, key: string): void {
 }
 
 function targetKey(t: LevelTarget): string {
-  return t.kind === 'crew' ? t.id : t.kind === 'machine' ? t.machine : t.partner;
+  return t.kind === 'crew' ? t.id : t.kind === 'machine' ? t.machine : t.kind === 'partner' ? t.partner : t.kind === 'plate' ? `plate:${t.plate}` : 'reuse';
 }
 
 function hireKey(b: Bot, g: SalvageGame, role: CrewRole): string {

@@ -20,6 +20,10 @@
  *   holds a thing) as kind `visitor`, the van's (`reuse.vanAt`) as kind `van` (ref ''). Pure in `x.c`, `x.s`.
  * - `reuseApply(x, kind, t)` at that instant: a sale at the gate or the van's collection, each a LOT PAYMENT
  *   (2.14.4): `bank.ts payLot(x, gross, t)` before its ticket prints, then `clock.ts earn(x, z, t)`.
+ *
+ * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
+ * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is
+ * clamped to the save's clock (state2.ts repairStage2).
  */
 import type { Ctx } from './clock';
 import type { CrewMember, ThingState } from './types';

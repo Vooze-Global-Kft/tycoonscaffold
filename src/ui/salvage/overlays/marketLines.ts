@@ -221,6 +221,13 @@ export function ticketSummary(t: Ticket, conv: Txt | null = null): { head: Txt; 
       return { head: { key: 'ticket.dropOffSlip', args: { thing: { thing: t.thing } } }, total: null, lines: [date] };
     case 'dealDelivery':
       return { head: { key: 'ticket.dealDelivery', args: { kg: { mass_g: t.g, step: 'lot' }, x: { money: t.paid } } }, total: null, lines: [{ key: 'ticket.weighedOut' }, date] };
+    // Stage 2's lot tickets (s2a-fix widened the union; their full history lines are Phase C's).
+    case 'rackSale':
+      return { head: { key: 'ticket.rackSale', args: { thing: { thing: t.thing }, x: { exact: t.paid } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
+    case 'vanCollection':
+      return { head: { key: 'ticket.vanCollection', args: { reclaimer: { name: t.buyer } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
+    case 'crateLot':
+      return { head: { key: 'ticket.crateLot', args: { n: { n: t.n } } }, total: { key: 'ticket.paid', args: { x: { money: t.paid } } }, lines: [date] };
   }
 }
 

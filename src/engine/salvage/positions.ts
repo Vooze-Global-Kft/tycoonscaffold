@@ -136,7 +136,21 @@ export function thingPos(c: SalvageContent, at: ThingAt): { x: number; y: number
     const row = Math.floor(at.slot / cols) % rows;
     return { x: p.x - pl.w / 2 + (pl.w / cols) * (col + 0.5), y: p.y - pl.d / 2 + (pl.d / rows) * (row + 0.5) };
   }
-  return floorSlotPos(c, at.slot);
+  if (at.at === 'floor') return floorSlotPos(c, at.slot);
+  return stage2ThingPos(c, at);
+}
+
+/** The place of map.works each stage-2 thing stands at (ThingAt v3; s2a-fix widened the union). */
+const STAGE2_PLACE = { rack: 'reuseRack', corner: 'corner', crate: 'crate', lot: 'oversize', elvPad: 'elvPad' } as const;
+/**
+ * A stage-2 thing's position (s2a-fix): the centre of its place on the merged map (map.works.points). PHASE A
+ * STAND-IN, rules-works' (Phase B: `rackSlot`, the corner's pallets, the crate's places, the pad's squares,
+ * the apron); nothing stands there before the works open.
+ */
+function stage2ThingPos(c: SalvageContent, at: Exclude<ThingAt, { at: 'zone' | 'dropoff' | 'floor' }>): { x: number; y: number } {
+  const id = at.at === 'apron' ? `${at.plate}.apron` : STAGE2_PLACE[at.at];
+  const p = c.map.works?.points?.[id] ?? c.map.points[id];
+  return p ? { x: p[0], y: p[1] } : floorSlotPos(c, 0);
 }
 
 /** The tipping floor's grid pitch and a thing's half-size kept inside the footprint, metres. */

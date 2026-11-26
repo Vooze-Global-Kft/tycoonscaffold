@@ -5,6 +5,8 @@
  * the rules-sim's action applies, ladder.ts), every number as a typed argument, so a screen formats
  * nothing but numbers (through the facade's formatters) and computes nothing.
  */
+import { cardOfMoney, MONEY_CARD_KINDS } from './cardsMoney';
+import { cardOfWorks, WORKS_CARD_KINDS } from './cardsWorks';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
@@ -15,6 +17,7 @@ import { awayCapH } from './away';
 import { roundMoney } from './money';
 import { lastPassed, tableOf } from './rivals';
 import type {
+  CardContext,
   AwayCard,
   CardAction,
   CardButton,
@@ -140,6 +143,7 @@ export function levelFact(cfg: SalvageConfig, g: SalvageGame, target: LevelTarge
     const lev = m ? (c.crew[m.role] as { lev?: number } | undefined)?.lev : undefined;
     return lev ? { key: 'card.levelFaster', args: { pct: { pct: lev } } } : null;
   }
+  if (target.kind !== 'machine') return null; // a plate's or the Yard sale's level (stage 2): cardsWorks.ts (Phase B)
   const lev = (c.machines[target.machine] as { lev?: number } | undefined)?.lev;
   return lev ? { key: 'card.levelFaster', args: { pct: { pct: lev } } } : null;
 }
@@ -539,8 +543,15 @@ const OFFICE_TABS = (open: 'rota' | 'partners' | 'processBoard'): CardData['tabs
 
 const MACHINE_TITLE: Record<MachineId, TextKey> = { hand_stripper: 'item.handStripper', stripper: 'item.stripper', bench: 'item.bench', crucible: 'item.crucible' };
 
-/** The card of a place or an overlay (4.3), every row with its exact price and refusal. `now` is device epoch ms (the board's and the deal's market day). */
-export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number): CardData {
+/**
+ * The card of a place or an overlay (4.3), every row with its exact price and refusal. `now` is device epoch ms (the board's and the deal's market day).
+ * `ctx` (s2a-fix, the critic's finding on ShopCard.country): what the screen read at the opening that the state does not hold, the store
+ * country (null: unknown, packs off). THE DISPATCHER (the lead's ruling of 26 Nov 09:50): stage 2's card kinds go to cardsWorks.ts
+ * (rules-works) and cardsMoney.ts (rules-money); this function is closed to both.
+ */
+export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext = { country: null }): CardData {
+  if ((WORKS_CARD_KINDS as readonly string[]).includes(ref.kind)) return cardOfWorks(cfg, g, ref, now, ctx);
+  if ((MONEY_CARD_KINDS as readonly string[]).includes(ref.kind) || (ref.kind === 'office' && ref.tab === 'agreements')) return cardOfMoney(cfg, g, ref, now, ctx);
   const c = cfg.salvage;
   const base = { lead: [] as Txt[], rows: [] as CardRow[], foot: [] as CardButton[], legal: null as Txt | null };
   const s = g.salvage;
@@ -600,12 +611,26 @@ export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: nu
       const lessons = Object.entries(c.lessons).map(([grade, key]) => row(`lesson.${grade}`, { key: 'title.place', args: { place: { grade } } }, { key: key as TextKey }, null, 'info'));
       return { ...base, kind: 'help', shape: 'panel', title: { key: 'title.help' }, lead: [{ key: 'line.shortened' }], rows: lessons, legal: { key: 'line.fictional' } };
     }
+    // Stage 2's kinds (dispatched above; listed here so the switch stays exhaustive).
+    case 'works':
+    case 'yardSale':
+    case 'lot':
+    case 'crate':
+      return cardOfWorks(cfg, g, ref, now, ctx);
+    case 'finance':
+    case 'letter':
+    case 'shop':
+    case 'packSheet':
+    case 'ageQuestion':
+    case 'packCode':
+    case 'awayBonus':
+      return cardOfMoney(cfg, g, ref, now, ctx);
   }
 }
 
 /** Facade `cardOf(cfg, g, ref, now)`. */
-export function cardOfCfg(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number): CardData {
-  return cardOf(cfg, g, ref, now);
+export function cardOfCfg(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx?: CardContext): CardData {
+  return cardOf(cfg, g, ref, now, ctx);
 }
 
 // ============================================================================ the top bar (4.1)

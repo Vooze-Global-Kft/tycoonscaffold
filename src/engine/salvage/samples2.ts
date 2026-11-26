@@ -13,9 +13,9 @@ import type {
   AgeQuestionCard,
   AgreementRow,
   BonusCard,
-  CardButtonV3,
+  CardButton,
   CardData,
-  CardRefAll,
+  CardRef,
   CrateCard,
   FinanceTerms,
   LotCard,
@@ -70,7 +70,7 @@ export const SAMPLE_TEXT_KEYS = [
 
 /** A line by key, typed loosely (samples only: the key may not exist yet, see the header). */
 const k = (key: (typeof SAMPLE_TEXT_KEYS)[number], args?: TxtArgs): Txt => ({ key: key as TextKey, ...(args ? { args } : {}) });
-const btn = (label: Txt, action: CardButtonV3['action'], refusal: Txt | null = null): CardButtonV3 => ({ label, action, refusal });
+const btn = (label: Txt, action: CardButton['action'], refusal: Txt | null = null): CardButton => ({ label, action, refusal });
 
 /** The baler at rung 3 (4.3's worked example), buyable with cash: no loan offered (it is under the finance floor). */
 export function sampleWorksCard(): WorksCard {
@@ -148,7 +148,7 @@ export function sampleYardSale(): YardSaleCard {
     ],
     nextVisitorInS: 690,
     soldToday: { n: 1, money: 448 },
-    level: { level: 0, max: 3, from: 6, to: 8, button: btn(k('card.level', { x: { money: 4000 } }), { act: 'levelV3', target: { kind: 'reuse' }, price: 4000 }), state: 'buy' },
+    level: { level: 0, max: 3, from: 6, to: 8, button: btn(k('card.level', { x: { money: 4000 } }), { act: 'level', target: { kind: 'reuse' }, price: 4000 }), state: 'buy' },
     corner: { dealer: 'reclamationDealer', batches: 1, vanInS: 1200 },
   };
 }
@@ -262,7 +262,7 @@ export function sampleAwayWithBank(): AwayCard {
 }
 
 /** The sample for a stage-2 card ref; null for a ref the first yard's `cardOf` answers. */
-export function sampleCard(ref: CardRefAll): CardData | null {
+export function sampleCard(ref: CardRef): CardData | null {
   if (ref.kind === 'office' && ref.tab === 'agreements') return SAMPLES.agreements();
   return (CARD_KINDS_V3 as readonly string[]).includes(ref.kind) ? SAMPLES[ref.kind as SampleKind]() : null;
 }

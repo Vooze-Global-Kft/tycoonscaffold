@@ -6,6 +6,10 @@
  *
  * PHASE A STUB (engine2-hooks, 26 November): no hall exists. The loop does not call this file: works.ts
  * dates and applies the queue kind `hall` (works.ts worksDated / worksApply) and calls in here.
+ *
+ * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
+ * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is
+ * clamped to the save's clock (state2.ts repairStage2).
  */
 import type { Ctx } from './clock';
 import type { PlateId } from './types';

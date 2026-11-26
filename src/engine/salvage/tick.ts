@@ -32,7 +32,7 @@ import { arrive, checks } from './rate';
 import { reuseApply, reuseDated } from './reuse';
 import { dropoffArrive } from './things';
 import { driverDepart, driverLegEnd, showTrip, tripEndsAt } from './truck';
-import type { MachineId, QueuedEvent, QueuedKindV3, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
+import type { MachineId, QueuedEvent, QueuedKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
 import { MAX_TICK, STAGE2_QUEUE_ORDER } from './types';
 import { worksApply, worksCredit, worksDated, worksDepart } from './works';
 
@@ -41,12 +41,12 @@ import { worksApply, worksCredit, worksDated, worksDepart } from './works';
  * order; stage 2's seven stand together right after `machine` (after it and before `round`, in
  * STAGE2_QUEUE_ORDER's order). Ties within one kind go by ref.
  */
-export const QUEUE_ORDER: readonly QueuedKindV3[] = ['day', 'machine', ...STAGE2_QUEUE_ORDER, 'crucible', 'act', 'crewLeg', 'driverLeg', 'boostEnd', 'dropoffArrival', 'skipFull', 'arrival', 'round'];
+export const QUEUE_ORDER: readonly QueuedKind[] = ['day', 'machine', ...STAGE2_QUEUE_ORDER, 'crucible', 'act', 'crewLeg', 'driverLeg', 'boostEnd', 'dropoffArrival', 'skipFull', 'arrival', 'round'];
 // A literal (one fixed shape: the hot comparisons in `consider` read it thousands of times a pass); a test pins it to QUEUE_ORDER.
-export const ORDER: Record<QueuedKindV3, number> = { day: 0, machine: 1, plate: 2, hall: 3, commission: 4, crane: 5, lot: 6, visitor: 7, van: 8, crucible: 9, act: 10, crewLeg: 11, driverLeg: 12, boostEnd: 13, dropoffArrival: 14, skipFull: 15, arrival: 16, round: 17 };
+export const ORDER: Record<QueuedKind, number> = { day: 0, machine: 1, plate: 2, hall: 3, commission: 4, crane: 5, lot: 6, visitor: 7, van: 8, crucible: 9, act: 10, crewLeg: 11, driverLeg: 12, boostEnd: 13, dropoffArrival: 14, skipFull: 15, arrival: 16, round: 17 };
 
 /** A dated event of the derived queue with stage 2's kinds (QueuedEvent's kind is the first yard's union until the contract widens it). */
-type QEvent = { at: number; kind: QueuedKindV3; ref: string };
+type QEvent = { at: number; kind: QueuedKind; ref: string };
 
 const EPS = 1e-6;
 
@@ -54,7 +54,7 @@ const EPS = 1e-6;
 function eventsOf(x: Ctx, dayAt: number, boostAt: number | null = null): QEvent[] {
   const s = x.s;
   const out: QEvent[] = [];
-  const add = (at: number | null | undefined, kind: QueuedKindV3, ref = '') => {
+  const add = (at: number | null | undefined, kind: QueuedKind, ref = '') => {
     if (at !== null && at !== undefined && Number.isFinite(at) && at >= s.t - EPS) out.push({ at, kind, ref });
   };
   add(s.act.endsAt, 'act');
@@ -81,11 +81,11 @@ function eventsOf(x: Ctx, dayAt: number, boostAt: number | null = null): QEvent[
 
 // The earliest event, found without allocating per candidate (the away pass calls this thousands of times).
 let bAt = 0;
-let bKind: QueuedKindV3 = 'day';
+let bKind: QueuedKind = 'day';
 let bRef = '';
 let bSet = false;
 let bMin = 0;
-function consider(at: number | null | undefined, kind: QueuedKindV3, ref: string): void {
+function consider(at: number | null | undefined, kind: QueuedKind, ref: string): void {
   if (at === null || at === undefined || !(at >= bMin) || !Number.isFinite(at)) return;
   if (!bSet || at < bAt - 1e-9 || (Math.abs(at - bAt) <= 1e-9 && (ORDER[kind] < ORDER[bKind] || (ORDER[kind] === ORDER[bKind] && ref < bRef)))) {
     bAt = at;
@@ -303,7 +303,7 @@ export function advanceNoBoss(x: Ctx, seconds: number): void {
 /**
  * The next dated event of a state (E17): the minimum over its dated fields. The features' stubs see a
  * read-only view (`cfg`, `c`, `s`, `live`; no events, cash or away card). Its kind is typed as the first
- * yard's QueuedKind until the contract widens QueuedEvent.kind to QueuedKindV3 (with the stubs as written
+ * yard's QueuedKind until the contract widens QueuedEvent.kind to QueuedKind (with the stubs as written
  * only the first yard's kinds occur).
  */
 export function nextEvent(cfg: SalvageConfig, g: SalvageGame): QueuedEvent | null {

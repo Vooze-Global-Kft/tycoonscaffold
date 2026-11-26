@@ -211,6 +211,9 @@ function levelNow(g: SalvageGame, target: LevelTarget): number | null {
   const s = g.salvage;
   if (target.kind === 'crew') return s.crew.find((m) => m.id === target.id)?.level ?? null;
   if (target.kind === 'machine') return s.machines[target.machine]?.owned ? s.machines[target.machine].level : null;
+  // Stage 2 (s2a-fix widened LevelTarget): a plate's level and the Yard sale's room.
+  if (target.kind === 'plate') return s.works[target.plate]?.owned ? s.works[target.plate].level : null;
+  if (target.kind === 'reuse') return s.reuse.level;
   const p = s.partners[target.partner];
   return p?.open ? p.level : null;
 }
@@ -229,6 +232,7 @@ export function levelAddsKgMin(cfg: SalvageConfig, g: SalvageGame, target: Level
     if (m === 'stripper' || m === 'bench') return 60 * c.machines[m].rate * c.machines[m].lev * DUTY;
     return 0;
   }
+  if (target.kind === 'plate' || target.kind === 'reuse') return 0; // priced by plateLevelPrice (rules-works, Phase B), not by kilograms here
   const member = g.salvage.crew.find((x) => x.id === target.id);
   if (!member) return 0;
   if (member.role === 'hand') {
@@ -322,6 +326,11 @@ function levelled(g: SalvageGame, target: LevelTarget): SalvageGame {
     const id: MachineId = target.machine;
     return { ...g, salvage: { ...s, machines: { ...s.machines, [id]: { ...s.machines[id], level: s.machines[id].level + 1 } } } };
   }
+  if (target.kind === 'plate') {
+    const w = s.works[target.plate];
+    return w ? { ...g, salvage: { ...s, works: { ...s.works, [target.plate]: { ...w, level: w.level + 1 } } } } : g;
+  }
+  if (target.kind === 'reuse') return { ...g, salvage: { ...s, reuse: { ...s.reuse, level: s.reuse.level + 1 } } };
   const p = s.partners[target.partner];
   return { ...g, salvage: { ...s, partners: { ...s.partners, [target.partner]: { ...p, level: p.level + 1 } } } };
 }

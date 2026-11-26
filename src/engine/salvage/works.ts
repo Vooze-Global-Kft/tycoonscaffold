@@ -30,7 +30,7 @@
 import type { Ctx } from './clock';
 import type { CarriedSkip, CrewMember, MachineId, StationId } from './types';
 
-/** The queue kinds the works date (types.ts QueuedKindV3, STAGE2_QUEUE_ORDER). */
+/** The queue kinds the works date (types.ts QueuedKind, STAGE2_QUEUE_ORDER). */
 export type WorksKind = 'plate' | 'hall' | 'commission' | 'crane';
 
 /** How a feature gives a dated end to the derived queue: its yard second (null/undefined: none), its kind, its ref. */

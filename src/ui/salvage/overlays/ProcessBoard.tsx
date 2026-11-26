@@ -96,7 +96,7 @@ export function ProcessBoard({ data, tabs, onTab, onClose }: { data: CardData; t
     const rec = Skia.PictureRecorder();
     const c = rec.beginRecording(Skia.XYWHRect(0, 0, 1200, 400));
     for (const bar of boxes.bars) plateBar(c, bar.x, bar.y, bar.w);
-    for (const q of boxes.plates) boardPlate(c, q.x, q.y, q.w, b.plateH, q.p.state, plateGlyph(q.p.id), q.p.id === sel);
+    for (const q of boxes.plates) boardPlate(c, q.x, q.y, q.w, b.plateH, q.p.state === 'arriving' || q.p.state === 'installed' ? 'owned' : q.p.state, plateGlyph(q.p.id), q.p.id === sel);
     return rec.finishRecordingAsPicture();
   }, [boxes, b.plateH, sel]);
   const canvasW = Math.max(0, ...boxes.plates.map((q) => q.x + q.w + 4));

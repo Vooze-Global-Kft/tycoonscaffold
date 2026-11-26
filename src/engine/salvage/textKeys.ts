@@ -8,7 +8,7 @@
  * Refusal keys live in types.ts (`REFUSAL_KEYS`, the rules' list); their text keys `refusal.<key>`
  * are derived here.
  */
-import { REFUSAL_KEYS, REFUSAL_KEYS_V3, type RefusalKeyAll } from './refusals';
+import { REFUSAL_KEYS, REFUSAL_KEYS_V3, type RefusalKey } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
@@ -226,7 +226,7 @@ export const TEXT_KEYS = {
    * Every package: refusals (5.4), and stage 2's (2.19; contract version 3's REFUSAL_KEYS_V3, which Phase B
    * moves into REFUSAL_KEYS: a key in both lists is listed once).
    */
-  refusal: [...new Set<RefusalKeyAll>([...REFUSAL_KEYS, ...REFUSAL_KEYS_V3])].map((k) => `refusal.${k}` as const),
+  refusal: [...new Set<RefusalKey>([...REFUSAL_KEYS, ...REFUSAL_KEYS_V3])].map((k) => `refusal.${k}` as const),
 
   // ============================================================================ STAGE 2 (strings2, 26 November; yard-stage2.md 4, 5.3)
   /** Tabs: the process board's three pages (4.4: `tab.<page>`) and the price board's four families (4.11: `tab.<BoardTab>`, content BOARD_TABS). */
