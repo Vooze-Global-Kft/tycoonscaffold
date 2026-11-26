@@ -402,7 +402,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     }
   }
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -435,7 +435,7 @@ function report2(all: Summary[], seeds: number[]): string {
         streak = x.bought === 0 ? streak + 1 : 0;
         worst = Math.max(worst, streak);
       }
-      L.push(`   ${String(bot).padEnd(9)} s${pad(r.spec.seed, 2)}  r3 ${hours(r.rungs[3])} r4 ${hours(r.rungs[4])} r5 ${hours(r.rungs[5])}  ${ss.length} sittings, ${dry} without a purchase (longest run ${worst}); end ${r.extra.supplied_t} t, cash §${r.extra.cash}, goal ${r.extra.lastGoal}  cpu ${Math.round(r.ms / 1000)} s`);
+      L.push(`   ${String(bot).padEnd(9)} s${pad(r.spec.seed, 2)}  r3 ${hours(r.rungs[3])} r4 ${hours(r.rungs[4])} r5 ${hours(r.rungs[5])}  ${ss.length} sittings, ${dry} without a purchase (longest run ${worst}); end ${r.extra.supplied_t} t ${r.extra.materials} materials, cash §${r.extra.cash}, goal ${r.extra.lastGoal}; rung 4 at sitting ${ss.find((x) => x.rung >= 4)?.n ?? '-'} (day ${((ss.find((x) => x.rung >= 4)?.n ?? NaN) / 2).toFixed(1)}), rung 5 at sitting ${ss.find((x) => x.rung >= 5)?.n ?? '-'}  cpu ${Math.round(r.ms / 1000)} s`);
     }
   }
   L.push('');

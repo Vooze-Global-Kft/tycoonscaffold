@@ -23,7 +23,6 @@
  * It never imports the tabs family or another mode's folders (npm run check:bundle).
  * Owned by the wiring step (BUILD.md).
  */
-import { salvageEngineMode } from '../../engine/salvageMode';
 import type { FxName } from '../../services/fx';
 import type { SalvageFxName } from '../../services/fx/catalog.salvage';
 import { SalvageLoading } from '../../ui/salvage/Loading';
