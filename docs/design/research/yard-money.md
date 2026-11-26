@@ -1,5 +1,7 @@
 # Scrapyard: What a game earns when it sells cosmetics and currency (farm sims, tycoons and idle games)
 
+*Checked by a second researcher on 26 November 2026: fifteen claims re-read at their sources, sentences corrected in place, EU and rating rules added; see "Checked" at the end.*
+
 Researched on 26 November 2026 by web search and by reading the pages themselves: the US App Store listings of six games (read today, prices in US dollars), the public game-pass list of one Roblox game (read today through Roblox's public web API), publishers' help pages and blogs, two market-data reports and three analysts' deconstructions. Google Play's listing pages were read with a script that took the first price range on each page; those ranges are marked "Play, parsed" because the page also carries other apps' data. Supercell's support pages would not load (they render by script), and two vendor blogs refused the reader; claims that rest on them are marked "search extract only". Marks used: **VERIFIED** (I read it today on the page named), **REPORTED** (a secondary source says so, read today), **ESTIMATE** (a market-data firm's or analyst's modelled number, not the publisher's), **OPINION** (an analyst's or developer's view), **INFERENCE** (my reasoning). This file does not repeat the law or the store rules: it names risks and leaves them to `yard-policy2.md`. The game's currency is "scrip" (§), from the names register.
 
 ---
@@ -7,12 +9,15 @@ Researched on 26 November 2026 by web search and by reading the pages themselves
 ## 0. The answer first
 
 1. **Every leading game in our genre sells currency on the same short ladder**: $1.99, $4.99, $9.99, $19.99, and then $39.99 or $49.99 or $99.99, with a few percent more currency per dollar at each step (VERIFIED on five listings). Beside the ladder sit a first-purchase bundle ($1.99 to $7.99), a "no ads" purchase ($4.99 to $14.99), and in four of six games a monthly pass ($4.99 to $10.99).
-2. **Idle and tycoon games sell their earned money in units of the player's own time**, not as fixed sums: "1 day", "7 days", "14 days" of the player's current profits (AdVenture Capitalist, VERIFIED), "12 hours, 1 day, 3 days" (Idle Miner Tycoon, REPORTED). This is the only way a fixed price stays fair when in-game prices grow a thousandfold, and it is how our scrip should be sold.
-3. **The paid currency is mostly a time currency** (skips, slots, early unlocks, multipliers); cosmetics are a minority use. Play gives it away in small amounts, and "most players are saving their Super Cash for a rainy day" (Kolibri, 2020).
+2. **Idle and tycoon games sell their earned money in units of the player's own time**, not as fixed sums: "1 day", "7 days", "14 days" of the player's current profits (AdVenture Capitalist, VERIFIED), "12 hours, 1 day, 3 days" (Idle Miner Tycoon, REPORTED). This is the way the genre keeps a fixed price fair when in-game prices grow a thousandfold. **Whether our scrip should be sold at all is a separate question** (checked 26 November): selling scrip brings every scrip price in the game under the EU rule that it show its real-money cost, and under the EU proposal's ban on pay-to-progress for minors. `yard-policy2.md` §0.1 recommends that scrip is never sold. See 6.1 and "Checked".
+3. **The paid currency is mostly a time currency** (skips, slots, early unlocks, multipliers); cosmetics are a minority use (INFERENCE from four games' shops, not a measured share). Play gives it away in small amounts, and "most players are saving their Super Cash for a rainy day" (Kolibri, 2020, VERIFIED).
 4. **Cosmetics are a strong driver in town and farm builders** where other players see your place (Township: decorations are "a strong monetization driver" though they do nothing, OPINION, Deconstructor of Fun, 2020). I found **no published share of revenue from cosmetics** for any sim or tycoon.
-5. **In idle games, ads earn more than purchases**: 60 to 70 % of revenue from ads (Gamesforum Intelligence, 2025, no method given). In ad-led hybrid games the "no ads" purchase is often the single biggest purchase (about half of one game's purchase revenue, ESTIMATE, Naavik 2023).
+5. **In idle games, ads probably earn more than purchases**: one market report puts ads at 60 to 70 % of idle-game revenue (Gamesforum Intelligence, May 2025, ESTIMATE with no method given for this figure); other published estimates disagree (5.1), so treat it as one view, not a fact. In ad-led hybrid games the "no ads" purchase can be the single biggest purchase: about half of one game's purchase revenue (Dreamdale, ESTIMATE, Naavik 2023 on data.ai) and the largest item in one more case (`meta.md`). Two cases, not a rule.
 6. **Ranked games that sell power protect the ranks with leagues by strength and caps in the ranked mode.** The best-known revolt over paying to win (Battlefront II, 2017) ended with every purchase switched off the night before launch (VERIFIED).
-7. **For our game**: one paid currency, earned in play as well; it buys looks and "hours of your own income", never tonnes; scrip packs sized in hours of the player's own rated income; a "no ads" purchase that grants every ad reward at once; a first-purchase bundle; cosmetics that are seen on tours and the company page. The three levers: **the "no ads" purchase, the first-purchase bundle, and visible cosmetics** (section 6).
+7. **For our game, two ways to read "currency"** (the lead chooses; section 6.1):
+   - **Wall (recommended by `yard-policy2.md`):** one paid currency, also earned in play, that buys only looks and the "no ads" purchase; scrip is earned only and never sold. Store and EU rules stay simple; purchases never move a board.
+   - **Hour packs (this file's first draft):** the paid currency also buys "hours of your own income" in scrip, as the genre does. More revenue is likely, but every scrip price then needs a real-money figure beside it (EU consumer authorities, VERIFIED), and the EU's November 2026 proposal would forbid selling it to minors as pay-to-progress if it is "presented as necessary" (VERIFIED, a proposal, not law).
+   - Either way: a "no ads" purchase that grants every ad reward at once; a founder's bundle; cosmetics that are seen on tours and the company page. The three levers: **the "no ads" purchase, the founder's bundle, and visible cosmetics** (section 6).
 
 ---
 
@@ -22,9 +27,9 @@ All prices are the US App Store's "In-App Purchases" list, which shows at most t
 
 | Game (kind, seller) | Earned / paid currency | Currency ladder (US $) | First buy and offers | No ads | Pass or subscription | Rating and notices (Apple) |
 |---|---|---|---|---|---|---|
-| **Hay Day** (farm sim with neighbourhoods of up to 30, Supercell) | coins / diamonds | Pile 1.99, Bag 4.99, Sack 9.99, Box 19.99, Chest 39.99 | "Special Offer" 1.99, 4.99, 9.99 | none listed | Farm Pass 4.99; Farm Pass Bundle 11.99 | 9+; contains Loot Boxes, Advertising, Messaging and Chat |
+| **Hay Day** (farm sim with neighbourhoods of up to 30, Supercell) | coins / diamonds | Pile 1.99, Bag 4.99, Sack 9.99, Box 19.99, Chest 39.99 | "Special Offer" 1.99, 4.99, 9.99 | none listed | Farm Pass 4.99; Farm Pass Bundle 11.99 | 9+; contains Loot Boxes, Advertising, Messaging and Chat; the description says some items "can also be purchased for real money (including random items)" |
 | **Township** (co-op town builder, Playrix) | coins / Township cash | Tiny 1.99, Small 4.99, Medium 9.99, Large 19.99 | Beginner's Bundle 1.99; Standard Bundle 6.99; Boost Bundle 5.99; Offer 3.99; Piggy bank 2.99 | none listed | Golden Ticket 4.99 | 13+; Contests (frequent), Loot Boxes, Messaging and Chat |
-| **Idle Miner Tycoon** (idle tycoon, Kolibri) | idle cash / Super Cash | Bundle 1.99, Pile 4.99, Bag 9.99, Small Chest 19.99 | Starter Package 2 4.99; Event Offers 2.99, 19.99; Chest Offer 2.99 | sold (a review mentions it; not in the top ten) | Premium Pass Offer 9.99 | 13+; Loot Boxes, Advertising |
+| **Idle Miner Tycoon** (idle tycoon, Kolibri) | idle cash / Super Cash | Bundle 1.99, Pile 4.99, Bag 9.99, Small Chest 19.99 | Starter Package 2 4.99; Event Offers 2.99, 19.99; Chest Offer 2.99; **Double Cash 6.99** (a permanent income multiplier, sold for money) | sold (a review mentions it; not in the top ten) | Premium Pass Offer 9.99 | 13+ (frequent profanity or crude humour); Loot Boxes, Advertising |
 | **AdVenture Capitalist** (idle tycoon, Hyper Hippo) | cash, angels / gold bars, Mega Bucks | 20 gold 1.99, 55 gold 4.99, 115 gold 9.99, 240 gold 19.99 | First Time Buyer Bundle 3.99 and 7.99; Insider Deal 3.99; Extra Gold 4.99 | 30 Day Ad Removal Pass 14.99 | Gold Subscription 9.99 | 9+; Loot Boxes, Advertising |
 | **Eatventure** (idle restaurant, Lessmore) | cash / gems | Tiny 2.19, Small 5.39, Medium 10.99 | Daily Offer 0.99; Small and Big Event Offer 5.39, 26.99; chest offers 2.19, 13.99 | (not in the top ten) | Event Pass 10.99; Permanent Boost 5.39 | 13+; Loot Boxes, Advertising |
 | **My Perfect Hotel** (arcade idle, SayGames) | cash / gems | Handful 1.99, Pile 4.99, Stash 6.99, Bag 9.99 | Daily Endless Offer 1.99; Candy Offer 2.99; "Get a Pet Forever!" 2.99 | No Ads 9.99 (and "No Ads 20%" 7.99); "Turn off ads forever & get daily rewards" | none listed | 18+ shown today (cartoon violence, alcohol references, infrequent); Advertising |
@@ -50,14 +55,14 @@ What the table shows (INFERENCE):
 
 - **AdVenture Capitalist** (VERIFIED, the publisher's help page): a "Time Warp" pays a span of the player's own profits at once. The shop sells 1 day for 10 gold, 7 days for 25 gold and 14 days for 40 gold; the "Time Warp Express" gives "3 hours of profits instantly", and ten more cost 50 gold. The total is shown under the item before buying. The page warns that when profits are maxed "the 7 Day Time Warp will be a waste!" At the $9.99 rate (115 gold), a 7-day warp costs about $2.17 and a 1-day warp about $0.87 (computed).
 - **Idle Miner Tycoon** (REPORTED, BlueStacks guide, 23 January 2024): the shop's "Instant Cash" section sells 12 hours, 1 day and 3 days of the player's current profit, bought with Super Cash. The same guide lists boosts that multiply all profits by 2, 5 or 10 for a while, from a shop whose stock refreshes every 24 hours.
-- **Township** (OPINION and REPORTED, Deconstructor of Fun, 2020): coins are the soft currency but "the only option to purchase more coins is spending money"; the cash buys timer skips, and the "Piggy Bank" (paid cash that builds up as you ship goods, unlocked by paying) gives "by far the most bang for your buck".
+- **Township** (OPINION and REPORTED, Deconstructor of Fun, Michail Katkoff, posted 27 October 2020): coins are the soft currency but "the only option to purchase more coins is spending money"; the cash buys timer skips, and the "Piggy Bank" (paid cash that builds up as you ship goods, unlocked by paying) gives "by far the most bang for your buck".
 - **Kolibri** (publisher's blog, 21 September 2020, VERIFIED): Super Cash "allows players to jump forward through the core loop, saving time".
 
 ### 2.2 What the paid currency buys
 
 | Game | What the paid currency buys (source) |
 |---|---|
-| Hay Day | speed-ups, extra production and shop slots, hiring the helper, crafting nets, decorations (PocketGamer guide, 1 December 2020, REPORTED; decorations from a search extract) |
+| Hay Day | speed-ups, extra queue slots in production buildings, hiring the helper, making "mystery nets" (a random item), decorations (PocketGamer guide, 1 December 2020, REPORTED; decorations from a search extract) |
 | Idle Miner Tycoon | removing barriers, building shafts, instant cash, boosts, pets (guide 2024 and a store review, REPORTED); "x2 profit multiplier for 2500 Super Cash" (store review, REPORTED) |
 | AdVenture Capitalist | time warps, managers, multiplier tickets ("Purchase more Gold, Time Warps, or specific Managers", listing, VERIFIED) |
 | Township | skipping timers, comfort items at the market (Deconstructor of Fun, OPINION) |
@@ -119,6 +124,7 @@ INFERENCE: both revolts were over random items bought for power in player-agains
 
 ### 4.3 What this means for our ranks (INFERENCE)
 
+- Under the wall (6.1: scrip never sold) nothing below arises: looks and "no ads" move no board. The rest of this section applies to the hour-pack option.
 - In our design the ranked unit is **tonnes**, not scrip. Scrip bought as currency adds no tonnes directly; it buys capacity, which adds tonnes later. That is the same effect the design measured for list B (an "Early cover" buyer at 1.76 × a non-buyer's lifetime tonnes at day 14, section 8), and it must be measured again for scrip packs.
 - **Weekly brackets** (7.3) are banded by capacity derived on the server from all accepted assets, bought ones included, and each day is credited at most to the band's top. A buyer moves up a band. That board stays money-proof as designed.
 - **The all-time board** (lifetime tonnes in cohorts) is the one money can move. Choices for the lead: (a) accept, measure the buyer's lead and print the store sentence that says so; (b) make the all-time board rank something money cannot move (weekly finishes, pennants, the company order's tiers); (c) cap how many hours of income one day's purchases can bring (a quantity cap may count as a quantity-limited offer: a risk for `yard-policy2.md`).
@@ -132,7 +138,7 @@ INFERENCE: both revolts were over random items bought for power in player-agains
 
 | Figure | Kind | Source |
 |---|---|---|
-| Idle games: "Monetization relies heavily on ads (60-70% of revenue) with modest IAP" | ESTIMATE, no method given | Gamesforum Intelligence, casual gaming report (file dated May 2025, posted July 2025), read in the PDF |
+| Idle games: "Monetization relies heavily on ads (60-70% of revenue) with modest IAP" | ESTIMATE, no method given for this figure (the report says elsewhere it draws on AppMagic, which models store revenue, not ad revenue) | Gamesforum Intelligence, casual gaming report (file dated May 2025, posted July 2025), read in the PDF (re-read 26 Nov 2026) |
 | One idle developer, about 2019: roughly 60 % of revenue from ads | REPORTED | `genre.md` §5, source [1] there |
 | Arcade idle: some reached 20 % of net revenue from purchases, against about 2 % in hyper-casual | REPORTED, search extract only | industry piece found by search, not opened |
 | Hybrid-casual titles at Homa: weaker ones 15 % from purchases, top ones up to 40 % | REPORTED (co-founder, via Deconstructor of Fun, April 2023) | Naavik, 28 September 2023 |
@@ -143,7 +149,7 @@ Plain reading: for an idle game with a small team and no live events, **ads are 
 
 ### 5.2 Rewarded placements and caps
 
-- **Placements**: double the away money on relaunch; a visitor every two to three minutes offering a boost; skip to morning for one video; up to 12 videos in a row to stack a boost; players "can easily watch 20–40 ads per session" (GameRefinery on Idle Restaurant Tycoon, 12 January 2021, VERIFIED; the count is the author's OPINION).
+- **Placements**: double the away money on relaunch; an "influencer" visitor at random every two to three minutes offering a boost; skip to morning for one video; up to 12 videos in a row to stack a boost; players "can easily watch 20–40 ads per session" (GameRefinery on Idle Restaurant Tycoon, 12 January 2021, VERIFIED; the count is the author's OPINION).
 - **Caps**: one idle farm game (Hempire, LBC Studios) capped rewarded videos at 10 per user per day; raising one placement to 20 a day lifted that placement's ARPDAU by 37 % and the share of players using it by 80 % (VERIFIED, Unity case study, 31 January 2024; a vendor's case study). Microsoft's PlayFab guide calls 3 a day per player common; CrazyGames suggests up to 5 (search extracts only).
 - **Engagement**: 25 to 50 % of users watch, 3 to 8 a day; idle examples about 25 to 35 % of users, 4 to 5.5 a day each (Kongregate's blog, search extract only; the page returned 404 today).
 
@@ -151,7 +157,7 @@ Our design caps ad rewards at 4 % of a day's income and five a day (D7, section 
 
 ### 5.3 What a "no ads" purchase does
 
-- In ad-led games it is often the **top purchase**: Dreamdale's "Ad-free Adventure" was "about 50% of IAP revenue" (ESTIMATE, Naavik 2023 on data.ai); in one ad-led hybrid-casual game, no-ads was 17 % of purchase revenue and currency packs 3 % (REPORTED, `meta.md` source [17]).
+- In ad-led games it can be the **top purchase** (two cases; INFERENCE that this is common): Dreamdale's "Ad-free Adventure" was "about 50% of IAP revenue" (ESTIMATE, Naavik 2023 on data.ai); in one ad-led hybrid-casual game, no-ads was 17 % of purchase revenue and currency packs 3 % (REPORTED, `meta.md` source [17]).
 - In rewarded-only games it **grants the reward without the video**: "No more ads: Claim rewards instantly" (Idle Restaurant Tycoon, 2021); "Turn off ads forever & get daily rewards" (My Perfect Hotel, today). AdVenture Capitalist now sells it as a 30-day pass ($14.99) and calls the products "AdSkip Passes" (VERIFIED, version notes).
 - Effect on ad revenue: the buyer stops earning ads for good. GameRefinery's author argues the price must exceed the ads that buyer would have watched, and that keeping such a player may raise later purchases (OPINION, no data). I found no published measurement of the net effect.
 
@@ -166,11 +172,19 @@ Our design caps ad rewards at 4 % of a day's income and five a day (D7, section 
 - **Scrip (§)**: earned, as now. Never sold as a fixed sum.
 - **One paid currency** (placeholder "bars"; one paid currency, never expiring, never moved between players, real-money price shown beside every price: `policy.md` §2 and `yard-policy.md` §6). Recommended because it lets one ladder serve both looks and time, and play can give it away. Without one, every look and every pack is priced in dollars directly, which is simpler and honest but gives play nothing premium to hand out.
 
-What bars buy:
+**Added by the check (26 November): the first use below is a choice, not a given.** Three primary texts bear on it:
+
+- The EU consumer authorities' principles (CPC Network, 21 March 2025, VERIFIED) cover a currency "purchased with real-world monetary value" and leave out one that "can solely be obtained through gameplay". Once scrip can be bought (directly, or with bars), it is in scope. Then an item bought with it should show its real-money price, worked out "directly or indirectly via another in-game virtual currency" at the rate without "quantity discounts or other promotional offers". Every machine, yard and lot priced in scrip would need a money figure (INFERENCE from the text; not binding law, but the authorities' reading of it).
+- The Digital Fairness Act proposal (11 November 2026, VERIFIED; a proposal, not law): Article 14(1) asks the money value of items bought with a paid currency; Article 14(2) wants paid currencies "disabled by default for minors" with parental activation where a product is "directed at minors", and recital 62 counts any age rating under 18 as directed at minors; Article 16 bans "pay-to-progress and pay-to-win mechanisms" for minors, defined as purchases "necessary or presented as necessary" for progress (Art. 2(19)); recital 65 adds "progression speeds that render the unpaid path illusory".
+- So: Article 14(2) touches **any** paid currency, bars included; Article 16 touches hour packs only if they look necessary. Pricing looks directly in dollars, with no paid currency at all, escapes both (INFERENCE).
+
+`yard-policy2.md` §0.1 recommends the wall (scrip never sold; bars buy looks and "no ads" only). The table below keeps the hour packs as the other option, so the lead can weigh them.
+
+What bars could buy:
 
 | Use | How it works | Why |
 |---|---|---|
-| **Scrip in hours of your own income** | "4 h of income: §X" where X = the yard's rated income I × 240 min, fixed when the card opens (shown equals applied); steps 1 h, 4 h, 12 h, 24 h; refused when it would overflow what the yard can use (as AdVenture Capitalist warns) | stays fair on a thousandfold curve; the owner's "currency" |
+| **Scrip in hours of your own income** (option "hour packs" only) | "4 h of income: §X" where X = the yard's rated income I × 240 min, fixed when the card opens (shown equals applied); steps 1 h, 4 h, 12 h, 24 h; refused when it would overflow what the yard can use (as AdVenture Capitalist warns) | stays fair on a thousandfold curve; the owner's "currency" |
 | **Cosmetics** | liveries, decor, crew workwear, gate plaques, company emblem parts, the bell-ringing set | seen on tours and the company page |
 | **Not**: tonnes, rank, away hours beyond play's cap, a rung, market power, bought metal at a better price | | the ranks and the trade stay earned (L4, 7.5) |
 
@@ -198,7 +212,7 @@ Hour packs priced in bars (starting points): 1 h 20 bars, 4 h 60, 12 h 150, 24 h
 ### 6.3 The three levers that matter most within this limit
 
 1. **The "no ads" purchase**: price and contents. In ad-led games it is the largest single purchase. Because our ad rewards are small, its value to the player is small too; bundling bars into it is what makes it worth $6.99.
-2. **The first purchase**: a fixed founder's bundle that is plainly the best value in the shop, always available. The genre's first-buy offers are its most common purchase type; ours carries no countdown.
+2. **The first purchase**: a fixed founder's bundle that is plainly the best value in the shop, always available. First-buy offers sit in the top ten of AdVenture Capitalist, Township and Idle Miner Tycoon today (VERIFIED); that they are the genre's most common purchase is not shown by any source read (the first draft said so; removed). Ours carries no countdown, and if it may be bought only once, ask `yard-policy2.md` whether that counts as quantity-limited (6.5).
 3. **Cosmetics that others see**: tours, the company page, the listing day and company colours. Without visits there is little reason to buy a look; with them a look is status. This is the lever the owner's Hay Day model points to.
 
 Second order: the hour-pack sizes (too small and nobody buys, too big and the all-time board tilts) and the free rate of bars (too generous and nobody pays).
@@ -214,10 +228,13 @@ Second order: the hour-pack sizes (too small and nobody buys, too big and the al
 | Risk | Why it is a risk |
 |---|---|
 | Any random contents (a "mystery crate" of looks) | paid random items: higher ratings, odds duties, bans in some countries (`policy.md` §0 and §1) |
-| Timed or limited offers ("this week only", countdowns, "only 3 left") | PEGI's 2026 criteria put time- or quantity-limited offers at 12; EU rules on false urgency (`yard-policy.md` §5, `policy.md` §2) |
+| Timed or limited offers ("this week only", countdowns, "only 3 left") | PEGI's 2026 criteria: "games with time-limited or quantity-limited offers will be classified with a PEGI 12" (PEGI, 12 March 2026, VERIFIED); since October 2026 existing mobile games rated through IARC are being re-rated too (REPORTED, PocketGamer.biz, 20 Oct 2026); EU rules on false urgency (`yard-policy.md` §5, `policy.md` §2) |
 | A daily cap on how much can be bought | may count as a quantity-limited offer: ask `yard-policy2.md` |
-| Bars or bought looks moving between players, or gifting inside a company | Apple and Google rules on gifting and currency; a path to resale and to pressure on minors (`yard-policy.md` §6) |
-| Bars that expire, or bought scrip lost at a reset | Apple: bought currency may not expire |
+| Bars or bought looks moving between players, or gifting inside a company | Apple **allows** gifting of items "eligible for in-app purchase", refundable only to the buyer and not exchangeable (Guideline 3.1.1, VERIFIED); moving bought currency between players is the risk: a path to resale and to pressure on minors (`yard-policy.md` §6) |
+| A first-purchase-only bundle | one per player may read as a "quantity-limited" offer, which PEGI now rates 12 (INFERENCE; ask `yard-policy2.md`); an always-on bundle that may be bought more than once avoids the question |
+| Scrip sold, directly or through bars | every scrip price then needs its real-money value (CPC principles, 2025); pay-to-progress for minors if presented as necessary (DFA proposal, 2026); see 6.1 |
+| Any paid currency, bars included, in a game rated under 18 | DFA proposal Art. 14(2): off by default for minors, on with a parent's approval (proposal, not law) |
+| Bars that expire, or bought scrip lost at a reset | Apple 3.1.1: "in-game currencies purchased via in-app purchase may not expire" (VERIFIED) |
 | A daily login stream of bars | a reward for returning: PEGI 7, and 12 if absence is punished |
 | Prices in bars without the money price beside them | EU consumer principles on virtual currency (`policy.md` §2) |
 | A season pass or subscription | outside the owner's limit; a pass sold for a season may also be a time-limited offer |
@@ -227,7 +244,8 @@ Second order: the hour-pack sizes (too small and nobody buys, too big and the al
 
 ### 6.6 Decisions for the lead
 
-1. One paid currency or none (recommended: one).
+1. Whether scrip is sold at all (the wall of `yard-policy2.md`, or hour packs; 6.1). The check found that this choice, not the price ladder, decides the store text, the EU price display and the boards.
+1a. One paid currency or none. The first draft recommended one. After the check: one paid currency gives play something premium to hand out, but under the DFA proposal it would be off by default for minors; pricing looks in dollars avoids that. Both are defensible; the lead decides.
 2. What happens to the all-time board when hour packs exist (section 4.3: accept and measure, rank only what money cannot move, or cap).
 3. Whether the owner's "etc." includes a pass. Passes are the genre's biggest revenue spikes (section 3.2) but are not cosmetics or currency, and carry a timing risk. Recommended: ask the owner; build without.
 4. What "yard sales" means (shop discounts or a game system).
@@ -264,7 +282,7 @@ Second order: the hour-pack sizes (too small and nobody buys, too big and the al
 11. Kolibri help, currencies (publisher): https://kolibri-games.helpshift.com/hc/en/3-idle-miner-tycoon/faq/55-what-are-the-different-types-of-currency-in-the-game
 12. BlueStacks, Idle Miner Tycoon currency guide, 23 Jan 2024 (secondary): https://www.bluestacks.com/blog/game-guides/idle-miner-tycoon/idt-currency-guide-en.html
 13. PocketGamer, "Hay Day: All the ways to get free diamonds", 1 Dec 2020 (secondary): https://www.pocketgamer.com/hay-day/hay-day-all-the-ways-to-get-free-diamonds
-14. Deconstructor of Fun, "How Playrix' Township Became a Billion Dollar Game", 2020 (analyst): https://www.deconstructoroffun.com/blog/2020/10/13/how-playrix-township-became-a-billion-dollar-game
+14. Deconstructor of Fun, Michail Katkoff, "How Playrix' Township Became a Billion Dollar Game", posted 27 Oct 2020 (the URL carries 13 Oct) (analyst): https://www.deconstructoroffun.com/blog/2020/10/13/how-playrix-township-became-a-billion-dollar-game
 15. Sensor Tower, battle pass success stories, April 2021 (market data): https://sensortower.com/blog/battle-pass-success-stories-2021
 16. Game World Observer on GameRefinery's revenue drivers, 19 Apr 2021 (secondary on market data): https://wnhub.io/news/finance/item-44845
 17. Gamesforum Intelligence, casual gaming report, 2025 (market report, PDF): https://investgame.net/wp-content/uploads/2025/07/Gamesforum-Intelligence-Casual-Gaming-Report.pdf
@@ -281,3 +299,55 @@ Second order: the hour-pack sizes (too small and nobody buys, too big and the al
 28. Game Informer, EA statement to investors, 20 Nov 2017 (press): https://www.gameinformer.com/b/news/archive/2017/11/20/ea-says-battlefront-ii-microtransaction-change-will-not-affect-earnings.aspx
 29. VGC, Diablo Immortal backlash, 6 Jun 2022 (press): https://www.videogameschronicle.com/news/diablo-immortal-faces-a-backlash-as-metacritic-user-score-drops-to-blizzards-third-lowest-ever
 30. Project files: `docs/design/research/policy.md`, `yard-policy.md`, `genre.md`, `meta.md`, `yard-genre.md`; `docs/design/yard-design.md` sections 7, 8, 14; `scripts/content/yard/names.json` (currency "scrip").
+31. Apple, App Review Guidelines, 3.1.1 (currency may not expire; gifting; loot-box odds), read 26 Nov 2026: https://developer.apple.com/app-store/review/guidelines/
+32. PEGI, "PEGI expands age rating criteria with interactive risk categories", 12 Mar 2026 (rating body): https://pegi.info/news/pegi-expands-age-rating-criteria-interactive-risk-categories
+33. Reed Smith client alert on the PEGI criteria, 23 Mar 2026 (law firm, secondary): https://www.reedsmith.com/articles/pegi-launches-interactive-risk-categories-overhauls-age-ratings-for-loot-boxes-in-game-spending-and-communication-features/
+34. PocketGamer.biz, existing mobile games re-rated under the PEGI criteria via IARC, 20 Oct 2026 (press): https://www.pocketgamer.biz/games-with-loot-boxes-receive-updated-pegi-16-rating-for-paid-random-items/
+35. CPC Network, Key Principles on In-game Virtual Currencies, 21 Mar 2025 (EU consumer authorities, PDF): https://commission.europa.eu/document/download/8af13e88-6540-436c-b137-9853e7fe866a_en?filename=Key+principles+on+in-game+virtual+currencies.pdf
+36. European Commission, Digital Fairness Act proposal COM(2026) 1100, 11 Nov 2026 (Arts. 2(19), 14, 15, 16; recitals 61 to 65; PDF): https://commission.europa.eu/document/download/0575d59f-554f-4a9e-b54b-e6b717175809_en?filename=Proposal+for+a+Digital+Fairness+Act_0.pdf
+37. European Commission Representation in Cyprus, press summary of the proposal, 11 Nov 2026: https://cyprus.representation.ec.europa.eu/news/commission-strengthens-consumer-protection-laws-making-them-fit-digital-age-2026-11-11_en
+38. Project file `docs/design/research/yard-policy2.md` §0.1 and §1.4 (the wall between earned and paid currency).
+
+---
+
+## Checked
+
+Checked on 26 November 2026 by a second researcher, who opened each source below and read it that day. "Confirmed": the source says it. "Corrected": the source says something different, and the text above now says what it says. "Unsupported": no source read supports it. "Outdated": true once, superseded.
+
+**The answer first:** the figures and the catalogues hold up well; the researcher quoted accurately. What did not hold was a step further than the sources: the first draft recommended selling scrip in hour packs, and treated the law as someone else's file. That one sentence is where a design decision would have gone wrong. Selling scrip makes every scrip price carry a money figure under the EU consumer authorities' principles, and the EU's 11 November 2026 proposal would forbid pay-to-progress for minors and switch every paid currency off by default for them. `yard-policy2.md`, written the same day, recommends the opposite of the first draft (scrip never sold). The file now sets out both options for the lead (0.7, 6.1, 6.6).
+
+| # | Claim | State | What I read (26 Nov 2026) |
+|---|---|---|---|
+| 1 | Hay Day's App Store shop: Pile 1.99 to Chest 39.99, Farm Pass 4.99, Bundle 11.99; 9+; Loot Boxes, Advertising, Messaging and Chat; neighbourhoods of up to 30 | Confirmed | US listing: same ten items; "create your own with up to 30 players". Added: description says items may be bought "(including random items)". |
+| 2 | Township's shop and 13+ rating | Confirmed | US listing: same ten items; "Frequent: Contests"; Loot Boxes, Messaging and Chat. |
+| 3 | AdVenture Capitalist: 20/55/115/240 gold at 1.99 to 19.99; 30 Day Ad Removal Pass 14.99; Gold Subscription 9.99; "AdSkip Passes" | Confirmed | US listing; version 9.21.0: "a suite of new AdSkip Passes". The per-dollar steps (+10, +15, +19 %) recomputed: correct. |
+| 4 | My Perfect Hotel: No Ads 9.99, "Turn off ads forever & get daily rewards", 18+, no Loot Boxes notice | Confirmed | US listing, same items and reasons. |
+| 5 | Idle Miner Tycoon's top ten (Super Cash ladder, offers, Premium Pass) | Corrected | The top ten also holds "Double Cash" at $6.99, a permanent multiplier sold for money; rating reason is frequent profanity or crude humour. Row fixed. |
+| 6 | AdVenture Capitalist Time Warps: 1 day 10 gold, 7 days 25, 14 days 40; Express 3 h, ten for 50 gold; "will be a waste" | Confirmed | Publisher help page (shows "Last updated 827d", about August 2024). Cost per warp at the $9.99 rate recomputed: $0.87 and $2.17, correct. |
+| 7 | Idle Miner Tycoon sells 12 h, 1 day, 3 days of profit; boosts ×2, ×5, ×10; shop refreshes daily | Confirmed (REPORTED) | BlueStacks guide, 23 Jan 2024. A secondary source; the publisher's own page was not found. |
+| 8 | Lumber Tycoon 2 sells three game passes, 720, 390 and 220 Robux, and no currency | Confirmed | Roblox public API re-queried: the same three passes and prices. |
+| 9 | Kolibri: Super Cash lets players "jump forward through the core loop"; "most players are saving their Super Cash for a rainy day" | Confirmed | Publisher blog, 21 Sep 2020. |
+| 10 | Township (Deconstructor of Fun): coins only for money; decor "a strong monetization driver"; Gold pass $5.99, "extra 30% Barn space"; biggest revenue spikes on Gold pass days; regatta for full teams of 30 | Confirmed; date corrected | All phrases present. Posted 27 Oct 2020 (not 13 Oct as the URL suggests). The revenue-spike line is a chart caption, an analyst's reading of modelled data. |
+| 11 | Sensor Tower: Hay Day pass month +62 % to about $14 M (Dec 2020); Township +22 % to $29.8 M (Nov 2019) | Confirmed (ESTIMATE) | Sensor Tower blog, April 2021; modelled store revenue, not the publishers'. |
+| 12 | GameRefinery: decorative skins in 44 % of the top 20 % grossing US games, 50 % in China | Confirmed (REPORTED) | Game World Observer, 19 Apr 2021, on the top 200 grossing iOS games. A count of games, not a revenue share, as the file says. |
+| 13 | "In idle games, ads earn more than purchases: 60 to 70 %" | Corrected | The quotation is exact (Gamesforum PDF, May 2025), but the report gives no method for it, and the file's own table lists estimates of 55 to 74 % from purchases. The answer-first line stated it as fact; now "probably", one estimate. |
+| 14 | Dreamdale's no-ads about 50 % of purchase revenue; 63/37 split; Mob Control 85/15 is Voodoo's own figure; Homa 15 to 40 % | Confirmed; generalisation corrected | Naavik, 28 Sep 2023, all as stated. "Often the top purchase" rests on two cases: now marked INFERENCE. |
+| 15 | Hempire raised its rewarded cap from 10 to 20 a day: ARPDAU +37 %, use +80 % | Confirmed (vendor) | Unity case study, 31 Jan 2024. One placement, one game, the ad network's own case study. |
+
+Also re-read and confirmed: Clash Royale's cap "at 11, across all Leagues" (Supercell, 31 Mar 2023, no reason given); Battlefront II, "we're turning off all in-game purchases" (TechCrunch, 16 Nov 2017) and "not expected to have a material impact" (Game Informer, 20 Nov 2017); Diablo Immortal "up to $110,000", user score 0.8 (VGC, 6 Jun 2022); Egg, Inc. "even if its a co-op of 1" (modified 20 May 2026); Hay Day's ten diamonds a day from the mine (PocketGamer, 1 Dec 2020); Idle Restaurant Tycoon's 13.99 CAD no-ads offer and "20–40 ads per session" (GameRefinery, 12 Jan 2021). Supercell's support pages still render nothing to a reader: the derby-league claims stay "search extract only".
+
+Smaller corrections made in the text: Hay Day's diamonds buy queue slots in production buildings and "mystery nets" (random), not "shop slots"; the Idle Restaurant Tycoon visitor every two to three minutes is the "influencer"; the claim that first-buy offers are the genre's most common purchase was removed (unsupported); the founder's bundle and the one-time "no ads" bonus now carry the quantity-limit question.
+
+### Rules the first draft left out, which change decisions
+
+1. **EU consumer authorities' principles on in-game currencies** (CPC Network, 21 March 2025, VERIFIED). They apply to a currency bought with money and exclude one obtainable "solely ... through gameplay". An item bought with such currency should show its money price, also when bought "indirectly via another in-game virtual currency", at the price "without applying quantity discounts". Selling scrip, even only through bars, would bring every scrip price in the game into this. Not binding law, but how the authorities read it; they have acted against named publishers since (REPORTED).
+2. **Digital Fairness Act proposal** (European Commission, 11 November 2026, VERIFIED; a proposal, to apply 12 months after it enters into force if adopted). Art. 14(1): show the money value of items bought with a paid currency. Art. 14(2): paid currencies off by default for minors, parental approval to switch on, where the product is "directed at minors" (recital 62: any age rating under 18 counts). Art. 15: no paid random rewards for minors. Art. 16 with Art. 2(19): no "pay-to-progress and pay-to-win mechanisms" for minors, meaning purchases "necessary or presented as necessary" for progress. This affects bars as well as scrip; looks priced directly in money avoid 14(2).
+3. **PEGI's criteria, primary text** (12 March 2026, VERIFIED): time- or quantity-limited offers PEGI 12; rewards for returning PEGI 7, 12 if absence is punished; paid random items PEGI 16. **Newer:** since October 2026, existing mobile games rated through IARC are being re-rated under them (REPORTED, PocketGamer.biz, 20 Oct 2026). `yard-policy.md` had left open whether IARC applies them on Google Play; this says it does, for existing games too.
+4. **Apple 3.1.1** (VERIFIED): bought currency "may not expire"; gifting of in-app items is allowed (refund only to the buyer, not exchangeable). The first draft listed gifting as a rule risk; the risk is moving bought currency between players, not gifting itself.
+5. **A contrary example** to "cosmetics and currency only": Idle Miner Tycoon sells a permanent income multiplier for money in its top ten (Double Cash). Under the owner's rule we do not; it is one more sign that the genre's earnings rest on power, so a looks-only shop should be expected to earn less, by an amount no source gives.
+
+### What stays open
+
+- No source gives the share of revenue from cosmetics in this genre, or what a looks-only shop earns against a mixed one.
+- Whether scrip under the wall is clearly outside the CPC principles if play also gives bars (bars are paid; scrip is not convertible from bars): `yard-policy2.md` §6 lists it as a question for a lawyer.
+- Whether a once-per-player founder's bundle is "quantity-limited" under PEGI.

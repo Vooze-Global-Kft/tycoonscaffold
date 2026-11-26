@@ -1,6 +1,6 @@
 # Scrapyard: Store policy and law for selling currency, pretend loans and holdings, and sales between players
 
-Researched on 26 November 2026, the day the owner decided on money, loans, investments, yard sales and Hay Day-style companies. I read the primary texts that day: Apple's App Review Guidelines ("Last Updated: October 16, 2026") and age-rating reference; Google Play's Payments, Gambling, Financial Services, financial-features declaration, User Generated Content and content-rating pages; the EU consumer authorities' 2025 principles; the Commission's Digital Fairness Act proposal of 11 November 2026; the UK advertising guidance on in-game purchases; the UK Online Safety Act; the EU Digital Services Act; PEGI's and USK's own descriptor pages; and the App Store pages of ten shipped games. Searches used only public subjects in general words. **VERIFIED** means I read it that day. **REPORTED** means others say it and I did not see it at the source. **INFERENCE** is my reasoning. [n] points to the source list. I am not a lawyer, and nothing here is legal advice. The earlier files `yard-policy.md` (25 Nov) and `policy.md` (22 Nov) still apply except where §0 says otherwise. Their points are not repeated here.
+Researched on 26 November 2026, the day the owner decided on money, loans, investments, yard sales and Hay Day-style companies. I read the primary texts that day: Apple's App Review Guidelines ("Last Updated: October 16, 2026") and age-rating reference; Google Play's Payments, Gambling, Financial Services, financial-features declaration, User Generated Content and content-rating pages; the EU consumer authorities' 2025 principles; the Commission's Digital Fairness Act proposal of 11 November 2026; the UK advertising guidance on in-game purchases; the UK Online Safety Act; the EU Digital Services Act; PEGI's and USK's own descriptor pages; and the App Store pages of ten shipped games. Searches used only public subjects in general words. **VERIFIED** means I read it that day. **REPORTED** means others say it and I did not see it at the source. **INFERENCE** is my reasoning. [n] points to the source list. I am not a lawyer, and nothing here is legal advice. The earlier files `yard-policy.md` (25 Nov) and `policy.md` (22 Nov) still apply except where §0 says otherwise. Their points are not repeated here. A second reader checked fifteen claims the same day and corrected the text in place (see "Checked" at the end): the UK advertising guidance is not a reason for the two currencies, loans must not have due dates in calendar time, and the EU proposal also bars paid chance items, which touches holdings.
 
 ## 0. Answer first
 
@@ -8,9 +8,10 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
    - **calvans**: earned only in play, never sold, never bought with the paid currency;
    - **one paid currency** (an invented name): it buys only looks (liveries, emblems, plaques, yard decorations) and the "no ad videos" pass, and it never turns into calvans.
 
-   This keeps calvans outside the EU currency principles, the UK advertising guidance on in-game shops and Germany's "pay to win" weighting. It also keeps the store sentence "Purchases never add tonnes" true. It is still "currency" in the owner's sense, sold in packs.
+   This keeps calvans outside the EU currency principles and the EU proposal's "paid-for virtual currency", and out of Germany's "pay to win" weighting. It also keeps the store sentence "Purchases never add tonnes" true. It is still "currency" in the owner's sense, sold in packs. (Checked 26 Nov: the UK advertising guidance is **not** a reason for the wall. It treats a shop priced in an earnable currency as outside advertising rules "regardless of whether players can also pay to 'top up'" [U1]. Under the wall it is the looks shop, priced in a currency that can only be bought, that counts as advertising.)
 2. **Pretend bank loans and holdings are allowed.** No store rule on loans or investments applies to an in-game currency that cannot leave the game. The risk is design, not law:
    - debt that pushes a player to buy;
+   - repayments due by a date, so that staying away is punished (PEGI 12; added at the check, §2);
    - prices that move by chance and pay out when the player times them well, which reads as simulated gambling. That costs 13+ on Apple, R 18+ in Australia and PEGI 18 where it looks like a casino.
 3. **Sales between players are allowed if nothing bought moves and nothing can be cashed out.** A list of offers that other players can see is very probably "user-generated content" under Google's definition and the UK Act. The moderation kit already planned for names covers it.
 4. **Companies: keep fixed phrases and composed names.** Today's texts confirm the earlier choice. Free chat would bring Apple's "Messaging and Chat" declaration, Germany's "communication risks" weighting, PEGI 18 if it cannot be blocked or moderated, and a full UK risk assessment for chat. Hay Day, which the owner named, does have free chat (its Apple rating lists "Messaging and Chat") [S10]. That is the cost of copying it.
@@ -54,17 +55,19 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 **Status.** The authorities themselves say "not respecting the recommendations ... cannot be automatically considered unlawful" [E1, footnote 1]. They are still the stated position of every EU consumer authority.
 
 **What followed.**
-- The network acted against a horse-riding MMO's publisher (Star Stable). The practices named included advertising that urged children to buy and influencer promotion not marked as paid (VERIFIED on a Spanish government relay of the Commission's notice [E2]).
+- On 21 March 2025, the day the principles were published, the network acted against a horse-riding MMO's publisher (Star Stable). The practices named were advertising that urged children to buy, pressure through "time-limited" offers, unclear information on buying and using the currency, and influencer promotion not marked as paid. The company had one month to propose commitments (VERIFIED on Spain's relay [E2], dated 25 Mar 2025, and Norway's consumer authority [E6]).
+- REPORTED (search extract only; the publisher's help page returned HTTP 403): that game already runs two currencies, one bought and one earned in quests. So a second, earned currency is not a safe harbour by itself. What the network named was pressure and unclear information, which the wall does not remove.
 - On 3 June 2025 the Commission held a stakeholder workshop on applying the principles. After it, the network "will decide on any subsequent step" (VERIFIED [E3]).
-- I found no published outcome of the Star Stable case (not found).
+- I found no published outcome of the Star Stable case (searched again 26 Nov; not found).
 
-### 1.3 UK advertising guidance on in-game purchases (CAP; reviewed May 2024; VERIFIED [U1])
+### 1.3 UK advertising guidance on in-game purchases (CAP; first published 2021, REPORTED; minor review announced 21 May 2024, VERIFIED [U1][U3])
 
-- **Which shops count as advertising.** A shop priced in a currency "that can only be obtained by purchasing it" is advertising, because the currency acts "as a direct proxy for real money". If the currency "can be earned in the game", the shop is "very unlikely" to be advertising, even when the currency can also be bought. The page that sells currency for money is always in scope.
+- **Which shops count as advertising.** A shop priced in a currency that is "only obtained by purchasing it" is advertising, because the currency acts "as a direct proxy for real money". If the currency "can be earned in the game", it is "an in-game resource in its own right, regardless of whether players can also pay to 'top up'", and its shop is "very unlikely" to be advertising. A free "sample" of a bought currency at the start does not change this. The page that sells currency for money is always in scope.
 - **Price rules for the currency page.** The cost of the currency must be clear when packs vary in price per unit. "Best value" may refer only to the price per unit. Where items cost amounts that do not match pack sizes ("odd pricing"), showing the pack prices prominently is enough inside the game.
 - **Pressure.** Avoid "short countdown timers", "implications that a purchase will lead to success", "complex offers" and "significant sums of money". Ads aimed at children may not exhort them to buy.
+- **Law behind it** (added at the check, VERIFIED [U4]). Since 6 April 2025 the UK's banned practices are in the Digital Markets, Competition and Consumers Act 2024, Schedule 20. They include "a direct appeal to children to buy advertised products" (para 30) and "Falsely stating that a product will only be available for a limited time" (para 7). These apply whatever currency a shop uses.
 - **Disclosure.** Ads for the game must say that it has in-game purchases. CAP encourages saying "whether purchasing is entirely cosmetic".
-- **INFERENCE.** Under the wall, the paid-currency shop is in scope only for looks, and the calvan shops are out of scope. If calvans are sold, every calvan shop moves into the grey zone.
+- **INFERENCE.** Under the wall, the looks shop (priced in a bought-only currency) is advertising and must follow the CAP Code; the calvan shops are out of scope. If calvans were sold as well as earned, CAP's own words keep the calvan shops out of scope; only the currency page would be in. (Corrected 26 Nov: the earlier text said selling calvans moves every calvan shop "into the grey zone". CAP says the opposite.)
 
 ### 1.4 EU Digital Fairness Act: a proposal, not law (Commission, 11 November 2026; VERIFIED [E4])
 
@@ -74,7 +77,10 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 - **Recital 62.** A product counts as "directed at minors" when its age rating, PEGI's included, says it suits under-18s. INFERENCE: a 13+ game counts.
 - **Recital 61.** Currencies "locked inside a specific video game ... that ... cannot be cashed out or traded outside" fall outside the EU payment-services and crypto-asset rules.
 - **Definition.** A "paid-for virtual currency" includes one acquired "in exchange for another paid-for virtual currency" (Article 2(17)). So a soft currency that can be bought with the paid one becomes a paid one.
-- **INFERENCE.** If this passes as written, selling calvans to minors would be forbidden, or would sit behind a parental switch, and calvans would count as pay-to-progress. Cosmetics-only paid currency still needs the parental default under Article 14(2), but Article 16 does not touch it. Adoption takes years; design for it now.
+- **Article 2(18) and Article 15(3)** (added at the check, VERIFIED [E4]). A "paid-for variable reward system" is a virtual item "other than financial products, offering random rewards or variable odds" bought with money or a paid-for currency. These may not be offered to minors. INFERENCE: a holding whose return varies by chance is such an item if it can be bought, directly or through calvans that are themselves sold. Under the wall, holdings bought with earned calvans fall outside.
+- **Article 17(1)(c)** (added at the check, VERIFIED [E4]). Products foreseeably encouraging excessive use must let players switch off "features incentivising engagement at regular times ... including through penalties or loss of benefits for failing to engage regularly". INFERENCE: loan repayments due on calendar dates, interest that runs up while the player is away, and weekly orders that take something away all fit this wording.
+- **When.** The proposal "shall apply from [12 months after the entry into force]" (VERIFIED [E4]); the Parliament and the Council must first adopt it.
+- **INFERENCE.** If this passes as written, selling calvans to minors would be forbidden, or would sit behind a parental switch, and calvans would count as pay-to-progress. Cosmetics-only paid currency still needs the parental default under Article 14(2), but Article 16 does not touch it. Adoption will probably take years; design for it now.
 
 ### 1.5 Ratings that weigh purchase pressure even when nothing random is sold
 
@@ -85,8 +91,8 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 - "Pressure to play" (daily quests, log-in streaks, "event-based rewards that expire") gives PEGI 7, and PEGI 12 if "players are punished by losing rewards or game status when they do not return in time";
 - "In-game purchases" is shown whenever anything is sold, "virtual coins" included. It does not by itself raise the age.
 
-**USK, Germany** (VERIFIED [R2]). The descriptor "Erhöhte Kaufanreize" (increased incentives to buy) raises the USK age. It weighs "confusing in-game shops (e.g. through multiple in-game currencies), purchasable game advantages (so-called Pay2Win mechanisms) and/or intrusive notifications that an offer is about to expire".
-- Example: a card game was rated 12 for this reason alone [R3].
+**USK, Germany** (VERIFIED [R2]). "Erhöhte Kaufanreize" (increased incentives to buy) is one of the labels that give "the main reasons for the USK age rating". Its page does not itself say "raises the age" (corrected at the check). It takes into account "confusing in-game shops (e.g. through multiple in-game currencies), purchasable game advantages (so-called Pay2Win mechanisms)" and intrusive notices that an offer is about to expire.
+- Example: a card game is rated 12 with this as its only listed reason [R3] (VERIFIED). So in practice the label alone can set the age.
 - On Google Play, German players see the USK rating through IARC (`yard-policy.md` [G3]).
 - INFERENCE: calvans for sale, which buy machines, are "purchasable game advantages". Cosmetic-only paid currency is not. A second currency is only "confusing" if the shop mixes the two.
 
@@ -100,10 +106,10 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 
 ### 1.7 One currency or two: how each is treated
 
-| | Calvans sold directly | Two currencies, one-way wall (recommended) | Paid currency that converts into calvans (as Hay Day does) |
+| | Calvans sold directly | Two currencies, one-way wall (recommended) | Paid currency that converts into calvans (the usual farm-game model; Hay Day's own conversion not verified at source) |
 |---|---|---|---|
-| EU principles [E1] | Calvans in scope: real-money value on every calvan price (INFERENCE) | Only the paid currency in scope | Both in scope; "mixing" and "several exchanges" warned against |
-| UK CAP [U1] | Calvans can be earned, so calvan shops probably out of scope; the currency page in scope | Looks shop in scope (simple); calvan shops out | Paid-currency shop in scope |
+| EU principles [E1] | Calvans in scope: real-money value on every calvan price, "regardless of how the consumer acquires" them (INFERENCE from [E1]) | Only the paid currency in scope | Both in scope; "mixing" and "several exchanges" warned against |
+| UK CAP [U1] | Calvans can be earned, so calvan shops "very unlikely" advertising; the currency page in scope | Looks shop in scope; calvan shops out | Paid-currency shop in scope |
 | USK [R2] | "Pay2Win" likely | Not triggered | "Multiple currencies" plus Pay2Win |
 | DFA proposal [E4] | Pay-to-progress for minors | Parental default only | Both |
 | Weekly boards, loans, yard sales | Carry bought money | Money-proof | Carry bought money |
@@ -112,8 +118,8 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 
 **Store rules on loans apply to real money only** (VERIFIED [A1][G2][G3]).
 - Apple 3.2.2(ix) covers "Apps offering personal loans": APR disclosure, a maximum APR of 36 %, and no full repayment within 60 days.
-- Google defines personal loans as "lending money from one individual, organization, or entity to an individual consumer". Loan apps must use the Finance category and show APR and repayment terms.
-- Every developer must file Google's Financial features declaration, including those that "certify that no financial features are offered". Its list (banking and loans, stock trading and portfolio management, and others) describes real services.
+- Google defines personal loans as "lending money from one individual, organization, or entity to an individual consumer on a nonrecurring basis". Loan apps must use the Finance category and show maximum APR, the repayment period and a total-cost example; in the United States an APR of 36 % or more is barred, and everywhere full repayment in 60 days or less.
+- "All developers that have an app published on Google Play must complete the Financial features declaration", even those whose apps "do not offer any financial features" (required since 31 August 2023). Its list (banking and loans, stock trading and portfolio management, and others) describes real services.
 - INFERENCE: a loan in calvans, which have no outside value, is not "money". The honest answer is "My app doesn't provide any financial features". A Play forum thread reports a rejection for an "inaccurate" financial-features declaration (search extract only; the thread did not load), so the review notes should say in one line that loans and deposits are fictional.
 
 **Ratings.** No rating body has a question about loans (VERIFIED by absence in [A2][R1][R2]).
@@ -121,17 +127,17 @@ Researched on 26 November 2026, the day the owner decided on money, loans, inves
 **Consumer-protection principles that bite** (INFERENCE from [E1] Principle 7, [U1] "implications that a purchase will lead to success", and [E4] Article 16):
 - A loan becomes a dark pattern when debt can be cleared with bought currency, when a repayment shortfall shows a shop button, or when default takes away the yard or machines that play earned.
 - Under the wall, loans are in calvans and repaid only from income. No bought item touches a loan, no offer appears in debt screens, and nothing a player built is ever repossessed.
-- Recommended: a missed repayment only pauses new borrowing and adds simple, capped interest.
+- Recommended: repayments are a set share of income as it is earned, not instalments due on calendar dates, so a player who is away never falls behind. Interest does not run while the player is away beyond what time-away income repays. If a repayment can still fall short, it only pauses new borrowing. (Changed at the check: a penalty for not coming back in time is PEGI's "punished by losing rewards or game status", which gives PEGI 12 [R1], and is DFA Article 17(1)(c)'s "penalties ... for failing to engage regularly" [E4].)
 
 **Three shipped games with loans** (App Store pages, VERIFIED [S1–S3]):
 
 | Game | Loan feature on its page | Apple rating and its listed reasons | Sells currency |
 |---|---|---|---|
 | Business Tycoon Simulator (Ilyon) | challenges "such as taking a loan from the bank" | 4+ | yes ("CEO" packs, $0.99 to $99.99) |
-| TyconX: Business Tycoon Game | deposits, loans, credit, mortgages; says these "are virtual game mechanics, not real financial services or investments" | 13+: Advertising, Messaging and Chat, User-Generated Content, Social Media | yes (diamonds, VIP) |
+| TycoonX: Business Tycoon Game (an individual seller) | deposits, loans, credit, mortgages; says these "are virtual game mechanics, not real financial services or investments" | 13+: Advertising, Messaging and Chat, User-Generated Content, Social Media | yes (diamonds, VIP) |
 | Idle Bank Tycoon (Kolibri) | the player's bank gives "loans and credits" | 9+: infrequent weapons, Loot Boxes, Advertising | yes (ingots) |
 
-INFERENCE: loans and currency sales together did not raise any of these ratings. TyconX's 13+ comes from chat and social features. Ratings are self-declared, so this shows what passed review, not what is lawful.
+INFERENCE: loans and currency sales together did not raise any of these ratings. TycoonX's 13+ comes from chat and social features. Ratings are self-declared, so this shows what passed review, not what is lawful.
 
 ## 3. Pretend holdings ("investments")
 
@@ -151,7 +157,7 @@ INFERENCE: loans and currency sales together did not raise any of these ratings.
 |---|---|---|---|
 | Business Empire: RichMan | "buy virtual shares in famous companies"; also crypto | 4+, Advertising only | yes ("Money pack" $0.99 to $9.99) |
 | Stock Market: Investor Tycoon | shares whose prices "rise or fall", "Preferred shares pay recurring dividends" | 4+, Advertising only | yes (in-game cash, up to $39.99) |
-| Investor Tycoon: Buy The World | "Invest and cashout at the right time to multiply your wealth"; compares itself to a crash-betting game | **13+: Infrequent Simulated Gambling** | yes (gems, energy) |
+| Investor Tycoon: Buy The World | "Invest and cashout at the right time to multiply your wealth"; calls itself a "crash game" | **13+: Infrequent Simulated Gambling** | yes (gems, energy) |
 
 **Where the line falls (INFERENCE from the definitions and these three cases).**
 - Holdings that pay a share of results are not simulated gambling. Neither is a deposit with fixed interest, or a valuation computed from a formula.
@@ -204,7 +210,7 @@ INFERENCE, a word list for designers:
 - INFERENCE: a visible stand, a composed handle and a company page are each probably user-generated content. The game is probably a UK user-to-user service already, because of the boards and companies, and stands do not change that. They do add an item to the risk assessment (fraud and pressure between players).
 - EU Digital Services Act [E5]:
   - storing "information provided by ... a recipient" is a hosting service, which needs a notice-and-action mechanism (Article 16) and statements of reasons (Article 17);
-  - disseminating that information to the public makes it an online platform;
+  - disseminating that information to the public makes it an online platform, "unless that activity is a minor and purely ancillary feature of another service" and cannot be used without it (Article 3(i), VERIFIED at the check). INFERENCE: stands and company pages inside a game may be such an ancillary feature; this belongs in lawyer question 2;
   - micro and small enterprises are exempt from the online-platform section, Article 28 on minors included, "with the exception of Article 24(3)", and from transparency reports (Article 15(2)).
   - INFERENCE: the report button and the 24-hour operator queue in `yard-policy.md` §3 can serve as the Article 16 mechanism if anyone, not only players, can file a report through the web support page.
 
@@ -220,7 +226,7 @@ INFERENCE, a word list for designers:
 - Apple declares "Messaging and Chat" for "text, voice and/or video chat, direct and/or group messaging, or public posting" [A2].
 - USK counts as chat only player-to-player exchange. It excludes "fixed response options or reactions ... such as 'emotes'" [R2], and "Erhöhte Kommunikationsrisiken" (increased communication risks) raises the age for "unrestricted and uncontrolled chat ... without reporting or blocking" [R2].
 - PEGI: "a game with unrestricted communication features is rated PEGI 18", meaning it cannot be blocked or muted and has no moderation [R1].
-- The UK Act's s.55 exempts only one-to-one live voice, email, SMS and MMS [U2]. Group text chat is fully in scope.
+- The UK Act's s.55(2) leaves out of "regulated user-generated content" only emails, SMS, MMS, one-to-one live voice, comments and reviews on the provider's own content, the identifying content that goes with them, and news publisher content [U2] (corrected at the check: the earlier text listed four of the seven). Group text chat is fully in scope; so are offers on a stand, which are not comments on the provider's content (INFERENCE).
 
 **Hay Day** [S10]. "Join a neighborhood, or create your own with up to 30 players", rated 9+ on Apple with Age Assurance, Parental Controls, Loot Boxes, Advertising, and Messaging and Chat (VERIFIED). The 30 cap is a common size, and the owner set it before naming Hay Day. "Neighborhood" and "derby" are Hay Day's words and are not ours (INFERENCE, L9).
 
@@ -246,9 +252,10 @@ INFERENCE, a word list for designers:
 - DO NOT let ad rewards or purchases touch a ranked figure.
 
 **Loans and holdings**
-- DO keep loans in calvans, repaid from income at a stated fixed rate, with a capped total, never repossession, and no shop on any debt screen.
+- DO keep loans in calvans, repaid as a share of income at a stated fixed rate, with a capped total, never repossession, and no shop on any debt screen.
+- DO NOT set repayment dates in calendar time or let a debt grow because the player stayed away (PEGI 12 [R1]; DFA Art. 17(1)(c) [E4]).
 - DO make holdings pay fixed shares of results shown before buying, or fixed rates, and add the Help line from §3.
-- DO NOT add random returns, cash-out timing, up/down calls, leverage, shorts, crypto, or shares of players' companies.
+- DO NOT add random returns, cash-out timing, up/down calls, leverage, shorts, crypto, or shares of players' companies. A holding whose return varies by chance and that money can reach is a "paid-for variable reward system" under the DFA proposal (Art. 2(18), 15(3)) [E4].
 - DO NOT use invest, returns, trading or earn money on the store page.
 
 **Yard sales**
@@ -278,6 +285,36 @@ INFERENCE, a word list for designers:
 2. Do composed handles, company pages and yard-sale stands make the game a UK user-to-user service and an EU hosting service or online platform? Which duties apply to a sole developer: the UK assessments, DSA Articles 16 and 17, and the micro-enterprise exemption?
 3. Is "directed at minors" met by a 13+ rating? If so, what age assurance and parental default must the shop and the stands have in the EU, the UK, Brazil and the US states with app-store age laws?
 
+## Checked
+
+A second reader checked this file on 26 November 2026. They re-opened each source below and read it, and fixed the text above in place. "Confirmed" means the source says what the file says. "Corrected" means the file now says what the source says.
+
+| # | Claim | State | What the source says (read 26 Nov 2026) |
+|---|---|---|---|
+| 1 | Apple 3.1.1: bought currency may not expire; gifts refunded only to the buyer and "may not be exchanged" | Confirmed | [A1], "Last Updated: October 16, 2026": both sentences as quoted. |
+| 2 | Apple 3.2.2(ix): real loan apps show APR, maximum 36 %, no full repayment within 60 days | Confirmed | [A1] item (ix), as quoted. It covers "Apps offering personal loans" only. |
+| 3 | Google: every developer files the financial-features declaration, including with none | Confirmed, date added | [G3]: "All developers ... must complete"; option "My app doesn't provide any financial features"; required since 31 Aug 2023. "None" is still INFERENCE for in-game loans. The forum report of a rejection stays "search extract only". |
+| 4 | Google personal loans: Finance category, APR and terms | Corrected | [G2]: the definition adds "on a nonrecurring basis"; the 36 % APR bar is for the United States; the 60-day bar and a total-cost example apply too. |
+| 5 | EU principles leave out currency obtained only through play (footnote 2), and are not binding (footnote 1) | Confirmed | [E1] PDF, 21 Mar 2025, footnotes 1 and 2 as quoted. This is the legal footing of the wall. |
+| 6 | EU principles: real-money price at the smallest-pack rate; avoid mixing currencies; unused currency withdrawable 14 days | Confirmed, one point added | [E1]: as quoted. Added: the price must hold "regardless of how the consumer acquires" the currency, so a sold-and-earned calvan would be in scope. |
+| 7 | UK CAP: shops priced in an earnable currency are not advertising; selling calvans puts calvan shops in a "grey zone" | Corrected | [U1]: earnable currency is "an in-game resource in its own right, regardless of whether players can also pay to 'top up'". The "grey zone" sentence and the claim that the wall is needed for CAP were wrong and are fixed. Review date confirmed: 21 May 2024 [U3]. |
+| 8 | DFA proposal (COM(2026) 1100, 11 Nov 2026): Art. 14(1)–(2), 16, 2(17), 2(19); recitals 61, 62, 65 | Confirmed, two articles added | [E4] PDF: each as quoted. Added Art. 2(18) with 15(3) (paid chance items barred for minors; touches holdings) and Art. 17(1)(c) (penalties for not returning; touches loans and weekly orders). It would apply 12 months after entry into force. |
+| 9 | PEGI since June 2026: time-limited offers 12, or 7 with spending off by default; paid random 16/18; NFTs 18 | Confirmed | [R1]: as quoted. The page gives "June 2026" for paid random items and pressure to play, not for every item. |
+| 10 | PEGI: pressure to play 7, 12 if punished; unrestricted communication 18 | Confirmed | [R1]: "punished by losing rewards or game status when they do not return in time"; "Since June 2026 ... unrestricted communication features is rated PEGI 18". |
+| 11 | USK: "Erhöhte Kaufanreize" raises the age; a card game was rated 12 for it alone | Corrected (wording) | [R2] lists it among the labels that give "the main reasons" for an age and does not use the word "raises". [R3] Skatfreunde: 12, with this as the only reason: confirmed. |
+| 12 | Apple: simulated gambling defined without cashable currency; infrequent 13+, Australia R 18+ | Confirmed | [A2]: the definition as quoted; 13+ global, Australia R 18+, Brazil A12. |
+| 13 | Shipped games with loans or shares: Business Tycoon Simulator 4+, TycoonX 13+ (chat and social), Stock Market: Investor Tycoon 4+, Investor Tycoon: Buy The World 13+ for simulated gambling | Confirmed, name corrected | [S1][S2][S5][S6] read: ratings, reasons, quotes and currency sales as stated. "TyconX" is "TycoonX". Investor Tycoon calls itself a "crash game". Ratings are self-declared, so these show what passed review, not what is lawful. |
+| 14 | Hay Day: "up to 30 players", 9+ with Age Assurance, Parental Controls, Loot Boxes, Advertising, Messaging and Chat; its paid currency converts into coins | Confirmed, except the conversion | [S10]: all listed. Sells diamond packs $1.99 to $39.99. That diamonds convert into coins was not shown on the page; the table header now says so. |
+| 15 | UK Online Safety Act s.55 exempts only voice, email, SMS and MMS | Corrected | [U2] s.55(2) leaves out seven kinds of content, among them comments and reviews on the provider's content and news publisher content. Sch. 1 para 4 (limited functionality): confirmed. |
+
+**What the check added** (each above, marked "added at the check"):
+- **Star Stable.** The EU action was announced the day the principles were published (21 Mar 2025), and it named time-limited pressure [E2][E6]. REPORTED (search extract only): that game already has an earned and a bought currency. **A second currency does not protect a shop by itself.** No outcome has been published.
+- **DFA Art. 2(18), 15(3).** Paid chance items are barred for minors. A holding with a random return that money can reach would be one. This is one more reason for the wall and for fixed returns.
+- **DFA Art. 17(1)(c) and PEGI's "punished ... when they do not return in time".** Loans with due dates in calendar time, or debt that grows while the player is away, would raise PEGI to 12 and fall under the proposal. **Design change:** repay as a share of income, with no due dates (§2, §6).
+- **DSA Art. 3(i).** A feature that is "minor and purely ancillary" is not an online platform. This may matter for a sole developer; it is now part of lawyer question 2.
+- **UK DMCC Act 2024, Sch. 20 (in force 6 Apr 2025).** It bans in law a direct appeal to children in ads and false limited-time claims, whatever the currency [U4].
+- **Not changed, still open.** The Australian classification page (HTTP 503) and the PEGI 2020 secondary source [R4] were not re-read; they stay "search extract only". The Commission's "Key Principles" PDF can be read only as a download; read here with a PDF text tool.
+
 ## Sources (all read 26 November 2026 unless marked)
 
 - [A1] Apple App Review Guidelines (Last Updated October 16, 2026): https://developer.apple.com/app-store/review/guidelines/
@@ -294,6 +331,9 @@ INFERENCE, a word list for designers:
 - [E4] COM(2026) 1100, Digital Fairness Act proposal, 11 Nov 2026 (Arts. 2, 14–16; recitals 61–65): https://commission.europa.eu/document/download/0575d59f-554f-4a9e-b54b-e6b717175809_en
 - [E5] Regulation (EU) 2022/2065, Digital Services Act (Arts. 3, 15, 16, 17, 19, 28): https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32022R2065
 - [U1] CAP and BCAP, Guidance on advertising in-game purchases (reviewed May 2024): https://www.asa.org.uk/static/4028c436-5861-4035-8d98c148d3c66b7e/Guidance-on-advertising-in-game-purchases.pdf
+- [U3] ASA news, "In-game purchases: guidance review", 21 May 2024: https://www.asa.org.uk/news/in-game-purchases-guidance-review.html (read 26 Nov 2026 at the check)
+- [U4] Digital Markets, Competition and Consumers Act 2024, Schedule 20, paras 7 and 30, in force 6 Apr 2025 (S.I. 2025/272): https://www.legislation.gov.uk/ukpga/2024/13/schedule/20 (read 26 Nov 2026 at the check)
+- [E6] Norwegian Consumer Authority, on the CPC action of 21 Mar 2025: https://www.forbrukertilsynet.no/eng-articles/national-consumer-authorities-and-commission-take-action-on-harmful-practices-in-the-gaming-industry (read 26 Nov 2026 at the check)
 - [U2] Online Safety Act 2023, s.3, s.55, Sch. 1 (legislation.gov.uk, up to date to 24 Nov 2026): https://www.legislation.gov.uk/ukpga/2023/50/section/55 , /section/3 , /schedule/1 (Ofcom's games page returned HTTP 403)
 - [R1] PEGI, What do the labels mean: https://pegi.info/what-do-the-labels-mean
 - [R2] USK, The USK Age Ratings: https://usk.de/en/the-usk-age-ratings/
@@ -303,7 +343,7 @@ INFERENCE, a word list for designers:
 - Australia, mandatory minimum classifications from 22 Sep 2024: https://www.classification.gov.au/about-us/media-and-news/news/new-mandatory-minimum-classifications-for-gambling-games-content (HTTP 503; search extract only)
 - App Store pages (US store):
   - [S1] Business Tycoon Simulator: https://apps.apple.com/us/app/id1630754749
-  - [S2] TyconX: https://apps.apple.com/us/app/id6755660496
+  - [S2] TycoonX: Business Tycoon Game: https://apps.apple.com/us/app/id6755660496
   - [S3] Idle Bank Tycoon: https://apps.apple.com/us/app/id1645281275
   - [S4] Business Empire: RichMan: https://apps.apple.com/us/app/id6451208928
   - [S5] Stock Market: Investor Tycoon: https://apps.apple.com/us/app/id1556009493
