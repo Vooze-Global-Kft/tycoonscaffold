@@ -554,16 +554,28 @@ function chooseFit(x: Ctx, ps: GroundPiece[], room: number): GroundPiece[] {
  * pile a trip (the first by that order), best value first within his load and the hopper's room.
  */
 function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
+  return plateFeed(x, m, t, null, x.s.pieces);
+}
+
+/**
+ * join2b (2.5.3 under RULING2.md 17.2; requests.md rules-works 11:10): a hands-fed plate's feed INSIDE the yard hands'
+ * order of work (crew.ts handDepart, right after the first yard's machines' feeds): the running hands-fed plates in
+ * slot order, those `keep` admits (null: all), from the pieces his order may take (`pool`: crew.ts's free list; the
+ * whole yard's pieces for an idle hand). Its pile, picking and leg are handToPlate's own (an ordinary trip, no run).
+ */
+export function plateFeed(x: Ctx, m: CrewMember, t: number, keep: ((id: string) => boolean) | null, pool: readonly GroundPiece[]): boolean {
+  if (!x.c.works || x.s.counts?.bathSet === undefined) return false;
   const cap = x.c.crew.hand.load * 1000;
   for (const id of plateIds(x)) {
     const w = x.s.works[id];
     const d = plateDef(x.c, id)!;
     if (!running(w) || d.kind !== 'rate' || d.feedBy !== 'hands') continue;
+    if (keep && !keep(id)) continue;
     const room = plateRoom(x, id, w);
     if (room <= 0) continue;
     let pile: string | null = null;
     let order = Infinity;
-    for (const p of x.s.pieces) {
+    for (const p of pool) {
       if (p.claim || p.g > room) continue;
       const o = waitsFor(x, p);
       if (o < 0 || o >= order || !plateAccepts(x, id, p)) continue;
@@ -571,7 +583,7 @@ function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
       pile = p.pile;
     }
     if (pile === null) continue;
-    const src = x.s.pieces.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
+    const src = pool.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
     const pick = chooseFit(x, src, Math.min(cap, room));
     if (!pick.length) continue;
     for (const p of pick) p.claim = m.id;
@@ -580,6 +592,17 @@ function handToPlate(x: Ctx, m: CrewMember, t: number): boolean {
     handLeg(x, m, 'feed', 'walkTo', { pile, k: pick[0].k }, t);
     m.dest = id;
     return true;
+  }
+  return false;
+}
+
+/** RULING2.md 17.2 for a plate: does its work at least double the worth of what it takes (its best input's out at p̄ over the input's p̄)? Then its feed keeps its place before a floor over half full. */
+export function plateDoubles(x: Ctx, id: string): boolean {
+  const d = plateDef(x.c, id);
+  if (!d) return false;
+  for (const g of d.in) {
+    const pb = x.c.grades[g]?.pbar ?? 0;
+    if (pb > 0 && plateMargin(x, id, g) + pb >= 2 * pb) return true;
   }
   return false;
 }

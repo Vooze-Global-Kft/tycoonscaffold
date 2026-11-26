@@ -411,6 +411,8 @@ export interface RatedTerms {
    * terms). The hired driver's rank from truck.pickFromRung (truck.ts bestLoad) and this replay's (rateQueue).
    */
   rank?: Record<string, number>;
+  /** join2b (2.12): I before the Yard sale's premium (the plates' terms included); absent in the first yard (I₀ = I). */
+  I0?: number;
 }
 
 /** The hands' carrying a unit needs, by kind of trip: seconds and trips (2.3.1 item 2, as corrected). */
@@ -429,7 +431,86 @@ function assetKey(c: Ctx['c'], s: Ctx['s']): string {
   const parts = Object.entries(c.partners).map(([id, p]) => (s.partners[id]?.open || s.owned.includes(p.opens) ? `${id}${Math.max(1, s.partners[id]?.level ?? 1)}` : '')).join(',');
   // RULING2.md 16.2, 17.4: which of the driver's and the hands' rules the yard's rung runs (dispatch.ts's keys).
   const rules = `${s.ladder.rung >= pickFromRung(c) ? 1 : 0}${s.ladder.rung >= orderFromRung(c) ? 1 : 0}`;
-  return `${crew}|${s.tier}|${mach}|${parts}|${s.truck.owned ? 1 : 0}|${(s.counts?.poured ?? 0) > 0 ? 1 : 0}|${rules}`;
+  return `${crew}|${s.tier}|${mach}|${parts}|${s.truck.owned ? 1 : 0}|${(s.counts?.poured ?? 0) > 0 ? 1 : 0}|${rules}${worksKey(c, s)}`;
+}
+
+/** join2b: the plates' part of the asset key (each running plate's level, a hall's first pour, the rung for the Yard sale's share); empty in the first yard. */
+function worksKey(c: Ctx['c'], s: Ctx['s']): string {
+  if (!c.works || s.counts?.bathSet === undefined) return '';
+  let k = `|r${s.ladder.rung}`;
+  for (const [id, w] of Object.entries(s.works ?? {})) if (w.phase === 'running') k += `,${id}${w.level}${(s.counts?.[`poured:${id}`] ?? 0) > 0 ? 'p' : ''}`;
+  return k;
+}
+
+/**
+ * join2b (2.3.1 step 5; rules-works' request of 11:10, built here): THE PLATES' TERMS of I, a pure post-pass over the
+ * first yard's replay. The flow a plate can take is what the replay sells as weighed (`detail.kgBy`, kg an hour by
+ * grade) plus what other plates make (the shredder's stream, zorba, twitch, paste); each plate takes at most its
+ * capacity an hour (rate × (1 + lev × (L − 1)); a hall batch.kg × the same / batch.s, counted only once poured, 14.5);
+ * a grade several plates take goes to the best margin a kilogram first (I4, E2; never the set route); each kilogram
+ * taken adds (Σ out share × p̄ − p̄ of the input − the reagents a kilogram). What is NOT counted (said in the join's
+ * account): the yard hands' carrying to and from the yard plates (so a hands-fed plate's term is an upper bound), whole
+ * objects as inputs (the shear's beams and tanks, the depollution bay's cars: 0), the analyser and the magnet crane (0).
+ * No plate lowers I: every term is ≥ 0 (a content check holds every plate's margin ≥ 1.05 × its input).
+ */
+function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>): number {
+  const plates = c.works?.plates;
+  if (!plates || s.counts?.bathSet === undefined) return 0;
+  const pbar = (g: string) => c.grades[g]?.pbar ?? 0;
+  const lev = (d: { lev: number }, L: number) => 1 + d.lev * Math.max(0, L - 1);
+  type Way = { id: string; grade: string; out: [string, number][]; margin: number };
+  const cap = new Map<string, number>();
+  const ways: Way[] = [];
+  for (const [id, w] of Object.entries(s.works ?? {})) {
+    const d = plates[id];
+    if (!d || w.phase !== 'running') continue;
+    if (d.kind === 'rate' && d.feedBy !== 'stream') {
+      const r = d.rate_kg_s ?? (c.shear ? c.shear.P : 0);
+      cap.set(id, 3600 * r * lev(d, w.level));
+    } else if (d.kind === 'rate') cap.set(id, Infinity);
+    else if (d.kind === 'batch' && d.batch && (s.counts?.[`poured:${id}`] ?? 0) > 0) cap.set(id, (3600 * d.batch.kg * lev(d, w.level)) / d.batch.s);
+    else continue;
+    const reag = (rs: readonly (readonly [string, number, number])[] | undefined) => (rs ?? []).reduce((a, r) => a + r[1] * r[2], 0);
+    if (d.kind === 'batch') {
+      for (const rec of Object.values(d.recipes ?? {})) for (const gin of rec.in) ways.push({ id, grade: gin, out: rec.out.map(([o, sh]) => [o, sh] as [string, number]), margin: 0 });
+    } else for (const gin of d.in) if (d.out?.[gin]) ways.push({ id, grade: gin, out: d.out[gin].map(([o, sh]) => [o, sh] as [string, number]), margin: -reag(d.reagents) });
+    if (d.kind === 'batch') for (const wy of ways) if (wy.id === id) wy.margin = -reag(Object.values(d.recipes ?? {}).find((r) => r.in.includes(wy.grade))?.reagents);
+  }
+  if (!ways.length) return 0;
+  // The stream's worth is what the plate that takes it makes (the eddy current); every other output at p̄.
+  const streamTaker = ways.find((wy) => wy.grade === 'stream');
+  const worth = (o: string): number => (o === 'stream' ? (streamTaker ? streamTaker.out.reduce((a, [q, sh]) => a + sh * pbar(q), 0) : 0) : pbar(o));
+  for (const wy of ways) wy.margin += wy.out.reduce((a, [o, sh]) => a + sh * (wy.grade === 'stream' ? pbar(o) : worth(o)), 0) - (wy.grade === 'stream' ? 0 : pbar(wy.grade));
+  ways.sort((a, b) => b.margin - a.margin || (a.id < b.id ? -1 : 1));
+  const avail: Record<string, number> = { ...kgBy };
+  let add = 0;
+  // A few passes, so that what one plate makes (the stream, zorba, twitch, paste) reaches the plate after it.
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const wy of ways) {
+      if (wy.margin <= 0) continue;
+      const x = Math.min(avail[wy.grade] ?? 0, cap.get(wy.id) ?? 0);
+      if (x <= 1e-9) continue;
+      avail[wy.grade] -= x;
+      cap.set(wy.id, (cap.get(wy.id) ?? 0) - x);
+      // The stream's value is counted at the eddy current's term, not at the shredder's.
+      add += x * wy.margin - (wy.grade === 'stream' ? 0 : x * wy.out.reduce((a, [o, sh]) => a + (o === 'stream' ? sh * worth(o) : 0), 0));
+      for (const [o, sh] of wy.out) avail[o] = (avail[o] ?? 0) + x * sh;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return Math.max(0, add);
+}
+
+/** join2b (2.12, 2.3.1 step 5): the Yard sale's premium, 0.6 of what its ceiling lets the public pay an hour (shareI × max(I₀, floorI)), once the works are open. The van's third is not counted (no rated flow of batches yet). */
+function yardSaleTerm(c: Ctx['c'], s: Ctx['s'], I0: number): number {
+  const R = c.reuse;
+  if (!R || s.counts?.bathSet === undefined) return 0;
+  const list = R.shareI;
+  let sh: number | null = null;
+  for (let r = Math.min(s.ladder.rung, list.length); r >= 1 && sh === null; r--) sh = list[r - 1] ?? null;
+  return sh ? 0.6 * sh * Math.max(I0, R.floorI) : 0;
 }
 
 /**
@@ -494,6 +575,15 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const hit = byKey.get(key);
   if (hit) return copyTerms(hit);
   const t = ratedCompute(c, s);
+  // join2b: the plates' terms and the Yard sale's premium on top of the first yard's replay (nothing in the first yard).
+  if (c.works && s.counts?.bathSet !== undefined) {
+    const I1 = t.I;
+    const I0 = roundMoney(t.I + plateTerms(c, s, t.detail?.kgBy ?? {}));
+    t.I0 = I0;
+    t.I = roundMoney(I0 + yardSaleTerm(c, s, I0));
+    // the same terms are gross sales too (G_r, the bank's "Save up" with an agreement open, E9)
+    t.sales = roundMoney(t.sales + (t.I - I1));
+  }
   if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
   byKey.set(key, t);
   return copyTerms(t);
@@ -964,6 +1054,12 @@ export function loadRanks(c: Ctx['c'], s: Ctx['s']): Readonly<Record<string, num
 /** I, § an hour (2.3; the facade's ratedIncome). */
 export function ratedIncome(c: Ctx['c'], s: Ctx['s']): number {
   return ratedTerms(c, s).I;
+}
+
+/** I₀ (2.12): rated income before the Yard sale's (and the van's) terms; the Yard sale's ceiling reads it, so nothing is circular. */
+export function ratedIncome0(c: Ctx['c'], s: Ctx['s']): number {
+  const t = ratedTerms(c, s);
+  return t.I0 ?? t.I;
 }
 
 /** Facade `ratedIncome(cfg, g)`: I, § an hour, net (2.3). */
