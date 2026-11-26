@@ -35,6 +35,7 @@ import copy
 import heapq
 import json
 import math
+import re
 import os
 import sys
 
@@ -387,6 +388,47 @@ def check(s, walks=True):
         for k in ('weighbridge', 'merchant', 'park'):
             if k in fps and not any(fps[k]['x0'] >= L['x0'] - 1e-6 and fps[k]['x1'] <= L['x1'] + 1e-6 and fps[k]['y0'] >= L['y0'] - 1e-6 and fps[k]['y1'] <= L['y1'] + 1e-6 for L in R):
                 bad('M4: %s is not wholly on the drive line' % k)
+    # owner1 H5: the waiting places (map.points wait1, wait2, ...): clear of every solid, the scale, the bays' fronts, the
+    # drive line, the chalk circles and the drop-off's places (a worker's 0.8 m square)
+    waits = sorted((k, v) for k, v in P.items() if re.match(r'^wait\d+$', k))
+    if waits:
+        keep = [(r['name'], r) for r in sol if r['kind'] != 'fence']
+        for k in ('scale', 'dropoff', 'weighbridge', 'office', 'rack'):
+            if k in fps:
+                keep.append((k, fps[k]))
+        if 'bays' in fps:
+            b = fps['bays']
+            keep.append(("the bays' front", rect(b['x0'], b['y1'], b['x1'], b['y1'] + 1.0, 'bf', 'bf')))
+        for r in (dl or {}).get('rects', []):
+            keep.append(('the drive line', rect(r['x0'], r['y0'], r['x0'] + r['w'], r['y0'] + r['d'], 'dl', 'dl')))
+        keep += [('circle %d' % i, rect(c[0] - c[2], c[1] - c[2], c[0] + c[2], c[1] + c[2], 'c', 'c')) for i, c in enumerate(M.get('circles', []))]
+        keep += [('drop-off place %d' % i, rect(x - 0.45, y - 0.45, x + 0.45, y + 0.45, 'w', 'w')) for i, (x, y) in enumerate(dropoff_slots(s))]
+        for k, (x, y) in waits:
+            q = rect(x - 0.4, y - 0.4, x + 0.4, y + 0.4, k, 'wait')
+            for n, r in keep:
+                if overlaps(q, r):
+                    bad('owner1 H5: the waiting place %s (%s, %s) stands in %s' % (k, x, y, n))
+        rep.append('waiting places: %s' % ', '.join('%s (%s, %s)' % (k, x, y) for k, (x, y) in waits))
+    # owner1 V4: an arrival drives the drive line to the stop nearest its place and sets down there: that stop must lie
+    # on the line inside the fence, and the line from the gate to it must stay in the corridor (nothing solid stands in it, M4)
+    stops_in = {k: v for k, v in (dl or {}).get('stops', {}).items() if k != 'turn' and v[0] <= W}
+    if stops_in and dl and dl.get('rects'):
+        R2 = [rect(r['x0'], r['y0'], r['x0'] + r['w'], r['y0'] + r['d'], 'drive line', 'line') for r in dl['rects']]
+        def in_line(px, py):
+            return any(L['x0'] - 1e-6 <= px <= L['x1'] + 1e-6 and L['y0'] - 1e-6 <= py <= L['y1'] + 1e-6 for L in R2)
+        for it in s.get('shop', []) + s.get('dayOneList', []):
+            arrive = it.get('arrive') or {'tool': 'van', 'carrier': 'van', 'machine': 'machineFlatbed', 'truck': 'truck'}.get(it.get('kind'))
+            if arrive not in ('van', 'machineFlatbed', 'truck') or it.get('place') not in P:
+                continue
+            px, py = P[it['place']]
+            k, (sx, sy) = min(stops_in.items(), key=lambda kv: math.dist(kv[1], (px, py)))
+            g = P['gate']
+            n = max(1, int(math.dist(g, (sx, sy)) / 0.25))
+            if not all(in_line(g[0] + (sx - g[0]) * i / n, g[1] + (sy - g[1]) * i / n) for i in range(n + 1)) and not in_line(sx, g[1]):
+                bad('owner1 V4: %s arrives at the stop %s off the drive line' % (it['key'], k))
+            for r in sol:
+                if r['kind'] in ('wall', 'fence', 'prop', 'place', 'stillage') and r['x0'] < sx < r['x1'] and r['y0'] < sy < r['y1']:
+                    bad('owner1 V4: %s sets down at the stop %s inside %s' % (it['key'], k, r['name']))
     # M5
     rt = M['routes']
 

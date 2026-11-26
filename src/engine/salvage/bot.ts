@@ -359,6 +359,28 @@ function travel(b: Bot, pts: { x: number; y: number }[], speed: number): void {
   sample(b, p.x, p.y, false);
 }
 
+/**
+ * owner1 V3: the boss drives his truck at truck.bossYardV inside the fence and truck.bossV on the lane (as the world
+ * drives him): each leg is split where it crosses the fence (x = yard.width) and driven at its side's speed.
+ */
+function drive(b: Bot, pts: { x: number; y: number }[]): void {
+  const c = b.cfg.salvage;
+  const lane = c.truck.bossV ?? c.truck.v;
+  const yard = c.truck.bossYardV ?? lane;
+  const W = c.yard.width;
+  let at = pos(b);
+  for (const q of pts) {
+    if ((at.x - W) * (q.x - W) < 0) {
+      const u = (W - at.x) / (q.x - at.x);
+      const m = { x: W, y: at.y + u * (q.y - at.y) };
+      travel(b, [m], at.x <= W ? yard : lane);
+      at = m;
+    }
+    travel(b, [q], at.x <= W && q.x <= W ? yard : lane);
+    at = q;
+  }
+}
+
 /** Walk on foot to a point round the solids, with the hand's path waste. */
 function walk(b: Bot, to: { x: number; y: number }): void {
   if (driving(b)) return;
@@ -958,10 +980,9 @@ function truckLeg(b: Bot, partner: string, slot: number): void {
   if (!driving(b)) stand(b, b.opts.standDt);
   if (!driving(b)) return;
   // P10: the boss drives at truck.bossV (the driver's truck.v is the hired driver's); R7 clamps faster samples.
-  const v = c.truck.bossV ?? c.truck.v;
   const path = lanePath(c, pos(b), partner, slot).slice(1);
-  travel(b, path, v);
-  standUntil(b, () => !!b.g.salvage.truck.skip || (b.g.salvage.act.target ?? '').startsWith('refused'), c.truck.handle_s + 8);
+  drive(b, path);
+  standUntil(b, () => !!b.g.salvage.truck.skip || (b.g.salvage.act.target ?? '').startsWith('refused'), (c.truck.bossHandle_s ?? c.truck.handle_s) + 8);
   const gate = pointOf(c, 'gate');
   const z = skipZone(c, partner, slot);
   // MAP.md M4: inside the yard the truck keeps to the drive line: its stops (content map.driveLine.stops),
@@ -972,15 +993,15 @@ function truckLeg(b: Bot, partner: string, slot: number): void {
   const floor = st('floor', 'floor');
   const park = st('park', 'park');
   const turn = stops.turn ? { x: stops.turn[0], y: stops.turn[1] } : null;
-  travel(b, [{ x: z.x, y: gate.y }, { x: gate.x + 2, y: gate.y }, { x: gate.x - 2, y: gate.y }], v);
+  drive(b, [{ x: z.x, y: gate.y }, { x: gate.x + 2, y: gate.y }, { x: gate.x - 2, y: gate.y }]);
   if (b.g.salvage.truck.skip) {
-    travel(b, [wb], v);
+    drive(b, [wb]);
     standUntil(b, () => !!b.g.salvage.truck.skip?.weighed, 10);
-    travel(b, turn ? [{ x: floor.x, y: wb.y }, floor] : [floor], v);
+    drive(b, turn ? [{ x: floor.x, y: wb.y }, floor] : [floor]);
     standUntil(b, () => !b.g.salvage.truck.skip, c.truck.handle_s + 8);
   }
   const here = pos(b);
-  travel(b, turn ? [{ x: here.x, y: turn.y }, turn, park] : [park], v);
+  drive(b, turn ? [{ x: here.x, y: turn.y }, turn, park] : [park]);
   leaveTruck(b);
 }
 
@@ -1017,7 +1038,7 @@ export function decide(b: Bot): void {
   if (driving(b)) {
     // He parks it first: left on the scale it would take him in again on his next weigh-in.
     const park = pointOf(c, 'park');
-    if (Math.hypot(pos(b).x - park.x, pos(b).y - park.y) > 1) travel(b, [park], c.truck.bossV ?? c.truck.v);
+    if (Math.hypot(pos(b).x - park.x, pos(b).y - park.y) > 1) drive(b, [park]);
     return leaveTruck(b);
   }
   if (o.holder) holdByWord(b);
