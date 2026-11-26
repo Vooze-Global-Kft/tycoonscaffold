@@ -17,7 +17,7 @@ import { begin, type Ctx } from './clock';
 import { hireCheck } from './ladder';
 import { pointOf } from './positions';
 import { checks } from './rate';
-import { QUEUE_ORDER } from './tick';
+import { ORDER, QUEUE_ORDER } from './tick';
 import type { CrewMember, GroundPiece, SalvageConfig, SalvageGame, SalvageState, ThingState, Ticket } from './types';
 import { STAGE2_QUEUE_ORDER } from './types';
 
@@ -112,6 +112,9 @@ describe('the order within one instant (2.18, B9)', () => {
     expect(STAGE2_QUEUE_ORDER.map(i)).toEqual(STAGE2_QUEUE_ORDER.map((_, k) => i('machine') + 1 + k));
     expect(Math.max(...STAGE2_QUEUE_ORDER.map(i))).toBeLessThan(i('round'));
     expect(new Set(QUEUE_ORDER).size).toBe(QUEUE_ORDER.length);
+    // The loop's rank table is the same order (a literal for speed).
+    expect(Object.keys(ORDER).length).toBe(QUEUE_ORDER.length);
+    QUEUE_ORDER.forEach((k, n) => expect(ORDER[k], k).toBe(n));
   });
 
   it('seven stage-2 events and the merchant\'s return at ONE instant are applied plate, hall, commission, crane, lot, visitor, van, then the round', () => {

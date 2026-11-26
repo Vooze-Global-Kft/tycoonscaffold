@@ -41,7 +41,8 @@ import { worksApply, worksCredit, worksDated, worksDepart } from './works';
  * STAGE2_QUEUE_ORDER's order). Ties within one kind go by ref.
  */
 export const QUEUE_ORDER: readonly QueuedKindV3[] = ['day', 'machine', ...STAGE2_QUEUE_ORDER, 'crucible', 'act', 'crewLeg', 'driverLeg', 'boostEnd', 'dropoffArrival', 'skipFull', 'arrival', 'round'];
-const ORDER = Object.fromEntries(QUEUE_ORDER.map((k, i) => [k, i])) as Record<QueuedKindV3, number>;
+// A literal (one fixed shape: the hot comparisons in `consider` read it thousands of times a pass); a test pins it to QUEUE_ORDER.
+export const ORDER: Record<QueuedKindV3, number> = { day: 0, machine: 1, plate: 2, hall: 3, commission: 4, crane: 5, lot: 6, visitor: 7, van: 8, crucible: 9, act: 10, crewLeg: 11, driverLeg: 12, boostEnd: 13, dropoffArrival: 14, skipFull: 15, arrival: 16, round: 17 };
 
 /** A dated event of the derived queue with stage 2's kinds (QueuedEvent's kind is the first yard's union until the contract widens it). */
 type QEvent = { at: number; kind: QueuedKindV3; ref: string };
