@@ -15,7 +15,11 @@
  * --json file     write every run's summary there too
  * --handFirst     a what-if: after the fixed goals the bots level the yard hands when pieces wait (bot.ts)
  * --only income   stage 2 2.3.3's gate (engine2-income): rated income I against the away income an hour G at
- *                 usual prices (board.a 0), at rung 3's entry, the hour's end, day 1 and day 3 (normal hand)
+ *                 usual prices (board.a 0), at rung 3's entry, the hour's end, day 1 and day 3 (normal hand),
+ *                 on yards the bots played with prices flat; and (RULING2.md 14.5, engine2-fixB) on yards
+ *                 played with the NORMAL price board, G still measured at usual prices, at the hour's end
+ *                 and day 1 (the gate: 17 of 20 within 0.9 to 1.1 on ten seeds, none outside 0.85 to 1.15).
+ *                 With --only income alone, only these runs are made and only section 8 is printed.
  * Every run checks the hard promises of 8.3 (shown equals applied, cash never below zero, supplied never
  * falling, no stock negative; tick equals jump minute by minute on the normal hand's runs); a broken
  * promise prints in the report's first section and makes the exit code 2.
@@ -50,6 +54,8 @@ interface Spec extends BotOptions {
   kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income';
   minutes: number;
   gate?: boolean;
+  /** income only: the board the yard is PLAYED with ('flat': board.a 0 throughout; 'normal': the shipped board, G at usual prices). */
+  board?: 'flat' | 'normal';
 }
 
 interface Summary {
@@ -100,6 +106,8 @@ function summary(b: Bot, spec: Spec, R_: number[], gate: string[], extra: Record
  * Stage 2's bank does not exist yet: nothing a bank took to add.
  */
 function incomeRow(cfg: R.SalvageConfig, g: R.SalvageGame, spec: Spec, at: string) {
+  // G is measured at usual prices (board.a 0) whatever board the yard was played with (RULING2.md 14.5).
+  if (cfg.salvage.board.a !== 0) cfg = { ...cfg, salvage: { ...cfg.salvage, board: { ...cfg.salvage.board, a: 0 } } };
   const ab = newBot(cfg, g, NOW + g.salvage.t * 1000, spec);
   ab.now = NOW + Math.round(g.salvage.clock.highMs - NOW);
   const v0 = R.stockValue(cfg, g);
@@ -113,7 +121,7 @@ function incomeRow(cfg: R.SalvageConfig, g: R.SalvageGame, spec: Spec, at: strin
 
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
   const t0 = performance.now();
-  if (spec.kind === 'income') base = { ...base, salvage: { ...base.salvage, board: { ...base.salvage.board, a: 0 } } };
+  if (spec.kind === 'income' && spec.board !== 'normal') base = { ...base, salvage: { ...base.salvage, board: { ...base.salvage.board, a: 0 } } };
   const cfg = seededCfg(base, spec.seed);
   const b = newBot(cfg, startGame(cfg, NOW), NOW, spec);
   const Rs: number[] = [];
@@ -193,6 +201,18 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
       extra.burst = burst;
       extra.night = night;
     }
+    return summary(b, spec, Rs, gate, extra, t0);
+  }
+  if (spec.kind === 'income' && spec.board === 'normal') {
+    // RULING2.md 14.5: the yard as players play it (the shipped board), I against G at the hour's end and day 1.
+    playTo(b, 3600, onMinute);
+    const rows = [incomeRow(cfg, b.g, spec, 'hour')];
+    for (let k = 0; k < 2; k++) {
+      away(b, 11.75 * 3600);
+      playTo(b, b.g.salvage.t + 15 * 60);
+    }
+    rows.push(incomeRow(cfg, b.g, spec, 'day1'));
+    extra.income = rows;
     return summary(b, spec, Rs, gate, extra, t0);
   }
   if (spec.kind === 'income') {
@@ -539,25 +559,41 @@ function report(all: Summary[], seeds: number[]): string {
       L.push(`   seed ${r.spec.seed}: reached on ${withHire.filter((x) => x.reachedAfter_s !== null).length}/${withHire.length} states from the first hire; ${rows.map((x) => `m${x.m} ${x.next ?? '-'}:${x.reachedAfter_s === null ? (x.price === null ? 'n/a' : 'NO') : mmss(x.reachedAfter_s)}`).join(' ')}`);
     }
   }
-  const inc = pick((s) => s.kind === 'income');
-  if (inc.length) {
-    type Row = { at: string; t: number; rung: number; ran_h: number; G: number; I: number; bind: string; Isales: number; Ispent: number; sales: number; spent: number; stock: number };
-    L.push('');
-    L.push('8. RATED INCOME I AGAINST THE AWAY INCOME G (stage 2 2.3.3, I5; usual prices: board.a 0; normal hand, goal habit, route A; G = (net cash + stock left at p̄ − at the start) / hours the yard ran, a capped absence)');
-    for (const at of ['rung3', 'hour', 'day1', 'day3']) {
-      const rows = inc.map((r) => (r.extra.income as Row[]).find((x) => x.at === at)).filter((x): x is Row => !!x);
-      if (!rows.length) continue;
-      const q = rows.map((x) => x.I / x.G);
-      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds (aim 13 of 15 at rung3 and day3); I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
-      for (let i = 0; i < rows.length; i++) {
-        const x = rows[i];
-        L.push(`      s${pad(inc[i].spec.seed, 2)} t ${mmss(x.t)} rung ${x.rung} ran ${x.ran_h.toFixed(1)} h: G §${pad(Math.round(x.G), 6)} (sales ${Math.round(x.sales)} − loads ${Math.round(x.spent)} + stock ${Math.round(x.stock)})  I §${pad(Math.round(x.I), 6)} (sales ${Math.round(x.Isales)} − loads ${Math.round(x.Ispent)}, binds ${x.bind})  I/G ${(x.I / x.G).toFixed(3)}`);
-      }
-    }
-  }
+  incomeSection(L, all);
   L.push('');
   L.push(`run time: ${Math.round(all.reduce((a, r) => a + r.ms, 0) / 1000)} s of CPU over ${all.length} runs`);
   return L.join('\n');
+}
+
+/** Section 8: rated income I against G, on yards played with flat prices and with the normal board (RULING2.md 14.5). */
+function incomeSection(L: string[], all: Summary[]): void {
+  type Row = { at: string; t: number; rung: number; ran_h: number; G: number; I: number; bind: string; Isales: number; Ispent: number; sales: number; spent: number; stock: number };
+  for (const board of ['flat', 'normal'] as const) {
+    const inc = all.filter((r) => r.spec.kind === 'income' && (r.spec.board ?? 'flat') === board);
+    if (!inc.length) continue;
+    L.push('');
+    L.push(
+      board === 'flat'
+        ? '8. RATED INCOME I AGAINST THE AWAY INCOME G (stage 2 2.3.3, I5; PLAYED WITH PRICES FLAT, board.a 0; normal hand, goal habit, route A; G = (net cash + stock left at p̄ − at the start) / hours the yard ran, a capped absence at usual prices)'
+        : '8b. THE SAME ON YARDS PLAYED WITH THE NORMAL PRICE BOARD (RULING2.md 14.5; G still at usual prices, board.a 0; gate: 17 of 20 moments within 0.9-1.1, none outside 0.85-1.15)',
+    );
+    const all20: number[] = [];
+    for (const at of ['rung3', 'hour', 'day1', 'day3']) {
+      const rows = inc.map((r) => ({ r, x: (r.extra.income as Row[]).find((x) => x.at === at) })).filter((q): q is { r: Summary; x: Row } => !!q.x);
+      if (!rows.length) continue;
+      const q = rows.map(({ x }) => x.I / x.G);
+      all20.push(...q);
+      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds${board === 'flat' ? ' (aim 13 of 15 at rung3 and day3)' : ''}; I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
+      for (const { r, x } of rows) {
+        L.push(`      s${pad(r.spec.seed, 3)} t ${mmss(x.t)} rung ${x.rung} ran ${x.ran_h.toFixed(1)} h: G §${pad(Math.round(x.G), 6)} (sales ${Math.round(x.sales)} − loads ${Math.round(x.spent)} + stock ${Math.round(x.stock)})  I §${pad(Math.round(x.I), 6)} (sales ${Math.round(x.Isales)} − loads ${Math.round(x.Ispent)}, binds ${x.bind})  I/G ${(x.I / x.G).toFixed(3)}`);
+      }
+    }
+    if (board === 'normal') {
+      const inBand = all20.filter((x) => x >= 0.9 && x <= 1.1).length;
+      const out = all20.filter((x) => x < 0.85 || x > 1.15).length;
+      L.push(`   GATE (14.5): ${inBand}/${all20.length} moments within 0.9-1.1 (aim at least 17 of 20), ${out} outside 0.85-1.15 (aim none): ${inBand >= Math.ceil(0.85 * all20.length) && out === 0 ? 'PASSED' : 'NOT MET'}`);
+    }
+  }
 }
 
 // ============================================================================================ main
@@ -580,8 +616,11 @@ async function main(): Promise<void> {
   const jobs = Number(arg('jobs', '2'));
   const specs: Spec[] = [];
   const base = { kind: 'hour' as const, minutes: 60 };
+  // --only income alone: only the income runs (flat board on every seed, the normal board on ten seeds:
+  // seeds 1..10 or the --seeds given when fewer), and only section 8 in the report.
+  const incomeOnly = only.length === 1 && only[0] === 'income';
   for (const seed of seeds) {
-    specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'A', seed, gate: only.includes('gate') });
+    if (!incomeOnly) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'A', seed, gate: only.includes('gate') });
     if (only.includes('beats')) {
       specs.push({ ...base, hand: 'normal', habit: 'all', route: 'A', seed });
       if (routes.includes('B')) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'B', seed });
@@ -589,8 +628,9 @@ async function main(): Promise<void> {
       specs.push({ ...base, hand: 'slow', habit: 'goal', route: 'A', seed, minutes: 100 });
     }
     if (only.includes('hand')) specs.push({ ...base, kind: 'manager', hand: 'normal', habit: 'goal', route: 'A', seed, manager: true });
-    if (only.includes('income')) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed });
+    if (only.includes('income')) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'flat' });
   }
+  if (only.includes('income')) for (const seed of seeds.slice(0, 10)) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'normal' });
   const few = seeds.slice(0, Math.min(3, seeds.length));
   for (const seed of few) {
     if (only.includes('days')) {
@@ -604,7 +644,15 @@ async function main(): Promise<void> {
   const all = await runAll(gameFile, specs, jobs);
   const json = arg('json');
   if (json) fs.writeFileSync(path.resolve(json), JSON.stringify(all));
-  const text = report(all, seeds);
+  let text: string;
+  if (incomeOnly) {
+    const L: string[] = [`Rated income tables (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts --only income`];
+    const broken = all.flatMap((r) => r.broken.map((b) => `${r.spec.kind}/${r.spec.board}/s${r.spec.seed} t=${Math.round(b.t)}: ${b.what}`));
+    L.push(`0. HARD PROMISES (8.3) on ${all.length} runs: ${broken.length ? `${broken.length} BROKEN` : 'none broken'}`);
+    for (const x of broken.slice(0, 12)) L.push(`   ${x}`);
+    incomeSection(L, all);
+    text = L.join('\n');
+  } else text = report(all, seeds);
   process.stdout.write(`${text}\n`);
   const broken = all.some((r) => r.broken.length || r.gate.length);
   process.exit(broken ? 2 : 0);

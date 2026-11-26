@@ -286,7 +286,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
   // 2.1: with no boss within sight of the truck, the partner's skip zone or the floor, the whole trip is
   // planned now with one dated end (its phases replayed at their planned times when it lands).
   const z = skipZone(x.c, best.partner, sk.slot);
-  if (planAhead(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
+  if (planAhead(x, 'truck') && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
 }
 

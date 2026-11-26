@@ -1,17 +1,21 @@
 /**
- * E40 (stage 2 2.2; RULING2.md 10.5; H1): Hold never stops the yard, on the frozen test content (no tuned
- * number pinned). While the boss is away and the cash cannot pay the next load, the held bay worth most
- * at today's price rejoins the merchant's round, one bay at a time; the away card names it. The bots'
- * case (REPORT6 C5: every bay held, cash spent, the absence paid §0) now earns in line with the same
- * absence without Hold. Owner: engine2-income.
+ * E40 (stage 2 2.2; RULING2.md 10.5 as amended by 14.6; H1): Hold never stops the yard, AND STAYS ON, on the
+ * frozen test content (no tuned number pinned). While the boss is away and the cash cannot pay the next
+ * load, the yard sets aside from ONE held bay (first a bay whose word of the day is not low, then the one
+ * worth most at today's price) just what that load needs at today's price, as the Sell button sets a lot
+ * aside; the bay stays held; the away card names it. The bots' case (REPORT6 C5: every bay held, cash
+ * spent, the absence paid §0) now earns in line with the same absence without Hold. Owners: engine2-income,
+ * engine2-fixB (14.6).
  */
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../fixtures/salvage';
 import * as R from '../salvage';
 import { awayLines, type AwayData } from '../../ui/salvage/overlays/marketLines';
-import { holdRelease, resolveDown, freeOf } from './bays';
+import { asideOf, holdRelease, resolveDown, freeOf } from './bays';
+import { dayWord } from './board';
 import { begin, priceAt, dayAt } from './clock';
 import { fullestSkip } from './partners';
+import { lineAmount } from './money';
 import { stockValue } from './rate';
 import type { AwayCard, SalvageConfig, SalvageGame } from './types';
 
@@ -59,22 +63,55 @@ function atCheck(g: SalvageGame) {
 }
 
 describe('Hold never stops the yard (E40)', () => {
-  it('lets go the held bay worth most at today’s price, one bay a check, and records it', () => {
-    const { x, pid } = atCheck(stuck());
+  it('sets aside from ONE held bay (not low first, then worth most) just what the cheapest full skip needs, at today’s price; Hold stays on (14.6)', () => {
+    const { x, pid } = atCheck(stuck(true, 37.5));
     expect(fullestSkip(x, pid)).not.toBeNull();
     const day = dayAt(x, x.s.t);
     const worth = Object.entries(x.s.bays)
       .filter(([, b]) => b.held && freeOf(b) > 0)
-      .map(([grade, b]) => ({ grade, v: (resolveDown(freeOf(b)) / 1000) * priceAt(x, grade, day) }))
-      .sort((a, b) => b.v - a.v || (a.grade < b.grade ? -1 : 1));
+      .map(([grade, b]) => ({ grade, low: dayWord(C, grade, day) === 'low', v: (resolveDown(freeOf(b)) / 1000) * priceAt(x, grade, day) }))
+      .sort((a, b) => Number(a.low) - Number(b.low) || b.v - a.v || (a.grade < b.grade ? -1 : 1));
+    let cheapest = Infinity;
+    for (const id of Object.keys(x.s.partners)) cheapest = Math.min(cheapest, fullestSkip(x, id)?.price ?? Infinity);
+    const need = cheapest - 37.5;
+    const held0 = Object.values(x.s.bays).filter((b) => b.held).length;
     const got = holdRelease(x, x.s.t);
     expect(got).toBe(worth[0].grade);
-    expect(x.s.bays[got!].held).toBe(false);
-    expect(x.s.counts![`holdSold:${got}`]).toBe(x.s.t);
-    expect(x.ev).toContainEqual({ type: 'heldBay', grade: got, on: false });
-    // The released bay is collectable now: no second bay goes at the same check.
+    const b = x.s.bays[got!];
+    // Hold stays on; no heldBay event; the release is dated for the card.
+    expect(b.held).toBe(true);
+    expect(Object.values(x.s.bays).filter((q) => q.held).length).toBe(held0);
+    expect(x.ev.some((e) => e.type === 'heldBay')).toBe(false);
+    expect(x.s.counts![`holdSold:${got}`]).toBe(Math.floor(x.s.t));
+    // The lot: one, at today's price and day, whole 0.1 kg steps, enough for the skip and not a step more.
+    expect(b.aside).toHaveLength(1);
+    const lot = b.aside[0];
+    const price = priceAt(x, got!, day);
+    expect(lot).toEqual({ g: lot.g, price, day });
+    expect(lot.g % 100).toBe(0);
+    expect(lot.g).toBeGreaterThanOrEqual(100);
+    expect(lineAmount(lot.g, price)).toBeGreaterThanOrEqual(need - 1e-9);
+    if (lot.g > 100) expect(lineAmount(lot.g - 100, price)).toBeLessThan(need);
+    expect(asideOf(b)).toBe(lot.g);
+    // The lot is collectable now: nothing more is set aside at the same check.
     expect(holdRelease(x, x.s.t)).toBeNull();
-    expect(Object.values(x.s.bays).filter((b) => b.held).length).toBe(worth.length - 1);
+    expect(b.aside).toHaveLength(1);
+  });
+
+  it('a bay whose word of the day is low goes only when no other held bay has stock; a lot never takes more than the bay holds free', () => {
+    const { x } = atCheck(stuck(true, 0));
+    const day = dayAt(x, x.s.t);
+    const grades = Object.keys(x.s.bays).filter((g) => x.s.bays[g].held && freeOf(x.s.bays[g]) > 0);
+    const low = grades.filter((g) => dayWord(C, g, day) === 'low');
+    const other = grades.filter((g) => dayWord(C, g, day) !== 'low');
+    // Only low bays keep their stock: the lot comes from one of them, and from a bay of 0.3 kg at most 0.3 kg.
+    for (const g of other) x.s.bays[g].g = 0;
+    const pick = low.length ? low : grades;
+    for (const g of pick) x.s.bays[g].g = 300;
+    const got = holdRelease(x, x.s.t);
+    expect(pick).toContain(got);
+    expect(x.s.bays[got!].aside[0].g).toBeLessThanOrEqual(300);
+    expect(x.s.bays[got!].held).toBe(true);
   });
 
   it('holds while the boss is in the yard, while the cash pays the next load, and while nothing waits to be bought', () => {
@@ -108,8 +145,13 @@ describe('Hold never stops the yard (E40)', () => {
     const eb = earned(b, gb);
     expect(ea).toBeGreaterThan(0);
     expect(Math.abs(eb / ea - 1)).toBeLessThan(0.1);
-    // Each released bay left Hold for good; the others stay held.
-    for (const grade of cb.heldSold!) expect(gb.salvage.bays[grade].held).toBe(false);
+    // 14.6: every held bay is still held at the end, and no more was sold than the loads needed: each lot covers
+    // one load's shortfall, within one 0.1 kg step of its grade a load.
+    for (const b of Object.values(gb.salvage.bays)) if (b.g > 0) expect(b.held).toBe(true);
+    const sold = cb.lines.reduce((a, l) => a + l.money, 0);
+    const step = Math.max(...Object.keys(C.grades).map((g) => lineAmount(100, priceAt(atCheck(b).x, g, gb.salvage.clock.day))));
+    expect(cb.loads).toBeGreaterThan(0);
+    expect(sold).toBeLessThanOrEqual((cb.spent ?? 0) + cb.loads * step + 1e-6);
   });
 
   it('the away card prints one line a bay sold from hold, only when there was one', () => {

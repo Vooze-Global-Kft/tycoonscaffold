@@ -49,7 +49,10 @@ export function grouping(x: Ctx): boolean {
 }
 
 /** Is the rest of a run planned ahead when it departs out of sight (runs on this rung, and `group.ahead`)? */
-export function planAhead(x: Ctx): boolean {
+export function planAhead(x: Ctx, part?: string): boolean {
+  // DIAG-FIXA (temporary): per-part switches for the measurement.
+  const raw = (x.c as unknown as { group?: Record<string, unknown> }).group;
+  if (part && raw && typeof raw['ahead_' + part] === 'boolean') return grouping(x) && (raw['ahead_' + part] as boolean);
   return grouping(x) && groupCfg(x.c).ahead;
 }
 

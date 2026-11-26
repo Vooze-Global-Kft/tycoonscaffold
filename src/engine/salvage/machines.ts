@@ -180,7 +180,7 @@ export function start(x: Ctx, id: MachineId, t: number): void {
       // grade with it (one dated end; credited by the cumulative rule over their summed grams). The hand
       // stripper runs only while the boss stands at it, so it is never grouped.
       let n = 1;
-      if (id !== 'hand_stripper' && m.hopper.length && planAhead(x) && !bossSees(x, t, [], [machinePlace(id)])) {
+      if (id !== 'hand_stripper' && m.hopper.length && planAhead(x, 'mach') && !bossSees(x, t, [], [machinePlace(id)])) {
         let g = piece.g;
         const rest: Piece[] = [];
         for (const q of m.hopper) {

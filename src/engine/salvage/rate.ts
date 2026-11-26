@@ -370,7 +370,8 @@ export interface RatedTerms {
  *    nothing; a step that is full stops the next feed).
  * 4. Value (I4): each kilogram at usual prices as weighed, the powered stripper's and the bench's inputs
  *    at their outputs, the crucible's brass and aluminium inputs at the ingot (the recipe that pays more a
- *    kilogram first, within the crucible's s_per_kg), whatever the switches say; less the loads' label
+ *    kilogram first, within the crucible's s_per_kg; only once poured at least once, RULING2.md 14.5),
+ *    whatever the switches say; less the loads' label
  *    prices (k × the as-found value at usual prices).
  * 0 before the first yard hand (2.3.1).
  */
@@ -523,8 +524,10 @@ function valueOf(c: Ctx['c'], s: Ctx['s'], u: Unit): { sales: number } {
     for (const [g, q] of machineShares(c, id, inG)) kg[g] = (kg[g] ?? 0) + run * q;
     kg[inG] = (kg[inG] ?? 0) + (m - run);
   }
-  // The crucible: from the bays, the recipe paying more a kilogram first, within its hour (s_per_kg).
-  if (s.machines.crucible.owned) {
+  // The crucible: from the bays, the recipe paying more a kilogram first, within its hour (s_per_kg); only
+  // once it can run with nobody there (RULING2.md 14.5): owned AND poured at least once (its first heat waits
+  // at 'ready' for the boss, so a crucible never poured earns nothing away).
+  if (s.machines.crucible.owned && (s.counts?.poured ?? 0) > 0) {
     const d = c.machines.crucible;
     let left = 3600 / Math.max(1e-9, d.s_per_kg);
     const recs = Object.values(d.recipes).map((r) => {
