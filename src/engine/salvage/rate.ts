@@ -542,6 +542,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const crucibleOn = s.machines.crucible.owned && (s.counts?.poured ?? 0) > 0;
   const meltIns = new Set<string>();
   if (crucibleOn) for (const r of Object.values(c.machines.crucible.recipes)) for (const g of Array.isArray(r[0]) ? (r[0] as string[]) : [r[0] as string]) meltIns.add(g);
+  const handsRule = s.ladder.rung >= orderFromRung(c);
   const carryOf = (u: Unit, where: 'floor' | 'dropoff'): Carry => {
     const mean = u.scaleKg > 0 ? u.m2 / u.scaleKg : 0;
     const fill = Math.max(1, h.load - mean / 2);
@@ -561,9 +562,18 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       const tray = tripS(routeM(c, id, 'scale'));
       out.feed += feeds * tripS(routeM(c, where, id));
       n.feed += feeds;
-      // The tray (engine2-income2, measured): a batch costs the hands its own seconds and one trip more.
-      out.tray += u.machKg[id] / Math.max(1e-9, rate) + feeds * tray;
-      n.tray += feeds + u.machKg[id] / Math.max(1e-9, rate) / tray;
+      if (handsRule) {
+        // RULING2.md 17.4 (engine2-dispatch): under the hands' rule the tray waits for a floor at most half full or for
+        // the tray to be full, so it is fetched in full loads (measured: the batch-and-a-trip term charged twice the
+        // real tray seconds on the carry-bound day-1 yards).
+        const k = u.machKg[id] / h.load + feeds;
+        out.tray += k * tray;
+        n.tray += k;
+      } else {
+        // The tray (engine2-income2, measured): a batch costs the hands its own seconds and one trip more.
+        out.tray += u.machKg[id] / Math.max(1e-9, rate) + feeds * tray;
+        n.tray += feeds + u.machKg[id] / Math.max(1e-9, rate) / tray;
+      }
     }
     // The crucible charges itself from the bays; its ingots are fetched from its tray, a load a trip.
     if (crucibleOn) {
