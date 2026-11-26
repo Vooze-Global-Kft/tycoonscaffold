@@ -358,3 +358,19 @@ describe('2.12 the sale', () => {
     void reuseApply;
   });
 });
+
+describe('2.12 the Yard sale\'s card (4.6): shown equals applied', () => {
+  it('each racked thing\'s "§q at the gate" is what its visitor pays', async () => {
+    const { yardSaleCardOf } = await import('./cardsWorks');
+    const g = quiet(rackFull());
+    const card = yardSaleCardOf(cfg, g)!;
+    expect(card).toMatchObject({ slots: 2, free: 0 });
+    const ev: SalvageEvent[] = [];
+    adv(g, g.salvage.reuse.nextAt! + 0.001, false, ev);
+    const sold = ev.find((e) => e.type === 'rackSold') as Extract<SalvageEvent, { type: 'rackSold' }>;
+    const shown = card.things.find((t) => t.uid === sold.thing)!;
+    // The same market day (the visitor comes 10 s on): the card's q is the sale's.
+    expect(shown.q).toBe(sold.q);
+    expect(card.nextVisitorInS).toBeCloseTo(g.salvage.reuse.nextAt! - g.salvage.t, 9);
+  });
+});

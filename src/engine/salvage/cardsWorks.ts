@@ -114,11 +114,16 @@ export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
   void ctx;
   const title: TextKey = ref.kind === 'works' ? (`title.works.${ref.plate}` as TextKey) : (`title.${ref.kind}` as TextKey);
   const card: CardData = { kind: ref.kind as CardData['kind'], shape: 'panel', title: { key: title }, lead: [], rows: [], foot: [] };
-  if (ref.kind === 'yardSale') card.yardSale = yardSaleCardOf(cfg, g);
-  else if (ref.kind === 'lot') {
+  if (ref.kind === 'yardSale') {
+    const yc = yardSaleCardOf(cfg, g);
+    if (yc) card.yardSale = yc;
+  } else if (ref.kind === 'lot') {
     const lc = lotCardOf(cfg, g, ref.k);
     if (lc) card.lot = lc;
-  } else if (ref.kind === 'crate') card.crate = crateCardOf(cfg, g);
+  } else if (ref.kind === 'crate') {
+    const cc = crateCardOf(cfg, g);
+    if (cc) card.crate = cc;
+  }
   if (ref.kind === 'works') {
     const wc = worksCardOf(cfg, g, ref.plate);
     if (wc) {

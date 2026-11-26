@@ -63,7 +63,37 @@ import { supply } from './round';
 import { floorSlot, thingGone, thingOf } from './things';
 import { hashString } from '../rng';
 import type { CrewMember, ObjectId, Piece, ThingState, TicketLine } from './types';
-import { handIdle, handLeg, type DatedAdd } from './works';
+import type { DatedAdd } from './works';
+import { boostFactor } from './clock';
+import { legM } from './content';
+import type { Spot } from './types';
+
+// A yard hand's leg and rest (works.ts handLeg / handIdle's rule, crew.ts's own: the same speed, handling and event),
+// written here so that reuse.ts does not import works.ts at run time (works.ts imports this file).
+function handLeg(x: Ctx, m: CrewMember, job: CrewMember['job'], phase: CrewMember['phase'], to: Spot, t: number, fromXY?: { x: number; y: number }): void {
+  const from = fromXY ?? spotPos(x.c, m.to, x.s.things, x.s.truck);
+  const dest = spotPos(x.c, to, x.s.things, x.s.truck);
+  const h = x.c.crew.hand;
+  const v = h.v * (1 + h.lev * Math.max(0, m.level - 1)) * boostFactor(x, x.s.t);
+  const dur = legM(x.c, from, dest) / v + h.handle_s;
+  m.job = job;
+  m.phase = phase;
+  m.from = { xy: [from.x, from.y] };
+  m.to = to;
+  m.t0 = t;
+  m.t1 = t + Math.max(1e-3, dur);
+  x.ev.push({ type: 'crewLeg', id: m.id, job, from: m.from, to, t0: m.t0, t1: m.t1 });
+}
+function handIdle(m: CrewMember, t: number, at: { x: number; y: number }): void {
+  m.job = 'idle';
+  m.phase = 'wait';
+  m.from = { xy: [at.x, at.y] };
+  m.to = { xy: [at.x, at.y] };
+  m.t0 = t;
+  m.t1 = t;
+  m.carries = null;
+  delete m.dest;
+}
 
 export type ReuseKind = 'visitor' | 'van';
 
