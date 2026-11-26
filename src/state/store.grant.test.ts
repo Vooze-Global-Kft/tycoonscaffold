@@ -383,12 +383,11 @@ describe('the ad service at boot', () => {
     const { useGame } = await boot(doubleMode({ adAudience: () => band }));
     expect(h.calls.setAudience.at(-1)).toBe('child');
     band = 'teen';
-    // Any state change hands it over again (here: the quote of a Buy, then its withdrawal).
-    h.purchase = async () => ({ ok: false });
-    await useGame.getState().buyQuoted(useGame.getState().cfg.monetization.iap.products.find((p) => p.id === PACK.id)!, quote, withdraw);
-    expect(h.calls.setAudience).toContain('teen');
+    // Any change of the game hands it over again, also one a mode's own action sets directly (src/modes/salvage/actions.ts).
+    useGame.setState({ game: { ...useGame.getState().game, cash: 1 } });
+    expect(h.calls.setAudience.at(-1)).toBe('teen');
     band = null;
-    await useGame.getState().buyQuoted(useGame.getState().cfg.monetization.iap.products.find((p) => p.id === PACK.id)!, quote, withdraw);
+    useGame.setState({ game: { ...useGame.getState().game, cash: 2 } });
     expect(h.calls.setAudience.at(-1)).toBeNull();
     h.calls.setAudience = [];
     await boot(doubleMode());
