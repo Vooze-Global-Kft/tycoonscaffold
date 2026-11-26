@@ -426,8 +426,10 @@ export const GameConfigSchema = z.object({
        * When consent, tracking and the ad SDK are asked for and started (src/services/ads.ts). 'boot': at
        * the game's start, as every game did before this existed. 'firstOffer': nothing of them until the
        * first time an ad button would show (the mode's screen calls `ads.firstOffer()`), then once.
+       * Absent means 'boot' (no zod default, so the four earlier games parse to exactly the config they
+       * parsed to before: src/engine/modeRegression.test.ts pins Pizza Empire's).
        */
-      initOn: z.enum(['boot', 'firstOffer']).default('boot'),
+      initOn: z.enum(['boot', 'firstOffer']).optional(),
     }),
     iap: z.object({
       revenueCatIosKey: z.string().optional(),

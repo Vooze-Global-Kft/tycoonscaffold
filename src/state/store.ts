@@ -334,13 +334,25 @@ function playSimSounds(events: readonly GameEvent[]) {
   }
 }
 
-export const useGame = create<Store>((set, get) => {
-  const syncAds = (game: GameState, cfg: GameConfig = get().cfg) => {
+export const useGame = create<Store>((set, get, api) => {
+  const syncAds = (game: GameState) => {
     ads.noAds = game.entitlements.noAds;
     ads.skipRewarded = game.entitlements.skipRewarded;
-    // A mode that keeps an age band hands its ad treatment over (src/engine/mode.ts adAudience); without one, nothing changes.
+  };
+
+  /**
+   * A mode that keeps an age band (src/engine/mode.ts adAudience) hands its ad treatment to the ad
+   * service now and on every change of the game, whoever changes it (a mode's own actions set the
+   * store directly). Without adAudience nothing subscribes and the ad service is never told.
+   */
+  const followAudience = (cfg: GameConfig, game: GameState) => {
     const mode = engineFor(cfg);
-    if (mode?.adAudience) ads.setAudience(safe('engine.adAudience', () => mode.adAudience!(cfg, game), null));
+    if (!mode?.adAudience) return;
+    const tell = (c: GameConfig, g: GameState) => ads.setAudience(safe('engine.adAudience', () => mode.adAudience!(c, g), null));
+    tell(cfg, game);
+    api.subscribe((st, prev) => {
+      if (st.game !== prev.game || st.cfg !== prev.cfg) tell(st.cfg, st.game);
+    });
   };
 
   /** Writes the save; true once it is on disk. Before boot has loaded the save nothing is written (false). */
@@ -516,7 +528,12 @@ export const useGame = create<Store>((set, get) => {
         // Games without such a product never ask (their start is as before).
         const grants = M.grantsHoursOfIncome(cfg);
         if (grants) {
-          const txs = await iap.transactions().catch((e) => (crash.record(e, 'iap.transactions'), [] as StoreTransaction[]));
+          let txs: StoreTransaction[] = [];
+          try {
+            txs = await iap.transactions();
+          } catch (e) {
+            crash.record(e, 'iap.transactions');
+          }
           for (const t of txs) game = grantTransaction(cfg, game, t, at);
         }
         game = safe('meta.registerSession', () => M.registerSession(game, at), game);
@@ -528,7 +545,9 @@ export const useGame = create<Store>((set, get) => {
         if (offline?.game) game = offline.game;
         // A mode that is paid when its absence is computed (decree, 2.15) gets the earnings in this same update.
         if (offline && offline.earnings > 0 && engineFor(cfg)?.paysOnCompute) game = E.grantCash(game, offline.earnings);
-        syncAds(game, cfg);
+        syncAds(game);
+        // Before the ad service may start (below): its first requests already carry the band.
+        followAudience(cfg, game);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
         sessionStartedAt = at;
@@ -541,7 +560,7 @@ export const useGame = create<Store>((set, get) => {
         });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
         // A purchase approved later (or completed after a kill) reaches the mode while the game runs; saved at once.
-        if (grants) iap.onTransactions(routeTransactions);
+        if (grants) safe('iap.onTransactions', () => iap.onTransactions(routeTransactions), undefined);
         // 'firstOffer': consent, tracking and the SDK wait for the mode's first ad button (ads.firstOffer()).
         if ((cfg.monetization.ads.initOn ?? 'boot') === 'boot') ads.init();
         detectRegion().then((region) => set({ region }));
