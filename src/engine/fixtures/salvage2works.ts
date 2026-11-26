@@ -27,10 +27,10 @@ import { begin, finish } from '../salvage/clock';
 import { jump } from '../salvage/tick';
 import { worksDepart } from '../salvage/works';
 import type { SalvageConfig, SalvageGame } from '../salvage/types';
-import { stage2Content, stage2Game, STAGE2_STATES } from './salvage';
+import { stage2Cfg, stage2Content, stage2Game } from './salvage';
 
 type P = Omit<PlateDef, 'financeable'> & { financeable?: boolean };
-const base = { needs: null, reagents: [], out: {}, waste: {}, lev: 0.5, maxLevel: 5, inbuf: 0, tray: 0, price: 1000, deliver_s: 10, gate: 'rung3' } as const;
+const base = { needs: null as string | null, reagents: [] as [string, number, number][], out: {}, waste: {}, lev: 0.5, maxLevel: 5, inbuf: 0, tray: 0, price: 1000, deliver_s: 10, gate: 'rung3' };
 
 /** The test plates (round numbers; every plate and recipe keeps mass and nets at least 1.05 × its input at p̄). */
 export const TEST_PLATES: Record<string, P> = {
@@ -87,7 +87,7 @@ export function worksContent(): SalvageContent {
 let CFG: SalvageConfig | null = null;
 /** The config of the works' tests: the test content with r3's world seed (one object, so the rules' caches hold). */
 export function worksCfg(): SalvageConfig {
-  return (CFG ??= freeze({ mode: 'salvage', salvage: { ...worksContent(), worksLayer: worksContent().worksLayer, worldSeed: STAGE2_STATES.r3.salvage.worldSeed ?? stage2Content().worldSeed } } as unknown as SalvageConfig));
+  return (CFG ??= freeze({ mode: 'salvage', salvage: { ...worksContent(), worksLayer: worksContent().worksLayer, worldSeed: stage2Cfg('r3').salvage.worldSeed } } as unknown as SalvageConfig));
 }
 
 /** The plates in the order r4 buys them (content order; every `needs` before its plate). */

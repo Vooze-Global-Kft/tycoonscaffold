@@ -25,6 +25,11 @@
  *                 median of I/G, the seeds within 0.88 to 1.12, min and max, and the gate line. With --only
  *                 income alone, only these runs are made and only section 8 is printed. Five seeds not used
  *                 in the calibration: --seeds 5 --first 16.
+ * --only walk     RULING2.md 17.1 (engine2-dispatch): the purchase walk. From each seed's normal-hand states at minute
+ *                 30, 60, 90, day 1 and day 3, every purchase, hire and level one step up by hand (arrivals landed),
+ *                 the change in G (a capped absence at usual prices, cash enough for every load, over the state's own
+ *                 absence hours) and the noise floor beside it; section 9: per moment and step the mean, the worst
+ *                 seed and the gate (mean not below -1 %, no seed below -4 %). With --only walk alone only section 9.
  * Every run checks the hard promises of 8.3 (shown equals applied, cash never below zero, supplied never
  * falling, no stock negative; tick equals jump minute by minute on the normal hand's runs); a broken
  * promise prints in the report's first section and makes the exit code 2.
@@ -37,6 +42,10 @@ import { fileURLToPath } from 'node:url';
 import { SalvageSchema } from '../../src/config/schema.salvage';
 import * as R from '../../src/engine/salvage';
 import { away, newBot, playTo, ratedCapacity, seededCfg, startGame, tickJumpGate, type Bot, type BotOptions } from '../../src/engine/salvage/bot';
+import { awayPass } from '../../src/engine/salvage/away';
+import { begin, finish } from '../../src/engine/salvage/clock';
+import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
+import { own } from '../../src/engine/salvage/rate';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -57,7 +66,7 @@ function loadCfg(file: string): R.SalvageConfig {
 // ============================================================================================ one run
 
 interface Spec extends BotOptions {
-  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income';
+  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income' | 'walk';
   minutes: number;
   gate?: boolean;
   /** income only: the board the yard is PLAYED with ('flat': board.a 0 throughout; 'normal': the shipped board, G at usual prices). */
@@ -123,6 +132,101 @@ function incomeRow(cfg: R.SalvageConfig, g: R.SalvageGame, spec: Spec, at: strin
   const G = (ab.g.cash - g.cash + R.stockValue(cfg, ab.g) - v0) / Math.max(1e-9, h);
   const T = R.ratedTerms(cfg, g);
   return { at, t: g.salvage.t, rung: g.salvage.ladder.rung, ran_h: h, G, I: T.I, bind: T.bind, Isales: T.sales, Ispent: T.spent, sales: card.money / h, spent: (card.spent ?? 0) / h, stock: (R.stockValue(cfg, ab.g) - v0) / h };
+}
+
+/** A purchase landed at once (its arrival): the walk measures the asset, not its delivery. */
+function landed(cfg: R.SalvageConfig, g: R.SalvageGame): R.SalvageGame {
+  if (!g.salvage.arriving.length) return g;
+  const x = begin(cfg, g, [], false);
+  for (const a of [...x.s.arriving]) own(x, a.item, x.s.t);
+  x.s.arriving = [];
+  return finish(g, x);
+}
+
+/** G (2.3.3) from g: one capped absence at usual prices, cash enough for every load (1e7), over `hours` at most. */
+function walkG(cfg: R.SalvageConfig, g0: R.SalvageGame, hours = 24): { G: number; h: number } {
+  const g = { ...g0, cash: 1e7, lastSavedAt: g0.salvage.clock.highMs } as R.SalvageGame;
+  const o = awayPass(cfg, g, g.salvage.clock.highMs + Math.round(hours * 3600_000));
+  const h = (o.salvage.away?.seconds ?? 0) / 3600;
+  return { G: (o.cash - g.cash + R.stockValue(cfg, o) - R.stockValue(cfg, g)) / Math.max(1e-9, h), h };
+}
+
+/**
+ * RULING2.md 17.1's walk on one state: G (at usual prices: board.a 0) before, the noise floor (the cutters' power x
+ * (1 + 1e-9)), and after every purchase, hire and level one step up (arrivals landed), each over the same hours as
+ * the state's own absence (so that the Night watch's longer cap is not counted as a change an hour).
+ */
+function walkRow(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: string) {
+  const flat = { ...base.salvage, board: { ...base.salvage.board, a: 0 } };
+  const cfg = seededCfg({ ...base, salvage: flat } as R.SalvageConfig, seed);
+  const noise = seededCfg({ ...base, salvage: { ...flat, crew: { ...flat.crew, cutter: { ...flat.crew.cutter, share: flat.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig, seed);
+  const g = landed(cfg, { ...g0, cash: 1e12 } as R.SalvageGame);
+  const b0 = walkG(cfg, g);
+  const t = g.salvage.t;
+  const steps: [string, () => R.SalvageGame][] = [];
+  for (const role of ['hand', 'cutter', 'driver'] as const) {
+    const ck = hireCheck(cfg, g, role);
+    if (ck.price !== null && !ck.refusal) steps.push([`hire ${role}`, () => R.hire(cfg, g, role, ck.price!, t)]);
+  }
+  for (const m of g.salvage.crew) {
+    const ck = levelCheck(cfg, g, { kind: 'crew', id: m.id });
+    if (ck.price !== null && !ck.refusal) steps.push([`level ${m.role}`, () => R.level(cfg, g, { kind: 'crew', id: m.id }, ck.price!, t)]);
+  }
+  for (const id of ['stripper', 'bench', 'crucible'] as const) {
+    const ck = levelCheck(cfg, g, { kind: 'machine', machine: id });
+    if (ck.price !== null && !ck.refusal) steps.push([`level ${id}`, () => R.level(cfg, g, { kind: 'machine', machine: id }, ck.price!, t)]);
+  }
+  for (const pid of Object.keys(g.salvage.partners)) {
+    const ck = levelCheck(cfg, g, { kind: 'partner', partner: pid });
+    if (ck.price !== null && !ck.refusal) steps.push([`level ${pid}`, () => R.level(cfg, g, { kind: 'partner', partner: pid }, ck.price!, t)]);
+  }
+  const seen = new Set<string>();
+  for (const it of [...cfg.salvage.shop, ...cfg.salvage.dayOneList]) {
+    if (it.kind === 'crew' || seen.has(it.key)) continue;
+    seen.add(it.key);
+    const ck = buyCheck(cfg, g, it.key as never);
+    if (ck.price !== null && !ck.refusal) steps.push([`buy ${it.key}`, () => R.buy(cfg, g, it.key as never, ck.price!, t)]);
+  }
+  const rows: { step: string; d: number }[] = [];
+  for (const [name, f] of steps) {
+    const h = landed(cfg, { ...f(), cash: 1e12 } as R.SalvageGame);
+    rows.push({ step: name, d: (walkG(cfg, h, b0.h).G - b0.G) / b0.G });
+  }
+  return { at, rung: g.salvage.ladder.rung, G: Math.round(b0.G), noise: (walkG(noise, g, b0.h).G - b0.G) / b0.G, rows };
+}
+
+/** 9. THE PURCHASE WALK (RULING2.md 17.1): per moment and step, the mean change of G over the seeds (a seed's several crew of one role averaged), the worst seed, and the noise floor. */
+function walkSection(L: string[], all: Summary[]): void {
+  type W = { at: string; rung: number; G: number; noise: number; rows: { step: string; d: number }[] };
+  const runs = all.filter((r) => r.spec.kind === 'walk');
+  if (!runs.length) return;
+  L.push('');
+  L.push(`9. THE PURCHASE WALK (RULING2.md 17.1; ${runs.length} seeds): every purchase, hire and level one step up by hand; the change in G (a capped absence at usual prices, stock counted); gate: mean not below -1 %, no seed below -4 %`);
+  const pc = (v: number) => `${v >= 0 ? '+' : ''}${(100 * v).toFixed(2)} %`;
+  let fails = 0;
+  let n = 0;
+  for (const at of ['m30', 'm60', 'm90', 'day1', 'day3']) {
+    const ws = runs.map((r) => ({ seed: r.spec.seed, w: ((r.extra.walk as W[]) ?? []).find((q) => q.at === at) })).filter((q) => q.w);
+    if (!ws.length) continue;
+    const nz = ws.map((q) => q.w!.noise);
+    L.push(` ${at} (${ws.length} states; rungs ${[...new Set(ws.map((q) => q.w!.rung))].join(',')}; median G §${Math.round(med(ws.map((q) => q.w!.G)))} an hour): noise mean ${pc(nz.reduce((a, v) => a + v, 0) / nz.length)}, mean |noise| ${pc(nz.reduce((a, v) => a + Math.abs(v), 0) / nz.length)}, worst ${pc(Math.min(...nz))}`);
+    const by = new Map<string, Map<number, number[]>>();
+    for (const { seed, w } of ws) for (const q of w!.rows) {
+      const m = by.get(q.step) ?? new Map<number, number[]>();
+      by.set(q.step, m);
+      (m.get(seed) ?? m.set(seed, []).get(seed)!).push(q.d);
+    }
+    for (const [step, m] of [...by.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+      const per = [...m.entries()].map(([seed, v]) => ({ seed, d: v.reduce((a, x) => a + x, 0) / v.length }));
+      const mean = per.reduce((a, q) => a + q.d, 0) / per.length;
+      const worst = per.reduce((a, q) => (q.d < a.d ? q : a));
+      const bad = mean < -0.01 || worst.d < -0.04;
+      n++;
+      if (bad) fails++;
+      L.push(`   ${step.padEnd(26)} n ${pad(per.length, 2)}  mean ${pc(mean).padStart(9)}  worst ${pc(worst.d).padStart(9)} (s${worst.seed})${bad ? '  FAILS' : ''}`);
+    }
+  }
+  L.push(` GATE (17.1): ${fails ? `${fails} of ${n} steps FAIL` : `met on all ${n} steps`}`);
 }
 
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
@@ -208,6 +312,22 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
       extra.burst = burst;
       extra.night = night;
     }
+    return summary(b, spec, Rs, gate, extra, t0);
+  }
+  if (spec.kind === 'walk') {
+    // RULING2.md 17.1 (engine2-dispatch): the purchase walk from the states of minute 30, 60, 90, day 1 and day 3.
+    const st: [string, R.SalvageGame][] = [];
+    playTo(b, 5400, (bb, m) => {
+      if (m === 30 || m === 60) st.push([`m${m}`, bb.g]);
+    });
+    st.push(['m90', b.g]);
+    for (let k = 0; k < 6; k++) {
+      away(b, 11.75 * 3600);
+      playTo(b, b.g.salvage.t + 15 * 60);
+      if (k === 1) st.push(['day1', b.g]);
+    }
+    st.push(['day3', b.g]);
+    extra.walk = st.map(([at, g]) => walkRow(base, spec.seed, g, at));
     return summary(b, spec, Rs, gate, extra, t0);
   }
   if (spec.kind === 'income') {
@@ -669,7 +789,7 @@ async function main(): Promise<void> {
   const first = Number(arg('first', '1'));
   const seeds = unseen ? [101, 102, 103, 104, 105] : Array.from({ length: nSeeds }, (_, i) => i + first);
   const routes = Number(arg('routes', '2')) >= 2 ? ['A', 'B'] : ['A'];
-  const only = (arg('only', 'beats,hand,away,days,nohand,gate,income') ?? '').split(',');
+  const only = (arg('only', 'beats,hand,away,days,nohand,gate,income,walk') ?? '').split(',');
   const jobs = Number(arg('jobs', '2'));
   const specs: Spec[] = [];
   // REPORT7: the hour runs are played to minute 90 (E31c: the first half hour after rung 3 shows what the runs do).
@@ -677,8 +797,9 @@ async function main(): Promise<void> {
   // --only income alone: only the income runs (the flat and the normal board on every seed), and only
   // section 8 in the report.
   const incomeOnly = only.length === 1 && only[0] === 'income';
+  const walkOnly = only.length === 1 && only[0] === 'walk';
   for (const seed of seeds) {
-    if (!incomeOnly) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'A', seed, gate: only.includes('gate') });
+    if (!incomeOnly && !walkOnly) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'A', seed, gate: only.includes('gate') });
     if (only.includes('beats')) {
       specs.push({ ...base, hand: 'normal', habit: 'all', route: 'A', seed });
       if (routes.includes('B')) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'B', seed });
@@ -687,6 +808,7 @@ async function main(): Promise<void> {
     }
     if (only.includes('hand')) specs.push({ ...base, kind: 'manager', hand: 'normal', habit: 'goal', route: 'A', seed, manager: true });
     if (only.includes('income')) specs.push({ kind: 'income', minutes: 90, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'flat' });
+    if (only.includes('walk')) specs.push({ kind: 'walk', minutes: 90, hand: 'normal', habit: 'goal', route: 'A', seed });
   }
   // RULING2.md 14.10: the normal board on every seed too (engine2-income2).
   if (only.includes('income')) for (const seed of seeds) specs.push({ kind: 'income', minutes: 90, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'normal' });
@@ -711,7 +833,15 @@ async function main(): Promise<void> {
     for (const x of broken.slice(0, 12)) L.push(`   ${x}`);
     incomeSection(L, all);
     text = L.join('\n');
-  } else text = report(all, seeds);
+  } else if (walkOnly) {
+    const L: string[] = [`The purchase walk (the real rules, ${seeds.length} seeds: ${seeds[0]}..${seeds.at(-1)}), generated by scripts/content/yard-bot.ts --only walk`];
+    walkSection(L, all);
+    text = L.join('\n');
+  } else {
+    const L = [report(all, seeds)];
+    walkSection(L, all);
+    text = L.join('\n');
+  }
   process.stdout.write(`${text}\n`);
   const broken = all.some((r) => r.broken.length || r.gate.length);
   process.exit(broken ? 2 : 0);

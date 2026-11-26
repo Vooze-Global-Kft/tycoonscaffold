@@ -1024,7 +1024,7 @@ export type CardAction =
   | { act: 'restorePurchases' }
   | { act: 'chooseLook'; slot: LookSlot; id: string | null }
   /** A rewarded ad's button (or, with No ad videos owned, "Take +§x"): `amount` as shown; `grade` the held bay of a spot buyer. */
-  | { act: 'watchAd'; kind: AdKind; amount: number; grade?: GradeId }
+  | { act: 'watchAd'; kind: AdKind; amount: number; grade?: GradeId; /** rules-money wave 2: the spot buyer's Sell as shown (adPaid makes that Sell and pays the bonus apart, one action). */ sell?: SellShown }
   /** The Settings switch "Scrip packs: shown / hidden": opens the code pad (`packCode`). */
   | { act: 'setPacksHidden'; on: boolean };
 
@@ -1452,6 +1452,8 @@ export interface FrameTable {
   crate?: { x: number; y: number; n: number } | null;
   /** The magnet crane's move under way: from, to, its span (a planned run shows the move under way, as crew legs do). */
   crane?: { from: { x: number; y: number }; to: { x: number; y: number }; span: Span; g: number } | null;
+  /** rules-money wave 2 (2.15.1): the look chosen per slot (`iap.looks`: a product id, `rung<n>`, `foundry`, or null for the yard's own); only the frame reads it. */
+  looks?: Record<LookSlot, string | null>;
 }
 
 /** The boss as the rules see him: where to place him on mount and on an epoch change, his act, pose and ring. */
@@ -1871,6 +1873,8 @@ export interface IapState {
   createdMs: number;
   /** "The second session" (2.15.2, P1): the YARD second the first away card from an absence of at least `ads.awayMinAbsence_min` was closed; null before. Nothing of money or ads exists before it. */
   sessions2At: number | null;
+  /** rules-money wave 2 (15.11 f): quotes withdrawn by the 72 hours, for the shop card's one line "A purchase that was waiting never arrived. Nothing was added." until the shop card is closed (noteSeen {card: 'shop'}). Absent = none. */
+  expired?: { product: string; atMs: number }[];
 }
 
 export type AdKind = 'away' | 'spot';
@@ -1880,7 +1884,7 @@ export interface AdsState {
   day: number;
   awayUsed: number;
   spotUsed: number;
-  awayOffer: { amount: number; I: number } | null;
+  awayOffer: { amount: number; I: number; /** rules-money wave 2 (P6): true when the away card that made it showed no debt: the centred card opens once after that card; false: straight to the bottom bar's deferred button. Absent = true. */ centred?: boolean } | null;
 }
 
 /** 2.9: the forklift (the boss's only): where it stands, its heading, who is in it, its load (whole pieces and whole things as `Piece` with `whole`, as the boss's load). */
@@ -1943,11 +1947,11 @@ export interface SalvageActions2 {
   signFinance(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, shown: FinanceShown, clock: number, events?: SalvageEvent[]): SalvageGame;
   setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to: StationId | 'bay', clock: number, events?: SalvageEvent[]): SalvageGame;
   setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame;
-  quotePack(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: string[], askedMs: number, clock: number, events?: SalvageEvent[]): SalvageGame;
+  quotePack(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: string[], askedMs: number, clock: number, events?: SalvageEvent[], ctx?: CardContext): SalvageGame;
   settleQuote(cfg: SalvageConfig, g: SalvageGame, outcome: QuoteOutcome, quote: { product: string; atMs: number }): SalvageGame;
   setPacksHidden(cfg: SalvageConfig, g: SalvageGame, on: boolean, code: string, clock: number, events?: SalvageEvent[]): SalvageGame;
   setAgeBand(cfg: SalvageConfig, g: SalvageGame, year: number, now: number, clock: number, events?: SalvageEvent[]): SalvageGame;
-  adPaid(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, shownAmount: number, ref: { grade?: GradeId }, clock: number, events?: SalvageEvent[]): SalvageGame;
+  adPaid(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, shownAmount: number, ref: { grade?: GradeId; sell?: SellShown }, clock: number, events?: SalvageEvent[]): SalvageGame;
   chooseLook(cfg: SalvageConfig, g: SalvageGame, slot: LookSlot, id: string | null, clock: number, events?: SalvageEvent[]): SalvageGame;
 }
 
@@ -2136,6 +2140,12 @@ export interface ShopCard {
   packs: PackRow[] | null;
   /** The store country read at this opening (`storefrontCountry()`, unknown = null = packs off). */
   country: string | null;
+  /** rules-money wave 2 (2.15.3, 4.8): the age question is due (the first time a pack row would show and no band is kept): the screen opens `{kind: 'ageQuestion'}` before the shop. */
+  askAge?: boolean;
+  /** rules-money wave 2 (15.11 f): "A purchase that was waiting never arrived. Nothing was added." until the card is closed. */
+  expired?: boolean;
+  /** rules-money wave 2 (4.8 section 5): Restore (looks and No ad videos) over "Scrip bought here lives in this device's save." */
+  restore?: CardButton | null;
 }
 
 /**

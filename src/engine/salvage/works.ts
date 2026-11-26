@@ -28,8 +28,8 @@
  *   sets `counts.bathSet` it is called at every such check.
  */
 import type { PlateDef } from '../../config/schema.salvage';
-import { asideOf, bayOf } from './bays';
-import { boostFactor, bossFresh, count, heard, numberBays, spend, type Ctx } from './clock';
+import { bayOf } from './bays';
+import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock';
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';

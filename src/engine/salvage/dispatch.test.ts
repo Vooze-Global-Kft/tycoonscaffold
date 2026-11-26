@@ -15,7 +15,9 @@ import { awayPass } from './away';
 import { newBot, playTo, seededCfg, startGame } from './bot';
 import { machineWorth, orderFromRung } from './crew';
 import { pickFromRung, ratedLoadNet } from './partners';
-import type { GroundPiece, SalvageConfig, SalvageGame } from './types';
+import { hireCheck } from './ladder';
+import { pieceCount, pieceSpec } from './content';
+import type { GroundPiece, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
 const base = { cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as never;
 const cfgOf = (c: SalvageContent): SalvageConfig => ({ mode: 'salvage', salvage: c }) as unknown as SalvageConfig;
@@ -34,25 +36,25 @@ function floorPieces(kg: number, grade: string, tag: string): GroundPiece[] {
   return out;
 }
 
+/** The test content with the demolition partner's skip `times` as big (its rated net still the better a load). */
+function bigDemo(c: SalvageContent, times: number): SalvageContent {
+  const d = c.partners.partnerDemolition;
+  const skip = Object.fromEntries(Object.entries(d.skip).map(([o, n]) => [o, n * times]));
+  return { ...c, partners: { ...c.partners, partnerDemolition: { ...d, skip } } } as SalvageContent;
+}
+
 /**
- * The m15 played state (driver idle, both partners open, rung 2) with both skips full: the farm's full FIRST, the
- * demolition's `demoKg` heavy (its rated net is the better), and `floorKg` of pieces on the tipping floor; cash `cash`.
+ * The m15 played state (driver idle, both partners open, rung 2): the farm's skip full for 200 s (250 kg, §100), the
+ * demolition's filling to full 1 ms later (its contents as the content fills them), `floorKg` of pieces on the
+ * tipping floor, cash `cash`; the yard hand and the cutter busy, so that nobody clears the floor meanwhile.
  */
-function twoFull(demoKg: number, floorKg: number, cash = 1e6): SalvageGame {
+function twoFull(floorKg: number, cash = 1e6): SalvageGame {
   const g = fixtureGame('m15', base, FIXTURE_NOW);
   const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
-  const fill = (id: string, fullAt: number, kg: number, price: number) => {
-    const sk = s.partners[id].skips[0];
-    sk.phase = 'full';
-    sk.fullAt = fullAt;
-    sk.contents = { ...SALVAGE_TEST.partners[id].skip };
-    sk.mass_g = kg * 1000;
-    sk.price = price;
-  };
-  fill('partnerFarm', s.t - 200, 250, 100);
-  fill('partnerDemolition', s.t - 10, demoKg, 300);
+  const farm = s.partners.partnerFarm.skips[0];
+  Object.assign(farm, { phase: 'full', fullAt: s.t - 200, contents: { ...SALVAGE_TEST.partners.partnerFarm.skip }, mass_g: 250_000, price: 100 });
+  Object.assign(s.partners.partnerDemolition.skips[0], { phase: 'filling', fullAt: s.t + 0.001 });
   s.pieces = [...s.pieces.filter((p) => p.pile !== 'floor'), ...floorPieces(floorKg, 'hms', 'test.floor')];
-  // Nobody may clear the floor during the instant looked at: the yard hand and the cutter are busy for an hour.
   for (const m of s.crew) if (m.role !== 'driver') Object.assign(m, { job: 'circle', phase: 'walkTo', t0: s.t, t1: s.t + 3600, claims: [], load: [] });
   return { ...g, cash, salvage: s } as SalvageGame;
 }
@@ -71,28 +73,28 @@ describe("the driver's ranking (RULING2.md 16.1)", () => {
   });
 
   it('below truck.pickFromRung: the skip full longest that fits, as the first yard (the farm here)', () => {
-    expect(departed(SALVAGE_TEST, twoFull(220, 0))).toBe('partnerFarm');
-    expect(departed(keyed(SALVAGE_TEST, 3), twoFull(220, 0))).toBe('partnerFarm');
+    expect(departed(SALVAGE_TEST, twoFull(0))).toBe('partnerFarm');
+    expect(departed(keyed(SALVAGE_TEST, 3), twoFull(0))).toBe('partnerFarm');
   });
 
   it('(b) from the rung: the best-ranked full skip that fits, though another was full first', () => {
-    expect(departed(keyed(SALVAGE_TEST, 1), twoFull(220, 0))).toBe('partnerDemolition');
+    expect(departed(keyed(SALVAGE_TEST, 1), twoFull(0))).toBe('partnerDemolition');
   });
 
   it('(c) the better load does not fit: he waits and keeps the room (the first yard took the lesser)', () => {
-    const g = twoFull(1200, 1000);
-    expect(departed(SALVAGE_TEST, g)).toBe('partnerFarm');
-    expect(departed(keyed(SALVAGE_TEST, 1), g)).toBeNull();
+    const g = twoFull(1000);
+    expect(departed(bigDemo(SALVAGE_TEST, 6), g)).toBe('partnerFarm');
+    expect(departed(keyed(bigDemo(SALVAGE_TEST, 6), 1), g)).toBeNull();
   });
 
   it('(e) a skip the yard cannot pay for blocks nobody; one heavier than the whole floor neither', () => {
-    expect(departed(keyed(SALVAGE_TEST, 1), twoFull(220, 0, 150))).toBe('partnerFarm');
-    expect(departed(keyed(SALVAGE_TEST, 1), twoFull(2500, 0))).toBe('partnerFarm');
+    expect(departed(keyed(bigDemo(SALVAGE_TEST, 6), 1), twoFull(0, 101))).toBe('partnerFarm');
+    expect(departed(keyed(bigDemo(SALVAGE_TEST, 12), 1), twoFull(0))).toBe('partnerFarm');
   });
 
   it('no dead end: the waiting driver departs for the better load once the yard (boss away) has cleared room', () => {
-    const c = keyed(SALVAGE_TEST, 1);
-    const g = twoFull(1200, 1000);
+    const c = keyed(bigDemo(SALVAGE_TEST, 6), 1);
+    const g = twoFull(1000);
     const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
     for (const m of s.crew) if (m.role !== 'driver') Object.assign(m, { job: 'idle', phase: 'wait', t0: s.t, t1: s.t });
     const free = { ...g, salvage: s } as SalvageGame;
@@ -110,7 +112,9 @@ describe("the yard hands' order (RULING2.md 17.2)", () => {
     s.machines.bench.trayClaim_g = {};
     s.machines.bench.status = 'working';
     s.pieces = [...s.pieces.filter((p) => p.pile !== 'floor'), ...floorPieces(floorKg, 'hms', 'test.floor')];
-    for (const m of s.crew) if (m.role === 'hand') Object.assign(m, { job: 'idle', phase: 'wait', t0: s.t, t1: s.t, claims: [], load: [] });
+    // The hand's leg ends 1 ms later with nothing claimed: he chooses his next trip at that instant.
+    for (const m of s.crew) if (m.role === 'hand') Object.assign(m, { job: 'circle', phase: 'walkTo', t0: s.t, t1: s.t + 0.001, claims: [], load: [] });
+    for (const m of s.crew) if (m.role === 'cutter') Object.assign(m, { job: 'circle', phase: 'walkTo', t0: s.t, t1: s.t + 3600, claims: [], load: [] });
     return { ...g, salvage: s } as SalvageGame;
   }
   const firstJob = (c: SalvageContent, g: SalvageGame) => R.jump(cfgOf(c), g, g.salvage.t + 0.01).salvage.crew.find((m) => m.role === 'hand')!.job;
@@ -185,7 +189,7 @@ describe('the engine\'s promises with both rules from rung 1 (real content)', ()
     }
   }, 300_000);
 
-  it('an absence cut into passes equals one pass, and mass balances (minute 60, two hours)', () => {
+  it('an absence cut into passes equals one pass (minute 60, two hours in four passes)', () => {
     const c = keyed(real(), 1, 1);
     const { cfg, g } = played(c, 4, 60);
     const g0 = { ...g, lastSavedAt: g.salvage.clock.highMs } as SalvageGame;
@@ -195,15 +199,54 @@ describe('the engine\'s promises with both rules from rung 1 (real content)', ()
     for (let k = 1; k <= 4; k++) cut = awayPass(cfg, { ...cut, lastSavedAt: cut.salvage.clock.highMs } as SalvageGame, t0 + k * 1800_000);
     expect(Math.round(cut.cash * 100)).toBe(Math.round(one.cash * 100));
     expect(cut.salvage.ladder.supplied_g).toBe(one.salvage.ladder.supplied_g);
-    expect(JSON.stringify(cut.salvage.bays)).toBe(JSON.stringify(one.salvage.bays));
-    // Mass: what came in (loads tipped, the drop-off) is what is in the yard or supplied.
-    const inYard = (x: SalvageGame) => {
-      const s = x.salvage;
-      let m = s.ladder.supplied_g + s.waste_g;
-      for (const b of Object.values(s.bays)) m += b.g;
-      for (const p of s.pieces) m += p.g;
-      return m;
-    };
-    expect(inYard(one)).toBeGreaterThan(inYard(g0) - 1);
+    expect(JSON.stringify([cut.salvage.bays, cut.salvage.pieces, cut.salvage.things, cut.salvage.partners])).toBe(JSON.stringify([one.salvage.bays, one.salvage.pieces, one.salvage.things, one.salvage.partners]));
   }, 300_000);
+});
+
+describe('mass balances with both rules from rung 1 (test content, a busy yard, an hour away)', () => {
+  it('what is in the yard plus what was sold equals what came in', () => {
+    const C = SALVAGE_TEST;
+    const cfg = cfgOf(keyed(C, 1, 1));
+    let g = R.createSalvage(cfg, { ...(base as object), cash: 100_000 } as never, FIXTURE_NOW);
+    for (const item of ['sack', 'sledge', 'trolley', 'truck', 'torch', 'stripper', 'bench']) g = R.buy(cfg, g, item, R.shopPrice(cfg, g, item) ?? 0, g.salvage.t);
+    for (const role of ['hand', 'hand', 'cutter', 'driver'] as const) g = R.hire(cfg, g, role, hireCheck(cfg, g, role).price ?? 0, g.salvage.t);
+    g = R.jump(cfg, g, g.salvage.t + 120);
+    g = { ...g, cash: 1e6, salvage: { ...g.salvage, presenceAt: -1000 } } as SalvageGame;
+    const inYard = (s: SalvageGame['salvage']) => {
+      let m = 0;
+      for (const th of s.things) {
+        m += C.objects[th.obj].waste_g;
+        for (let k = th.cut; k < pieceCount(C, th.obj); k++) m += pieceSpec(C, th.obj, k)!.g;
+      }
+      for (const p of s.pieces) m += p.g;
+      for (const p of s.load) m += p.g;
+      for (const q of s.crew) for (const p of q.load) m += p.g;
+      for (const q of Object.values(s.machines)) {
+        for (const p of q.hopper) m += p.g;
+        if (q.work) m += q.work.piece.g - Object.values(q.work.credited).reduce((a, v) => a + v, 0);
+        m += Object.values(q.tray_g).reduce((a, v) => a + v, 0);
+      }
+      for (const b of Object.values(s.bays)) m += b.g;
+      m += s.machines.crucible.charge_g + s.machines.crucible.heel_g;
+      for (const l of s.merchant.lot) m += l.g;
+      if (s.truck.skip) m += s.truck.skip.mass_g;
+      return m + s.waste_g + s.ladder.supplied_g - s.scaleRound_g;
+    };
+    let came = inYard(g.salvage);
+    const ev: SalvageEvent[] = [];
+    const seen = new Set<string>(Object.entries(g.salvage.partners).filter(([, p]) => p.trialUsed).map(([id]) => id));
+    const out = R.jump(cfg, g, g.salvage.t + 3600, ev);
+    let hooks = 0;
+    for (const e of ev) {
+      if (e.type === 'arrival' && e.kind === 'dropoff' && e.what) came += C.objects[e.what].gross_g;
+      if (e.type === 'hook') {
+        hooks++;
+        const pt = C.partners[e.partner];
+        for (const [o, n] of Object.entries(seen.has(e.partner) ? pt.skip : pt.trial)) came += C.objects[o].gross_g * n;
+        seen.add(e.partner);
+      }
+    }
+    expect(hooks).toBeGreaterThan(3);
+    expect(inYard(out.salvage)).toBe(came);
+  }, 120_000);
 });

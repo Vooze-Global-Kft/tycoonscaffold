@@ -6,13 +6,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { SalvageContent } from '../../config/schema.salvage';
-import { r3Works, r4Game, TEST_PLATES, worksCfg, worksContent } from '../fixtures/salvage2works';
+import { r3Works, r4Game, TEST_PLATES, worksCfg } from '../fixtures/salvage2works';
 import { buy, setPresence } from './actions';
 import { plateBuyCheck, setPlateRecipe, setRoute } from './actionsWorks';
 import { collectable, freeOf } from './bays';
+import { cardOfWorks } from './cardsWorks';
 import { begin, finish, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
 import { pointOf } from './positions';
+import { reconcileSalvage } from './save';
 import { weighIn } from './scales';
 import { advance, advanceSalvage, jump } from './tick';
 import type { Piece, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
@@ -97,8 +99,6 @@ describe('2.5 plates as data (the test content)', () => {
 describe('2.5.2 the analyser', () => {
   it('a piece with an assay grade weighs in at it only while the analyser runs, whatever its age, the line "Analysed"', () => {
     const c = r3Works();
-    const washer = c.salvage.bays; // r3's yard
-    void washer;
     // The washer's drum: [li, 8000 g, ..., assay ss] at spec index 2 on the frozen content.
     const spec = (C().objects.washer?.pieces as readonly (readonly unknown[])[] | undefined)?.findIndex((sp) => sp[4] === 'ss') ?? -1;
     expect(spec).toBeGreaterThanOrEqual(0);
@@ -453,4 +453,52 @@ describe('the engine promises on r4 (every plate working)', () => {
     expect(g.salvage.counts!.bathSet).toBe(1);
     expect(g.salvage.lots.nextAt).not.toBeNull();
   });
+});
+
+describe('4.3 the works card and 17.1 (a plate nobody can feed harms nothing)', () => {
+  it('locked shows its gate only; buyable shows the price its Buy applies; the gain a kilogram; then arriving and installed', () => {
+    const g0 = { ...r3Works(), cash: 5000 };
+    const lockedCfg = { ...cfg, salvage: { ...cfg.salvage, works: { ...cfg.salvage.works!, plates: { ...cfg.salvage.works!.plates, baler: { ...cfg.salvage.works!.plates.baler, needs: 'shredder' } } } } } as SalvageConfig;
+    const L = cardOfWorks(lockedCfg, g0, { kind: 'works', plate: 'baler' }, 0, { country: null }).works!;
+    expect(L).toMatchObject({ state: 'locked', in: [], out: [], gain: null, foot: { buy: null, loan: null } });
+    const c = cardOfWorks(cfg, g0, { kind: 'works', plate: 'baler' }, 0, { country: null });
+    const w = c.works!;
+    expect(w).toMatchObject({ state: 'buyable', in: ['li'], out: ['lib'] });
+    expect(w.gain!.pct).toBeCloseTo(0.62 / 0.5 - 1, 9);
+    expect(w.foot.buy!.action).toEqual({ act: 'buy', item: 'baler', price: 1000 });
+    const g1 = buy(cfg, g0, 'baler', (w.foot.buy!.action as { price: number }).price, g0.salvage.t);
+    expect(g1.cash).toBe(g0.cash - 1000);
+    expect(cardOfWorks(cfg, g1, { kind: 'works', plate: 'baler' }, 0, { country: null }).works).toMatchObject({ state: 'arriving', arrivesAt: g0.salvage.t + 10, foot: { buy: null } });
+    const g2 = adv(quiet(g1), g0.salvage.t + 20, false);
+    expect(cardOfWorks(cfg, g2, { kind: 'works', plate: 'baler' }, 0, { country: null }).works).toMatchObject({ state: 'installed', commission_s: 5, selfStartAt: g0.salvage.t + 110 });
+  });
+
+  it('a running plate that no input reaches (the breaker: no battery comes to r3) leaves the rest of the yard exactly as without it', () => {
+    let g: SalvageGame = { ...r3Works(), cash: 5000 };
+    g = buy(cfg, g, 'breaker', 1000, g.salvage.t);
+    g = jump(cfg, g, g.salvage.t + 111);
+    expect(g.salvage.works.breaker.phase).toBe('running');
+    const without: SalvageGame = { ...g, salvage: { ...structuredClone(g.salvage), works: {} } };
+    const a = jump(cfg, g, g.salvage.t + 600);
+    const b = jump(cfg, without, g.salvage.t + 600);
+    const rest = (h: SalvageGame) => {
+      const w = whole(h) as { s: Record<string, unknown> };
+      delete w.s.works;
+      return w;
+    };
+    expect(rest(a)).toEqual(rest(b));
+  }, 120_000);
+});
+
+describe('2.20 the save (the works part)', () => {
+  it('r4 with every plate working round-trips through the save and goes on as the unsaved yard', () => {
+    const g0 = r4Game();
+    const loaded = reconcileSalvage(cfg, { ...g0, salvage: undefined } as never, JSON.parse(JSON.stringify({ salvage: g0.salvage })), g0.salvage.clock.highMs);
+    expect(loaded.salvage.works).toEqual(g0.salvage.works);
+    expect(loaded.salvage.routes).toEqual(g0.salvage.routes);
+    // (save.ts clamps a bay's reserve to its grams; the works rebuild every reserve at the next instant: refreshReserves)
+    const a = jump(cfg, { ...loaded, cash: g0.cash, lifetimeEarnings: g0.lifetimeEarnings }, g0.salvage.t + 300);
+    const b = jump(cfg, { ...g0, salvage: { ...g0.salvage, presence: loaded.salvage.presence, presenceAt: loaded.salvage.presenceAt } }, g0.salvage.t + 300);
+    expect(a.salvage.works).toEqual(b.salvage.works);
+  }, 120_000);
 });
