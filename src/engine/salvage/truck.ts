@@ -12,7 +12,7 @@ import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './cont
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
-import { pointOf, skipZone } from './positions';
+import { drivePath, pathSplit, pointOf, skipZone, stopOf, tripPhaseEnd } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
@@ -175,6 +175,11 @@ function tipNow(x: Ctx, t: number): void {
   void t;
 }
 
+/** owner1 T3: seconds the boss's own hook takes (content truck.bossHandle_s, else handle_s). */
+export function bossHandleS(c: SalvageContent): number {
+  return c.truck.bossHandle_s ?? c.truck.handle_s;
+}
+
 /** The boss drives (2.7): the truck goes where he drives it; hook, weigh and tip by standing still at their places. */
 export function truckBossStep(x: Ctx, t: number): void {
   const s = x.s;
@@ -211,8 +216,10 @@ export function truckBossStep(x: Ctx, t: number): void {
     }
     const sk = fullestSkip(x, zone)!;
     tr.hookSince = t;
-    s.act = { kind: 'hook', target: zone, since: t, endsAt: t + x.c.truck.handle_s };
-    x.ev.push({ type: 'hookRing', partner: zone, slot: sk.slot, t0: t, t1: t + x.c.truck.handle_s });
+    // owner1 T3: the boss hooks in truck.bossHandle_s (the hired driver's handle_s stays).
+    const hs = bossHandleS(x.c);
+    s.act = { kind: 'hook', target: zone, since: t, endsAt: t + hs };
+    x.ev.push({ type: 'hookRing', partner: zone, slot: sk.slot, t0: t, t1: t + hs });
     return;
   }
   if (tr.skip && !tr.skip.weighed && atPlace(x, 'weighbridge', p.x, p.y, x.c.reach.place + x.c.truck.radius)) {
@@ -250,6 +257,8 @@ export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number }
     tr.y = at.y;
     tr.heading = at.heading;
   }
+  // owner1 T2: stepping out with a skip aboard not yet weighed or tipped says the load's next step (a toast).
+  if (tr.by === 'boss' && tr.skip && x.c.truck.yardV !== undefined) x.ev.push({ type: 'refused', key: tr.skip.weighed ? 'toFloor' : 'toWeighbridge', args: {}, retry: null });
   tr.by = null;
   tr.hookSince = null;
   // Entering is disarmed until he has walked away from it (hand.ts bossStep; the world's rule, 17:30).
@@ -271,6 +280,56 @@ function driverV(x: Ctx): number {
 }
 
 const pt = (x: Ctx, id: string) => pointOf(x.c, id);
+
+/** owner1 V3: is the yard's speed limit on (content truck.yardV)? Off: the first yard's trips, bit for bit. */
+const yardLimit = (x: Ctx): boolean => x.c.truck.yardV !== undefined;
+
+/** The drive of a path at the trip's speeds, seconds (V3: each segment at its side of the fence's speed). */
+function driveS(x: Ctx, path: { x: number; y: number }[], sp: { vy: number; vl: number }): number {
+  const L = pathSplit(x.c, path);
+  return L.yard / sp.vy + L.lane / sp.vl;
+}
+
+/**
+ * owner1 V3: a driver's trip speeds, fixed at its departure from `from`: inside the fence min(truck.yardV, his speed);
+ * on the lane the speed that makes the trip's drive last what it did at his one speed (routeM's park-gate, gate-
+ * weighbridge, weighbridge-floor and floor-park and the lane twice, at driverV), so the trip's total, at every level and
+ * boost, is unchanged; at most truck.laneMaxF times his speed (a trip that starts far from the park may then last longer).
+ */
+function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slot: number): { vy: number; vl: number } {
+  const c = x.c;
+  const v = driverV(x);
+  const vy = Math.min(c.truck.yardV ?? v, v);
+  const gate = pt(x, 'gate');
+  const D = (routeM(c, 'park', 'gate', from, gate) + 2 * laneM(c, partner) + routeM(c, 'gate', 'weighbridge') + routeM(c, 'weighbridge', 'floor') + routeM(c, 'floor', 'park')) / v;
+  let yard = 0;
+  let lane = 0;
+  let at = from;
+  for (const ph of ['out', 'back', 'tip', 'park']) {
+    const end = tripPhaseEnd(c, ph, partner, slot, at);
+    const L = pathSplit(c, drivePath(c, at, end));
+    yard += L.yard;
+    lane += L.lane;
+    at = end;
+  }
+  if (lane <= 0) return { vy, vl: v };
+  const laneT = Math.max(D - yard / vy, lane / (v * (c.truck.laneMaxF ?? 4)));
+  return { vy, vl: lane / laneT };
+}
+
+/** The trip's speeds (its own, else, for a save made before them, computed now from the park). */
+function speedsOf(x: Ctx): { vy: number; vl: number } {
+  const trip = x.s.truck.trip!;
+  return trip.speeds ?? (trip.speeds = tripSpeeds(x, pt(x, 'park'), trip.partner, trip.slot));
+}
+
+/** owner1 V1 to V3: the drive of a phase from where the truck stands to the phase's end (tripPhaseEnd), seconds. */
+function phaseDrive(x: Ctx, phase: string, from: { x: number; y: number }): number {
+  const trip = x.s.truck.trip!;
+  const end = tripPhaseEnd(x.c, phase, trip.partner, trip.slot, from);
+  if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
+  return driveS(x, drivePath(x.c, from, end), speedsOf(x));
+}
 
 /** May the idle driver depart now (2.12)? The partner whose skip has been full longest, cash and room allowing; earmarked at departure. */
 export function driverDepart(x: Ctx, t: number): boolean {
@@ -297,6 +356,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
   const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
   tr.trip = { partner: best.partner, slot: sk.slot, phase: 'walk', t0: t, endsAt: t + walk };
+  if (yardLimit(x)) tr.trip.speeds = tripSpeeds(x, { x: tr.x, y: tr.y }, best.partner, sk.slot);
   d.job = 'drive';
   d.phase = 'wait';
   d.from = { xy: [from.x, from.y] };
@@ -376,6 +436,21 @@ function planTrip(x: Ctx, t: number): void {
   const gate = pt(x, 'gate');
   const e: number[] = [trip.endsAt];
   const add = (dur: number) => e.push(e[e.length - 1] + Math.max(0, dur));
+  if (yardLimit(x)) {
+    // V1 to V3: each phase's drive along its own path, from where the previous one ended.
+    const z = skipZone(x.c, trip.partner, trip.slot);
+    const wb = stopOf(x.c, 'weighbridge');
+    const fl = stopOf(x.c, 'floor');
+    add(phaseDrive(x, 'out', { x: tr.x, y: tr.y }));
+    add(x.c.truck.handle_s / F);
+    add(phaseDrive(x, 'back', { x: z.x, y: z.y }));
+    add(x.c.weigh_s / F);
+    add(phaseDrive(x, 'tip', wb) + x.c.truck.handle_s / F);
+    add(phaseDrive(x, 'park', fl));
+    trip.plan = { t0: t, ends: e, x: tr.x, y: tr.y };
+    void v;
+    return;
+  }
   add((routeM(x.c, 'park', 'gate', { x: tr.x, y: tr.y }, gate) + laneM(x.c, trip.partner)) / v);
   add(x.c.truck.handle_s / F);
   add((laneM(x.c, trip.partner) + routeM(x.c, 'gate', 'weighbridge')) / v);
@@ -436,7 +511,10 @@ export function showTrip(x: Ctx): void {
   trip.t0 = i === 0 ? plan.t0 : plan.ends[i - 1];
   trip.endsAt = plan.ends[i];
   const z = skipZone(x.c, trip.partner, trip.slot);
-  const at = i <= 1 ? { x: plan.x, y: plan.y } : i === 2 ? { x: z.x, y: z.y } : i === 3 ? pt(x, 'gate') : i === 4 ? pt(x, 'weighbridge') : pt(x, 'floor');
+  // Where the truck stands at the phase's start (V1: back starts at the skip, tip on the weighbridge's stop, park at the floor's stop).
+  const at = yardLimit(x)
+    ? i <= 1 ? { x: plan.x, y: plan.y } : i <= 3 ? { x: z.x, y: z.y } : i <= 5 ? stopOf(x.c, 'weighbridge') : stopOf(x.c, 'floor')
+    : i <= 1 ? { x: plan.x, y: plan.y } : i === 2 ? { x: z.x, y: z.y } : i === 3 ? pt(x, 'gate') : i === 4 ? pt(x, 'weighbridge') : pt(x, 'floor');
   tr.x = at.x;
   tr.y = at.y;
 }
@@ -453,8 +531,11 @@ function driverFinishes(x: Ctx, d: CrewMember, t: number): boolean {
   if (!sk) return false;
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
   const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
-  const drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
-  tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive };
+  let drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
+  // V1, V3: along the drive line to the weighbridge's stop, at the yard's speed (no lane: this trip may last longer).
+  const sp = yardLimit(x) ? { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) } : null;
+  if (sp) drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+  tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive, ...(sp ? { speeds: sp } : {}) };
   tr.earmark = null;
   d.job = 'drive';
   d.phase = 'wait';
@@ -490,6 +571,37 @@ export function driverLegEnd(x: Ctx, t: number): void {
     trip.t0 = t;
     trip.endsAt = t + Math.max(0, dur);
   };
+  if (yardLimit(x)) {
+    // owner1 V1 to V3: each phase drives its own path from where the truck stands (the frame draws the same path).
+    const here = { x: tr.x, y: tr.y };
+    const wb = stopOf(x.c, 'weighbridge');
+    const fl = stopOf(x.c, 'floor');
+    switch (trip.phase) {
+      case 'walk':
+        next('out', phaseDrive(x, 'out', here));
+        return;
+      case 'out':
+        next('hook', x.c.truck.handle_s / F, { x: z.x, y: z.y });
+        return;
+      case 'hook':
+        if (!hookNow(x, trip.partner, 'driver', t)) tr.earmark = null;
+        next('back', phaseDrive(x, 'back', { x: z.x, y: z.y }), { x: z.x, y: z.y });
+        return;
+      case 'back':
+        next('weigh', x.c.weigh_s / F, wb);
+        return;
+      case 'weigh':
+        bridgeWeigh(x, t);
+        next('tip', phaseDrive(x, 'tip', wb) + x.c.truck.handle_s / F, wb);
+        return;
+      case 'tip':
+        tipNow(x, t);
+        next('park', phaseDrive(x, 'park', fl), fl);
+        return;
+      case 'park':
+        break;
+    }
+  }
   switch (trip.phase) {
     case 'walk':
       next('out', (routeM(x.c, 'park', 'gate', { x: tr.x, y: tr.y }, gate) + laneM(x.c, trip.partner)) / v);
@@ -543,6 +655,12 @@ export function driverTakesOver(x: Ctx, t: number): void {
   if (!d || !tr.skip) return;
   tr.by = 'driver';
   d.job = 'drive';
+  if (yardLimit(x)) {
+    const sp = { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) };
+    const drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+    tr.trip = { partner: tr.skip.partner, slot: tr.skip.slot, phase: tr.skip.weighed ? 'weigh' : 'back', t0: t, endsAt: t + drive, speeds: sp };
+    return;
+  }
   tr.trip = { partner: tr.skip.partner, slot: tr.skip.slot, phase: tr.skip.weighed ? 'weigh' : 'back', t0: t, endsAt: t + legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x) };
 }
 

@@ -11,10 +11,13 @@ import { frameMoney } from './frameMoney';
 import { frameWorks } from './frameWorks';
 import { contentAt } from './layer';
 import { lineAmount } from './money';
-import { tierOf } from './content';
+import { owner1Rules, tierOf } from './content';
+import { idleWhyOf } from './crew';
+import { bossHandleS, hookRefusal } from './truck';
+import { fullestSkip } from './partners';
 import { skipLabelOf } from './cards';
 import { chevronOf } from './goals';
-import { bayOrder, bayPos, bayStocked, circleCount, circlePos, isStillage, lanePath, machinePos, piecePos, placeNear, pointOf, skipZone, spotPos, thingPos } from './positions';
+import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripPhasePath } from './positions';
 import type {
   FrameArrival,
   FrameBay,
@@ -34,6 +37,7 @@ import type {
   SalvageGame,
   SalvageConfig,
   TextKey,
+  TxtArgs,
   ThingAt,
   ToolKind,
   Txt,
@@ -153,7 +157,11 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     return m ? { t0: m.t0, t1: m.t1, p0: Math.min(1, th.progress / len) } : null;
   };
 
-  const things: FrameThing[] = s.things.map((th) => {
+  // owner1 L1: things and pieces change only at events: their entries are reused while the state's lists are the same
+  // (a thing's work share follows the clock: recomputed when any thing is being worked).
+  const thingsHit = THINGS.get(s.things);
+  const reuseThings = !!thingsHit && thingsHit.c === c && thingsHit.crew === s.crew && thingsHit.act === s.act && thingsHit.tier === s.tier && !thingsHit.rings;
+  const things: FrameThing[] = reuseThings ? thingsHit!.out : s.things.map((th) => {
     const o = c.objects[th.obj];
     const p = thingPos(c, th.at);
     const total = o ? o.pieces.reduce((a, sp) => a + sp[2], 0) : 1;
@@ -177,11 +185,14 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       by: th.by,
     };
   });
+  if (!reuseThings) THINGS.set(s.things, { c, crew: s.crew, act: s.act, tier: s.tier, rings: things.some((f) => f.ring !== null), out: things });
 
-  const pieces: FramePiece[] = s.pieces.map((pc) => {
+  const piecesHit = PIECES.get(s.pieces);
+  const pieces: FramePiece[] = piecesHit && piecesHit.c === c && piecesHit.things === s.things ? piecesHit.out : s.pieces.map((pc) => {
     const p = piecePos(c, pc.pile, pc.k, thingAt);
     return { uid: pc.uid, sprite: pieceSprite(c, pc, objOfPiece), grade: pc.grade, load: loadFamily(c, pc.grade), pile: pc.pile, k: pc.k, x: p.x, y: p.y };
   });
+  if (!(piecesHit && piecesHit.c === c && piecesHit.things === s.things)) PIECES.set(s.pieces, { c, things: s.things, out: pieces });
 
   const kg = s.load.reduce((a, p) => a + p.g, 0) / 1000;
   const load = {
@@ -261,7 +272,9 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const tool = m.role === 'cutter' && m.phase === 'work' && cutting ? toolFor(c, cutting.obj, pieceAt(c.objects[cutting.obj]?.pieces ?? [], cutting.cut)?.[0] ?? null) : null;
     const moving = m.phase === 'walkTo' || m.phase === 'walkBack';
     const pose: Pose = tool ?? (m.job === 'pour' ? 'pour' : moving ? (m.load.length ? 'push' : 'walk') : m.phase === 'pick' || m.phase === 'drop' ? 'feed' : 'stand');
-    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut };
+    const why = idleWhyOf(c, s, m);
+    const idleText = why ? ({ key: (why.why === 'tool' ? ((why.tier ?? 2) >= 3 ? 'card.crewWhy.tool3' : 'card.crewWhy.tool2') : `card.crewWhy.${why.why}`) as TextKey }) : null;
+    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut, ...(why && idleText ? { idleWhy: why.why, idleText } : {}) };
   });
 
   const tk = s.truck;
@@ -269,6 +282,20 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const tripTo = tk.trip ? skipZone(c, tk.trip.partner, tk.trip.slot) : null;
   const tripPath = tk.trip ? lanePath(c, { x: tk.x, y: tk.y }, tk.trip.partner, tk.trip.slot) : [];
   const back = tk.trip && (tk.trip.phase === 'back' || tk.trip.phase === 'weigh' || tk.trip.phase === 'tip' || tk.trip.phase === 'park');
+  // owner1 V1, V3: the phase's own path from where the truck stands at its start, and when it passes each point.
+  const ownLeg = (() => {
+    if (!tk.trip || !tk.trip.speeds || c.truck.yardV === undefined) return null;
+    const trip = tk.trip;
+    const path = tripPhasePath(c, trip.phase, trip.partner, trip.slot, { x: tk.x, y: tk.y });
+    const sp = trip.speeds!;
+    const L = pathSplit(c, path);
+    const drive = L.yard / sp.vy + L.lane / sp.vl;
+    // back and weigh (the driver walking to a parked truck first: R2) end with their drive; the others start with it.
+    const start = trip.phase === 'back' || trip.phase === 'weigh' ? Math.max(trip.t0, trip.endsAt - drive) : trip.t0;
+    const at = pathTimes(c, path, start, sp.vy, sp.vl);
+    return { phase: trip.phase, partner: trip.partner, t0: trip.t0, t1: trip.endsAt, from: path[0], to: path[path.length - 1], path, at };
+  })();
+  const bossHook = bossHandleS(c);
   const truck = {
     owned: tk.owned,
     x: tk.x,
@@ -277,13 +304,15 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     load: tk.skip ? { state: tk.skip.trial ? ('trial' as const) : ('full' as const), partner: tk.skip.partner } : null,
     skip: !tk.skip ? ('none' as const) : tk.skip.trial ? ('trial' as const) : ('full' as const),
     by: tk.by,
-    leg: tk.trip && tripTo
+    leg: ownLeg ?? (tk.trip && tripTo
       ? { phase: tk.trip.phase, partner: tk.trip.partner, t0: tk.trip.t0, t1: tk.trip.endsAt, from: back ? { x: tripTo.x, y: tripTo.y } : { x: tk.x, y: tk.y }, to: back ? park : { x: tripTo.x, y: tripTo.y }, path: back ? [...tripPath].reverse() : tripPath }
-      : null,
-    hookSpan: tk.hookSince !== null ? { t0: tk.hookSince, t1: tk.hookSince + c.truck.handle_s } : null,
-    hook: tk.hookSince !== null ? Math.max(0, Math.min(1, (t - tk.hookSince) / Math.max(1e-6, c.truck.handle_s))) : null,
+      : null),
+    // owner1 T3: the boss's hook ring lasts truck.bossHandle_s (hookSince is his alone).
+    hookSpan: tk.hookSince !== null ? { t0: tk.hookSince, t1: tk.hookSince + bossHook } : null,
+    hook: tk.hookSince !== null ? Math.max(0, Math.min(1, (t - tk.hookSince) / Math.max(1e-6, bossHook))) : null,
   };
 
+  const yardV = owner1Rules(c) ? c.truck.yardV : undefined;
   const mp = pointOf(c, 'merchant');
   const gate = pointOf(c, 'gate');
   const off = { x: gate.x + 30, y: gate.y };
@@ -297,14 +326,27 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     y: mp.y,
     from: away ? { x: mp.x, y: mp.y } : { x: mp.x, y: mp.y },
     to: away ? off : { x: mp.x, y: mp.y },
-    path: away ? [{ x: mp.x, y: mp.y }, { x: gate.x - 2, y: gate.y }, off] : [],
+    path: away ? (yardV ? drivePath(c, { x: mp.x, y: mp.y }, off) : [{ x: mp.x, y: mp.y }, { x: gate.x - 2, y: gate.y }, off]) : [],
     load: lotG <= 0 ? 0 : lotG < 50_000 ? 1 : lotG < 200_000 ? 2 : 3,
   };
+  // owner1 V3: the flatbed leaves along the drive line at the yard's speed, the lane at the driver's.
+  if (yardV && away) (flatbed as FrameTable['flatbed']).at = pathTimes(c, flatbed.path, flatbed.t0, yardV, c.truck.v);
 
   const arrivals: FrameArrival[] = s.arriving.map((a) => {
     const to = pointOf(c, a.place);
     const set = Math.min(a.at, a.since + Math.max(0, (a.at - a.since) * 0.7));
-    return { item: a.item, kind: a.by, place: a.place, from: { x: gate.x + 20, y: gate.y }, to, span: { t0: a.since, t1: a.at }, phase: t < set ? 'in' : 'setDown' };
+    const base: FrameArrival = { item: a.item, kind: a.by, place: a.place, from: { x: gate.x + 20, y: gate.y }, to, span: { t0: a.since, t1: a.at }, phase: t < set ? 'in' : 'setDown' };
+    if (!yardV || a.by === 'crew') return base;
+    // owner1 V4: along the drive line to the stop nearest the place; set down there.
+    const stop = nearestStop(c, to);
+    const path = drivePath(c, base.from, stop);
+    const L = pathSplit(c, path);
+    const D = Math.max(1e-3, set - a.since);
+    const laneMin = L.lane / (c.truck.v * (c.truck.laneMaxF ?? 4));
+    const laneT = L.lane > 0 ? Math.max(laneMin, D - L.yard / yardV) : 0;
+    const vy = L.yard > 0 ? L.yard / Math.max(1e-3, D - laneT) : yardV;
+    const vl = L.lane > 0 ? L.lane / Math.max(1e-3, laneT) : c.truck.v;
+    return { ...base, from: path[0], path, at: pathTimes(c, path, a.since, vy, vl), stop };
   });
 
   const skips: FrameSkip[] = [];
@@ -378,6 +420,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     near: workThing ? { kind: 'thing', id: workThing.uid } : place ? { kind: 'place', id: place } : null,
     button: driving ? 'stepOut' : place && pk ? 'open' : null,
     place,
+    refusal: refusalOf(c, g),
   };
 
   const fm = s.foreman;
@@ -395,6 +438,36 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   }
 
   return { t, epoch: s.epoch, boss, things, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: null, arrivals, fixtures, skips, labels, chevron: chevronOf({ salvage: c } as SalvageConfig, g), circles, foreman: { active, left_s: left } };
+}
+
+/** owner1 V4: the drive line's stop nearest a point (content map.driveLine.stops; none: the gate). */
+function nearestStop(c: SalvageContent, p: { x: number; y: number }): { x: number; y: number } {
+  const stops = Object.entries((c.map.driveLine?.stops ?? {}) as Record<string, [number, number]>).filter(([k]) => k !== 'turn');
+  let best = pointOf(c, 'gate');
+  let bd = Infinity;
+  for (const [k, [x, y]] of stops) {
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < bd - 1e-9 && insideFence(c, { x, y })) {
+      bd = d;
+      best = stopOf(c, k);
+    }
+  }
+  return best;
+}
+
+/** owner1 T4: the refusal the boss's act holds now (`refused.<partner>`: the hook's reason with its figure; `refused.floor`: weigh it first), or null. */
+function refusalOf(c: SalvageContent, g: SalvageGame): Txt | null {
+  const s = g.salvage;
+  const target = s.act.target ?? '';
+  if (!target.startsWith('refused.')) return null;
+  const what = target.slice(8);
+  if (what === 'floor') return { key: 'refusal.weighFirst' };
+  const x = { c, s, cash: g.cash, live: true } as unknown as Parameters<typeof hookRefusal>[0];
+  const why = hookRefusal(x, what);
+  if (!why) return null;
+  const sk = fullestSkip(x, what);
+  const args: TxtArgs | undefined = why === 'loadCash' && sk ? { x: { money: sk.price - g.cash } } : why === 'floor' && sk ? { kg: { mass_g: sk.mass_g } } : undefined;
+  return { key: `refusal.${why}` as TextKey, ...(args ? { args } : {}) };
 }
 
 /** The piece spec of the n-th piece cut off a thing (cut order over [grade, g, n] specs), or null when all are off. */
@@ -436,8 +509,27 @@ export function frameCfg(cfg: import('./types').SalvageConfig, g: SalvageGame): 
   const f = frameOf(c, g);
   frameWorks(c, g, f);
   frameMoney(c, g, f);
+  // owner1 L2: the scene stamp (the same across a presence-only change that leaves the chevron where it was).
+  const last = LAST.get(cfg.salvage);
+  f.scene = last && last.cash === g.cash && presenceOnly(last.s, g.salvage) && last.f.chevron?.id === f.chevron?.id && last.f.chevron?.x === f.chevron?.x ? (last.f.scene ?? 0) : (last?.f.scene ?? 0) + 1;
+  LAST.set(cfg.salvage, { s: g.salvage, cash: g.cash, f });
   byCfg.set(cfg.salvage, { cash: g.cash, f });
   return f;
 }
 
 const FRAMES = new WeakMap<SalvageGame['salvage'], WeakMap<SalvageContent, { cash: number; f: FrameTable }>>();
+const THINGS = new WeakMap<object, { c: SalvageContent; crew: object; act: object; tier: number; rings: boolean; out: FrameThing[] }>();
+const PIECES = new WeakMap<object, { c: SalvageContent; things: object; out: FramePiece[] }>();
+/** owner1 L2: the last frame built per content, to keep its scene stamp across a presence-only change. */
+const LAST = new WeakMap<SalvageContent, { s: SalvageGame['salvage']; cash: number; f: FrameTable }>();
+
+/** Did only the boss's presence change between two states (every other part the same object)? */
+function presenceOnly(a: SalvageGame['salvage'], b: SalvageGame['salvage']): boolean {
+  if (a === b) return true;
+  if (a.t !== b.t) return false;
+  for (const k of Object.keys(b) as (keyof typeof b)[]) {
+    if (k === 'presence' || k === 'presenceAt') continue;
+    if (a[k] !== b[k]) return false;
+  }
+  return Object.keys(a).length === Object.keys(b).length;
+}

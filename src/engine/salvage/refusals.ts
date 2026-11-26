@@ -4,7 +4,7 @@
  * cash text), `needsItem` for E25's gate by another item owned. The rules' list (rules-sim owns it); its text keys `refusal.<key>` are in textKeys.ts.
  * Which check returns which key: types.ts `SalvageActions`.
  */
-export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem', 'rung', 'ceiling', 'tool2', 'tool3', 'tooHeavy', 'topLevel', 'noPlace', 'filling', 'loadCash', 'floor', 'weighFirst', 'heatRunning', 'noTruck', 'noTorch', 'stopFirst', 'nothing', 'priceUpdated', 'confirmHeel', 'notBuilt'] as const;
+export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem', 'rung', 'ceiling', 'tool2', 'tool3', 'tooHeavy', 'topLevel', 'noPlace', 'filling', 'loadCash', 'floor', 'weighFirst', 'heatRunning', 'noTruck', 'noTorch', 'stopFirst', 'nothing', 'priceUpdated', 'confirmHeel', 'notBuilt', 'toWeighbridge', 'toFloor'] as const;
 /**
  * CONTRACT VERSION 3 (stage 2, yard-stage2.md 2.19; contract2, 26 November): the new refusal keys, listed
  * apart as DATA (the keys version 3 added; textKeys.ts derives `refusal.<key>` from both lists, strings2 has

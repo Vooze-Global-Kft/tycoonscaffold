@@ -58,7 +58,7 @@ export interface Docket {
   nothing: Txt | null;
 }
 
-const count = (n: number, one: Txt['key'], many: Txt['key']): Txt => (n === 1 ? { key: one } : { key: many, args: { n: { n } } });
+const count = (n: number, one: Txt['key'], many: Txt['key']): Txt => ({ key: n === 1 ? one : many, args: { n: { n } } });
 
 /** The docket of an away card. */
 export function awayDocket(a: AwayData): Docket {

@@ -493,6 +493,12 @@ export function stillageSlot(c: SalvageContent, s: Pick<SalvageState, 'counts'>,
   return { x: r0.x + dir * col * STILLAGE_PITCH_M, y: ry };
 }
 
+/** A vehicle's way point on the drive line (content `map.driveLine.stops.<id>`), else the map point of that id. */
+export function stopOf(c: SalvageContent, id: string): { x: number; y: number } {
+  const p = (c.map.driveLine?.stops as Record<string, [number, number]> | undefined)?.[id];
+  return p ? { x: p[0], y: p[1] } : pointOf(c, id);
+}
+
 /** A partner's skip zone for a slot of its rotation: on the lane east of the gate at its lane distance (the lane is drawn at rule distances), slots side by side; size from `map.sites`. */
 export function skipZone(c: SalvageContent, partner: PartnerId, slot: number): { x: number; y: number; w: number; d: number } {
   const gate = pointOf(c, 'gate');
@@ -614,3 +620,166 @@ export const machinePosCfg = (cfg: SalvageConfig, id: MachineId) => machinePos(c
 export const circlePosCfg = (cfg: SalvageConfig, n: number) => circlePos(cfg.salvage, n);
 export const skipZoneCfg = (cfg: SalvageConfig, partner: PartnerId, slot: number) => skipZone(cfg.salvage, partner, slot);
 export const lanePathCfg = (cfg: SalvageConfig, from: { x: number; y: number }, partner: PartnerId, slot = 0) => lanePath(cfg.salvage, from, partner, slot);
+
+// ============================================================================ the vehicles' paths (owner1 V1, V4)
+
+type P = { x: number; y: number };
+const near = (a: P, b: P) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+
+/** Is a point inside the yard's fence (x at most `yard.width`)? Beyond it: the lane. */
+export function insideFence(c: SalvageContent, p: P): boolean {
+  return p.x <= c.yard.width + 1e-9;
+}
+
+/** Is the segment a-b inside the drive line's corridor (content `map.driveLine.rects`), sampled every quarter metre? */
+function inCorridor(c: SalvageContent, a: P, b: P): boolean {
+  const rects = c.map.driveLine?.rects ?? [];
+  if (!rects.length) return false;
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.25));
+  for (let i = 0; i <= n; i++) {
+    const q = { x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n };
+    if (!rects.some((r) => q.x >= r.x0 - 1e-6 && q.x <= r.x0 + r.w + 1e-6 && q.y >= r.y0 - 1e-6 && q.y <= r.y0 + r.d + 1e-6)) return false;
+  }
+  return true;
+}
+
+/** Drop repeated points and the middle of three collinear points. */
+function tidy(pts: P[]): P[] {
+  const out: P[] = [];
+  for (const p of pts) {
+    if (out.length && near(out[out.length - 1], p)) continue;
+    if (out.length >= 2) {
+      const a = out[out.length - 2];
+      const b = out[out.length - 1];
+      const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+      const dot = (b.x - a.x) * (p.x - b.x) + (b.y - a.y) * (p.y - b.y);
+      if (Math.abs(cross) < 1e-6 && dot >= 0) out.pop();
+    }
+    out.push(p);
+  }
+  return out;
+}
+
+/**
+ * From a point to a point INSIDE the fence along the drive line (M4): onto the line (the foot, when the point lies off
+ * its corridor), the line's vertices between, off it to the end; a vertex whose neighbours see each other through the
+ * corridor is pulled out (the path cuts the corridor's corners, never leaves it). No drive line: straight.
+ */
+function yardPath(c: SalvageContent, a: P, b: P): P[] {
+  const dl = c.map.driveLine;
+  if (!dl || dl.points.length < 2) return tidy([a, b]);
+  const pts = dl.points.map(([x, y]) => ({ x, y }));
+  const arc: number[] = [0];
+  for (let i = 1; i < pts.length; i++) arc.push(arc[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const foot = (p: P) => {
+    let best = { s: 0, q: pts[0], d: Infinity };
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const u0 = pts[i];
+      const u1 = pts[i + 1];
+      const L2 = (u1.x - u0.x) ** 2 + (u1.y - u0.y) ** 2;
+      const u = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - u0.x) * (u1.x - u0.x) + (p.y - u0.y) * (u1.y - u0.y)) / L2)) : 0;
+      const q = { x: u0.x + u * (u1.x - u0.x), y: u0.y + u * (u1.y - u0.y) };
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      if (d < best.d - 1e-9) best = { s: arc[i] + u * Math.sqrt(L2), q, d };
+    }
+    return best;
+  };
+  const fa = foot(a);
+  const fb = foot(b);
+  const path: P[] = [a];
+  if (fa.d > dl.w / 2 + 1e-9) path.push(fa.q);
+  const between = pts.map((p, i) => ({ p, s: arc[i] })).filter((v) => v.s > Math.min(fa.s, fb.s) + 1e-9 && v.s < Math.max(fa.s, fb.s) - 1e-9);
+  if (fb.s < fa.s) between.reverse();
+  for (const v of between) path.push(v.p);
+  if (fb.d > dl.w / 2 + 1e-9) path.push(fb.q);
+  path.push(b);
+  // Pull out a vertex whose neighbours see each other through the corridor.
+  const t = tidy(path);
+  for (let i = 1; i + 1 < t.length; ) {
+    if (inCorridor(c, t[i - 1], t[i + 1])) t.splice(i, 1);
+    else i++;
+  }
+  return t;
+}
+
+/**
+ * THE VEHICLES' ROAD (owner1 V1): the path a truck or a flatbed drives from `a` to `b`: inside the fence along the
+ * drive line (yardPath); beyond it on the lane at the gate's y (out of the gate, along the lane, into the site). The
+ * point where the path crosses the fence (x = yard.width) is a vertex, so every segment lies wholly inside the fence
+ * or wholly beyond it (the rules' timing gives each its own speed: truck.ts). One function for the rules' durations
+ * and the frame's drawn path.
+ */
+export function drivePath(c: SalvageContent, a: P, b: P): P[] {
+  const gate = pointOf(c, 'gate');
+  const W = c.yard.width;
+  const ia = insideFence(c, a);
+  const ib = insideFence(c, b);
+  let pts: P[];
+  if (ia && ib) pts = yardPath(c, a, b);
+  else if (ia) pts = [...yardPath(c, a, gate), { x: W, y: gate.y }, { x: b.x, y: gate.y }, b];
+  else if (ib) pts = [a, { x: a.x, y: gate.y }, { x: W, y: gate.y }, ...yardPath(c, gate, b)];
+  else pts = [a, { x: a.x, y: gate.y }, { x: b.x, y: gate.y }, b];
+  const out = tidy(pts);
+  // Keep the fence's crossing as a vertex (tidy may have merged it into a straight run).
+  const res: P[] = [out[0]];
+  for (let i = 1; i < out.length; i++) {
+    const p = out[i - 1];
+    const q = out[i];
+    if ((p.x - W) * (q.x - W) < -1e-12) {
+      const u = (W - p.x) / (q.x - p.x);
+      res.push({ x: W, y: p.y + u * (q.y - p.y) });
+    }
+    res.push(q);
+  }
+  return res;
+}
+
+/** A path's length inside the fence and beyond it, metres (segments split at the fence by drivePath). */
+export function pathSplit(c: SalvageContent, path: readonly P[]): { yard: number; lane: number } {
+  let yard = 0;
+  let lane = 0;
+  for (let i = 1; i < path.length; i++) {
+    const L = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+    if (insideFence(c, path[i - 1]) && insideFence(c, path[i])) yard += L;
+    else lane += L;
+  }
+  return { yard, lane };
+}
+
+/** The yard second the vehicle passes each point of a path that starts at t0, at `vy` inside the fence and `vl` beyond. */
+export function pathTimes(c: SalvageContent, path: readonly P[], t0: number, vy: number, vl: number): number[] {
+  const at = [t0];
+  for (let i = 1; i < path.length; i++) {
+    const L = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+    const v = insideFence(c, path[i - 1]) && insideFence(c, path[i]) ? vy : vl;
+    at.push(at[i - 1] + L / Math.max(1e-9, v));
+  }
+  return at;
+}
+
+/** Where a phase of the driver's trip ends (V1, V2): out and hook at the skip zone, back and weigh on the weighbridge's stop, tip at the floor's stop (never its centre), park in the park. */
+export function tripPhaseEnd(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P): P {
+  switch (phase) {
+    case 'out':
+    case 'hook': {
+      const z = skipZone(c, partner, slot);
+      return { x: z.x, y: z.y };
+    }
+    case 'back':
+    case 'weigh':
+      return stopOf(c, 'weighbridge');
+    case 'tip':
+      return stopOf(c, 'floor');
+    case 'park':
+      return stopOf(c, 'park');
+    default:
+      return from;
+  }
+}
+
+/** The path of a phase of the driver's trip from where the truck stands at its start (V1): drivePath to the phase's end; a standing phase that starts there: one point. */
+export function tripPhasePath(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P): P[] {
+  const end = tripPhaseEnd(c, phase, partner, slot, from);
+  if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return [{ x: from.x, y: from.y }];
+  return drivePath(c, from, end);
+}

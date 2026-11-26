@@ -117,6 +117,11 @@ export const TEXT = {
   'card.trayFull': 'Tray full',
   'card.waitingFor': 'Waiting for {grade}',
   'card.idle': 'Idle',
+  'card.crewWhy.nothing': 'Nothing to carry', // owner1 H6 (at most 22 characters)
+  'card.crewWhy.uncut': 'Waiting for cut pieces',
+  'card.crewWhy.yours': 'Leaving those to you',
+  'card.crewWhy.tool2': 'Needs the hammer',
+  'card.crewWhy.tool3': 'Needs the torch',
   'card.levelOnBoard': 'Level on the process board',
   'card.inOut': '{in} → {out}',
   'card.inOut2': '{in} → {a}, {b}', // rules-book W7: every output, largest first
@@ -305,6 +310,11 @@ export const TEXT = {
   'goal.buyTruck': 'Buy the hook-lift truck',
   'goal.fetchTrial': 'Fetch the farm’s trial load',
   'goal.tipTrial': 'Tip it on the floor', // P14
+  'goal.step.truck': 'Get in the truck', // owner1 T2
+  'goal.step.drive': 'Drive to {partner}', // partner: { name: partner id }
+  'goal.step.hook': 'Keep still: hooking',
+  'goal.step.weigh': 'Drive onto the weighbridge',
+  'goal.step.tip': 'Tip it on the floor',
   'goal.buyBench': 'Buy the motor bench',
   'goal.breakMotor': 'Break a motor on the bench',
   'goal.supplyRung2': 'Supply {t} ({r} materials)',
@@ -360,6 +370,8 @@ export const TEXT = {
   'refusal.loadCash': 'Needs {x} more for this load',
   'refusal.floor': 'Tipping floor needs {kg} free',
   'refusal.weighFirst': 'Weigh it in first',
+  'refusal.toWeighbridge': 'Drive onto the weighbridge', // owner1 T2: stepping out with a load not weighed
+  'refusal.toFloor': 'Tip it on the floor', // owner1 T2: stepping out with a weighed load not tipped
   'refusal.heatRunning': 'Wait for the heat to pour',
   'refusal.noTruck': 'Opens with the hook-lift truck',
   'refusal.noTorch': 'Opens with the cutting torch',
@@ -697,12 +709,12 @@ export const TEXT = {
   'away.salesTotal': 'Sales',
   'away.partner': '{partner}', // partner: { name }
   'away.loadsN': '{n} loads',
-  'away.loadOne': '1 load',
-  'away.dealName': 'Deal delivery to {foundry}',
+  'away.loadOne': '{n} load', // n: 1
+  'away.dealName': 'Foundry deal delivery',
   'away.rackName': 'Yard sale at the gate',
-  'away.vanName': '{reclaimer}',
+  'away.vanName': '{reclaimer|short}',
   'away.thingsN': '{n} things',
-  'away.thingOne': '1 thing',
+  'away.thingOne': '{n} thing', // n: 1
   'away.bankName': 'To {bank}',
 
   // --- tickets (2.19, 4.5 to 4.7) ---

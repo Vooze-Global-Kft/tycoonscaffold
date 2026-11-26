@@ -15,7 +15,8 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { advice, cardForItem } from './advice';
 import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
-import { pointOf } from './positions';
+import { pointOf, skipZone, stopOf } from './positions';
+import { owner1Rules } from './content';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
 
@@ -349,9 +350,44 @@ export function goalTarget(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): str
   return null;
 }
 
+/**
+ * owner1 T2 (RULING-owner1): the step of a load the boss fetches himself, from the truck's state. While the current goal
+ * fetches or tips a partner's load, or whenever the boss's truck carries a skip (every later load he fetches himself):
+ * not driving with nothing aboard: to the truck; driving with nothing aboard: to the gate and the partner's site (the
+ * hook ring running there: "Keep still: hooking"); a skip aboard not weighed: onto the weighbridge; weighed: onto the
+ * floor's stop. Stepped out with a skip aboard, the words stay the load's and the chevron points at the truck. Null:
+ * no load step (the goal's own target and words).
+ */
+export function loadStep(cfg: SalvageConfig, g: SalvageGame, goalDone?: string | null): { text: Txt; target: { x: number; y: number; id: string } | null } | null {
+  const c = cfg.salvage;
+  if (!owner1Rules(c)) return null;
+  const s = g.salvage;
+  const tr = s.truck;
+  if (!tr.owned || tr.by === 'driver') return null;
+  const parts = (goalDone ?? '').split(':');
+  const goalPartner = parts[0] === 'fetched' || parts[0] === 'tipped' ? parts[1] : null;
+  if (!tr.skip && !goalPartner) return null;
+  const driving = tr.by === 'boss';
+  const truckPt = { x: tr.x, y: tr.y, id: 'truck' };
+  const at = (id: string) => ({ ...stopOf(c, id), id });
+  if (tr.skip) {
+    const text: Txt = { key: (tr.skip.weighed ? 'goal.step.tip' : 'goal.step.weigh') as TextKey };
+    return { text, target: driving ? at(tr.skip.weighed ? 'floor' : 'weighbridge') : truckPt };
+  }
+  // A goal of a load already weighed in (fetched) leaves the tip to its own goal.
+  if (!driving) return { text: { key: 'goal.step.truck' as TextKey }, target: truckPt };
+  if (s.act.kind === 'hook') return { text: { key: 'goal.step.hook' as TextKey }, target: null };
+  const partner = goalPartner!;
+  const beyond = s.presence.x > c.yard.width;
+  const z = c.partners[partner] ? skipZone(c, partner, 0) : null;
+  return { text: { key: 'goal.step.drive' as TextKey, args: { partner: { name: partner } } }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
+}
+
 /** The chevron's point in metres, or null (frame.ts: FrameTable.chevron). */
 export function chevronOf(cfg: SalvageConfig, g: SalvageGame): { x: number; y: number; id: string } | null {
   const goal = nextGoal(cfg, g);
+  const step = loadStep(cfg, g, goal ? ordered(cfg, g).find((d) => d.id === goal.id)?.done : null);
+  if (step) return step.target;
   if (!goal || !goal.target) return null;
   const s = g.salvage;
   const spec = ordered(cfg, g).find((d) => d.id === goal.id);
@@ -380,7 +416,9 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
   if (!cur) return null;
   const nxt = list[1];
   const m = meterOf(cfg, g, cur.d);
+  const step = loadStep(cfg, g, cur.d.done);
   return {
+    ...(step ? { step: step.text } : {}),
     n: cur.n,
     id: cur.d.id,
     text: goalText(cfg, g, cur.d),

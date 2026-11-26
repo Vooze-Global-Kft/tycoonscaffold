@@ -497,7 +497,16 @@ export interface TruckState {
   /** Who is in it. */
   by: 'boss' | 'driver' | null;
   /** The driver's run: its partner, phase, the yard second the phase began and the one it ends. */
-  trip: { partner: PartnerId; slot: number; phase: TripPhase; t0: number; endsAt: number; plan?: TripPlan } | null;
+  trip: {
+    partner: PartnerId;
+    slot: number;
+    phase: TripPhase;
+    t0: number;
+    endsAt: number;
+    plan?: TripPlan;
+    /** owner1 V3: the trip's speeds fixed at its departure, m/s: `vy` inside the fence (at most truck.yardV), `vl` on the lane (raised so the trip's total is what it was). Absent: the first yard's one speed. */
+    speeds?: { vy: number; vl: number };
+  } | null;
   /** Yard second the boss began standing still in a skip zone (the hook ring; moving clears it), or null. */
   hookSince: number | null;
   /** § and tipping-floor grams held at the driver's departure (no purchase takes cash below it; the hook always pays), or null. */
@@ -1367,6 +1376,12 @@ export interface Goal {
   next: Txt | null;
   /** True for a goal with a Not now (skipGoal). */
   optional: boolean;
+  /**
+   * owner1 T2: the step of a load the boss fetches himself (goals.ts loadStep): "Get in the truck", "Drive to {partner}",
+   * "Keep still: hooking", "Drive onto the weighbridge", "Tip it on the floor"; the chevron (frame.chevron) points at
+   * the same step. Absent: no load step (the goal's own line).
+   */
+  step?: Txt;
 }
 
 /** The advice line (2.10): the cheapest purchase that widens the bottleneck now (a buy, a hire or a level). */
@@ -1458,6 +1473,11 @@ export interface FrameTable {
   crate?: { x: number; y: number; n: number } | null;
   /** The magnet crane's move under way: from, to, its span (a planned run shows the move under way, as crew legs do). */
   crane?: { from: { x: number; y: number }; to: { x: number; y: number }; span: Span; g: number } | null;
+  /**
+   * owner1 L2: a stamp of everything but the boss's own position: it stays the same from a state to the next when a
+   * presence sample changed nothing else (the boss is the screen's own), so the world need not push a new scene.
+   */
+  scene?: number;
   /** rules-money wave 2 (2.15.1): the look chosen per slot (`iap.looks`: a product id, `rung<n>`, `foundry`, or null for the yard's own); only the frame reads it. */
   looks?: Record<LookSlot, string | null>;
 }
@@ -1476,6 +1496,12 @@ export interface FrameBoss {
   grade: GradeId | null;
   /** The work, weigh or hook ring: from p0 at t0 to full at t1. */
   ring: { t0: number; t1: number; p0: number } | null;
+  /**
+   * owner1 T4: a refusal that holds while he stands (the act `refused.<why>`: a skip he cannot hook, a load not weighed
+   * at the floor): its line with its figure ("Needs §x more for this load", "Tipping floor needs {kg} free"), shown on
+   * the skip's plate and by the one button for as long as it holds. Null: none.
+   */
+  refusal?: Txt | null;
   /** What he is next to (the mark round it), from the rules' nearness. */
   near: { kind: 'thing' | 'place' | 'pile'; id: string } | null;
   /** The one button's face: Open (at a place with a card), Step out (driving), or blank. */
@@ -1606,6 +1632,14 @@ export interface FrameCrew {
   carries: SpriteId | null;
   /** The whole pieces on the leg's carrier (drawn strapped on, never a tower); a whole thing names its entry in `thing`. */
   load: { uid: string; sprite: SpriteId; grade: GradeId; g: number; load: LoadFamily; thing?: SpriteId }[];
+  /**
+   * owner1 H6: why a yard hand or cutter with nothing to do waits (crew.ts idleWhyOf), while he waits or walks to his
+   * waiting place (job 'idle'): 'nothing', 'uncut' (only things that need cutting), 'yours' (only what lies at the
+   * boss's feet or is left for him), 'tool' (a cutter: the next thing needs a tool the yard has not). `idleText` is
+   * its line (card.crewWhy.*), drawn as a small bubble over him. Absent: not idle (or a content without the review's rules).
+   */
+  idleWhy?: 'nothing' | 'uncut' | 'yours' | 'tool';
+  idleText?: Txt;
 }
 
 export interface FrameTruck {
@@ -1619,8 +1653,15 @@ export interface FrameTruck {
   /** @deprecated none, empty, trial, full; read `load` (goes at the seam). */
   skip: 'none' | 'empty' | 'trial' | 'full';
   by: 'boss' | 'driver' | null;
-  /** The driver's trip as a leg: phase, partner, span, ends and the path (park → gate → lane site and back) from positions.ts. */
-  leg: { phase: TripPhase; partner: PartnerId; t0: number; t1: number; from: { x: number; y: number }; to: { x: number; y: number }; path: { x: number; y: number }[] } | null;
+  /**
+   * The driver's trip as a leg: phase, partner, span, ends and the path from positions.ts. owner1 V1: `path` is THIS
+   * PHASE'S OWN path (positions.ts tripPhasePath: out park → line → gate → lane → skip; hook standing at the skip; back
+   * skip → lane → gate → line → weighbridge; weigh standing on it; tip weighbridge → the floor's stop; park the floor's
+   * stop → park), and `at` the yard second the truck passes each of its points (inside the fence at most truck.yardV,
+   * the lane faster): the world moves the truck piecewise along it between at[i] and at[i+1] and stands it at the last
+   * point until t1 (a phase that starts with a standing part, the driver's walk to a parked truck, has at[0] > t0).
+   */
+  leg: { phase: TripPhase; partner: PartnerId; t0: number; t1: number; from: { x: number; y: number }; to: { x: number; y: number }; path: { x: number; y: number }[]; at?: number[] } | null;
   /** The hook ring's span while the boss swaps a skip. `hook` @deprecated: 0 to 1 sampled at t. */
   hookSpan: Span | null;
   hook: number | null;
@@ -1638,6 +1679,8 @@ export interface FrameFlatbed {
   from: { x: number; y: number };
   to: { x: number; y: number };
   path: { x: number; y: number }[];
+  /** owner1 V3, V4: the yard second it passes each point of `path` (along the drive line at most truck.yardV inside the fence). */
+  at?: number[];
   /** 0 to 3: the load drawn on its bed. */
   load: number;
 }
@@ -1651,6 +1694,14 @@ export interface FrameArrival {
   span: Span;
   /** in: driving in; setDown: the crane or the van's tail lift; out: driving away. */
   phase: 'in' | 'setDown' | 'out';
+  /**
+   * owner1 V4: the arrival's road: from beyond the gate along the drive line to the line's stop nearest its place
+   * (`stop`), where it sets down (the thing is at its place at span.t1, as the rules date it); `at` the yard second it
+   * passes each point (inside the fence at most truck.yardV). No path crosses a solid; no jump at set-down.
+   */
+  path?: { x: number; y: number }[];
+  at?: number[];
+  stop?: { x: number; y: number };
 }
 
 export interface FrameSkip {

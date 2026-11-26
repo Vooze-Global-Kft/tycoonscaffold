@@ -11,6 +11,7 @@
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { pumpControl } from './pump';
+import { useSalvageUi } from '../uiState';
 
 function mode(): string | null {
   try {
@@ -32,6 +33,12 @@ function lines(cfg: R.SalvageConfig, g: R.SalvageGame, day: number): R.TicketLin
 export function hudDemo(cfg: R.SalvageConfig, g: R.SalvageGame): (() => void) | null {
   const m = mode();
   if (!m) return null;
+  // owner1-hud: `?hudDemo=stepOut` shows the one button as it reads in the truck ("Step out"), for its
+  // pictures at every size and font scale; the frame loop sets it back when the boss's state changes.
+  if (m === 'stepOut') {
+    const t = setTimeout(() => useSalvageUi.getState().setDriving(true), 600);
+    return () => clearTimeout(t);
+  }
   let n = 900;
   const fire = () => {
     const now = Date.now();
