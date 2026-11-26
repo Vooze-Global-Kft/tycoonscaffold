@@ -14,6 +14,9 @@
 import type { GameConfig, StoryBeat } from '../config/schema';
 import type { GameState } from './types';
 
+/** The age treatment of ad requests (EngineMode.adAudience; src/services/ads.ts setAudience). */
+export type AdAudience = 'child' | 'teen' | null;
+
 /** What the shared engine asks of a mode with its own rules. Every function is pure. */
 export interface EngineMode {
   /** The cfg.mode this engine runs. The shared functions use it only for configs of that mode. */
@@ -77,6 +80,26 @@ export interface EngineMode {
    * the product changes nothing now.
    */
   entitle?(cfg: GameConfig, state: GameState, productId: string): GameState;
+  /**
+   * A consumable of the shared kind `hoursOfIncome` was paid for (the store's purchase resolved, a
+   * purchase approved later reached the listener, or the reconcile at start found it): the mode
+   * grants it by its own money rules, at the amount it quoted and saved before the store's sheet
+   * opened (src/state/store.ts `buyQuoted`; the quote is read from the save, never passed). Called
+   * only through meta.grantPurchase, possibly several times with the same `txId` (the purchase's
+   * result, the listener and the reconcile may all deliver one transaction): the mode keeps a
+   * ledger of granted ids and returns the SAME object when `txId` is in it, when no quote of the
+   * product stands, or when the transaction belongs to another save (dated before it was created).
+   * `purchasedMs` is the store's date of the transaction. Pure, never throws. Without it a game's
+   * `hoursOfIncome` product is never sold (the store refuses it before any sheet opens).
+   */
+  grantProduct?(cfg: GameConfig, state: GameState, productId: string, txId: string, purchasedMs: number): GameState;
+  /**
+   * How the ad network must treat this player's requests, from the mode's own record of the
+   * player's age band: 'child' (under 13: child-directed, non-personalised, no tracking prompt),
+   * 'teen' (13 to 17), or null (no signal: requests as before). The store hands it to the ad
+   * service on every change (src/services/ads.ts `setAudience`). Without it: null, as before.
+   */
+  adAudience?(cfg: GameConfig, state: GameState): AdAudience;
   /**
    * Whether an absence's report is worth showing although it earned nothing (haul: "Hold full.
    * Nothing shipped." when the freighter waited for a swipe the whole time). Without it, an

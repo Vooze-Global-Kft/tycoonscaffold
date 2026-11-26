@@ -161,7 +161,28 @@ export function applyProduct(cfg: GameConfig, state: GameState, product: IapProd
       // A permanent rule (unlock) or look (cosmetic, Decision M7 of market-design.md) the mode reads from
       // entitlements.products (recorded above).
       return { state: s, granted: [] };
+    case 'hoursOfIncome':
+      // Granted only with its transaction, by the mode (grantPurchase below); never the shared time warp.
+      return { state: s, granted: [] };
   }
+}
+
+/**
+ * Applies a product the store has just reported paid, with its transaction. A `hoursOfIncome`
+ * product is the one case handed to the mode (src/engine/mode.ts `grantProduct`): the mode grants
+ * it at its saved quote, once per `txId`, and returns the same object otherwise (also when no mode
+ * with `grantProduct` runs this config). Every other kind is exactly applyProduct.
+ */
+export function grantPurchase(cfg: GameConfig, state: GameState, product: IapProduct, txId: string, purchasedMs: number, now: number): { state: GameState; granted: GrantedReward[] } {
+  if (product.kind !== 'hoursOfIncome') return applyProduct(cfg, state, product, now);
+  const mode = engineFor(cfg);
+  if (!mode?.grantProduct) return { state, granted: [] };
+  return { state: mode.grantProduct(cfg, state, product.id, txId, purchasedMs), granted: [] };
+}
+
+/** True when this config can sell a `hoursOfIncome` product: its installed mode grants them. */
+export function grantsHoursOfIncome(cfg: GameConfig): boolean {
+  return !!engineFor(cfg)?.grantProduct && cfg.monetization.iap.products.some((p) => p.kind === 'hoursOfIncome');
 }
 
 /** True when the player already owns a non-consumable product. */

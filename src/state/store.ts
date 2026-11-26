@@ -21,7 +21,7 @@ import type { BuyAmount, GameState } from '../engine/types';
 import { ads } from '../services/ads';
 import { analytics, crash, fetchRemoteOverrides } from '../services/firebase';
 import { fx } from '../services/fx';
-import { iap } from '../services/iap';
+import { iap, type PurchaseResult, type StoreTransaction } from '../services/iap';
 import { detectRegion } from '../services/region';
 import { simEvents } from './events';
 import { modeEvents } from './modeEvents';
@@ -147,8 +147,16 @@ interface Store {
   claimDaily(): void;
   gemTimeWarp(): void;
   dismissStory(): void;
-  /** Resolves true when the product was paid for and granted. */
+  /** Resolves true when the product was paid for and granted. A `hoursOfIncome` product is refused here (buyQuoted sells it). */
   purchase(product: IapProduct): Promise<boolean>;
+  /**
+   * Sells a `hoursOfIncome` product with the mode's quote (yard-stage2.md 2.15.4, B6): `quote` adds the
+   * mode's pending quote to the state (same object: refused, no sheet); the save is written; only then
+   * the store's sheet opens; paid, the transaction goes to the mode's grantProduct; cancelled or failed,
+   * `withdraw` takes the quote back; pending, the quote stays and the listener grants it when approved.
+   * The mode's shop calls this from its Buy; nothing else does.
+   */
+  buyQuoted(product: IapProduct, quote: QuoteFn, withdraw: WithdrawFn): Promise<QuotedOutcome>;
   restorePurchases(): Promise<number>;
   /** Dev only: wipe the save. */
   reset(): Promise<void>;
@@ -217,6 +225,52 @@ async function once(key: string, fn: () => Promise<void>): Promise<void> {
 }
 
 /**
+ * iap.purchase's result. A bare boolean (the stand-in purchase services of tests written before the
+ * result carried a transaction) reads as paid or not, with no transaction id.
+ */
+function asPurchase(r: PurchaseResult | boolean): PurchaseResult {
+  if (typeof r !== 'boolean') return r;
+  return r ? { ok: true, txId: '', purchasedMs: Date.now() } : { ok: false };
+}
+
+/** Transaction ids a grant was seen to apply in this run of the app (buyQuoted tells "granted" from "paid, not granted"). */
+const grantedTx = new Set<string>();
+
+/**
+ * Hands one store transaction of a `hoursOfIncome` product to the mode (meta.grantPurchase, src/engine/mode.ts
+ * grantProduct). The mode grants it once by id at its saved quote and returns the same object otherwise
+ * (already in its ledger, no quote, another save's). Any other product, an unknown one or an id the store did
+ * not give: unchanged.
+ */
+export function grantTransaction(cfg: GameConfig, game: GameState, t: StoreTransaction, now: number): GameState {
+  const p = cfg.monetization.iap.products.find((x) => x.id === t.productId);
+  if (!p || p.kind !== 'hoursOfIncome' || !t.txId) return game;
+  const next = safe('meta.grantPurchase', () => M.grantPurchase(cfg, game, p, t.txId, t.purchasedMs, now).state, game);
+  if (next !== game) grantedTx.add(t.txId);
+  return next;
+}
+
+/** What buyQuoted came to (yard-stage2.md 2.15.4, 2.15.5). */
+export type QuotedOutcome =
+  /** Paid and granted by the mode. */
+  | 'granted'
+  /** The store waits for an approval (or gave no transaction id yet): the quote stays; the grant comes through the listener or the reconcile. */
+  | 'pending'
+  /** Not sold: no grant route, a purchase of it already running, or the mode's quote refused. No sheet opened. */
+  | 'refused'
+  /** The player closed the store's sheet: the quote is withdrawn. */
+  | 'cancelled'
+  /** The store failed or the product is unavailable (the store says why), or paid and the mode granted nothing (reported): the quote is withdrawn unless paid. */
+  | 'failed'
+  /** The save could not be written: the quote is withdrawn and no sheet opened. */
+  | 'unsaved';
+
+/** The mode's quote: appends its pending quote of the product to the state, or returns the same object to refuse. */
+export type QuoteFn = (cfg: GameConfig, game: GameState, now: number) => GameState;
+/** Takes back the quote buyQuoted's `quote` added (nothing was paid for it). */
+export type WithdrawFn = (cfg: GameConfig, game: GameState, outcome: 'cancelled' | 'failed' | 'unsaved') => GameState;
+
+/**
  * Applies a product (meta.applyProduct) and, for a non-consumable recorded just now, lets a mode
  * with its own engine apply it to the run in progress (src/engine/mode.ts `entitle`; haul: Hangar
  * Expansion's start drones). Sim and classic install no engine: exactly applyProduct.
@@ -281,9 +335,41 @@ function playSimSounds(events: readonly GameEvent[]) {
 }
 
 export const useGame = create<Store>((set, get) => {
-  const syncAds = (game: GameState) => {
+  const syncAds = (game: GameState, cfg: GameConfig = get().cfg) => {
     ads.noAds = game.entitlements.noAds;
     ads.skipRewarded = game.entitlements.skipRewarded;
+    // A mode that keeps an age band hands its ad treatment over (src/engine/mode.ts adAudience); without one, nothing changes.
+    const mode = engineFor(cfg);
+    if (mode?.adAudience) ads.setAudience(safe('engine.adAudience', () => mode.adAudience!(cfg, game), null));
+  };
+
+  /** Writes the save; true once it is on disk. Before boot has loaded the save nothing is written (false). */
+  const writeSave = async (): Promise<boolean> => {
+    // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
+    if (!get().hydrated) return false;
+    // While paused (in the background) a save (App.tsx's autosave, its timer alive on Android or
+    // overdue at will-enter-foreground on iOS) still writes, but never moves the start of the time away.
+    const game = { ...get().game, lastSavedAt: paused ? get().game.lastSavedAt : Date.now() };
+    set({ game });
+    try {
+      await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
+      return true;
+    } catch (e) {
+      crash.record(e, 'save');
+      return false;
+    }
+  };
+
+  /** Transactions the store reports (the listener): each `hoursOfIncome` one to the mode, saved when any was granted. */
+  const routeTransactions = (txs: StoreTransaction[]) => {
+    if (!get().hydrated) return;
+    const before = get().game;
+    const now = Date.now();
+    const next = update((s, cfg) => txs.reduce((g, t) => grantTransaction(cfg, g, t, now), s));
+    if (next !== before) {
+      fx.play('purchase_success');
+      get().save();
+    }
   };
 
   /** Apply an engine transition and keep ads in sync with entitlements. */
@@ -416,6 +502,7 @@ export const useGame = create<Store>((set, get) => {
         ads.interstitialCooldownSec = cfg.monetization.ads.interstitialCooldownSec;
         ads.interstitials = cfg.monetization.ads.interstitials !== false;
         ads.maxAdContentRating = cfg.monetization.ads.maxAdContentRating;
+        ads.initOn = cfg.monetization.ads.initOn ?? 'boot';
 
         const at = Date.now();
         game = E.clampClock(cfg, game, at);
@@ -423,6 +510,14 @@ export const useGame = create<Store>((set, get) => {
         for (const id of await iap.owned()) {
           const p = cfg.monetization.iap.products.find((x) => x.id === id);
           if (p && M.isNonConsumable(p) && !M.productOwned(game, p)) game = safe('meta.applyProduct', () => applyProductNow(cfg, game, p, at).state, game);
+        }
+        // The reconcile (yard-stage2.md 2.15.5): a game whose mode grants hours of income hands it every
+        // transaction the store lists; the mode grants those it holds a quote for and has not granted.
+        // Games without such a product never ask (their start is as before).
+        const grants = M.grantsHoursOfIncome(cfg);
+        if (grants) {
+          const txs = await iap.transactions().catch((e) => (crash.record(e, 'iap.transactions'), [] as StoreTransaction[]));
+          for (const t of txs) game = grantTransaction(cfg, game, t, at);
         }
         game = safe('meta.registerSession', () => M.registerSession(game, at), game);
         game = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, game, at), game);
@@ -433,7 +528,7 @@ export const useGame = create<Store>((set, get) => {
         if (offline?.game) game = offline.game;
         // A mode that is paid when its absence is computed (decree, 2.15) gets the earnings in this same update.
         if (offline && offline.earnings > 0 && engineFor(cfg)?.paysOnCompute) game = E.grantCash(game, offline.earnings);
-        syncAds(game);
+        syncAds(game, cfg);
         rushWasActive = E.isRushActive(game, at);
         lastTickAt = at;
         sessionStartedAt = at;
@@ -445,7 +540,10 @@ export const useGame = create<Store>((set, get) => {
           offline: offline && offline.seconds >= cfg.economy.offline.minSecondsToShow && worthShowing(cfg, offline) ? { seconds: offline.seconds, earnings: offline.earnings, report: offline.report } : null,
         });
         analytics.log(returning ? 'session_resume' : 'first_open_game', { prestige: game.prestigeCount, mode: cfg.mode, session: game.stats.sessions });
-        ads.init();
+        // A purchase approved later (or completed after a kill) reaches the mode while the game runs; saved at once.
+        if (grants) iap.onTransactions(routeTransactions);
+        // 'firstOffer': consent, tracking and the SDK wait for the mode's first ad button (ads.firstOffer()).
+        if ((cfg.monetization.ads.initOn ?? 'boot') === 'boot') ads.init();
         detectRegion().then((region) => set({ region }));
       })();
       return booting;
@@ -547,17 +645,7 @@ export const useGame = create<Store>((set, get) => {
     },
 
     async save() {
-      // Before boot has loaded the save, the in-memory game is a blank one: writing it would wipe the player.
-      if (!get().hydrated) return;
-      // While paused (in the background) a save (App.tsx's autosave, its timer alive on Android or
-      // overdue at will-enter-foreground on iOS) still writes, but never moves the start of the time away.
-      const game = { ...get().game, lastSavedAt: paused ? get().game.lastSavedAt : Date.now() };
-      set({ game });
-      try {
-        await AsyncStorage.setItem(saveKey(), JSON.stringify(game));
-      } catch (e) {
-        crash.record(e, 'save');
-      }
+      await writeSave();
     },
 
     setBuyAmount(buyAmount) {
@@ -841,7 +929,7 @@ export const useGame = create<Store>((set, get) => {
       if (deal.productId) {
         const product = cfg.monetization.iap.products.find((p) => p.id === deal.productId);
         if (!product || !safe('meta.activeDeals', () => M.activeDeals(cfg, game, now), []).some((d) => d.deal.id === dealId)) return fx.play('ui_denied');
-        const ok = await iap.purchase(product);
+        const ok = asPurchase(await iap.purchase(product)).ok;
         if (!ok) return purchaseFailed();
         // Use the latest state: the game kept running while the payment sheet was open.
         result = safe('meta.grantDeal', () => M.grantDeal(cfg, get().game, dealId, Date.now()), null);
@@ -1007,10 +1095,15 @@ export const useGame = create<Store>((set, get) => {
         const seq = grantSeq;
         return get().buyDeal(deal.id).then(() => grantSeq > seq);
       }
+      // Hours of income are sold only with the mode's quote, saved first (buyQuoted): never a sheet without one.
+      if (product.kind === 'hoursOfIncome') {
+        fx.play('ui_denied');
+        return Promise.resolve(false);
+      }
       const seq = grantSeq;
       return once(`iap:${product.id}`, async () => {
         if (M.isNonConsumable(product) && M.productOwned(get().game, product)) return;
-        const ok = await iap.purchase(product);
+        const ok = asPurchase(await iap.purchase(product)).ok;
         if (!ok) return purchaseFailed();
         // The payment sheet was open for a while: apply to the latest state, never to a copy taken before.
         const result = safe('meta.applyProduct', () => applyProductNow(get().cfg, get().game, product, Date.now()), null);
@@ -1026,6 +1119,60 @@ export const useGame = create<Store>((set, get) => {
         celebrateRewards(result.granted);
         get().save();
       }).then(() => grantSeq > seq);
+    },
+
+    async buyQuoted(product, quote, withdraw) {
+      const key = `iap:${product.id}`;
+      const { cfg } = get();
+      if (product.kind !== 'hoursOfIncome' || !M.grantsHoursOfIncome(cfg) || !get().hydrated || inFlight.has(key)) {
+        fx.play('ui_denied');
+        return 'refused';
+      }
+      inFlight.add(key);
+      try {
+        const before = get().game;
+        const quoted = safe('mode.quote', () => quote(cfg, before, Date.now()), before);
+        if (quoted === before) {
+          fx.play('ui_denied');
+          return 'refused';
+        }
+        syncAds(quoted);
+        set({ game: quoted });
+        const takeBack = (outcome: 'cancelled' | 'failed' | 'unsaved') => {
+          update((s, c) => safe('mode.withdraw', () => withdraw(c, s, outcome), s));
+          get().save();
+        };
+        // The quote is on disk before the store's sheet opens (B6): a kill at any later moment loses no paid pack.
+        if (!(await writeSave())) {
+          takeBack('unsaved');
+          return 'unsaved';
+        }
+        const r = asPurchase(await iap.purchase(product));
+        if (!r.ok) {
+          if (r.pending) return 'pending';
+          const failed = iap.lastFailure !== null && iap.lastFailure !== undefined;
+          takeBack(failed ? 'failed' : 'cancelled');
+          if (failed) purchaseFailed();
+          return failed ? 'failed' : 'cancelled';
+        }
+        // Paid without a transaction id: the listener or the next start brings the real one.
+        if (!r.txId) return 'pending';
+        const prior = get().game;
+        const next = update((s, c) => grantTransaction(c, s, { productId: product.id, txId: r.txId, purchasedMs: r.purchasedMs }, Date.now()));
+        if (next === prior && !grantedTx.has(r.txId)) {
+          // Money was taken and the mode granted nothing: never fail silently. The quote stays saved for the reconcile.
+          crash.record(new Error(`product ${product.id} paid (${r.txId}) but not granted`), 'buyQuoted');
+          return 'failed';
+        }
+        if (next !== prior) {
+          grantSeq++;
+          fx.play('purchase_success');
+        }
+        await writeSave();
+        return 'granted';
+      } finally {
+        inFlight.delete(key);
+      }
     },
 
     async restorePurchases() {

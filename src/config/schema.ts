@@ -119,9 +119,12 @@ export const IapProductSchema = z.object({
    * the deal in `meta.deals` that names this product. clearance: no banners or pop-up ads, and every rewarded
    * boost without the ad (one product). unlock: a permanent rule the mode reads from `entitlements.products`
    * (haul: `haul.hangar.product`). cosmetic: looks only, nothing in the rules changes (merge: Blue Silk
-   * Awnings, `merge.products.awnings`; Decisions M7 and M13 of docs/design/market-design.md).
+   * Awnings, `merge.products.awnings`; Decisions M7 and M13 of docs/design/market-design.md). hoursOfIncome: a
+   * consumable worth `value` hours of the mode's own rated income, granted only by the mode
+   * (src/engine/mode.ts `grantProduct`) with the store's transaction id, at the amount the mode quoted
+   * before the store's sheet opened (src/state/store.ts `buyQuoted`); never the shared time warp.
    */
-  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock', 'cosmetic']),
+  kind: z.enum(['noAds', 'skipAds', 'multiplier', 'gems', 'starterPack', 'timeWarp', 'deal', 'clearance', 'unlock', 'cosmetic', 'hoursOfIncome']),
   /** starterPack only: what it grants instead of "no ads plus `value` gems" (a pack without no-ads). */
   contents: z.array(RewardSchema).optional(),
   /** Multiplier value, gem amount or warp hours, depending on kind. */
@@ -419,6 +422,12 @@ export const GameConfigSchema = z.object({
        * app's store age rating; set before the SDK initialises. See docs/design/research/policy.md item 9.
        */
       maxAdContentRating: z.enum(['G', 'PG', 'T', 'MA']).default('PG'),
+      /**
+       * When consent, tracking and the ad SDK are asked for and started (src/services/ads.ts). 'boot': at
+       * the game's start, as every game did before this existed. 'firstOffer': nothing of them until the
+       * first time an ad button would show (the mode's screen calls `ads.firstOffer()`), then once.
+       */
+      initOn: z.enum(['boot', 'firstOffer']).default('boot'),
     }),
     iap: z.object({
       revenueCatIosKey: z.string().optional(),
