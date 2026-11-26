@@ -1758,3 +1758,15 @@ store error, and blocked a pack for ever when the device's clock had been wrong.
     (f) A refused Buy's reason (the quote changed, a pack is waiting, no headroom) is the mode's
         to keep for its row; the shared store only says refused.
     The contract's `iap.pending` entry is `{id, product, S, I, atMs, askedMs, known, state}`.
+
+15.13 **Last small points on paid packs (08:35, after the contract and the specification were brought
+    into step).** (a) A quote's id is the contract's counter in the order quotes were made (`q<n>`);
+    this replaces 15.11 (a): the shared store goes on naming a quote by its product and `atMs`, and
+    "oldest" is the smallest counter. (b) The event is `quoteWithdrawn {product, atMs, why:
+    'cancelled' | 'refused' | 'expired'}`: "refused" also when no sheet could open (the store could
+    not be reached, the product is unavailable, the save could not be written), each with "Nothing
+    was charged."; 'replaced' does not exist (15.12 b). (c) `iap.maxStanding` is fixed at 3.
+    (d) A first-yard save that is migrated keeps `iap.sessions2At` null (the specification's 2.20;
+    the answer N3 in its 11.3 is withdrawn): the shop appears after the player's next absence of
+    thirty minutes or more. The development rows' prepared yards ("Start at rung 3", "Start at
+    rung 4") have it set, so that the owner sees the shop at once on the phone.

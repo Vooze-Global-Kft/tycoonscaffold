@@ -835,8 +835,8 @@ export type SalvageEventV3 =
   | { type: 'granted'; product: string; S: number; txId: string }
   /** The pack's S moved between read and press (a purchase landed): the row says "Updated: §a → §b". */
   | { type: 'quoteUpdated'; product: string; a: number; b: number }
-  /** A quote withdrawn by its own outcome or by the 72 h rule (RULING2 15.4, 15.6). */
-  | { type: 'quoteWithdrawn'; product: string; atMs: number }
+  /** A quote withdrawn by its own outcome or by the 72 h rule (RULING2 15.4, 15.11 f, 15.12): `why` 'expired' puts one line on the shop card until it is closed. */
+  | { type: 'quoteWithdrawn'; product: string; atMs: number; why: 'cancelled' | 'refused' | 'expired' }
   /** The age question is due (the first time a pack row would show). */
   | { type: 'ageAsked' }
   | { type: 'adOffered'; kind: AdKind; amount: number }
@@ -1859,9 +1859,13 @@ export type AgeBand = 'u13' | 't13' | 'a18';
  * (`q<n>`, ./state2.ts `quoteId`); `known` the product's transaction ids the store listed just before the
  * quote (a quote is never granted with an id in `known` or in the ledger); `state` open from Buy until the
  * sheet's outcome, waiting when the store answered pending or with an error that does not prove nothing
- * was charged. At most one OPEN quote per product; a WAITING one refuses a new Buy for 24 h of the device
- * clock from `atMs` (`packPending`); any standing quote is withdrawn by a FRESH listing at least 72 h after
- * `atMs` that shows nothing new for it. No clock decides a grant (15.1).
+ * was charged. As ruled in 15.12 (the lead, 26 Nov 08:05; it replaces 15.6 where they differ): a new Buy
+ * does NOT withdraw an older open quote (it stands, does not block Buy, counts in headroom); at most
+ * `iap.maxStanding` quotes of one product stand at once (a further Buy: `packPending`); a WAITING one
+ * refuses a new Buy for 24 h of the DEVICE's clock from `atMs`, a clock earlier than `atMs` counting as
+ * elapsed; any standing quote is withdrawn when a FRESH listing whose request time (the STORE's clock) is
+ * at least 72 h after the quote's `askedMs` has been routed and the quote still stands. "Oldest" is the
+ * list's order (the order quotes were made in), never `atMs`. No clock decides a grant (15.1).
  */
 export interface PendingQuote {
   id: string;
@@ -1870,8 +1874,14 @@ export interface PendingQuote {
   S: number;
   /** I read at Buy (frozen). */
   I: number;
-  /** Device epoch ms of Buy (information and the 24 h / 72 h rules only; never compared with a store date). */
+  /** Device epoch ms of Buy (the shared store names a quote by product and atMs; the 24 h courtesy rule; never compared with a store date). */
   atMs: number;
+  /**
+   * The STORE's request time (epoch ms) of the listing read at this Buy (the shared store passes it to the quote
+   * function): the 72 h rule is measured between it and a later fresh listing's request time, never on the
+   * device's clock (15.12 a). null only on a quote saved without one: such a quote is never withdrawn by time.
+   */
+  askedMs: number | null;
   known: string[];
   state: 'open' | 'waiting';
 }
@@ -1966,7 +1976,7 @@ export interface SalvageActions2 {
   signFinance(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, shown: FinanceShown, clock: number, events?: SalvageEvent[]): SalvageGame;
   setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to: StationId | 'bay', clock: number, events?: SalvageEvent[]): SalvageGame;
   setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame;
-  quotePack(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: string[], clock: number, events?: SalvageEvent[]): SalvageGame;
+  quotePack(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: string[], askedMs: number, clock: number, events?: SalvageEvent[]): SalvageGame;
   settleQuote(cfg: SalvageConfig, g: SalvageGame, outcome: QuoteOutcome, quote: { product: string; atMs: number }): SalvageGame;
   setPacksHidden(cfg: SalvageConfig, g: SalvageGame, on: boolean, code: string, clock: number, events?: SalvageEvent[]): SalvageGame;
   setAgeBand(cfg: SalvageConfig, g: SalvageGame, year: number, now: number, clock: number, events?: SalvageEvent[]): SalvageGame;

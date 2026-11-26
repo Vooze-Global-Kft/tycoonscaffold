@@ -119,16 +119,19 @@ def build():
     s['skeletonPlaceholder'] = False
     s['names'] = src['names']
     text = load(TEXT) if os.path.exists(TEXT) else {}
+    layer = s.get('worksLayer') or {}
     for g, w in (text.get('grades') or {}).items():
-        if g in s['grades']:
-            for k in ('name', 'short', 'long'):
-                if k in w:
-                    s['grades'][g][k] = w[k]
+        for fam in (s['grades'], layer.get('grades') or {}):  # stage 2: the works layer's grades take their words too
+            if g in fam:
+                for k in ('name', 'short', 'long'):
+                    if k in w:
+                        fam[g][k] = w[k]
     for o, w in (text.get('objects') or {}).items():
-        if o in s['objects']:
-            for k in ('name', 'long'):
-                if k in w:
-                    s['objects'][o][k] = w[k]
+        for fam in (s['objects'], layer.get('objects') or {}):
+            if o in fam:
+                for k in ('name', 'long'):
+                    if k in w:
+                        fam[o][k] = w[k]
     blk = {k: nodollar(text[k]) for k in ('lessons', 'partners', 'glossary') if k in text}
     if blk:
         s['text'] = blk

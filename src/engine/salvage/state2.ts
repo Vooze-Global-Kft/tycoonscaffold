@@ -151,7 +151,7 @@ function agreementOf(v: unknown): Agreement | null {
 function pendingOf(v: unknown): PendingQuote | null {
   const q = obj(v);
   if (!str(q.id) || !str(q.product) || !fin(q.S) || !fin(q.atMs) || (q.state !== 'open' && q.state !== 'waiting')) return null;
-  return { id: q.id, product: q.product, S: money(q.S), I: money(q.I), atMs: q.atMs, known: strs(q.known, 1000), state: q.state };
+  return { id: q.id, product: q.product, S: money(q.S), I: money(q.I), atMs: q.atMs, askedMs: fin(q.askedMs) ? (q.askedMs as number) : null, known: strs(q.known, 1000), state: q.state };
 }
 
 function ledgerOf(v: unknown): LedgerEntry | null {

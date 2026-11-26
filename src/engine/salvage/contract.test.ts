@@ -199,7 +199,7 @@ describe('2.20 the save: layout 3 accepts layout 2 (the first test written: the 
     s.iap = {
       looks: { colour: 'colour2', dressing: null, plaque: null, sign: 'rung3' },
       ledger: [{ txId: 'sim:pack2:1:1', product: 'pack2', S: 109000, atMs: FIXTURE_NOW - 5000, quote: 'q1' }],
-      pending: [{ id: 'q2', product: 'pack5', S: 272500, I: 54500, atMs: FIXTURE_NOW - 1000, known: ['sim:pack2:1:1'], state: 'waiting' }],
+      pending: [{ id: 'q2', product: 'pack5', S: 272500, I: 54500, atMs: FIXTURE_NOW - 1000, askedMs: FIXTURE_NOW - 1200, known: ['sim:pack2:1:1'], state: 'waiting' }],
       hidden: { codeHash: 'h:1234' },
       ageBand: 'a18',
       createdMs: FIXTURE_NOW - 86400_000,
