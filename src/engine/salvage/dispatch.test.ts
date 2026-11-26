@@ -93,11 +93,9 @@ describe("the driver's ranking (RULING2.md 16.1)", () => {
   it('16.6: the ready skip the driver leaves standing for the better load carries the reason (kept); not below the rung', () => {
     const g = twoFull(1000);
     const c = keyed(bigDemo(SALVAGE_TEST, 6), 1);
-    // The demolition skip full and not fitting, the farm's ready: the farm's label says he keeps the room.
-    const s = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
-    Object.assign(s.partners.partnerDemolition.skips[0], { phase: 'full', fullAt: s.t - 1, contents: { ...c.partners.partnerDemolition.skip }, mass_g: 3_500_000, price: 100 });
-    const h = { ...g, salvage: s } as SalvageGame;
-    expect(departed(c, h)).toBeNull();
+    // The demolition skip full (the jump fills it) and not fitting, the farm's ready: the farm's label says he keeps the room.
+    const h = R.jump(cfgOf(c), g, g.salvage.t + 0.01);
+    expect(h.salvage.truck.trip).toBeNull();
     expect(keptForBetter(c, h, 'partnerFarm')).toBe(true);
     expect(keptForBetter(c, h, 'partnerDemolition')).toBe(false);
     expect(keptForBetter(bigDemo(SALVAGE_TEST, 6), h, 'partnerFarm')).toBe(false);
@@ -114,7 +112,13 @@ describe("the driver's ranking (RULING2.md 16.1)", () => {
     const cut = s.crew.find((m) => m.role === 'cutter')!;
     s.crew.push({ ...cut, id: 'cutter.9' });
     const r2 = loadRanks(c, s)!;
-    expect(r2.partnerDemolition).toBeGreaterThan(r1.partnerDemolition);
+    const s3 = JSON.parse(JSON.stringify(g.salvage)) as SalvageGame['salvage'];
+    const hand = s3.crew.find((m) => m.role === 'hand')!;
+    s3.crew.push({ ...hand, id: 'hand.9' });
+    const r3 = loadRanks(c, s3)!;
+    // A crew member more never lowers a rank, and the step that binds the big load raises it.
+    for (const r of [r2, r3]) for (const id of Object.keys(r1)) expect(r[id]).toBeGreaterThanOrEqual(r1[id] - 1e-12);
+    expect(Math.max(r2.partnerDemolition, r3.partnerDemolition)).toBeGreaterThan(r1.partnerDemolition);
     // The same assets, the same rank (cached on rated income's asset key; never the yard's stock or cash).
     expect(loadRanks(c, { ...g.salvage, pieces: [] })).toEqual(r1);
     expect(R.ratedTerms(cfgOf(c), g).rank).toEqual(r1);
