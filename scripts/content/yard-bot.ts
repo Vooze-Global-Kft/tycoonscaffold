@@ -18,12 +18,13 @@
  *                 tick-equals-jump gate checks the first 60 minutes); the slow hand plays max(100, M)
  * --cache dir     keep each run's summary there and read it back on a later call with the same spec
  * --daysSeeds N   the three-day runs (days and the day-word holder) on the first N seeds (default 3)
- * --only income   stage 2 2.3.3's gate (engine2-income): rated income I against the away income an hour G at
- *                 usual prices (board.a 0), at rung 2's and rung 3's entry, the hour's end, day 1 and day 3 (normal hand),
- *                 on yards the bots played with prices flat; and (RULING2.md 14.5, engine2-fixB) on yards
- *                 played with the NORMAL price board, G still measured at usual prices, at the hour's end
- *                 and day 1 (the gate: 17 of 20 within 0.9 to 1.1 on ten seeds, none outside 0.85 to 1.15).
- *                 With --only income alone, only these runs are made and only section 8 is printed.
+ * --only income   stage 2 2.3.3's gate (RULING2.md 14.10; engine2-income2): rated income I against the away income
+ *                 an hour G at usual prices (board.a 0) at rung 3's entry, minute 90, day 1, day 2 and day 3
+ *                 (rung 2's entry and minute 60 printed), normal hand, on every seed on yards the bots played
+ *                 with prices flat AND with the normal price board (G still at usual prices); per moment the
+ *                 median of I/G, the seeds within 0.88 to 1.12, min and max, and the gate line. With --only
+ *                 income alone, only these runs are made and only section 8 is printed. Five seeds not used
+ *                 in the calibration: --seeds 5 --first 16.
  * Every run checks the hard promises of 8.3 (shown equals applied, cash never below zero, supplied never
  * falling, no stock negative; tick equals jump minute by minute on the normal hand's runs); a broken
  * promise prints in the report's first section and makes the exit code 2.
@@ -209,45 +210,30 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
     }
     return summary(b, spec, Rs, gate, extra, t0);
   }
-  if (spec.kind === 'income' && spec.board === 'normal') {
-    // RULING2.md 14.5: the yard as players play it (the shipped board), I against G at the hour's end and day 1
-    // (the gate's 20 moments); REPORT7 adds rung 2's and rung 3's entry and day 3 (printed, not gated).
-    let r2: R.SalvageGame | null = null;
-    let r3: R.SalvageGame | null = null;
-    playTo(b, 3600, (bb, m) => {
-      onMinute(bb, m);
-      if (!r2 && bb.g.salvage.ladder.rung >= 2) r2 = bb.g;
-      if (!r3 && bb.g.salvage.ladder.rung >= 3) r3 = bb.g;
-    });
-    const rows = [];
-    if (r2) rows.push(incomeRow(cfg, r2, spec, 'rung2'));
-    if (r3) rows.push(incomeRow(cfg, r3, spec, 'rung3'));
-    rows.push(incomeRow(cfg, b.g, spec, 'hour'));
-    for (let k = 0; k < 6; k++) {
-      away(b, 11.75 * 3600);
-      playTo(b, b.g.salvage.t + 15 * 60);
-      if (k === 1) rows.push(incomeRow(cfg, b.g, spec, 'day1'));
-    }
-    rows.push(incomeRow(cfg, b.g, spec, 'day3'));
-    extra.income = rows;
-    return summary(b, spec, Rs, gate, extra, t0);
-  }
   if (spec.kind === 'income') {
+    // RULING2.md 14.10 (engine2-income2): I against G at each named moment, on yards played with the flat board
+    // and with the normal board alike (G always at usual prices): rung 3's entry, minute 90, day 1, day 2 and
+    // day 3; rung 2's entry and minute 60 are printed, not gated. The first sitting runs to minute 90, then
+    // the twice-a-day habit (11.75 h away, 15 minutes played) to the end of day 3.
     let r2: R.SalvageGame | null = null;
     let r3: R.SalvageGame | null = null;
-    playTo(b, 3600, (bb, m) => {
+    let m60: R.SalvageGame | null = null;
+    playTo(b, 5400, (bb, m) => {
       onMinute(bb, m);
       if (!r2 && bb.g.salvage.ladder.rung >= 2) r2 = bb.g;
       if (!r3 && bb.g.salvage.ladder.rung >= 3) r3 = bb.g;
+      if (m === 60) m60 = bb.g;
     });
     const rows = [];
     if (r2) rows.push(incomeRow(cfg, r2, spec, 'rung2'));
     if (r3) rows.push(incomeRow(cfg, r3, spec, 'rung3'));
-    rows.push(incomeRow(cfg, b.g, spec, 'hour'));
+    if (m60) rows.push(incomeRow(cfg, m60, spec, 'hour'));
+    rows.push(incomeRow(cfg, b.g, spec, 'm90'));
     for (let k = 0; k < 6; k++) {
       away(b, 11.75 * 3600);
       playTo(b, b.g.salvage.t + 15 * 60);
       if (k === 1) rows.push(incomeRow(cfg, b.g, spec, 'day1'));
+      if (k === 3) rows.push(incomeRow(cfg, b.g, spec, 'day2'));
     }
     rows.push(incomeRow(cfg, b.g, spec, 'day3'));
     extra.income = rows;
@@ -623,35 +609,48 @@ function report(all: Summary[], seeds: number[]): string {
   return L.join('\n');
 }
 
-/** Section 8: rated income I against G, on yards played with flat prices and with the normal board (RULING2.md 14.5). */
+/**
+ * Section 8: rated income I against G, on yards played with flat prices and with the normal board, and the gate
+ * of RULING2.md 14.10 (it replaces 14.5's count and I5's band): at each named moment (rung 3's entry, minute
+ * 90, day 1, day 2, day 3), on each board, the MEDIAN of I/G within 0.95 to 1.05, at least 13 of 15 seeds (the
+ * same share of the seeds run) within 0.88 to 1.12, none outside 0.80 to 1.25. Rung 2's entry and minute 60
+ * are printed, not gated. A miss names the moment; the account (notes/s2a-engine2-income2.md) names the term.
+ */
+const INCOME_GATED = ['rung3', 'm90', 'day1', 'day2', 'day3'];
 function incomeSection(L: string[], all: Summary[]): void {
   type Row = { at: string; t: number; rung: number; ran_h: number; G: number; I: number; bind: string; Isales: number; Ispent: number; sales: number; spent: number; stock: number };
+  const misses: string[] = [];
+  let moments = 0;
   for (const board of ['flat', 'normal'] as const) {
     const inc = all.filter((r) => r.spec.kind === 'income' && (r.spec.board ?? 'flat') === board);
     if (!inc.length) continue;
     L.push('');
     L.push(
       board === 'flat'
-        ? '8. RATED INCOME I AGAINST THE AWAY INCOME G (stage 2 2.3.3, I5; PLAYED WITH PRICES FLAT, board.a 0; normal hand, goal habit, route A; G = (net cash + stock left at p̄ − at the start) / hours the yard ran, a capped absence at usual prices)'
-        : '8b. THE SAME ON YARDS PLAYED WITH THE NORMAL PRICE BOARD (RULING2.md 14.5; G still at usual prices, board.a 0; gate: 17 of 20 moments within 0.9-1.1, none outside 0.85-1.15)',
+        ? '8. RATED INCOME I AGAINST THE AWAY INCOME G (stage 2 2.3.3, RULING2.md 14.10; PLAYED WITH PRICES FLAT, board.a 0; normal hand, goal habit, route A; G = (net cash + stock left at p̄ − at the start) / hours the yard ran, a capped absence at usual prices)'
+        : '8b. THE SAME ON YARDS PLAYED WITH THE NORMAL PRICE BOARD (RULING2.md 14.5, 14.10; G still at usual prices, board.a 0)',
     );
-    const all20: number[] = [];
-    for (const at of ['rung2', 'rung3', 'hour', 'day1', 'day3']) {
+    L.push('   gate (14.10) at each moment: median of I/G in 0.95-1.05; at least 13 of 15 seeds in 0.88-1.12; none outside 0.80-1.25');
+    for (const at of ['rung2', 'rung3', 'hour', ...INCOME_GATED.slice(1)]) {
       const rows = inc.map((r) => ({ r, x: (r.extra.income as Row[]).find((x) => x.at === at) })).filter((q): q is { r: Summary; x: Row } => !!q.x);
       if (!rows.length) continue;
       const q = rows.map(({ x }) => x.I / x.G);
-      if (board === 'flat' || at === 'hour' || at === 'day1') all20.push(...q);
-      L.push(`   ${at.padEnd(5)} I/G in 0.9-1.1 on ${q.filter((x) => x >= 0.9 && x <= 1.1).length}/${rows.length} seeds${board === 'flat' ? ' (aim 13 of 15 at rung3 and day3)' : at === 'hour' || at === 'day1' ? ' (gated)' : ' (printed, not gated)'}; I/G med ${med(q).toFixed(3)}, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}`);
+      const m = med(q);
+      const within = q.filter((x) => x >= 0.88 && x <= 1.12).length;
+      const out = q.filter((x) => x < 0.8 || x > 1.25).length;
+      const gated = INCOME_GATED.includes(at);
+      const ok = m >= 0.95 && m <= 1.05 && within >= Math.ceil((13 / 15) * rows.length) && out === 0;
+      if (gated) {
+        moments++;
+        if (!ok) misses.push(`${board} ${at}`);
+      }
+      L.push(`   ${(at === 'hour' ? 'm60' : at).padEnd(5)} I/G med ${m.toFixed(3)}, ${within}/${rows.length} seeds in 0.88-1.12, min ${Math.min(...q).toFixed(3)}, max ${Math.max(...q).toFixed(3)}, ${out} outside 0.80-1.25: ${gated ? (ok ? 'met' : 'MISSED') : 'printed, not gated'}`);
       for (const { r, x } of rows) {
         L.push(`      s${pad(r.spec.seed, 3)} t ${mmss(x.t)} rung ${x.rung} ran ${x.ran_h.toFixed(1)} h: G §${pad(Math.round(x.G), 6)} (sales ${Math.round(x.sales)} − loads ${Math.round(x.spent)} + stock ${Math.round(x.stock)})  I §${pad(Math.round(x.I), 6)} (sales ${Math.round(x.Isales)} − loads ${Math.round(x.Ispent)}, binds ${x.bind})  I/G ${(x.I / x.G).toFixed(3)}`);
       }
     }
-    if (board === 'normal') {
-      const inBand = all20.filter((x) => x >= 0.9 && x <= 1.1).length;
-      const out = all20.filter((x) => x < 0.85 || x > 1.15).length;
-      L.push(`   GATE (14.5): ${inBand}/${all20.length} moments within 0.9-1.1 (aim at least 17 of 20), ${out} outside 0.85-1.15 (aim none): ${inBand >= Math.ceil(0.85 * all20.length) && out === 0 ? 'PASSED' : 'NOT MET'}`);
-    }
   }
+  if (moments) L.push('', `   GATE (14.10, the band): ${moments - misses.length}/${moments} moments met${misses.length ? `; MISSED: ${misses.join(', ')}` : ''}: ${misses.length ? 'NOT MET' : 'MET'} (I's monotonicity is tested apart: rateIncome2.test.ts on the test content; the account's walk on the real content)`);
 }
 
 // ============================================================================================ main
@@ -675,8 +674,8 @@ async function main(): Promise<void> {
   const specs: Spec[] = [];
   // REPORT7: the hour runs are played to minute 90 (E31c: the first half hour after rung 3 shows what the runs do).
   const base = { kind: 'hour' as const, minutes: Number(arg('minutes', '90')) };
-  // --only income alone: only the income runs (flat board on every seed, the normal board on ten seeds:
-  // seeds 1..10 or the --seeds given when fewer), and only section 8 in the report.
+  // --only income alone: only the income runs (the flat and the normal board on every seed), and only
+  // section 8 in the report.
   const incomeOnly = only.length === 1 && only[0] === 'income';
   for (const seed of seeds) {
     if (!incomeOnly) specs.push({ ...base, hand: 'normal', habit: 'goal', route: 'A', seed, gate: only.includes('gate') });
@@ -687,9 +686,10 @@ async function main(): Promise<void> {
       specs.push({ ...base, hand: 'slow', habit: 'goal', route: 'A', seed, minutes: Math.max(100, base.minutes) });
     }
     if (only.includes('hand')) specs.push({ ...base, kind: 'manager', hand: 'normal', habit: 'goal', route: 'A', seed, manager: true });
-    if (only.includes('income')) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'flat' });
+    if (only.includes('income')) specs.push({ kind: 'income', minutes: 90, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'flat' });
   }
-  if (only.includes('income')) for (const seed of seeds.slice(0, 10)) specs.push({ kind: 'income', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'normal' });
+  // RULING2.md 14.10: the normal board on every seed too (engine2-income2).
+  if (only.includes('income')) for (const seed of seeds) specs.push({ kind: 'income', minutes: 90, hand: 'normal', habit: 'goal', route: 'A', seed, board: 'normal' });
   const few = seeds.slice(0, Math.min(Number(arg('daysSeeds', '3')), seeds.length));
   for (const seed of few) {
     if (only.includes('days')) {

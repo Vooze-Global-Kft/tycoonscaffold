@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../fixtures/salvage';
 import * as R from '../salvage';
-import { awayCapH, awayCapS, awayPass } from './away';
+import { awayCapH, awayCapS, awayPass, runLongerOf } from './away';
 import type { SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
@@ -144,5 +144,17 @@ describe('a year away', () => {
     const out = R.salvageOffline(e33, g, g.salvage.clock.highMs + 365 * 86_400_000).game;
     expect(Number.isFinite(out.cash)).toBe(true);
     expect(out.salvage.deal.phase === 'running').toBe(false);
+  });
+});
+
+describe("runLongerOf names only a rung this stage can reach (engine2-hooks, content2's request of 26 Nov)", () => {
+  it('a cap list longer than the ladder ([0.5, 2, 4, 6, 8]) names no rung past the top at rung 3; below it the next rung as before', () => {
+    const long = { mode: 'salvage', salvage: { ...SALVAGE_TEST, awayCapByRung_h: [0.5, 2, 4, 6, 8], nightWatch_h: 2 } } as unknown as SalvageConfig;
+    const g = m30();
+    const at = (rung: number) => ({ ...g, salvage: { ...g.salvage, ladder: { ...g.salvage.ladder, rung } } }) as SalvageGame;
+    const r3 = runLongerOf(long, at(3), awayCapS(long, at(3)));
+    expect(r3 && 'rung' in r3 ? r3.rung : null).toBeNull();
+    const r2 = runLongerOf(long, at(2), awayCapS(long, at(2)));
+    expect(r2 && 'rung' in r2 ? r2.rung : null).toBe(3);
   });
 });

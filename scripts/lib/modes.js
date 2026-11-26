@@ -28,7 +28,11 @@ const MODE_FOLDERS = {
   decree: ['src/modes/decree', 'src/ui/decree', 'src/engine/decree', 'src/engine/decree.ts', 'src/engine/decreeMode.ts', 'src/engine/fixtures/decree.ts', 'src/engine/fixtures/decree.numbers.json', 'src/config/schema.decree.ts', 'src/config/decree.content.ts'],
   // The scrapyard (docs/design/yard-ground.md; the rules come with docs/design/yard-design.md): the salvage
   // rules, their schema, fixtures and content, the walkable yard and its screens, as decree's.
-  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
+  // Stage 2 (yard-stage2.md 8.1, 9.2; engine2-hooks, 26 Nov): the frozen states r3, r3plain, held14 with the
+  // content they were played on (engine2's), and the two Phase-B fixture files (rules-works', rules-money's).
+  // The stage's new rules files (works, reuse, lots, crate, bank, shop, ads, halls, shredder, assay, forklift,
+  // state2, samples2) are inside src/engine/salvage, which is the mode's already.
+  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
 };
 
 /**
@@ -219,6 +223,12 @@ const WEB_ONLY = [
   'src/engine/fixtures/salvage.ts',
   'src/engine/salvage/bot.ts',
   'src/engine/salvage/director.ts',
+  // Stage 2 (engine2-hooks, 26 Nov): the frozen stage-2 states and the Phase-B fixtures (tests and the preview's
+  // presets only), and contract2's hand-written sample cards (the preview's card list only; requests.md).
+  'src/engine/fixtures/salvage-stage2.json',
+  'src/engine/fixtures/salvage2works.ts',
+  'src/engine/fixtures/salvage2money.ts',
+  'src/engine/salvage/samples2.ts',
   'src/ui/salvage/dev/DevPanel.web.tsx',
   'src/ui/salvage/dev/switches.web.ts',
   // The loading animation's preview switches (lt=, ltitle=, lrm=, lready=, lseen=; the frame log).

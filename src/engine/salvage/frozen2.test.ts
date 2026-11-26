@@ -108,7 +108,9 @@ describe('the frozen states r3, r3plain, held14 (8.1)', () => {
           b = R.jump(cfg, b, a.salvage.t);
           if (k % 60 === 59) expect(whole(b), `${n} walking at ${k} s`).toEqual(whole(a));
         }
-        expect(a.lifetimeEarnings).toBeGreaterThan(g0.lifetimeEarnings);
+        // Live, every held bay stays out of the round (Hold releases a lot only while the boss is away, 2.2).
+        if (n !== 'held14') expect(a.lifetimeEarnings).toBeGreaterThan(g0.lifetimeEarnings);
+        else expect(a.lifetimeEarnings).toBe(g0.lifetimeEarnings);
       }
     }, 300_000);
   }

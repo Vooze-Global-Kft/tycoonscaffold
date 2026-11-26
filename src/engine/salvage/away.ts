@@ -11,6 +11,7 @@ import { begin, finish, priceAt, type AwayAcc, type Ctx } from './clock';
 import { dealDeliver, dealReprice } from './deal';
 import { cancelAct } from './hand';
 import { floorGrams, lineAmount, roundMoney } from './money';
+import { STAGE_TOP_RUNG } from './ladder';
 import { advance } from './tick';
 import { driverTakesOver } from './truck';
 import type { AwayCard, SalvageConfig, SalvageEvent, SalvageGame } from './types';
@@ -37,7 +38,11 @@ export function runLongerOf(cfg: SalvageConfig, g: SalvageGame, capS: number): A
   const c = cfg.salvage;
   const night = g.salvage.owned.includes('night');
   const by = c.awayCapByRung_h;
-  for (let r = g.salvage.ladder.rung + 1; r <= by.length; r++) {
+  // engine2-hooks (content2's request, 26 Nov): only a rung this stage can reach is named (ladder.ts
+  // STAGE_TOP_RUNG; `ladder.topRung` once the rules read it), so a stage-2 cap list longer than the ladder
+  // promises nothing beyond it.
+  const top = Math.min(by.length, STAGE_TOP_RUNG);
+  for (let r = g.salvage.ladder.rung + 1; r <= top; r++) {
     const h = awayCapH(c, r, night) * 3600;
     if (h > capS + 1e-6) return { rung: r, capS: h };
   }
