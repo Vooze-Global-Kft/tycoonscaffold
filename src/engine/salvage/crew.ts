@@ -5,7 +5,7 @@
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
 import { boostFactor, bossFresh, heard, type Ctx } from './clock';
-import { cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
+import { owner1Rules, cutTime, legM, machineInputs, machineShares, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, defOf, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
@@ -141,9 +141,7 @@ function isCable(x: Ctx, grade: string): boolean {
  * owner1 (RULING-owner1 H1 to H5): the review's rules run on a content that carries `crew.hand.leaveM` (the shipped
  * content; a frozen test content without it keeps the first yard's rules bit for bit, as orderFromRung does).
  */
-export function owner1Rules(c: Ctx['c']): boolean {
-  return typeof (c.crew.hand as { leaveM?: unknown }).leaveM === 'number';
-}
+export { owner1Rules };
 
 /**
  * Is the boss "in the yard" for P11 and E35? A fresh presence; with the review's rules (H4) also INSIDE THE FENCE: a

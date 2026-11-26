@@ -240,3 +240,12 @@ export function assayOf(c: SalvageContent, p: Pick<Piece, 'grade' | 'spec' | 'g'
   }
   return m.get(`${p.grade}|${p.spec}|${p.g}`) ?? null;
 }
+
+/**
+ * owner1 (RULING-owner1): the review's rules (the yard hands' H1 to H5, the goal's steps T2, the trip's paths V1 to V4)
+ * run on a content that carries `crew.hand.leaveM` (the shipped content). A frozen test content without it keeps the
+ * first yard's rules bit for bit, as `crew.orderFromRung` does.
+ */
+export function owner1Rules(c: SalvageContent): boolean {
+  return typeof (c.crew.hand as { leaveM?: unknown }).leaveM === 'number';
+}
