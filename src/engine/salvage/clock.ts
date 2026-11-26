@@ -66,12 +66,21 @@ export interface Ctx {
 }
 
 /**
- * In the away pass the instant's checks (rung, rivals passed, the deal's offer, goals) run at most this
- * often (yard seconds), and at its end. Live play checks at every instant. 30 s (was 5 s; engine2-group:
- * the goal list was a fifth of six hours away once crew legs were cheap): nothing away buys or costs by
- * them; a rung or a rival passed is noticed at most 30 s after the lot that crossed it.
+ * Are the transition's item events heard? Not inside an away pass: its sink keeps only awayReport, passed
+ * and rung (away.ts awaySink), so the hot rules skip BUILDING the events it would drop (pickups, pieces off,
+ * weigh-ins, feeds: tens of thousands in six hours). The state is the same either way.
  */
-export const CHECK_EVERY_S = 30;
+export function heard(x: Ctx): boolean {
+  return x.away === null;
+}
+
+/**
+ * In the away pass the instant's checks (rung, rivals passed, the deal's offer, goals) run at most this
+ * often (yard seconds), and at its end. Live play checks at every instant. 60 s (was 5 s; engine2-group:
+ * the goal list was a fifth of six hours away once crew legs were cheap): nothing away buys or costs by
+ * them; a rung or a rival passed is noticed at most 60 s after the lot that crossed it.
+ */
+export const CHECK_EVERY_S = 60;
 
 export function begin(cfg: SalvageConfig, g: SalvageGame, events: SalvageEvent[] | undefined, live = true): Ctx {
   const s = clone(g.salvage);

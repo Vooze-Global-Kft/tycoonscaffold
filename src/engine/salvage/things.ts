@@ -3,7 +3,7 @@
  * gone, the drop-off's arrivals. Owner: rules-sim. Uids are stable (notes/contract.md item 7).
  */
 import { hash01 } from './board';
-import { printTicket, ticketBase, type Ctx } from './clock';
+import { heard, printTicket, ticketBase, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
 import { weighIn } from './scales';
 import type { GroundPiece, Piece, PileKey, ThingState } from './types';
@@ -137,7 +137,7 @@ export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): voi
   th.by = null;
   const w = o.waste_g ?? 0;
   x.s.waste_g += w;
-  if (w > 0) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: w, to: 'waste', by });
+  if (w > 0 && heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: w, to: 'waste', by });
   x.s.counts![`cut:${th.obj}`] = (x.s.counts![`cut:${th.obj}`] ?? 0) + 1;
   // Pieces left beside it go to its place's pile as when a thing is gone.
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
@@ -169,10 +169,10 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
   if (!carriedWhole) {
     const w = x.c.objects[th.obj]?.waste_g ?? 0;
     x.s.waste_g += w;
-    if (w > 0) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: w, to: 'waste', by });
+    if (w > 0 && heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: w, to: 'waste', by });
     x.s.counts![`cut:${th.obj}`] = (x.s.counts![`cut:${th.obj}`] ?? 0) + 1;
   }
-  x.ev.push({ type: 'thingGone', thing: th.uid });
+  if (heard(x)) x.ev.push({ type: 'thingGone', thing: th.uid });
   // Pieces left beside it move to its place's pile (a beside.<uid> pile has no thing to stand by any more).
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
   const beside = `beside.${th.uid}`;

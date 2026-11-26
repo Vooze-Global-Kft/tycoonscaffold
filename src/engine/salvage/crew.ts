@@ -4,7 +4,7 @@
  * S12's priority and claim at departure; cutters cut at the drop-off, then on the tipping floor, never
  * what the boss works; the driver is truck.ts's. Owner: rules-sim.
  */
-import { boostFactor, bossFresh, type Ctx } from './clock';
+import { boostFactor, bossFresh, heard, type Ctx } from './clock';
 import { cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSpec, sumStock, toolP, vpk } from './content';
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
@@ -402,10 +402,10 @@ function thingLeft_g(x: Ctx, th: ThingState): number {
  * is all such things' grams (the heap the floor's pieces are weighed against). Null when none waits.
  */
 function floorWholeTrip(x: Ctx, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
-  const cands = x.s.things
-    .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap)
-    .sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
+  const cands: ThingState[] = [];
+  for (const th of x.s.things) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap) cands.push(th);
   if (!cands.length) return null;
+  cands.sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
   const dest = floorWholeDest(x, cands[0]);
   let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), thingLeft_g(x, cands[0])));
   const things: ThingState[] = [];
@@ -431,7 +431,7 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
   const want = new Set<string>();
   for (const c of claims) if (!c.startsWith('tray.') && !c.startsWith('loose:')) want.add(c);
   const found = new Map<string, number>();
-  if (want.size) for (let i = 0; i < s.pieces.length; i++) if (want.has(s.pieces[i].uid) && s.pieces[i].claim === m.id) found.set(s.pieces[i].uid, i);
+  if (want.size) for (let i = 0; i < s.pieces.length; i++) if (s.pieces[i].claim === m.id && want.has(s.pieces[i].uid)) found.set(s.pieces[i].uid, i);
   if (found.size) {
     const byUid = new Map<string, GroundPiece>();
     for (const [uid, i] of found) byUid.set(uid, s.pieces[i]);
@@ -486,7 +486,7 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
       load.push({ uid: th.uid, grade: o.whole!, g: o.gross_g, from: null, spec: -1, whole: th.obj });
     }
   }
-  for (const p of load) x.ev.push({ type: 'pickup', piece: p.uid, grade: p.grade, g: p.g, by: m.id });
+  if (heard(x)) for (const p of load) x.ev.push({ type: 'pickup', piece: p.uid, grade: p.grade, g: p.g, by: m.id });
   return load;
 }
 
@@ -765,7 +765,7 @@ function landCuts(x: Ctx, m: CrewMember, t: number, upto: number): number {
       const r = cutOff(x, th, m.id, t);
       if (!r) break;
       off.push(r.piece);
-      x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
+      if (heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
       if (r.gone) break;
     }
     dropAllOnPile(x, off, pile);
@@ -1075,7 +1075,7 @@ function cutterLegEnd(x: Ctx, m: CrewMember, t: number): void {
       const r = cutOff(x, th, m.id, t);
       if (!r) break;
       dropOnPile(x, r.piece, pile);
-      x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
+      if (heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: r.piece.uid, grade: r.piece.grade, g: r.piece.g, to: 'ground', by: m.id });
       gone = r.gone;
     } while (whole && !gone);
     if (!gone) {

@@ -6,7 +6,7 @@
  * exact remainder (the rest is waste), so ticking and jumping credit the same grams. A full tray stops
  * it, nothing lost. Owner: rules-sim. The crucible is crucible.ts's.
  */
-import { boostFactor, boostOn, bossFresh, count, type Ctx } from './clock';
+import { boostFactor, boostOn, bossFresh, count, heard, type Ctx } from './clock';
 import { machineInputs, machinePlace, machineShares, sumStock } from './content';
 import { bossSees, grouping } from './group';
 import { pointOf } from './positions';
@@ -217,7 +217,7 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
     if (add > 0) m.tray_g[g] = (m.tray_g[g] ?? 0) + add;
     outSum += total;
     if (total > 0) {
-      x.ev.push({ type: 'machineOut', machine: id, grade: g, g: total });
+      if (heard(x)) x.ev.push({ type: 'machineOut', machine: id, grade: g, g: total });
       count(x, `made:${g}`);
     }
   }
@@ -231,7 +231,7 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
 export function feedPiece(x: Ctx, id: MachineId, p: Piece, by: string, t: number): void {
   const m = x.s.machines[id];
   m.hopper.push(p);
-  x.ev.push({ type: 'feed', machine: id, piece: p.uid, grade: p.grade, g: p.g, by });
+  if (heard(x)) x.ev.push({ type: 'feed', machine: id, piece: p.uid, grade: p.grade, g: p.g, by });
   if (!m.work) start(x, id, t);
 }
 
