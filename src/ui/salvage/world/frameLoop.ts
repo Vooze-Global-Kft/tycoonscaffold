@@ -264,7 +264,8 @@ export function useYardLoop(opts: {
   /** The safe area's insets, points: the camera keeps a body at the yard's edge inside them. */
   insets: { left: number; top: number; right: number; bottom: number };
   /** The presence sample: `moving` is 1 while the stick is held past its dead zone; standingFor seconds still. */
-  onSample: (act: number, x: number, y: number, driving: number, moving: number, standingFor?: number) => void;
+  /** `heading`: the truck's heading, one of eight, while he drives; -1 on foot (the rules keep theirs). */
+  onSample: (act: number, x: number, y: number, driving: number, moving: number, standingFor?: number, heading?: number) => void;
   onDriving: (driving: boolean) => void;
   /** The sound pump's facts; absent: the hud's pump (src/ui/salvage/hud/pump.ts yardSound). */
   sound?: YardSoundFacts;
@@ -326,17 +327,23 @@ export function useYardLoop(opts: {
   const drivingTo = useRef(onDriving);
   drivingTo.current = onDriving;
   const pending = useRef<{ s: number[] | null; due: boolean }>({ s: null, due: false });
-  const sampleJS = useCallback((act: number, x: number, y: number, driving: number, moving: number, standingFor: number) => {
+  const sampleJS = useCallback((act: number, x: number, y: number, driving: number, moving: number, standingFor: number, heading: number) => {
     const p = pending.current;
-    p.s = [act, x, y, driving, moving, standingFor];
+    p.s = [act, x, y, driving, moving, standingFor, heading];
     if (p.due) return;
     p.due = true;
     setTimeout(() => {
       p.due = false;
       const q = p.s;
       p.s = null;
-      if (q) sampleTo.current(q[0], q[1], q[2], q[3], q[4], q[5]);
+      if (q) sampleTo.current(q[0], q[1], q[2], q[3], q[4], q[5], q[6]);
     }, 0);
+  }, []);
+  // Getting in is never dropped: the rules hear one exact sample AT THE TRUCK'S PLACE with the cab flag (they seat
+  // by the flag only at the door: engine actions.ts setPresence), ahead of whatever older sample was still waiting.
+  const enterRules = useCallback((x: number, y: number, moving: number, heading: number) => {
+    pending.current.s = null;
+    sampleTo.current(0, x, y, 1, moving, 0, heading);
   }, []);
   const drivingJS = useCallback((on: boolean) => drivingTo.current(on), []);
   const pic = useSharedValue<SkPicture>(empty);
@@ -363,7 +370,7 @@ export function useYardLoop(opts: {
       let ok = 0;
       try {
         pending.current.s = null;
-        sampleTo.current(0, x, y, 1, 0, 0);
+        sampleTo.current(0, x, y, 1, 0, 0, heading);
         salvageActions.stepOut({ x, y, heading });
         const g = useGame.getState().game as R.SalvageGame | undefined;
         ok = g?.salvage?.truck.by === 'boss' ? 0 : 1;
@@ -476,6 +483,12 @@ export function useYardLoop(opts: {
             st[1] = out[1];
             st[8] = B[11] >= 0 && B[11] < 4 ? B[11] : 0;
           }
+          // Beside the truck at a snap (a remount just after Step out): the door is armed only once he has walked away.
+          if (truckOwned) {
+            const ddx = st[0] - Rv.truck[1];
+            const ddy = st[1] - Rv.truck[2];
+            if (ddx * ddx + ddy * ddy < (motion.enter + 0.8) * (motion.enter + 0.8)) st[6] = 0;
+          }
         }
       }
       // The truck stands where the rules last put it (synced when the rules move it), unless the boss holds it:
@@ -486,7 +499,9 @@ export function useYardLoop(opts: {
         if (Rv.n > 0 && truckOwned) {
           st[2] = Rv.truck[1];
           st[3] = Rv.truck[2];
-          st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
+          // The angle he drove at stays when it rounds to the rules' heading (one of eight): no turn at Step out.
+          const h8w = ((Math.round((Math.PI / 2 - st[4]) / (Math.PI / 4)) % 8) + 8) % 8;
+          if (snap || h8w !== Rv.truck[3]) st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
         }
       }
       // --- who sits in the cab: the world and the rules agree (the owner's review, point 5) -----------------
@@ -607,15 +622,16 @@ export function useYardLoop(opts: {
             st[5] = 0;
             st[6] = 0;
             st[8] = 0;
-            runOnJS(drivingJS)(false);
-            runOnJS(soundTruck)(-1);
             if (!forced) {
-              // The rules hear where the truck stands and which way it faces (one of eight), and answer (seatAck).
+              // The rules hear where the truck stands and which way it faces (one of eight), and answer (seatAck):
+              // before the screens' flag falls, so that a second tap on the disc finds the two sides agreed.
               st[36] += 1;
               st[35] = 1;
               const h8 = ((Math.round((Math.PI / 2 - st[4]) / (Math.PI / 4)) % 8) + 8) % 8;
               runOnJS(stepOutRules)(st[36], st[2], st[3], h8);
             }
+            runOnJS(drivingJS)(false);
+            runOnJS(soundTruck)(-1);
           }
         }
       }
@@ -681,7 +697,9 @@ export function useYardLoop(opts: {
       const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
       const ni = nearestAct(acts, bx, by, bodyR + motion.reach);
       if (near.value !== ni) near.value = ni;
-      if (sampleDue || entered) runOnJS(sampleJS)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
+      const h8now = st[5] === 1 ? ((Math.round((Math.PI / 2 - st[4]) / (Math.PI / 4)) % 8) + 8) % 8 : -1;
+      if (entered) runOnJS(enterRules)(st[2], st[3], steering ? 1 : 0, h8now);
+      else if (sampleDue) runOnJS(sampleJS)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0], h8now);
 
       // --- the sprites of this frame ----------------------------------------------------------------------
       const V = S.view;
@@ -1002,7 +1020,7 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck],
+    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck, enterRules],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {

@@ -664,6 +664,12 @@ export function driverTakesOver(x: Ctx, t: number): void {
   if (!d || !tr.skip) return;
   tr.by = 'driver';
   d.job = 'drive';
+  // The lead, 26 November: a boss who left the phone at the wheel beyond the fence rides home with the driver
+  // (he is not left standing on the lane for the player to walk back): he waits where a fresh yard starts.
+  if (x.s.presence.x > x.c.yard.width && x.c.map.points.start) {
+    const home = pt(x, 'start');
+    x.s.presence = { ...x.s.presence, x: home.x, y: home.y, driving: false };
+  }
   if (yardLimit(x)) {
     const sp = { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) };
     const drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);

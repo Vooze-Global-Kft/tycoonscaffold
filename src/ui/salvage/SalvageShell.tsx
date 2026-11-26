@@ -140,12 +140,14 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
   // The presence sample (at most ten a second, from the UI thread): where the boss stands; the rules decide nearness.
   const stillSince = useRef<number | null>(null);
   const onSample = useCallback(
-    (_act: number, x: number, y: number, driving: number, moving: number, still?: number) => {
+    (_act: number, x: number, y: number, driving: number, moving: number, still?: number, heading?: number) => {
       const t = Date.now();
       if (moving === 1) stillSince.current = null;
       else if (stillSince.current === null) stillSince.current = t;
       const standingFor = still ?? (stillSince.current === null ? 0 : (t - stillSince.current) / 1000);
-      salvageActions.presence({ x, y, driving: driving === 1, moving: moving === 1, standingFor });
+      // At the wheel the sample carries the truck's heading (one of eight), so the rules' truck faces as the drawn one.
+      const h = driving === 1 && heading !== undefined && heading >= 0 && heading < 8 ? { heading: heading as R.Heading } : null;
+      salvageActions.presence({ x, y, driving: driving === 1, moving: moving === 1, standingFor, ...h });
       useSalvageUi.getState().setPlace(driving === 1 ? null : R.placeNear(cfg, x, y));
     },
     [cfg],

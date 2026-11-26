@@ -67,7 +67,9 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   const q = s.presence;
   if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return g;
   const heading = Number.isFinite(p.heading) ? Math.floor(p.heading as number) : (q.heading ?? 0);
-  const sameSample = q.x === p.x && q.y === p.y && q.driving === !!p.driving && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
+  // The flag compared as it would be stored (a cab flag the rules cannot honour is stored false: the same sample twice is the same object).
+  const flag = !!p.driving && s.truck.owned && (s.truck.by === 'boss' || truckFree(s));
+  const sameSample = q.x === p.x && q.y === p.y && q.driving === flag && q.moving === !!p.moving && heading === q.heading && Math.abs(q.standingFor - (p.standingFor || 0)) < 0.05;
   if (sameSample && clock - s.presenceAt < cfg.salvage.feel.staleS / 2) return g;
   const x = begin(cfg, g, events, true);
   // R7: the sample is clamped: inside the yard and the lane (save.ts's bounds), no faster than the boss's
@@ -75,9 +77,11 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   // while the boss holds the truck, standingFor in [0, 3600].
   const at = clampPresence(cfg, s, p.x, p.y, clock);
   const standing = Number.isFinite(p.standingFor) ? Math.min(STANDING_MAX_S, Math.max(0, p.standingFor || 0)) : 0;
-  // The screen's cab flag seats him when the truck stands free (hand.ts seatByFlag: the screen and the rules
-  // never disagree on who drives); the position stays clamped as any sample's, so the truck goes no faster.
-  const seat = !!p.driving && truckFree(s);
+  // The screen's cab flag seats him when the truck stands free and the sample is AT ITS DOOR (hand.ts seatByFlag:
+  // the screen and the rules never disagree on who drives). The screen sends the entering sample at the truck's
+  // own place and never drops it (world/frameLoop.ts enterRules), so an honest sample is always at the door; a
+  // flag from farther off seats nobody and moves no truck. The place is the clamped one (R7).
+  const seat = !!p.driving && truckFree(s) && Math.hypot(at.x - s.truck.x, at.y - s.truck.y) <= cfg.salvage.truck.enter + cfg.salvage.truck.rearm;
   x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && (s.truck.by === 'boss' || seat), moving: !!p.moving, standingFor: standing, heading };
   x.s.presenceAt = clock;
   const t = Math.max(clock, x.s.t);
@@ -306,7 +310,12 @@ export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: 
   if (s.truck.by !== 'boss') return refuse(g, events, 'nothing');
   if (s.presence.moving) return refuse(g, events, 'stopFirst');
   const x = begin(cfg, g, events, true);
-  leaveTruck(x, at ?? { x: s.presence.x, y: s.presence.y, heading: s.presence.heading ?? s.truck.heading }, Math.max(clock, x.s.t));
+  // The truck stands where he sat (the presence, which the rules clamp): the screen's `at` is taken for its heading,
+  // and for its place only within a sample's slack of the presence (the truck is never set down somewhere else).
+  const here = { x: s.presence.x, y: s.presence.y, heading: s.presence.heading ?? s.truck.heading };
+  const near = !!at && Number.isFinite(at.x) && Number.isFinite(at.y) && Math.hypot(at.x - here.x, at.y - here.y) <= PRESENCE_SLACK_M;
+  const h = at && Number.isFinite(at.heading) ? ((Math.floor(at.heading) % 8) + 8) % 8 : here.heading;
+  leaveTruck(x, near ? { x: at!.x, y: at!.y, heading: h } : { ...here, heading: h }, Math.max(clock, x.s.t));
   return finish(g, x);
 }
 

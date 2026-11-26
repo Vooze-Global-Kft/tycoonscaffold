@@ -2136,3 +2136,39 @@ RULING: THE TWO NEVER DISAGREE ON WHO DRIVES, AND WHAT THE PLAYER SEES IS WHAT T
 Tests: `src/engine/salvage/seat.test.ts`. Seen in the preview: the first drive from the park by the
 gate to the farm, the hook, the weighbridge, the floor; and the same with a Step out at the gate, a
 walk to the weighbridge and back into the truck.
+
+#### 18.4 The confirm before the merge (about 18:05): a player and an attacker of the cab change
+
+A player who built none of it watched point 5 work twice end to end (the first drive; the same with a
+Step out at the gate and back in) and the away card at both sizes: READY on points 5 and 6, nothing
+blocking; points 1, 2, 3, 7 and the button at 667 were not looked at again in that pass (the earlier
+reviewers' pictures and the tests carry them). An attacker read the cab's handshake frame by frame
+and ran the engine: SOUND, nothing blocking, two important and six minor findings. Rulings:
+
+- THE AWAY CARD STAYS (important, a regression of the one pass): the effect that closes an open card
+  when the wheel is taken closed the "while you were away" card of a player who had left the phone
+  at the wheel. The wheel now closes only a PLACE's card. And where the boss is after time away at
+  the wheel: with nobody to take the truck it waits where he left it and he comes back at its wheel;
+  when a hired driver takes it home with a skip aboard from beyond the fence, the boss rides with
+  him and waits where a fresh yard starts (he is not left on the lane).
+- ONLY AT THE DOOR (important before stage 5's boards; today only a tampered screen could use it):
+  the cab flag seats the boss only when the sample's clamped place is within `truck.enter +
+  truck.rearm` of the free truck. The screen sends the entering sample at the truck's own place and
+  never drops it (it goes ahead of any sample still waiting), so an honest entry is always at the
+  door whatever stalls happen. A flag from farther off seats nobody and moves no truck.
+- Step out takes the screen's place for the truck only within a sample's slack of the presence, and
+  its heading always (one of eight).
+- The truck's heading: at the wheel every sample carries it, so the rules' truck faces as the drawn
+  one (after a reload or time away it no longer snaps to an old heading); at Step out the drawn
+  angle stays when it rounds to the rules' heading.
+- A remount just after Step out: the door is disarmed while he stands beside the truck.
+- A second tap on the disc during Step out: the rules hear the Step out before the screens' flag
+  falls.
+- The same sample twice is the same object also when its cab flag cannot be honoured.
+- The player's finding (important): on foot beside the truck after Step out the disc is blank while
+  the goal says "Get in the truck". RULING: the one button GETS IN: within reach of the free truck
+  the disc reads "Get in" and a press seats him (the walk-in stays). Not in today's update (new
+  words, a new act of the button, pictures): it is the first item of the next one.
+- Minor, not now: the truck left slanted across the gate is drawn over the hedge; the preview's
+  scripted thumb weaves at the farm's skip (a tool).
+Tests: `seat.test.ts` (10). Seen again in the preview after these changes: route `cab`, 844 x 390.

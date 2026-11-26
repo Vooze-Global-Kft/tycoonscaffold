@@ -20,7 +20,7 @@ import type { SalvageConfig, SalvageGame } from '../../../engine/salvage';
 import { useTarget } from '../../hints/targets';
 import { EDGE_W, PAL } from '../palette';
 import { buttonMode, heldRefusal, rulesButton, say } from './words';
-import { closeCard, openCard } from '../overlays/cardStack';
+import { closeCard, openCard, useCards } from '../overlays/cardStack';
 import { placeCardShows } from '../overlays/sample';
 import { salvageActions } from '../../../modes/salvage/actions';
 import { useSalvageUi } from '../uiState';
@@ -41,9 +41,10 @@ export function OneButton({ cfg, L, hidden, onStepOut }: { cfg: SalvageConfig; L
   }, [cfg, place]);
   const mode = buttonMode(driving, rules, place, opens);
   const atWheel = mode === 'stepOut';
-  // Finding 11: getting into the truck closes an open card first (the rules can seat him while the park's card shows).
+  // Finding 11: getting into the truck closes an open PLACE card first (the rules can seat him while the park's card
+  // shows). Never another card: back from time away he may sit at the wheel under the away card, which stays.
   useEffect(() => {
-    if (atWheel) closeCard();
+    if (atWheel && useCards.getState().ref?.kind === 'place') closeCard();
   }, [atWheel]);
   const target = useTarget(hidden ? null : 'salvage:oneButton');
   const held = useGame((s) => heldRefusal(cfg, s.game as SalvageGame | undefined));
