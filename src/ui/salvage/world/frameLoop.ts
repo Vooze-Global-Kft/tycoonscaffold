@@ -114,6 +114,8 @@ export interface YardAnim {
   stats: SharedValue<FrameStats>;
   /** Set to 1 by the "Step out" button; the loop clears it when the boss is out. */
   exit: SharedValue<number>;
+  /** owner1 H6: where each crew member of the frame's list is drawn this frame (x, y metres per member, in the frame's order; NaN: not drawn). The idle tags follow it. */
+  crew: SharedValue<number[]>;
   capacity: number;
 }
 
@@ -326,6 +328,7 @@ export function useYardLoop(opts: {
   const near = useSharedValue(-1);
   const stats = useSharedValue<FrameStats>({ fps: 0, worstMs: 0, actors: 0, sprites: 0, runs: 0 });
   const exit = useSharedValue(0);
+  const crewXY = useSharedValue<number[]>([]);
   const scratch = useSharedValue<any>(null);
 
   const sound = opts.sound ?? yardSound;
@@ -602,6 +605,7 @@ export function useYardLoop(opts: {
         const o4 = S.o4;
         // The crew: each member walked along the leg the rules gave (from, to, t0, t1), never anywhere else.
         const CR = Rv.crew;
+        const XY: number[] = new Array(Math.floor(CR.length / 14) * 2).fill(NaN);
         for (let o = 0; o + 13 < CR.length; o += 14) {
           if (CR[o + 11] === 1) continue;
           const phase = CR[o + 10];
@@ -623,8 +627,11 @@ export function useYardLoop(opts: {
           // The carrier stays in every pose (owner's review point 3: it vanished while working, flashing).
           if (carrier >= 0) addTo(SHD, V, 0, carrier === 0 ? T.shSack[h] : T.shTrolley[h], o4[0], o4[1], 0, 0, 1, -1, 1);
           personInto(L, V, T, 1, pose, frame, h, -1, carrier, CR[o + 9], T.vests[CR[o]] ?? -1, o4[0], o4[1], o4[1] + 0.25);
+          XY[(o / 14) * 2] = o4[0];
+          XY[(o / 14) * 2 + 1] = o4[1];
           actors++;
         }
+        if (XY.length > 0 || crewXY.value.length > 0) crewXY.value = XY;
         // Stress actors (`actors=N`): pictures only, between places.
         for (let hi = 0; hi < hPts.length; hi++) {
           const pts = hPts[hi];
@@ -885,13 +892,13 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, bossYardV, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
+    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {
     cb.setActive(run);
     return () => cb.setActive(false);
   }, [run, cb]);
-  return useMemo(() => ({ pic, ground, camera, northSy, body, near, stats, exit, capacity: opts.capacity ?? 0 }), [pic, ground, camera, northSy, body, near, stats, exit, opts.capacity]);
+  return useMemo(() => ({ pic, ground, camera, northSy, body, near, stats, exit, crew: crewXY, capacity: opts.capacity ?? 0 }), [pic, ground, camera, northSy, body, near, stats, exit, crewXY, opts.capacity]);
 }
 

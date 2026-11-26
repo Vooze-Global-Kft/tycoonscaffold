@@ -16,7 +16,8 @@ import { SALVAGE_TEST, SALVAGE_TEST_RAW } from '../fixtures/salvage';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const RAW = (gameJson as unknown as { salvage: Record<string, unknown> }).salvage;
-const shipped = (): SalvageContent => SalvageSchema.parse(structuredClone(RAW));
+// owner1 S1: the checks of 5.2 read the whole content: parsed as release.stage 2 (the shipped release keeps stage 2 dark).
+const shipped = (): SalvageContent => SalvageSchema.parse({ ...structuredClone(RAW), release: { stage: 2 } });
 /** lintSalvage's findings after one change to the shipped content (already parsed: the rules' shapes). */
 const after = (f: (c: SalvageContent) => void): string[] => {
   const c = shipped();
@@ -99,7 +100,7 @@ describe('5.2: each check refuses a broken content', () => {
   refuses('a bridge partner that opens with a plate', (c) => (layer(c).partners['partner.garage'].opens = 'baler'), 'is a plate: the bridge partners open with a vehicle');
   refuses('(14) an away-cap list shorter than ladder.topRung', (c) => (c.awayCapByRung_h = [0.5, 2, 4]), 'awayCapByRung_h has 3 entries; ladder.topRung 5');
   it('the schema refuses iap.maxStanding other than 3 (ruling 15.13 c)', () => {
-    const a = structuredClone(RAW) as Any;
+    const a = { ...structuredClone(RAW), release: { stage: 2 } } as Any;
     a.iap.maxStanding = 9;
     expect(SalvageSchema.safeParse(a).success).toBe(false);
   });
@@ -129,7 +130,7 @@ describe('5.2: each check refuses a broken content', () => {
   refuses('a financeable flag that is not derived', (c) => (plate(c, 'crane').financeable = true), 'it is derived');
   refuses('the bank\'s words not saying its share', (c) => ((c.bank as Any).share = 0.25), 'bank.shareWords');
   it('(14) refuses per-rung lists not of length ladder.topRung, and tau not null at rungs 1 and 2', () => {
-    const raw = structuredClone(RAW) as Any;
+    const raw = { ...structuredClone(RAW), release: { stage: 2 } } as Any;
     raw.ceilings_t_h = raw.ceilings_t_h.slice(0, 4);
     raw.tau_h[0] = 5;
     const r = SalvageSchema.safeParse(raw);

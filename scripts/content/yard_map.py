@@ -408,7 +408,6 @@ def check(s, walks=True):
             for n, r in keep:
                 if overlaps(q, r):
                     bad('owner1 H5: the waiting place %s (%s, %s) stands in %s' % (k, x, y, n))
-        rep.append('waiting places: %s' % ', '.join('%s (%s, %s)' % (k, x, y) for k, (x, y) in waits))
     # owner1 V4: an arrival drives the drive line to the stop nearest its place and sets down there: that stop must lie
     # on the line inside the fence, and the line from the gate to it must stay in the corridor (nothing solid stands in it, M4)
     stops_in = {k: v for k, v in (dl or {}).get('stops', {}).items() if k != 'turn' and v[0] <= W}

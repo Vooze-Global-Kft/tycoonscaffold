@@ -204,9 +204,13 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
   }
 
   // Partner loads: the label plate.
+  // owner1 T4 (screens1 finding 5): while the boss stands refused at a partner's skip (act target
+  // `refused.<partner>`), that skip's plate carries the frame's refusal with its figure, in the warning ink.
+  const held = f.boss?.refusal && typeof f.boss.target === 'string' && f.boss.target.startsWith('refused.') ? { partner: f.boss.target.slice(8), why: f.boss.refusal } : null;
   for (const s of f.skips) {
-    const lab = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
-    if (!lab) continue;
+    const lab0 = s.plate ?? R.skipLabel(cfg, g, s.partner, g.stats.playSeconds);
+    if (!lab0) continue;
+    const lab = held && held.partner === s.partner ? { ...lab0, refusal: held.why } : lab0;
     out.push({ ...skipPlate(c, lab), id: `skip.${s.partner}.${s.slot ?? 0}`, x: s.x, y: s.y, under: true, footDy: SKIP_FOOT_M, halfW: SKIP_HALF_M });
   }
   // join3 (L7/P10): each partner site's name on its gate sign, at the sign the lane's art places

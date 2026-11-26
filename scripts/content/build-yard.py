@@ -86,9 +86,12 @@ SCHEMA = r"""
 import fs from 'node:fs';
 import { SalvageSchema, lintSalvage } from './src/config/schema.salvage';
 const raw = JSON.parse(fs.readFileSync(0, 'utf8'));
+// owner1 S1: the content as a build of its release plays it, AND the whole content (release.stage 2), so that stage 2's
+// blocks are checked while a release keeps them dark.
 const r = SalvageSchema.safeParse(raw);
-if (!r.success) { console.log(JSON.stringify({ errors: r.error.issues.map((i) => i.path.join('.') + ': ' + i.message) })); }
-else { console.log(JSON.stringify({ errors: lintSalvage(r.data) })); }
+const all = SalvageSchema.safeParse({ ...raw, release: { stage: 2 } });
+if (!r.success || !all.success) { console.log(JSON.stringify({ errors: [...(r.success ? [] : r.error.issues), ...(all.success ? [] : all.error.issues)].map((i) => i.path.join('.') + ': ' + i.message) })); }
+else { console.log(JSON.stringify({ errors: [...new Set([...lintSalvage(r.data), ...lintSalvage(all.data)])] })); }
 """
 
 
