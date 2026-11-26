@@ -2233,3 +2233,24 @@ THE RULE OF THE YARD'S CLOCK, written down because the attacker's hole came from
 always counted from it. The store's stamps (`lastSavedAt`, `stats.clockHigh`) only guard against a
 device clock set back. Whoever computes time away (a tick's gap, a resume, a start, the deferred
 pass) moves highMs to the end of what it computed, so no interval is paid twice and none is lost.
+
+THE CONFIRM OF THE SECOND UPDATE (about 20:20): one who built none of it: READY to merge. The return
+held against four more attack tests through the real store (a pause while it counts and two resumes:
+the whole absence paid once; a cold start whose counting card never shows: the safety net runs one
+pass and the away card waits; a 40 s trip leaves nothing pending); nothing calls the rules' own
+`offline` or `tick` past the wrapper except the deferred pass itself. Findings, all minor, and the
+rulings: (1) his four tests stay in the repository (`src/modes/salvage/owner2c.attack.test.ts`).
+(2) The safety net counts its 8 seconds from the start of the wait, so on a cold start whose
+loading curtain lasts longer it runs the pass under the curtain (the curtain's animation stands
+still for the length of the pass; one pass, nothing lost): NEXT: start the net's clock when the
+curtain parts. (3) Not looked at by anyone with their own thumb: walking against a standing truck
+from every side at the gate and the farm, a truck parked across the gateway, a vehicle coming to a
+stand on the boss, crew stepped aside into a machine or the fence: the lead walked away from and
+back into the parked truck from its side in the preview (free to leave; seated on walking in), the
+rest rests on the fixer's tests (standing.test.ts) until the owner or the next review looks.
+
+THE LEAD'S CALL ON THE ENTRY'S PIN: the fixer had put the deferral on the rules' engine object in
+place, because `src/modes/entries.test.ts` pinned that the salvage entry hands over that very
+object. The pin is the lead's to keep in step: the entry now hands over a plain wrapper
+(`salvageReturningEngine`), the pin says so (its three time-away seams are the wrapper's, everything
+else the rules' own), and whoever imports `salvageEngineMode` gets the rules as they are.
