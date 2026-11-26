@@ -132,7 +132,8 @@ const LOAD_NET = new WeakMap<SalvageContent, Map<string, number>>();
 /**
  * RULING2.md 16.1 (a): a partner's RATED NET A LOAD, §, from the content alone: its skip's contents at usual prices
  * as they weigh in (every piece at its grade, and a thing's shell) less the load's price at usual prices
- * (roundMoney(k × the as-found value at usual prices), as fillSkip prices it on a day of usual prices). Memoised per
+ * (roundMoney(k × the as-found value at usual prices), as fillSkip prices it on a day of usual prices). The skip's own
+ * contents (`skip`): what stage 2's `grows` add depends on the plates owned, not on the content alone. Memoised per
  * content object; a partner not in the content nets -Infinity. The driver (truck.ts driverDepart) and rated
  * income's replay (rate.ts rateQueue) rank partners by it; a new partner needs no code.
  */
@@ -149,11 +150,15 @@ export function ratedLoadNet(c: SalvageContent, partner: string): number {
       for (const [obj, n] of Object.entries(p.skip)) {
         const o = c.objects[obj];
         if (!o) continue;
+        let thing = 0;
         for (const [grade, g, k] of specsOf(c, obj)) {
-          worth += n * k * (g / 1000) * usualKg(c, grade);
-          asFound += n * k * (g / 1000) * usualKg(c, grade) * (c.grades[grade]?.asFound ?? 1);
+          thing += k * (g / 1000) * usualKg(c, grade);
+          if (o.asFound === undefined) asFound += n * k * (g / 1000) * usualKg(c, grade) * (c.grades[grade]?.asFound ?? 1);
         }
-        if (o.shell) worth += n * (o.shell.g / 1000) * usualKg(c, o.shell.grade);
+        if (o.shell) thing += (o.shell.g / 1000) * usualKg(c, o.shell.grade);
+        worth += n * thing;
+        // asFoundValue's rule: an object with its own asFound share is priced whole (pieces and shell).
+        if (o.asFound !== undefined) asFound += n * o.asFound * thing;
       }
       v = roundMoney(worth - roundMoney(p.k * asFound));
     }

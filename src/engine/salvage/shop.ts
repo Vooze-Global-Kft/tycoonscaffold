@@ -14,7 +14,7 @@
  *
  * THE RULE AS BUILT (where yard-stage2.md 2.15 leaves a choice; notes/s2b-rules-money.md "Wave 2"):
  * - A pack is a product of the game's shared list (`monetization.iap.products`) of kind `hoursOfIncome`, its
- *   value H hours; S = roundMoney(H × I), I the rated income on the state's content (bank.ts ratedIG).
+ *   value H hours; S = roundMoney(H × I), I the rated income on the state's content (ratedI, as bank.ts ratedIG).
  * - Packs show (2.15.3) only when: the second session has begun (`iap.sessions2At`), the age band is 'a18',
  *   the rung is at least `iap.packsFromRung`, the store country is known and not in `iap.packsOff`, and the
  *   packs are not hidden in Settings. The age question is due when all but the band hold and no band is kept.
@@ -28,11 +28,11 @@
  *   crew member, machine, open partner, running plate and the Yard sale's room. Cash does not decide it.
  */
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
-import { ratedIG } from './bank';
 import { begin, credit, finish } from './clock';
 import { buyCheck, hireCheck, levelCheck, shopItems } from './ladder';
 import { contentAt } from './layer';
 import { roundMoney } from './money';
+import { ratedTerms } from './rate';
 import { quoteId } from './state2';
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { AgeBand, CardContext, CrewRole, LevelTarget, LookSlot, PendingQuote, ProductArrival, ProductListing, QuoteOutcome, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, TxtArgs } from './types';
@@ -138,8 +138,13 @@ export function packsHelpShown(cfg: SalvageConfig, g: SalvageGame, ctx?: CardCon
 
 // ============================================================================ the quote (2.15.4)
 
+/** I, the rated income (§ an hour, net) on the state's content (rate.ts ratedTerms; the same figure as bank.ts ratedIG). */
+export function ratedI(cfg: SalvageConfig, g: SalvageGame): number {
+  return Math.max(0, ratedTerms(contentAt(cfg.salvage, g.salvage), g.salvage).I);
+}
+
 /** S of a pack of H hours now: roundMoney(H × I), I read now on the state's content (it moves only with assets). */
-export function packS(cfg: SalvageConfig, g: SalvageGame, H: number, I = ratedIG(cfg, g).I): number {
+export function packS(cfg: SalvageConfig, g: SalvageGame, H: number, I = ratedI(cfg, g)): number {
   return roundMoney(Math.max(0, H * I));
 }
 
@@ -215,7 +220,7 @@ export function quoteCheck(cfg: SalvageConfig, g: SalvageGame, product: string, 
  * store's `known` ids and `askedMs` (15.3, 15.12 a, d). The id is the contract's counter `q<n>` (15.13 a).
  */
 export function quoteState(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number, now: number, known: readonly string[], askedMs: number, events?: SalvageEvent[], ctx?: CardContext): SalvageGame {
-  const I = ratedIG(cfg, g).I;
+  const I = ratedI(cfg, g);
   const ch = quoteCheck(cfg, g, product, shownS, now, ctx, I);
   if (ch.refusal) {
     if (ch.refusal.key === 'quoteUpdated') events?.push({ type: 'quoteUpdated', product, a: shownS, b: ch.S });

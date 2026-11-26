@@ -939,7 +939,7 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
 // ---------------------------------------------------------------------------------------- the depollution bay (2.7, 2.9; wave 2)
 
 /** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
-function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
+export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
   const th = x.s.things.find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
   if (!th) return;
   const d = plateDef(x.c, id)!;

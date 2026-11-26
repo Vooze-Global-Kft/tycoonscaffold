@@ -179,3 +179,30 @@ describe('each new card kind of the money carries the data its screen draws (4.2
     expect(cardOf(cfg, g, { kind: 'awayBonus' }, SHOP_NOW, US).bonus).toBeUndefined();
   });
 });
+
+describe('looks (2.15.1): chosen per slot, only the frame reads them', () => {
+  const cfg = shopCfg();
+  const g = shopGame({ cash: 0 });
+  it('an owned look of its slot, an earned look, or the yard\'s own; anything else notOwned; the frame draws the choice; no rule reads it', async () => {
+    const { chooseLook } = await import('./actionsMoney');
+    const { frameCfg } = await import('./frame');
+    const { jump } = await import('./tick');
+    const owned = { ...g, entitlements: { noAds: false, skipRewarded: false, products: ['colour2'], multipliers: {} } } as SalvageGame;
+    const ev: import('./types').SalvageEvent[] = [];
+    expect(chooseLook(cfg, owned, 'colour', 'colour3', 0, ev)).toBe(owned);
+    expect(chooseLook(cfg, owned, 'dressing', 'colour2', 0, ev)).toBe(owned);
+    expect(chooseLook(cfg, owned, 'sign', 'rung5', 0, ev)).toBe(owned);
+    expect(ev.map((e) => e.type === 'refused' && e.key)).toEqual(['notOwned', 'notOwned', 'notOwned']);
+    let x = chooseLook(cfg, owned, 'colour', 'colour2', 0);
+    x = chooseLook(cfg, x, 'sign', 'rung4', 0);
+    expect(x.salvage.iap.looks).toMatchObject({ colour: 'colour2', sign: 'rung4' });
+    expect(frameCfg(cfg, x).looks).toMatchObject({ colour: 'colour2', sign: 'rung4', dressing: null, plaque: null });
+    expect(frameCfg(cfg, g).looks).toBeUndefined();
+    expect(chooseLook(cfg, x, 'colour', null, 0).salvage.iap.looks.colour).toBeNull();
+    // no rule reads a look: a minute of the yard is the same with and without it
+    const a = jump(cfg, owned, owned.salvage.t + 60);
+    const b = jump(cfg, x, x.salvage.t + 60);
+    expect(b.cash).toBe(a.cash);
+    expect(b.salvage.ladder).toEqual(a.salvage.ladder);
+  });
+});

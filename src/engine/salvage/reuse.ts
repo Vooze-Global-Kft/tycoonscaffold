@@ -403,15 +403,16 @@ function vanCollects(x: Ctx, t: number): void {
   const things: { obj: ObjectId; n: number; g: number }[] = [];
   let paid = 0;
   for (const th of batch) {
-    const { v, byGrade } = preparedLines(x, th.obj, day);
-    const amount = roundMoney(R.batchFactor * v);
-    paid = roundMoney(paid + amount);
+    // Each batch at batchFactor × its prepared value, line by line (a total is the sum of its lines: shown equals applied).
+    const { byGrade } = preparedLines(x, th.obj, day);
     let g = 0;
     for (const [grade, gg] of Object.entries(byGrade)) {
       supply(x, grade, gg);
       g += gg;
       const price = priceAt(x, grade, day);
-      lines.push({ grade, g: gg, price, amount: roundMoney(R.batchFactor * lineAmount(gg, price)) });
+      const amount = roundMoney(R.batchFactor * lineAmount(gg, price));
+      lines.push({ grade, g: gg, price, amount });
+      paid = roundMoney(paid + amount);
     }
     const row = things.find((q) => q.obj === th.obj);
     if (row) {

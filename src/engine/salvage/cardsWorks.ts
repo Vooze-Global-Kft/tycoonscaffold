@@ -12,7 +12,11 @@ import { bankRow, loanFoot } from './bank';
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
 import { refusalTxt } from './ladder';
 import { contentAt } from './layer';
-import type { CardButton, CardContext, CardData, CardRef, SalvageConfig, SalvageGame, TextKey, WorksCard } from './types';
+import { begin, dayAt } from './clock';
+import { lotValue } from './lots';
+import { preparedLines, rackCap } from './reuse';
+import { roundMoney } from './money';
+import type { CardButton, CardContext, CardData, CardRef, CrateCard, LotCard, SalvageConfig, SalvageGame, TextKey, WorksCard, YardSaleCard } from './types';
 
 /** The card kinds this file answers (cards.ts dispatches them). */
 export const WORKS_CARD_KINDS = ['works', 'yardSale', 'lot', 'crate'] as const;
@@ -110,6 +114,11 @@ export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
   void ctx;
   const title: TextKey = ref.kind === 'works' ? (`title.works.${ref.plate}` as TextKey) : (`title.${ref.kind}` as TextKey);
   const card: CardData = { kind: ref.kind as CardData['kind'], shape: 'panel', title: { key: title }, lead: [], rows: [], foot: [] };
+  if (ref.kind === 'yardSale') card.yardSale = yardSaleCardOf(cfg, g);
+  else if (ref.kind === 'lot') {
+    const lc = lotCardOf(cfg, g, ref.k);
+    if (lc) card.lot = lc;
+  } else if (ref.kind === 'crate') card.crate = crateCardOf(cfg, g);
   if (ref.kind === 'works') {
     const wc = worksCardOf(cfg, g, ref.plate);
     if (wc) {
@@ -120,4 +129,52 @@ export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
     }
   }
   return card;
+}
+
+// ---------------------------------------------------------------------------------------- wave 2: the Yard sale, an oversize piece, the picking table (4.6, 4.7)
+
+/**
+ * The Yard sale's card (4.6): its places, each racked thing oldest first with "§q at the gate" (q = what its visitor
+ * pays at today's posted price: reuse.ts visitorBuys's rule) and its scrap value v, the next visitor (only while the
+ * rack holds a thing), today's sales, the trade corner. `level`: null (no price key for the rack's room yet: 2.12
+ * names levels, not their prices; levelWorks refuses `nothing`).
+ */
+export function yardSaleCardOf(cfg: SalvageConfig, g: SalvageGame): YardSaleCard | null {
+  const x = begin(cfg, g, [], false);
+  const R = x.c.reuse;
+  if (!R) return null;
+  const s = x.s;
+  const day = dayAt(x, s.t);
+  const racked = s.things.filter((t) => t.at.at === 'rack').sort((a, b) => (a.at as { since: number }).since - (b.at as { since: number }).since || (a.uid < b.uid ? -1 : 1));
+  const things = racked.map((t) => {
+    const { v } = preparedLines(x, t.obj, day);
+    return { uid: t.uid, obj: t.obj, q: roundMoney(R.factor * v), v };
+  });
+  const slots = rackCap(x);
+  const batches = s.things.filter((t) => t.at.at === 'corner').length;
+  return {
+    slots,
+    free: Math.max(0, slots - racked.length),
+    things,
+    nextVisitorInS: racked.length && s.reuse.nextAt !== null ? Math.max(0, s.reuse.nextAt - s.t) : null,
+    soldToday: s.reuse.sold.day === day ? { n: s.reuse.sold.n, money: s.reuse.sold.money } : { n: 0, money: 0 },
+    level: null,
+    corner: { dealer: 'reclaimer', batches, vanInS: s.reuse.vanAt !== null ? Math.max(0, s.reuse.vanAt - s.t) : null },
+  };
+}
+
+/** An oversize piece's card (4.7): sender, thing, its fixed mass, "about §x once cut" at p̄ (lots.ts lotValue, the value its pieces are worth), its cut seconds. */
+export function lotCardOf(cfg: SalvageConfig, g: SalvageGame, k: number): LotCard | null {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const th = g.salvage.things.find((t) => t.at.at === 'lot' && t.at.k === k);
+  if (!th || !c.lots) return null;
+  return { uid: th.uid, obj: th.obj, sender: th.sender ?? null, g: th.g ?? c.objects[th.obj]?.gross_g ?? 0, valueOnceCut: roundMoney(lotValue({ c }, th)), cut_s: c.lots.kinds.find((q) => q.obj === th.obj)?.cut_s ?? c.lots.cut_s[0] };
+}
+
+/** The picking table's card (4.7): how many things, its room, seconds a thing, the things oldest first. No time: nothing expires. */
+export function crateCardOf(cfg: SalvageConfig, g: SalvageGame): CrateCard | null {
+  const c = contentAt(cfg.salvage, g.salvage);
+  if (!c.crate) return null;
+  const on = g.salvage.things.filter((t) => t.at.at === 'crate').sort((a, b) => (a.at as { since: number }).since - (b.at as { since: number }).since || (a.uid < b.uid ? -1 : 1));
+  return { n: on.length, max: c.crate.max, sort_s: c.crate.sort_s, things: on.map((t) => ({ uid: t.uid, obj: t.obj })) };
 }

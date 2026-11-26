@@ -75,6 +75,14 @@ export const TEST_PLATES: Record<string, P> = {
   },
 };
 
+/** The depollution bay of the test content (2.7, 2.9): a station fed by the forklift, its out and waste the car object's by mass. */
+function depollutionOf(o: { pieces: readonly (readonly unknown[])[]; shell?: { grade: string; g: number }; waste_g: number; gross_g: number }): P {
+  const by = new Map<string, number>();
+  for (const p of o.pieces) by.set(p[0] as string, (by.get(p[0] as string) ?? 0) + ((p[1] as number) * (p[2] as number)) / o.gross_g);
+  if (o.shell) by.set(o.shell.grade, (by.get(o.shell.grade) ?? 0) + o.shell.g / o.gross_g);
+  return { ...base, row: 'yard', slot: 4, plot: 'depollution', kind: 'station', in: ['elv'], feedBy: 'forklift', out: { elv: [...by.entries()] }, waste: { elv: [['carrier', o.waste_g / o.gross_g]] }, inbuf: 1000, tray: 0 } as P;
+}
+
 /** Wave 2's round numbers for the Yard sale, the picking table and the oversize pieces (the head of this file). */
 export const TEST_REUSE = { slots: 2, levelSlots: 1, levels: 2, share: 0.25, factor: 2, shareI: [null, null, 0.01, 0.01, 0.01], floorI: 1000, period_s: 100, firstVisitor_s: 10, batchFactor: 1.5, vanPeriod_s: 1000 };
 export const TEST_CRATE = { share: 0.2, max: 12, sort_s: 2, u: 1.5 };
@@ -93,12 +101,14 @@ let CONTENT: SalvageContent | null = null;
 export function worksContent(): SalvageContent {
   if (CONTENT) return CONTENT;
   const c = structuredClone(stage2Content()) as SalvageContent & { works: NonNullable<SalvageContent['works']>; worksLayer: NonNullable<SalvageContent['worksLayer']> };
-  c.works = { ...c.works, commission_s: 5, selfCommission_s: 100, lev: 0.5, maxLevel: 5, floor: 1000, plates: TEST_PLATES as Record<string, PlateDef> };
+  // Wave 2: the depollution bay, its yield the frozen content's car's own (the one definition of a car's yield).
+  const plates: Record<string, P> = { ...TEST_PLATES, depollution: depollutionOf(c.worksLayer.objects!.elv!) };
+  c.works = { ...c.works, commission_s: 5, selfCommission_s: 100, lev: 0.5, maxLevel: 5, floor: 1000, plates: plates as Record<string, PlateDef> };
   // Wave 2's round numbers (the head of this file).
   c.reuse = { ...c.reuse!, ...TEST_REUSE };
   c.crate = { ...TEST_CRATE };
   c.lots = { ...c.lots!, ...TEST_LOTS };
-  c.worksLayer.shop = c.worksLayer.shop.map((it) => (it.kind === 'works' && TEST_PLATES[it.key] ? { ...it, price: 1000, gate: 'rung3', deliver_s: 10, needsItem: TEST_PLATES[it.key].needs ?? undefined } : it));
+  c.worksLayer.shop = c.worksLayer.shop.map((it) => (it.kind === 'works' && plates[it.key] ? { ...it, price: 1000, gate: 'rung3', deliver_s: 10, needsItem: plates[it.key].needs ?? undefined } : it));
   return (CONTENT = freeze(c));
 }
 

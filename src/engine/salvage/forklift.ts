@@ -17,7 +17,7 @@ import type { Ctx } from './clock';
 import { bossFresh } from './clock';
 import { plateDef } from './content';
 import { nearPlace } from './positions';
-import { plateIds } from './works';
+import { carStart, plateIds } from './works';
 
 /** The boss in (or entering) the forklift at yard second t: true when this step was the forklift's. */
 export function forkliftStep(x: Ctx, t: number): boolean {
@@ -61,6 +61,8 @@ export function forkliftStep(x: Ctx, t: number): boolean {
     if (!nearPlace(c, `${id}.apron`, p.x, p.y, reach)) continue;
     f.load = [];
     x.s.things.push({ uid: load.uid, obj: load.whole, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null });
+    // The bay starts on it at this instant (its drain dated: works.ts carStart).
+    if (!w.car) carStart(x, id, w, t);
     x.dirty = true;
     return true;
   }

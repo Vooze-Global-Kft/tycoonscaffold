@@ -23,10 +23,10 @@
  * the price board's spot buyer beside a held bay's Sell. No card but the shop and the pack sheet carries a
  * real-money button; no card that shows a debt carries a shop entry or an ad button (4.1).
  */
-import { bankDef, financeCheck, financeTerms, ratedIG, shareWords, shownOf } from './bank';
+import { bankDef, financeCheck, financeTerms, shareWords, shownOf } from './bank';
 import { awayShowsDebt, bonusCard, spotButton } from './ads';
 import { refusalTxt, topRungOf } from './ladder';
-import { headroomU, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
+import { headroomU, ratedI, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
 import type { AgreementRow, AwayCard, CardButton, CardContext, CardData, CardRef, CardRow, EarnedLookRow, FinanceTerms, LookSlot, PackRow, PlateId, SalvageConfig, SalvageGame, ShopCard, ShopLookRow, TextKey, Txt } from './types';
 
 const btn = (label: Txt, action: CardButton['action'], refusal: Txt | null = null): CardButton => ({ label, action, refusal });
@@ -131,7 +131,7 @@ export function lookUsable(cfg: SalvageConfig, g: SalvageGame, slot: LookSlot, i
  * screen's to keep from a quoteUpdated refusal while the card is open (null here).
  */
 export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: CardContext): PackRow[] {
-  const I = ratedIG(cfg, g).I;
+  const I = ratedI(cfg, g);
   const U = headroomU(cfg, g);
   return packProducts(cfg).map(({ product, H }) => {
     const S = packS(cfg, g, H, I);

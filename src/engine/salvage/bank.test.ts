@@ -148,8 +148,10 @@ describe('2.14.4 in the running yard: before each ticket, by tick, by jump and a
         lastTaken = e.y;
         took = roundMoney(took + e.y);
       }
-      if (e.type === 'collected' || e.type === 'dealDelivered') {
-        const t = e.ticket;
+      // Every lot payment's ticket (the round's collection, a deal's delivery and, from wave 2 of the works, the gate's sale, the van, the picking table).
+      const t0 = (e as { ticket?: Ticket }).ticket;
+      if (t0 && 'paid' in t0 && e.type !== 'weighIn' && e.type !== 'bridgeWeighIn') {
+        const t = t0;
         tickets.push(t);
         const y = 'bank' in t && t.bank ? t.bank.y : 0;
         expect(y, `ticket ${t.no}`).toBe(lastTaken ?? 0);

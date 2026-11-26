@@ -21,10 +21,9 @@
  */
 import { marketDay, priceOf, sellAmount } from './board';
 import { freeOf } from './bays';
-import { ratedIG } from './bank';
 import { begin, credit, finish } from './clock';
 import { roundMoney } from './money';
-import { secondSession } from './shop';
+import { ratedI, secondSession } from './shop';
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { AdKind, AdsState, AwayCard, BonusCard, CardButton, GradeId, SalvageConfig, SalvageEvent, SalvageGame, SellShown } from './types';
 
@@ -70,7 +69,7 @@ export function awayShowsDebt(g: SalvageGame, card: Pick<AwayCard, 'bank'>): boo
 }
 
 /** The away bonus an away card would bring now (2.16): min(awayShare × (money − bank), awayCap_min of I), or 0. */
-export function awayBonusOf(cfg: SalvageConfig, g: SalvageGame, card: Pick<AwayCard, 'money' | 'bank'>, I = ratedIG(cfg, g).I): number {
+export function awayBonusOf(cfg: SalvageConfig, g: SalvageGame, card: Pick<AwayCard, 'money' | 'bank'>, I = ratedI(cfg, g)): number {
   const d = adsDef(cfg.salvage);
   if (!d) return 0;
   const reached = Math.max(0, roundMoney(card.money - (card.bank ?? 0)));
@@ -87,7 +86,7 @@ export function awayOfferAfter(cfg: SalvageConfig, g: SalvageGame, card: AwayCar
   const a = g.salvage.ads;
   if (!d || !secondSession(g) || absentS < d.awayMinAbsence_min * 60) return a;
   if (adCounts(cfg.salvage, g).awayUsed >= d.awayPerDay) return a;
-  const I = ratedIG(cfg, g).I;
+  const I = ratedI(cfg, g);
   const amount = awayBonusOf(cfg, g, card, I);
   if (amount <= 0) return a;
   return { ...rolled(cfg.salvage, g), awayOffer: { amount, I: roundMoney(I), centred: !awayShowsDebt(g, card) } };
@@ -104,7 +103,7 @@ export function sellNow(cfg: SalvageConfig, g: SalvageGame, grade: GradeId): Sel
 }
 
 /** The spot buyer's bonus on a Sell as shown: min(spotShare × the Sell's amount, spotCap_min of I), or 0. */
-export function spotBonusOf(cfg: SalvageConfig, g: SalvageGame, shown: SellShown, I = ratedIG(cfg, g).I): number {
+export function spotBonusOf(cfg: SalvageConfig, g: SalvageGame, shown: SellShown, I = ratedI(cfg, g)): number {
   const d = adsDef(cfg.salvage);
   if (!d) return 0;
   return Math.max(0, Math.min(roundMoney(d.spotShare * sellAmount(shown)), minutesOfI(d.spotCap_min, I)));
