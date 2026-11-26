@@ -1067,6 +1067,8 @@ export interface CardRow {
   extra?: Txt | null;
   /** How the row is drawn (always set by cardOf; optional only for the screens' own stand-in rows). */
   state?: RowState;
+  /** owner1 H6: a crew member's row while he waits with nothing to do: why (card.crewWhy.*, the bubble's words). */
+  why?: Txt;
 }
 
 /**

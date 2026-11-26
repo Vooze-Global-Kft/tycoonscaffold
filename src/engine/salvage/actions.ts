@@ -11,7 +11,7 @@ import { onAwayClosed, onSeen } from './actionsMoney';
 import { buyWorks, levelWorks } from './actionsWorks';
 import { contentAt } from './layer';
 import { asideOf, bayOf, freeOf } from './bays';
-import { begin, count, finish, spend } from './clock';
+import { begin, count, finish, shareUnchanged, spend } from './clock';
 import { anyIdle, crewDepart, newCrew, owner1Rules } from './crew';
 import { crucibleFromBays, pour } from './crucible';
 import { dealSign, dealTerms } from './deal';
@@ -82,6 +82,8 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   // owner1 H5: while anybody waits, every presence sample offers work again (the boss walking away from a heap frees its pieces).
   if (owner1Rules(x.c) && anyIdle(x.s)) crewDepart(x, t);
   checks(x, t);
+  // owner1 L2: what the sample did not change keeps the previous state's objects (the frame's scene stamp holds).
+  shareUnchanged(s, x.s, null);
   return finish(g, x);
 }
 

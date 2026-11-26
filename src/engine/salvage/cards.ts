@@ -17,7 +17,7 @@ import { driverRoundF, machineShares } from './content';
 import { awayCapH } from './away';
 import { roundMoney } from './money';
 import { keptForBetter } from './truck';
-import { waitsForFloor } from './crew';
+import { idleWhyOf, waitsForFloor } from './crew';
 import { lastPassed, tableOf } from './rivals';
 import type {
   CardContext,
@@ -181,7 +181,11 @@ function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
           : role === 'cutter'
             ? { key: 'card.cutsBest', args: tool ? { tool: { text: itemName(tool) } } : {} }
             : { key: 'card.drivesRate', args: { t: { secs: driverTripS(cfg, g, m) } } };
-      out.push(row(m.id, { key: 'card.crewRow', args: { name: { name: `crew.${m.name}` }, n: { n: m.level } } }, rate, lv.button, lv.ch.state, lv.line, `ui.vest.${role}`));
+      const r = row(m.id, { key: 'card.crewRow', args: { name: { name: `crew.${m.name}` }, n: { n: m.level } } }, rate, lv.button, lv.ch.state, lv.line, `ui.vest.${role}`);
+      // owner1 H6: the same reason as the bubble over him (crew.ts idleWhyOf).
+      const why = idleWhyOf(c, s, m);
+      if (why) r.why = { key: (why.why === 'tool' ? ((why.tier ?? 2) >= 3 ? 'card.crewWhy.tool3' : 'card.crewWhy.tool2') : `card.crewWhy.${why.why}`) as TextKey };
+      out.push(r);
     }
     const ch = hireCheck(cfg, g, role);
     if (!ch.key) continue;

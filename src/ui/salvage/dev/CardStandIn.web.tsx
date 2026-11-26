@@ -72,13 +72,19 @@ export function CardStandIn() {
     // game on screen and opens it, so the docket can be looked at with two rows, twelve, and every row.
     const name = query()?.get('awaySample') as AwaySampleName | null;
     if (!name || !AWAY_SAMPLES[name]) return;
-    const t = setTimeout(() => {
+    // (on with `?dev=cards`: this stand-in mounts with the dev panel) Waits for the preset's game to be in.
+    let t: ReturnType<typeof setTimeout>;
+    const lay = () => {
       const st = useGame.getState();
       const g0 = st.game as SalvageGame;
-      if (!g0?.salvage) return;
+      if (!g0?.salvage) {
+        t = setTimeout(lay, 500);
+        return;
+      }
       useGame.setState({ game: { ...g0, salvage: { ...g0.salvage, away: AWAY_SAMPLES[name] } } as typeof st.game });
       openCard({ kind: 'away' });
-    }, Number(query()?.get('cardBAt') ?? 900));
+    };
+    t = setTimeout(lay, Number(query()?.get('cardBAt') ?? 900));
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {

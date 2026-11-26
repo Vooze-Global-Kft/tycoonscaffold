@@ -18,7 +18,7 @@
 import { awayPass } from './away';
 import { marketDay } from './board';
 import { releaseHolds } from './bays';
-import { accrueBoost, begin, boostEndsAt, finish, nextDayAt, bossFresh, type Ctx } from './clock';
+import { accrueBoost, begin, boostEndsAt, finish, nextDayAt, bossFresh, shareUnchanged, type Ctx } from './clock';
 import { crewDepart, crewLegEnd, showCrewRuns } from './crew';
 import { crucibleCheckReady, crucibleEvent, crucibleFromBays } from './crucible';
 import { dealDeliver, dealOffer, dealReprice } from './deal';
@@ -261,6 +261,8 @@ function closeClock(x: Ctx, now: number): void {
  * engine, 2.16); then advance by dt of live play with the latest presence. dt is added to `salvage.t`
  * and `stats.playSeconds`.
  */
+const SHARED_ON_TICK = ['things', 'pieces', 'crew', 'act'] as const;
+
 export function advanceSalvage(cfg: SalvageConfig, g: SalvageGame, dt: number, now: number, events?: SalvageEvent[]): SalvageGame {
   const step = Math.max(0, Math.min(Math.max(MAX_TICK, cfg.salvage.away.gapS), Number.isFinite(dt) ? dt : 0));
   const s0 = g.salvage;
@@ -272,6 +274,8 @@ export function advanceSalvage(cfg: SalvageConfig, g: SalvageGame, dt: number, n
   const x = begin(cfg, base, ev, true);
   advance(x, x.s.t + step);
   closeClock(x, now);
+  // owner1 L1: things and pieces change only at events: a tick between them keeps the same lists (the frame reuses them).
+  shareUnchanged(base.salvage, x.s, SHARED_ON_TICK);
   return finish(base, x, step);
 }
 

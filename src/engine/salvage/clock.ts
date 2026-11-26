@@ -29,6 +29,34 @@ export function clone<T>(x: T): T {
   return out as T;
 }
 
+/** Are two plain data values equal all the way down? */
+export function sameData(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return typeof a === 'number' && typeof b === 'number' && Number.isNaN(a) && Number.isNaN(b);
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameData(a[i], b[i])) return false;
+    return true;
+  }
+  if (Array.isArray(b)) return false;
+  const ka = Object.keys(a as object);
+  if (ka.length !== Object.keys(b as object).length) return false;
+  for (const k of ka) if (!sameData((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) return false;
+  return true;
+}
+
+/**
+ * owner1 L1, L2: a transition's new state keeps the PREVIOUS state's object for each of `keys` (every key when null)
+ * whose data did not change, so that the frame (frame.ts) reuses what it built from them and a presence sample that
+ * moved only the boss shares everything else. States are never mutated after a transition, so sharing is safe.
+ */
+export function shareUnchanged(prev: SalvageState, next: SalvageState, keys: readonly (keyof SalvageState)[] | null): void {
+  const ks = keys ?? (Object.keys(next) as (keyof SalvageState)[]);
+  const n = next as unknown as Record<string, unknown>;
+  const p = prev as unknown as Record<string, unknown>;
+  for (const k of ks) if (k in p && n[k] !== p[k] && sameData(p[k], n[k])) n[k] = p[k];
+}
+
 /** What an away pass gathers for its card (2.16). */
 export interface AwayAcc {
   lines: Record<string, { g: number; money: number }>;
