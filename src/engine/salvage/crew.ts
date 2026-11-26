@@ -81,19 +81,35 @@ const pileOrder = (p: GroundPiece) => (p.pile.startsWith('circle.') ? 0 : p.pile
  * still fits is the same as taking, again and again, the best remaining piece that fits (a piece too heavy
  * for the room left stays too heavy: the room only shrinks), so the result and its order are the same.
  */
-function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
+/** engine4: vpk kept per content object (a pure function of the content and the grade). */
+const VPK = new WeakMap<object, Map<string, number>>();
+let VPK_C: object | null = null;
+let VPK_M: Map<string, number> | null = null;
+function vpkKept(c: Ctx['c'], grade: string): number {
+  let m = c === VPK_C ? VPK_M : VPK.get(c);
+  if (!m) VPK.set(c, (m = new Map()));
+  VPK_C = c;
+  VPK_M = m;
+  let q = m.get(grade);
+  if (q === undefined) m.set(grade, (q = vpk(c, grade)));
+  return q;
+}
+
+/**
+ * engine4: `unclaimed` true is choose over the pieces that have no claim (as choose(x, pieces.filter((p) => !p.claim),
+ * room)): a claimed piece is set aside before the first look, so the others are compared in the same order.
+ */
+function choose(x: Ctx, pieces: readonly GroundPiece[], room: number, unclaimed = false, vals: readonly number[] | null = null): GroundPiece[] {
   const out: GroundPiece[] = [];
   const n = pieces.length;
   if (!n) return out;
-  const val = new Array<number>(n);
-  const v = new Map<string, number>();
-  for (let i = 0; i < n; i++) {
-    const g = pieces[i].grade;
-    let q = v.get(g);
-    if (q === undefined) v.set(g, (q = vpk(x.c, g)));
-    val[i] = q;
-  }
+  // engine4: `vals` (a run's plan: groupHand) are these pieces' values already looked up, in their order.
+  const val = vals ?? new Array<number>(n);
   const taken = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (unclaimed && pieces[i].claim) taken[i] = 1;
+    if (!vals) (val as number[])[i] = vpkKept(x.c, pieces[i].grade);
+  }
   for (;;) {
     let best = -1;
     for (let i = 0; i < n; i++) {
@@ -116,38 +132,6 @@ function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
     out.push(pieces[best]);
     room -= pieces[best].g;
   }
-}
-
-/**
- * engine4: choose's order made once for a run's whole plan (groupHand). choose(x, src, room) takes, again and again,
- * the best piece left that fits by byValue's order (value per kilogram descending, then grams descending, then uid);
- * that order is total (uids are unique; a stable sort keeps the array's order for any two equal pieces, as choose's
- * strict comparison keeps the earlier). So choose(x, src, room) is the walk of src SORTED by it, taking each piece
- * that still fits (choose's own comment), and for src = the pool's unclaimed pieces it is the walk of the pool sorted
- * once, skipping claimed pieces (filtering and a stable sort by a total order commute). Null when some value is not
- * finite (choose's subtraction would not be an order then): the plan uses choose itself.
- */
-function chooseOrder(x: Ctx, pool: readonly GroundPiece[]): GroundPiece[] | null {
-  const v = new Map<string, number>();
-  for (const p of pool) {
-    if (v.has(p.grade)) continue;
-    const q = vpk(x.c, p.grade);
-    if (!Number.isFinite(q)) return null;
-    v.set(p.grade, q);
-  }
-  for (const p of pool) if (!Number.isFinite(p.g)) return null;
-  return pool.slice().sort((a, b) => v.get(b.grade)! - v.get(a.grade)! || b.g - a.g || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
-}
-
-/** choose over the unclaimed pieces of a pool, by the pool's chooseOrder (see there). */
-function chooseWalk(order: readonly GroundPiece[], room: number): GroundPiece[] {
-  const out: GroundPiece[] = [];
-  for (const p of order) {
-    if (p.claim || p.g > room) continue;
-    out.push(p);
-    room -= p.g;
-  }
-  return out;
 }
 
 /**
@@ -688,8 +672,9 @@ function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things
   // engine3: nothing changes inside this function, so a thing's destination is a function of its next piece's grade
   // alone here (floorWholeDest reads the machines as they stand): asked once a grade.
   const dests = new Map<string, MachineId | 'scale'>();
+  // engine4: the next piece's grade by things.ts specAt (pieceSpec's own answers, kept per content object).
   const destOf = (th: ThingState): MachineId | 'scale' => {
-    const grade = pieceSpec(x.c, th.obj, th.cut)?.grade ?? '';
+    const grade = specAt(x.c, th.obj, th.cut)?.grade ?? '';
     let d = dests.get(grade);
     if (d === undefined) dests.set(grade, (d = floorWholeDest(x, th)));
     return d;
@@ -906,20 +891,17 @@ function piecesCand(m: CrewMember, pick: GroundPiece[], pile: string): Cand | nu
 }
 
 /** The next trip of the same kind from the same place (the in-place choice of 2.1.2), or null. Claims nothing until `take`. */
-function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number, pool: GroundPiece[] | null = null, order: GroundPiece[] | null = null): Cand | null {
+function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number, pool: GroundPiece[] | null = null, vals: readonly number[] | null = null): Cand | null {
   const s = x.s;
   switch (kind.k) {
     case 'feed': {
       if (feedRoom <= 0) return null;
       const inbuf = (x.c.machines as unknown as Record<string, { inbuf: number }>)[kind.dest].inbuf * 1000;
-      if (pool && order) return piecesCand(m, chooseWalk(order, Math.min(cap, inbuf, feedRoom)), kind.pile);
-      const src = pool ? pool.filter((p) => !p.claim) : sameAgainPool(x, kind, inYard).filter((p) => !p.claim);
-      return piecesCand(m, choose(x, src, Math.min(cap, inbuf, feedRoom)), kind.pile);
+      // engine4: choose skips the claimed pieces itself (the same choice as over the filtered list).
+      return piecesCand(m, choose(x, pool ?? sameAgainPool(x, kind, inYard), Math.min(cap, inbuf, feedRoom), true, pool ? vals : null), kind.pile);
     }
     case 'pile': {
-      if (pool && order) return piecesCand(m, chooseWalk(order, cap), kind.pile);
-      const src = pool ? pool.filter((p) => !p.claim) : sameAgainPool(x, kind, inYard).filter((p) => !p.claim);
-      return piecesCand(m, choose(x, src, cap), kind.pile);
+      return piecesCand(m, choose(x, pool ?? sameAgainPool(x, kind, inYard), cap, true, pool ? vals : null), kind.pile);
     }
     case 'tray': {
       const mach = s.machines[kind.id];
@@ -1025,10 +1007,10 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
   const maxRun = groupCfg(x.c).handRun_s;
   // engine3: the run's candidate pieces once (sameAgainPool); each trip takes the unclaimed ones of them.
   const pool = kind.k === 'pile' || kind.k === 'feed' ? sameAgainPool(x, kind, inYard) : null;
-  // engine4: and choose's order of it once (chooseOrder): each trip walks it.
-  const order = pool && pool.length ? chooseOrder(x, pool) : null;
+  // engine4: and their values once (vpk is a function of the content and the grade).
+  const vals = pool ? pool.map((p) => vpkKept(x.c, p.grade)) : null;
   while (loads.length < RUN_MAX) {
-    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom, pool, order);
+    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom, pool, vals);
     if (!c) break;
     const last = loads[loads.length - 1];
     const sp = posOf(x, c.spot);

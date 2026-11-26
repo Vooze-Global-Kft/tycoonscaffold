@@ -148,12 +148,19 @@ export function finish(g: SalvageGame, x: Ctx, playDt = 0): SalvageGame {
  * Number each grade's FIRST stock in its bay (`counts['bay#:<grade>']` = 1, 2, ...; `counts['bay#']` the
  * last): the stillage block fills in this order (positions.ts stillageSlot, the lead's ruling of 17:10).
  */
+// engine4: each grade's key string built once (the same strings).
+const BAY_KEY = new Map<string, string>();
+const bayKey = (gr: string): string => {
+  let k = BAY_KEY.get(gr);
+  if (k === undefined) BAY_KEY.set(gr, (k = `bay#:${gr}`));
+  return k;
+};
 export function numberBays(x: Ctx): void {
   const c = x.s.counts!;
   for (const gr in x.s.bays) {
-    if (x.s.bays[gr].g > 0 && !c[`bay#:${gr}`]) {
+    if (x.s.bays[gr].g > 0 && !c[bayKey(gr)]) {
       c['bay#'] = (c['bay#'] ?? 0) + 1;
-      c[`bay#:${gr}`] = c['bay#'];
+      c[bayKey(gr)] = c['bay#'];
     }
   }
 }
