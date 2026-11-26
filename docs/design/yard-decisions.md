@@ -2254,3 +2254,61 @@ place, because `src/modes/entries.test.ts` pinned that the salvage entry hands o
 object. The pin is the lead's to keep in step: the entry now hands over a plain wrapper
 (`salvageReturningEngine`), the pin says so (its three time-away seams are the wrapper's, everything
 else the rules' own), and whoever imports `salvageEngineMode` gets the rules as they are.
+
+### 19. The bots' first play of stage 2 (26 November, about 21:45): rulings before the numbers are set
+
+The bots now play stage 2 (`notes/` of content2-bots; `yard-bot.ts --stage 2`): every bot of 8.2's
+table but one reaches rung 4 on three seeds, none reaches rung 5 within eight days, no hard promise
+broke (three apparent breaks were the bots' own measuring). What they showed, and what holds from
+now on:
+
+19.1 THE PAYBACK RULE READS WHAT THE YARD EARNS, MEASURED (it replaces "the ΔI it adds" of 2.6.4).
+    Rated income I carries terms for four plates only (baler, granulator, shredder, induction); for
+    the crane, the shear, the analyser, the depollution bay, the eddy current, the sorter, the
+    rotary furnace, the breaker and the smelter its ΔI is zero, so τ_r × ΔI prices nothing. A
+    plate's price is set from the bots' own play instead: on the reference yard (the normal hand,
+    the goal habit), from the state at the plate's planned moment with every earlier plate of the
+    goal order owned, play two branches (bought now, not bought) for the walk's horizon of ruling
+    17.1 (the same walk, the same seeds, the same absence at the cap): ΔE is the difference in what
+    the yard earned (sales less loads, reagents and every other cost; the plate's own price left
+    out) as a rate per hour of yard time, on means over the seeds. PRICE = max(`works.floor`,
+    τ_r × ΔE), rounded as the content rounds prices, written by the script into
+    `bots/plates.json` as before. A plate that only makes a later plate possible (its own ΔE at
+    or below the floor's worth) costs the floor, and the plate that completes the chain carries the
+    chain's gain: the sum is right, and no purchase is a trap. The vehicles and tools of the stage
+    (payback-priced, 2.9) by the same measure. The gate of 17.1 then holds by construction; print
+    its table all the same.
+19.2 RATED INCOME MUST STILL BE RIGHT, because packs, ad rewards and the bank read it and what a
+    pack says ("hours of your yard's income") must be true: I may never be read from trailing sales
+    (a player could hold and then sell to inflate it). Its missing plate terms (every plate, the
+    hands' carrying to the yard plates, whole things as inputs, the van) are the FIX PASS's work in
+    rate.ts, calibrated to 19.1's measured gains, to the band of 14.10 (medians 0.95 to 1.05 at
+    rungs 3, 4 and 5); and the facade's ratedIncome, ratedTerms and stockValue read the content at
+    the state (they read the base content today and leave out every plate: a fault). UNTIL THEN the
+    bots measure I through their own wrappers and report it against earnings; nothing is priced
+    from I.
+19.3 RUNG 5 COMES ON DAY 4 TO 6 (8.2), by its tonnage alone: the yard supplies about 700 t a
+    sitting at rung 4, so 10,000 t arrives about day 8.5 to 9, and from sitting 8 on nothing useful
+    is left to buy while cash grows to §8M to §21M. Bring rung 5 into its band with
+    `ladder.rungs` (rung 5's tonnes) and nothing else; the aim that goes with it: the last goal
+    purchase of the stage and rung 5 lie within about two sittings of each other on the normal
+    hand. If the tonnage alone cannot do it (the range of materials binds first), say which
+    material binds and leave it.
+19.4 STEEL-MAX STALLS AT RUNG 3, and that is the design: rung 4 asks for eight materials and the
+    ferrous plates give six ("the largest FULL metal recycler"). 8.2's row changes to say so. What
+    the rung's tile shows such a player (which materials are missing) is the screens' work.
+19.5 THE CUTTER'S HABIT is measured as the rules allow it: a tagged thing is racked before it can be
+    cut while the rack has a free place. No rule changes.
+19.6 L1 (the first Bank loan within two sittings of rung 3) is a measure, not a gate: a yard that
+    pays its rung-3 plates in cash is doing well.
+19.7 THE CARD MANAGER at stage 2 (its advice presses refused while the driver's load holds money):
+    find out in the measure whether that is the bot or a rule that keeps a player who only uses
+    cards from buying a plate; if a rule, it is a finding of severity blocking for the fix pass.
+19.8 THE FULL TABLE (15 seeds, 5 of them unseen, 13 of 15 in band) waits for engine step 3 (time
+    away at stage 2 costs 3 s for six hours today): until it lands, three to five seeds, shards and
+    caches; the table is printed again after it.
+19.9 The shop's sixteen products now stand in the shared `monetization.iap.products` (prefix
+    `yard_`) and `monetization.ads.initOn` is 'firstOffer'. Before anything of this is merged for
+    the phone, a test shows that at `release.stage` 1 none of it shows or runs (no product asked of
+    the store, no row, no ad start that differs from the first yard's); else the build script
+    writes both only at stage 2.

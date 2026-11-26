@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "content2-bots (26 Nov, stage 2's measurement, REPORT8 round 1): ladder.rungs n 5 10,000 -> 5,000 t (yard-stage2.md 2.22: rung 5 at day 4 to 6; at 10,000 t no bot reached it in eight days, about 700 t a sitting at rung 4; 5,000 t comes at sitting 10, day 5, on the normal hand; theta_5 follows by thetaShare: 120,000 -> 60,000 a material)",
     "owner1-rules (26 Nov, RULING-owner1.md H7): ladder rung 2 2.4 -> 2.8 t and rung 3 28.5 -> 31.5 t (both `rung2`/`rung3` and `rungs`): H1 to H4 brought rung 2 two minutes and rung 3 four and a half minutes earlier on the bots (15 seeds, 2 routes; 3.6 t was tried and put rung 2 at 15.8 min and the torch out of its band; notes/owner1-rules.md)",
     "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
     "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
@@ -1439,7 +1440,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
       // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
       { n: 4, t: 1000, range: 8 },
-      { n: 5, t: 10000, range: 9 },
+      // content2-bots round 1 (REPORT8): 10,000 -> 5,000 t (rung 5 at day 4 to 6: 10,000 t came after day 8 on every seed)
+      { n: 5, t: 5000, range: 9 },
       { n: 6, t: 50000, range: 10 },
       { n: 7, t: 200000, range: 11 },
       { n: 8, t: 600000, range: 12 },

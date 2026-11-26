@@ -254,7 +254,7 @@ function walkSection(L: string[], all: Summary[]): void {
 // ============================================================================================ stage 2 (yard-stage2.md 8.2; content2-bots)
 
 /** The bots of 8.2's table, each a habit on the first yard's normal hand unless it names another hand. */
-type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut';
+type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise';
 const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   normal: {},
   brisk: { hand: 'brisk' },
@@ -268,9 +268,19 @@ const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   holder: { holder: true },
   steelMax: { steelMax: true },
   leadCut: {},
+  // content2-bots, the measurement (REPORT8): the normal hand on content variants. flat: the yard PLAYED with prices flat
+  // (board.a 0: I's gate on both boards, 14.10); behind: group.ahead false (every run trip by trip: the gate of planning
+  // ahead, 14.9); noise: the cutters' power x (1 + 1e-9) (that gate's noise floor). Not in the default list (--bots).
+  flat: {},
+  behind: {},
+  noise: {},
 };
+/** The bots a plain --stage 2 call runs (the variants are asked for by name). */
+const DEFAULT2: Bot2[] = ['normal', 'brisk', 'slow', 'manager', 'always', 'packs', 'ads', 'racker', 'cutter', 'holder', 'steelMax', 'leadCut'];
+/** The bots whose sittings measure G (a capped absence at usual prices from each return) beside I (REPORT8). */
+const MEASURES_G = new Set<Bot2>(['normal', 'flat']);
 /** The bots whose first part (to the works' opening) is the normal hand's own: they share one snapshot per seed. */
-const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut']);
+const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut', 'behind', 'noise']);
 const S2_SITTINGS = Number(arg('sittings', '16')); // 8 days twice a day (8.2)
 const S2_AWAY_S = 11.75 * 3600;
 const S2_PLAY_S = 15 * 60;
@@ -283,6 +293,26 @@ function leadCut(cfg: R.SalvageConfig): R.SalvageConfig {
   if (c.worksLayer) c.worksLayer.shop = c.worksLayer.shop.filter((i) => !drop.has(i.key));
   if (c.stage2) c.stage2 = c.stage2.filter((g) => !['buyBreaker', 'buySmelter', 'pourLead'].includes(g.id));
   return { ...cfg, salvage: c };
+}
+
+/** The content variants of the measurement (BOTS2's comment): flat board, ahead false, the noise floor. */
+function variant(cfg: R.SalvageConfig, which: Bot2): R.SalvageConfig {
+  const c = cfg.salvage as R.SalvageConfig['salvage'] & { group: Record<string, unknown> };
+  if (which === 'leadCut') return leadCut(cfg);
+  if (which === 'flat') return { ...cfg, salvage: { ...c, board: { ...c.board, a: 0 } } } as R.SalvageConfig;
+  if (which === 'behind') return { ...cfg, salvage: { ...c, group: { ...c.group, ahead: false } } } as R.SalvageConfig;
+  if (which === 'noise') return { ...cfg, salvage: { ...c, crew: { ...c.crew, cutter: { ...c.crew.cutter, share: c.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig;
+  return cfg;
+}
+
+/** G at usual prices from a return state (2.3.3): one capped absence (cash ample for every load), the bank's share added back. */
+function gAt(cfg: R.SalvageConfig, g0: R.SalvageGame): { G: number; h: number } {
+  const flat = cfg.salvage.board.a === 0 ? cfg : ({ ...cfg, salvage: { ...cfg.salvage, board: { ...cfg.salvage.board, a: 0 } } } as R.SalvageConfig);
+  // The return's own card is put aside (a second pass adds to an unread card: its hours would count twice).
+  const g = { ...g0, cash: Math.max(1e7, g0.cash), lastSavedAt: g0.salvage.clock.highMs, salvage: { ...g0.salvage, away: null } } as R.SalvageGame;
+  const o = awayPass(flat, g, g.salvage.clock.highMs + 24 * 3600_000);
+  const h = (o.salvage.away?.seconds ?? 0) / 3600;
+  return { G: (o.cash - g.cash + (o.salvage.away?.bank ?? 0) + stockAt(flat, o) - stockAt(flat, g)) / Math.max(1e-9, h), h };
 }
 
 interface Sitting2 {
@@ -300,6 +330,15 @@ interface Sitting2 {
   spent: number;
   goal: string | null;
   works: string;
+  /** REPORT8: lifetime earnings at the return and after the sitting, the yard's running hours of the absence (the cap), materials counted for the next rung, the Yard sale's and the van's money on the card, G and I at the return (MEASURES_G only). */
+  Lback: number;
+  Lend: number;
+  ranH: number;
+  mats: number;
+  rack: number;
+  van: number;
+  G?: number;
+  Iback?: number;
 }
 
 /**
@@ -312,7 +351,7 @@ interface Sitting2 {
 function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const t0 = performance.now();
   const which = spec.bot ?? 'normal';
-  const base = which === 'leadCut' ? leadCut(base0) : base0;
+  const base = variant(base0, which);
   const cfg = seededCfg(base, spec.seed);
   const opts: BotOptions = { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed, ...BOTS2[which] };
   const cacheDir = arg('cache');
@@ -352,9 +391,11 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.map((p) => p.key) });
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
-    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(',') });
-    if (spec.gate && [1, 4, 8, 12].includes(k)) {
-      const d = tickJumpGate(cfg, b.g, b.now, 30);
+    const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
+    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)) } : {}) });
+    // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
+    if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
+      const d = tickJumpGate(cfg, b.g, b.now, 60);
       if (d) b.rec.s2.gate.push(`sitting ${k}: ${d}`);
     }
     if (which === 'normal' && worksOpened(s)) nohandStates.push(b.g);
@@ -383,7 +424,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // The payback table (2.6.4; --plates): each plate's ΔI at its planned moment, the return of the sitting in which the
   // normal bot bought it (else the last return at which its gate was met): I a jump of deliver + selfCommission later
   // with the plate bought and started by itself, against the same jump without it (cash enough for both).
-  const plates: Record<string, { at_h: number; rung: number; I: number; dI: number; bought: boolean }> = {};
+  const plates: Record<string, { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number }> = {};
   if (arg('plates') && which === 'normal') {
     const W = contentAt(cfg.salvage, returns[0]?.g.salvage ?? b.g.salvage).works;
     for (const pid of Object.keys(W?.plates ?? {})) {
@@ -401,11 +442,16 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const after = R.jump(cfg, R.buy(cfg, g, pid as never, ck.price, g.salvage.t), g.salvage.t + span);
       const before = R.jump(cfg, g, g.salvage.t + span);
       const I0 = incomeAt(cfg, before);
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought };
+      // REPORT8: the payback measured on what the yard KEEPS (G at usual prices, a capped absence from both states), since I
+      // does not carry most plates yet (requests.md 26 Nov ~20:40): payback = price / dG hours, against 0.8 to 1.5 tau_r.
+      const G0 = gAt(cfg, before).G;
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0) };
     }
   }
+  // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
+  const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { fin, s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -1072,7 +1118,7 @@ async function main(): Promise<void> {
   // them (default every one); --shard i/n runs every n-th spec from i (a background command here is stopped after 30 min:
   // run the shards one after another with the same --cache, then once more without --shard to print the table).
   if (Number(arg('stage', '0')) === 2) {
-    const names = (arg('bots', Object.keys(BOTS2).join(',')) ?? '').split(',') as Bot2[];
+    const names = (arg('bots', DEFAULT2.join(',')) ?? '').split(',') as Bot2[];
     let specs2: Spec[] = [];
     for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
