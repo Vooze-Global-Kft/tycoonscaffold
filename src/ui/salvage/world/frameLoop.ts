@@ -354,9 +354,25 @@ export function useYardLoop(opts: {
   const sound = opts.sound ?? yardSound;
   const soundStep = useCallback((g: string) => sound.step(g), [sound]);
   const soundTruck = useCallback((s: number) => sound.truck(s < 0 ? null : s), [sound]);
-  const stepOutRules = useCallback(() => {
-    salvageActions.stepOut();
-  }, []);
+  // The rules' answer to the world's Step out: its number twice, plus one when the rules have him on foot.
+  const seatAck = useSharedValue(0);
+  const stepOutRules = useCallback(
+    (seq: number, x: number, y: number, heading: number) => {
+      // The rules hear exactly what the world did: at the wheel and standing still here (no older sample may
+      // follow and seat him again), then out; whether they agree goes back to the frame loop.
+      let ok = 0;
+      try {
+        pending.current.s = null;
+        sampleTo.current(0, x, y, 1, 0, 0);
+        salvageActions.stepOut({ x, y, heading });
+        const g = useGame.getState().game as R.SalvageGame | undefined;
+        ok = g?.salvage?.truck.by === 'boss' ? 0 : 1;
+      } finally {
+        seatAck.value = seq * 2 + ok;
+      }
+    },
+    [seatAck],
+  );
   useEffect(() => {
     if (!run) sound.truck(null);
   }, [run, sound]);
@@ -430,10 +446,13 @@ export function useYardLoop(opts: {
       const truckOwned = Rv.truck[0] === 1;
       const truckBusy = Rv.truck[5] === 2 || Rv.truck[6] >= 0;
       let snap = false;
+      const byBoss = truckOwned && Rv.truck[5] === 1;
       if (Rv.n > 0 && Rv.epoch !== st[33]) {
         st[33] = Rv.epoch;
         snap = true;
-        if (truckOwned && Rv.truck[5] === 1) {
+        st[35] = 0;
+        st[37] = 0;
+        if (byBoss) {
           // The rules have the boss in the truck (a preset, a reload): in the cab, where the truck stands.
           st[5] = 1;
           st[6] = 0;
@@ -441,22 +460,27 @@ export function useYardLoop(opts: {
           st[3] = Rv.truck[2];
           st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
           runOnJS(drivingJS)(true);
-        } else if (st[5] !== 1 && B[9] === B[9] && B[10] === B[10]) {
-          // Where the rules have him, pushed out of anything solid he would stand inside (a body never does).
-          moveBody(out, B[9], B[10], 0, 0, motion.workerR, solids, YW, YD, 0, 0, 0, Rv.solids, lane);
-          st[0] = out[0];
-          st[1] = out[1];
-          st[8] = B[11] >= 0 && B[11] < 4 ? B[11] : 0;
+        } else {
+          if (st[5] === 1) {
+            // The rules have him on foot (time away gave the truck to the driver): out of the cab.
+            st[5] = 0;
+            st[6] = 0;
+            runOnJS(soundTruck)(-1);
+          }
+          // Said on every snap: the screens' flag may be a mount old (the shell no longer resets it itself).
+          runOnJS(drivingJS)(false);
+          if (B[9] === B[9] && B[10] === B[10]) {
+            // Where the rules have him, pushed out of anything solid he would stand inside (a body never does).
+            moveBody(out, B[9], B[10], 0, 0, motion.workerR, solids, YW, YD, 0, 0, 0, Rv.solids, lane);
+            st[0] = out[0];
+            st[1] = out[1];
+            st[8] = B[11] >= 0 && B[11] < 4 ? B[11] : 0;
+          }
         }
       }
-      const driving = st[5] === 1;
-      const speed = driving ? bossDriveV(st[2], YW, bossYardV, bossV) : motion.walk;
-      const vx = ux * speed;
-      const vy = uy * speed;
-      st[16] = vx;
-      st[17] = vy;
-      // The truck stands where the rules last put it, unless the boss drives it (synced when the rules move it).
-      if (!driving && !truckBusy && (snap || Rv.truck[1] !== st[31] || Rv.truck[2] !== st[32])) {
+      // The truck stands where the rules last put it (synced when the rules move it), unless the boss holds it:
+      // in the world's cab, or in the rules' (then the place the world shows is the one the rules are told).
+      if (st[5] !== 1 && !truckBusy && !byBoss && (snap || Rv.truck[1] !== st[31] || Rv.truck[2] !== st[32])) {
         st[31] = Rv.truck[1];
         st[32] = Rv.truck[2];
         if (Rv.n > 0 && truckOwned) {
@@ -465,6 +489,52 @@ export function useYardLoop(opts: {
           st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
         }
       }
+      // --- who sits in the cab: the world and the rules agree (the owner's review, point 5) -----------------
+      // The world flips at once (the stick answers within a frame) and the rules hear it in the next sample
+      // (its cab flag seats him: engine hand.ts seatByFlag). What the rules decide comes back here: st[35] is
+      // the world's own Step out waiting for the rules (1: for their answer, seatAck; 2: for a table that
+      // says so), st[37] a forced step down this frame.
+      let entered = false;
+      if (st[35] === 1) {
+        const ack = seatAck.value;
+        if (Math.floor(ack / 2) === st[36]) {
+          if (ack % 2 === 1) st[35] = 2;
+          else {
+            // The rules kept him at the wheel: back in the cab (the truck has not moved).
+            st[35] = 0;
+            st[5] = 1;
+            st[6] = 0;
+            runOnJS(drivingJS)(true);
+          }
+        }
+      }
+      if (st[35] === 2 && !byBoss) st[35] = 0;
+      if (!snap && st[35] === 0) {
+        if (st[5] === 0 && byBoss) {
+          // The rules seated him (the truck pulled up beside him; he stopped within its reach): into the cab.
+          // The truck stays where the world shows it unless that is nowhere near the rules' place.
+          const ex = Rv.truck[1] - st[2];
+          const ey = Rv.truck[2] - st[3];
+          if (!(ex * ex + ey * ey <= 16)) {
+            st[2] = Rv.truck[1];
+            st[3] = Rv.truck[2];
+            st[4] = Math.PI / 2 - (Rv.truck[3] * Math.PI) / 4;
+          }
+          st[5] = 1;
+          st[6] = 0;
+          entered = true;
+          runOnJS(drivingJS)(true);
+        } else if (st[5] === 1 && truckOwned && truckBusy) {
+          // The truck left with the driver before the rules heard the boss was in it: he steps down.
+          st[37] = 1;
+        }
+      }
+      const driving = st[5] === 1;
+      const speed = driving ? bossDriveV(st[2], YW, bossYardV, bossV) : motion.walk;
+      const vx = ux * speed;
+      const vy = uy * speed;
+      st[16] = vx;
+      st[17] = vy;
       if (!driving) {
         const truckSolid = truckOwned && !truckBusy;
         // On foot the boss stays inside the fence (L12): the lane takes him only when he is already out on it (stepped out of the truck there).
@@ -486,8 +556,9 @@ export function useYardLoop(opts: {
           const dx = st[0] - st[2];
           const dy = st[1] - st[3];
           const d = Math.sqrt(dx * dx + dy * dy);
-          if (st[6] === 1 && d < motion.enter && steering) {
+          if (st[6] === 1 && d < motion.enter && steering && st[35] === 0) {
             st[5] = 1;
+            entered = true;
             runOnJS(drivingJS)(true);
           } else if (st[6] === 0 && d > motion.enter + 0.8) st[6] = 1;
         }
@@ -509,8 +580,10 @@ export function useYardLoop(opts: {
           st[23] = info.timestamp;
           runOnJS(soundTruck)(dt > 0 ? Math.min(1, moved / dt / bossV) : 0);
         }
-        // Step out (the button): beside the truck, on the first free side.
-        if (exit.value === 1) {
+        // Step out (the button; or the truck left with the driver, st[37]): beside the truck, on the first free side.
+        if (exit.value === 1 || st[37] === 1) {
+          const forced = st[37] === 1;
+          st[37] = 0;
           exit.value = 0;
           const r = motion.truckR + motion.workerR + 0.25;
           const h = st[4];
@@ -525,13 +598,24 @@ export function useYardLoop(opts: {
               placed = true;
             }
           }
+          if (forced && !placed) {
+            st[0] = st[2];
+            st[1] = st[3];
+            placed = true;
+          }
           if (placed) {
             st[5] = 0;
             st[6] = 0;
             st[8] = 0;
             runOnJS(drivingJS)(false);
             runOnJS(soundTruck)(-1);
-            runOnJS(stepOutRules)();
+            if (!forced) {
+              // The rules hear where the truck stands and which way it faces (one of eight), and answer (seatAck).
+              st[36] += 1;
+              st[35] = 1;
+              const h8 = ((Math.round((Math.PI / 2 - st[4]) / (Math.PI / 4)) % 8) + 8) % 8;
+              runOnJS(stepOutRules)(st[36], st[2], st[3], h8);
+            }
           }
         }
       }
@@ -597,7 +681,7 @@ export function useYardLoop(opts: {
       const bodyR = st[5] === 1 ? motion.truckR : motion.workerR;
       const ni = nearestAct(acts, bx, by, bodyR + motion.reach);
       if (near.value !== ni) near.value = ni;
-      if (sampleDue) runOnJS(sampleJS)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
+      if (sampleDue || entered) runOnJS(sampleJS)(ni, bx, by, st[5], steering ? 1 : 0, S.pres[0]);
 
       // --- the sprites of this frame ----------------------------------------------------------------------
       const V = S.view;
@@ -918,7 +1002,7 @@ export function useYardLoop(opts: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules],
+    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {

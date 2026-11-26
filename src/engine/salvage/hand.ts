@@ -113,6 +113,28 @@ function feedable(x: Ctx, place: string): { piece: Piece; machine: MachineId } |
   return null;
 }
 
+/** The truck stands free for the boss to take: owned, nobody at its wheel, on no trip, not still on its way in. */
+export function truckFree(s: Ctx['s']): boolean {
+  const tr = s.truck;
+  return tr.owned && tr.by === null && !tr.trip && !s.arriving.some((r) => r.item === 'truck');
+}
+
+/**
+ * The lead, 26 November (the owner's review, point 5; the player's finding 11): the screen's cab flag IS the
+ * player's getting in. A presence sample that says he is at the wheel while the truck stands free seats him
+ * now: the act that was running is cancelled (a pick-up's ring used to keep him "on foot" while the screen
+ * drove away: a truck that hooked nothing), and the door needs no re-arming. The walk-in below stays for a
+ * sample without the flag (the truck arriving beside him) and for the bots, which never send the flag unseated.
+ */
+export function seatByFlag(x: Ctx, t: number): void {
+  const s = x.s;
+  if (s.act.kind !== 'none' && s.act.kind !== 'drive') cancelAct(x, t);
+  delete s.counts!['truck:out'];
+  s.truck.by = 'boss';
+  setAct(x, 'drive', null, t, null);
+  x.ev.push({ type: 'enterTruck' });
+}
+
 /**
  * Decide or continue the boss's act at yard second t from the last presence sample (2.1). Called by the
  * presence action and by the tick after every instant (live play only).

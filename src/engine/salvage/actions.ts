@@ -15,7 +15,7 @@ import { begin, count, finish, shareUnchanged, spend } from './clock';
 import { anyIdle, crewDepart, newCrew, owner1Rules } from './crew';
 import { crucibleFromBays, pour } from './crucible';
 import { dealSign, dealTerms } from './deal';
-import { bossStep } from './hand';
+import { bossStep, seatByFlag, truckFree } from './hand';
 import { buyCheck, hireCheck, levelCheck } from './ladder';
 import { rerate } from './machines';
 import { resolveGrams } from './money';
@@ -75,9 +75,13 @@ export function setPresence(cfg: SalvageConfig, g: SalvageGame, p: Presence, clo
   // while the boss holds the truck, standingFor in [0, 3600].
   const at = clampPresence(cfg, s, p.x, p.y, clock);
   const standing = Number.isFinite(p.standingFor) ? Math.min(STANDING_MAX_S, Math.max(0, p.standingFor || 0)) : 0;
-  x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && s.truck.by === 'boss', moving: !!p.moving, standingFor: standing, heading };
+  // The screen's cab flag seats him when the truck stands free (hand.ts seatByFlag: the screen and the rules
+  // never disagree on who drives); the position stays clamped as any sample's, so the truck goes no faster.
+  const seat = !!p.driving && truckFree(s);
+  x.s.presence = { x: at.x, y: at.y, driving: !!p.driving && s.truck.owned && (s.truck.by === 'boss' || seat), moving: !!p.moving, standingFor: standing, heading };
   x.s.presenceAt = clock;
   const t = Math.max(clock, x.s.t);
+  if (seat) seatByFlag(x, t);
   bossStep(x, t);
   // owner1 H5: while anybody waits, every presence sample offers work again (the boss walking away from a heap frees its pieces).
   if (owner1Rules(x.c) && anyIdle(x.s)) crewDepart(x, t);

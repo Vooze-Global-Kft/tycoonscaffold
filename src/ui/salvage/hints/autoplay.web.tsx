@@ -51,6 +51,8 @@ export interface Leg {
   buy?: string;
   /** Before walking, wait (at most this many seconds) until nothing is on its way to the yard. */
   waitArrivals?: number;
+  /** Tap the one button on arrival and nothing more (Step out at the wheel). */
+  press?: boolean;
 }
 
 /** The storyboard's two openings (1.2, S10) as places; positions come from the content's map. */
@@ -60,8 +62,12 @@ const KEEP_WORKING: Leg[] = [0, 1, 2, 3].flatMap(() => [{ to: 'dropoff' }, { to:
 export const ROUTES: Record<string, Leg[]> = {
   '1': [{ to: 'dropoff' }, { to: 'scale' }, { to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
   // The first drive out (1.3 item 4; with &cash= from the dev switches): buy the truck at the park, walk into
-  // it, drive out to the farm's skip, hook it, back over the weighbridge, tip on the floor.
-  drive: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
+  // it, drive out by the gate (from there the skip lies straight east along the lane) to the farm's skip, hook
+  // it, back over the weighbridge, tip on the floor.
+  drive: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'gate' }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
+  // The cab (who sits in it, the owner's point 5): buy the truck, drive to the gate, step out, walk to the
+  // weighbridge and back into the truck, drive out, hook the farm's skip, weigh, tip.
+  cab: [{ to: 'park', open: true, buy: 'truck' }, { to: 'truck', waitArrivals: 60 }, { to: 'gate', press: true }, { to: 'weighbridge' }, { to: 'truck' }, { to: 'gate' }, { to: 'skip:partnerFarm' }, { to: 'weighbridge' }, { to: 'floor' }],
   '2': [{ to: 'bundle1' }, { to: 'stripper' }, { to: 'scale' }, { to: 'dropoff' }, { to: 'scale' }, { to: 'rack', open: true }, { to: 'dropoff' }, { to: 'scale' }, { to: 'office', open: true }, { to: 'dropoff' }, { to: 'scale' }, ...KEEP_WORKING],
 };
 
@@ -172,7 +178,7 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
       probeTimer = setInterval(() => {
         const g = useGame.getState().game as R.SalvageGame;
         const p = g?.salvage?.presence;
-        if (p) console.log(`[probe] t=${g.salvage.t.toFixed(2)} x=${p.x.toFixed(2)} y=${p.y.toFixed(2)} drv=${p.driving ? 1 : 0} wall=${Date.now()}`);
+        if (p) console.log(`[probe] t=${g.salvage.t.toFixed(2)} x=${p.x.toFixed(2)} y=${p.y.toFixed(2)} drv=${p.driving ? 1 : 0} by=${g.salvage.truck.by ?? '-'} truck=${g.salvage.truck.x.toFixed(1)},${g.salvage.truck.y.toFixed(1)} h=${g.salvage.truck.heading ?? '-'} act=${g.salvage.act.kind} wall=${Date.now()}`);
       }, 250);
     }
     if (q?.get('autoplay') !== 'opening') return () => (demoTimer ? clearInterval(demoTimer) : undefined);
@@ -231,6 +237,15 @@ export function Autoplay({ cfg, zone }: { cfg: R.SalvageConfig; zone: StickZone 
         }
         send('mouseup', home.x, home.y);
         log(`at ${leg.to} after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        if (leg.press) {
+          await sleep(teach.autoplayReactS * 1000);
+          const L = hudLayout(window.innerWidth, window.innerHeight, { top: 0, left: zone.x, right: zone.x, bottom: 0 });
+          const r = targets.get('salvage:oneButton') ?? { x: L.button.x, y: L.button.y, width: L.button.size, height: L.button.size };
+          const by0 = game().salvage?.truck.by ?? null;
+          tap(r.x + r.width / 2, r.y + r.height / 2);
+          await sleep(700);
+          log(`pressed the one button at ${leg.to}: the truck's holder ${by0} -> ${game().salvage?.truck.by ?? null}`);
+        }
         if (leg.open) {
           await sleep(teach.autoplayReactS * 1000);
           const goalHere = cfg.salvage.goals.find((d) => d.id === goalMark()) ?? null;

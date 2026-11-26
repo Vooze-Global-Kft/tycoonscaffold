@@ -150,10 +150,9 @@ function Yard({ cfg }: { cfg: R.SalvageConfig }) {
     },
     [cfg],
   );
+  // The frame loop says who sits in the cab on its first frame and at every change (world/frameLoop.ts: the
+  // epoch snap); a reset here on mount could land after it and blank the button at the wheel (the player's finding 4).
   const onDriving = useCallback((on: boolean) => useSalvageUi.getState().setDriving(on), []);
-  useEffect(() => {
-    useSalvageUi.getState().setDriving(false);
-  }, []);
   // The stick is let go when the yard stops (an overlay opened, the phone turned upright): the responder
   // forgets the finger too (H12), so the next move does not steer again under the card.
   const releaseRef = useRef<() => void>(() => {
