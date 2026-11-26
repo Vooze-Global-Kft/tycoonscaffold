@@ -1,7 +1,11 @@
 /**
  * A loaded save repaired against the content (yard-stage1.md 2.13, 10 "the save reconciles forward
  * and positions are never rules"). Owner: rules-book. Save tag `salvage1` (types.ts SAVE_TAG); layout
- * `salvage.v` 2.
+ * `salvage.v` 3 (stage 2, 2.20; contract2): layouts 2 and 3 load. A LAYOUT-2 SAVE (the first yard, the owner's
+ * phone) keeps every field it has and gets the stage-2 fields fresh (./state2.ts `freshStage2`: createdMs the
+ * load's time, sessions2At null, lots.nextAt null); a layout-3 save's stage-2 fields are repaired
+ * (`repairStage2`). On either: a merchant's round under way ends no later than the save's clock +
+ * `merchant.load_s` + `merchant.round_s` (a save of the unmerged branch's old long round, 14.3).
  *
  * FORWARD: a save of layout 2 keeps everything the content still knows: unknown things, pieces, grades,
  * crew roles, partners and shop keys are dropped (their mass is not invented elsewhere); partners,
@@ -17,6 +21,7 @@ import type { GameState } from '../types';
 import { freshSalvage } from './create';
 import { RUN_MAX } from './group';
 import { pointOf } from './positions';
+import { repairStage2, STAGE2_KEYS, type Stage2Fields } from './state2';
 import type { BayState, CrewJob, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, RunCourse, RunKind, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
 
 const num = (x: unknown, d = 0): number => (typeof x === 'number' && Number.isFinite(x) ? x : d);
@@ -36,7 +41,10 @@ function bayOf(c: SalvageContent, b: Partial<BayState>): BayState {
     .map((a) => ({ g: grams(a.g), price: Math.max(0, num(a.price)), day: Math.floor(num(a.day)) }))
     .filter((a) => a.g > 0);
   void c;
-  return { g, n: Math.max(0, Math.floor(num(b.n))), held: !!b.held, aside, forCrucible_g: Math.min(g, grams(b.forCrucible_g)), forDeal_g: Math.min(g, grams(b.forDeal_g)) };
+  const bay: BayState = { g, n: Math.max(0, Math.floor(num(b.n))), held: !!b.held, aside, forCrucible_g: Math.min(g, grams(b.forCrucible_g)), forDeal_g: Math.min(g, grams(b.forDeal_g)) };
+  // v3 (2.8.1): reserves by station, kept when readable (a layout-2 save has none; Phase B maps forCrucible_g to reserved.crucible).
+  if (b.reserved !== undefined) bay.reserved = Object.fromEntries(Object.entries(obj<Record<string, number>>(b.reserved)).filter(([k]) => typeof k === 'string' && k.length > 0 && k.length <= 64).map(([k, x]) => [k, Math.min(g, grams(x))]));
+  return bay;
 }
 
 const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -107,7 +115,7 @@ function planOf(raw: unknown, t: number): TripPlan | null {
   return { t0: p.t0, x: p.x, y: p.y, ends };
 }
 
-/** Repair a layout-2 salvage state against the content. */
+/** Repair a layout-2 or layout-3 salvage state against the content (it comes out as layout 3). */
 export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, now: number): SalvageState {
   const c = cfg.salvage;
   const fresh = freshSalvage(c, now);
@@ -120,7 +128,7 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   const t = Math.max(0, num(raw.t));
   const s: SalvageState = {
     ...r,
-    v: 2,
+    v: 3,
     t,
     epoch: Math.max(0, Math.floor(num(raw.epoch))) + 1,
     clock: { highMs: Math.max(fresh.clock.highMs, num(clock.highMs)), day: Math.floor(num(clock.day, fresh.clock.day)), startDay: Math.floor(num(clock.startDay, fresh.clock.startDay)) },
@@ -210,6 +218,15 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
     }
   }
 
+  // Stage 2 (contract v3, 2.20): a layout-2 save gets the stage's fields fresh (from `fresh`, already in `r`
+  // for every key it lacks: and it lacks them all); a layout-3 save's are repaired. Nothing of the first yard is touched.
+  const fresh2 = Object.fromEntries(STAGE2_KEYS.map((k) => [k, fresh[k]])) as Stage2Fields;
+  Object.assign(s, (raw as { v?: unknown }).v === 3 ? repairStage2(raw, fresh2, t) : fresh2);
+  // The merchant's round under way ends no later than the save's clock + loading + the round (RULING2 14.3:
+  // a save written on the unmerged branch during the old long round would otherwise load with it under way).
+  const mEnd = t + c.merchant.load_s + c.merchant.round_s;
+  if (s.merchant && s.merchant.phase !== 'waiting' && (typeof s.merchant.endsAt !== 'number' || !Number.isFinite(s.merchant.endsAt) || s.merchant.endsAt > mEnd)) s.merchant = { ...s.merchant, endsAt: mEnd };
+
   // Lifetime counters (goals.ts) survive as they are; a save without them gets none.
   const counts = (raw as { counts?: Record<string, unknown> }).counts;
   if (counts && typeof counts === 'object') (s as unknown as { counts: Record<string, number> }).counts = Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, Math.max(0, Math.floor(num(v)))]));
@@ -219,6 +236,7 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
 /** A loaded save repaired against the content; never throws for readable input (salvageMode catches the rest). */
 export function reconcileSalvage(cfg: SalvageConfig, base: GameState, raw: unknown, now: number): SalvageGame {
   const r = (raw as { salvage?: Partial<SalvageState> } | null)?.salvage;
-  if (!r || typeof r !== 'object' || r.v !== 2 || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: freshSalvage(cfg.salvage, now) };
+  const v = (r as { v?: unknown } | undefined)?.v;
+  if (!r || typeof r !== 'object' || (v !== 2 && v !== 3) || !Array.isArray(r.things) || typeof r.clock !== 'object' || r.clock === null) return { ...base, salvage: freshSalvage(cfg.salvage, now) };
   return { ...base, salvage: reconcileState(cfg, r, now) };
 }

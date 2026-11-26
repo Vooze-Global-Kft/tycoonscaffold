@@ -348,7 +348,7 @@ describe('saves and grouped runs', () => {
     const cfg = (group: Group) => ({ mode: 'salvage', salvage: { ...c, worldSeed: gate5.worldSeed, group } }) as unknown as SalvageConfig;
     const recorded = gate5.g as unknown as SalvageGame;
     const loaded = reconcileSalvage(cfg({ fromRung: 1 }), base(recorded.cash), JSON.parse(JSON.stringify({ salvage: recorded.salvage })), gate5.now);
-    expect(loaded.salvage.v).toBe(2);
+    expect(loaded.salvage.v).toBe(3);
     expect(loaded.salvage.crew.map((m) => [m.id, m.level, m.run ?? null])).toEqual(recorded.salvage.crew.map((m) => [m.id, m.level, null]));
     expect(loaded.salvage.things.length).toBe(recorded.salvage.things.length);
     expect(loaded.salvage.pieces.length).toBe(recorded.salvage.pieces.length);

@@ -1717,3 +1717,20 @@ store error, and blocked a pack for ever when the device's clock had been wrong.
     The lead accepts this as the cost of holding in a yard that grows this fast: the bound is now
     "a median of at most a tenth, no seed over 15 %", and Hold is looked at again with stage 3's
     market, where prices swing further. No absence pays nothing (E40's promise): met.
+
+15.11 **What section 15 left open, settled (07:55, after the specification's editor listed it).**
+    (a) A quote's id is its product and the moment it was made (`<product>:<atMs>`), the same two
+    the shared store names it by. (b) "Nothing new for it" at 72 hours: after the arrivals of a
+    FRESH listing have been routed, every quote still standing that was made at least 72 hours
+    before is withdrawn. (c) Words: the shared store's banner is the passing notice in neutral
+    words; the pack's row carries the state in the game's own words for as long as the quote waits
+    ("Waiting for approval"; "The store has not confirmed this purchase yet. If you were charged,
+    your scrip arrives when it does."). (d) A cancel by the player shows nothing: no banner, no
+    line. "Nothing was charged." is said only when the store refused or could not be reached.
+    (e) A look or No ad videos that the store has not confirmed gets the same "not confirmed"
+    notice as a pack (it is as true there). (f) A withdrawn quote emits `quoteWithdrawn {product,
+    why: 'cancelled' | 'refused' | 'replaced' | 'expired'}`; for 'expired' the shop card shows one
+    line until it is closed: "A purchase that was waiting never arrived. Nothing was added."
+    (g) Whether a listing called fresh can still come from a cache when the phone is offline is
+    checked on a store build (the device list in `notes/store-shared.md`); until then a quote is
+    withdrawn at 72 hours only on a listing that the store itself answered.

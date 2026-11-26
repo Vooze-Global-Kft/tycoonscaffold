@@ -32,6 +32,281 @@ export const SALVAGE_CONTENT_FROM = 'proto4 (scratchpad yard/proto/content4.json
  */
 export const SALVAGE_PENDING = { levels: { floor: 1100, floorGrowth: 1.25 } } as const;
 
+// ===================================================================================================== STAGE 2
+// yard-stage2.md 5.1 (content2, 26 November): the keys of stage 2 with their first values. Values the
+// specification gives are written as it gives them (tune unless it says fixed); where it gives none for a key a
+// rule reads, the value is marked "(first value, content2)" and listed in the notes (notes/s2a-content2.md).
+// Nothing below rung 3 reads any of it: the entries stage 2 adds to the first yard's families stand in
+// `worksLayer`, joined from rung 3 (schema.salvage.ts withWorksLayer), as `map.works` is joined to `map` (3.1).
+// Plate prices are first values until the payback rule's table (bots/plates.json, Phase B) sets them (2.6.4).
+
+type Input = SalvageContentInput;
+type Plates = NonNullable<Input['works']>['plates'];
+
+/** The works plates (2.5.3, 2.7, 2.8): level-1 numbers (tune). */
+const PLATES: Plates = {
+  // ---- the yard's plates (south yard, rung 3; 2.7): fed by yard hands, the crane or the forklift
+  crane: { row: "yard", slot: 0, plot: "crane", gate: "rung3", needs: null, price: 30000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
+  shear: {
+    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 40000, deliver_s: 30, kind: "rate",
+    // whole steel things of the torch's tier (tanks certified empty) and unprepared steel pieces; rate = shear.P / hardness
+    in: ["beam", "tank", "plough", "hmsu"], feedBy: "hands",
+    out: { beam: [["hms", 1]], tank: [["hms", 1]], plough: [["hms", 1]], hmsu: [["hms", 1]] },
+    lev: 0.15, maxLevel: 10, inbuf: 1500, tray: 2000,
+  },
+  baler: {
+    row: "yard", slot: 2, plot: "baler", gate: "rung3", needs: null, price: 9000, deliver_s: 30, kind: "rate", in: ["li"], feedBy: "hands",
+    // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
+    out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
+  },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 6000, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  depollution: {
+    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 80000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "hands",
+    // one car at a time on its apron, depollution.s a car; out whole: the battery, four wheels, the loom, the converter, the drained shell (shares of the car's 1 t)
+    out: { elv: [["pbb", 0.015], ["alw", 0.036], ["tcab", 0.004], ["conv", 0.0015], ["cbody", 0.8]] },
+    waste: { elv: [["carrier", 0.1435]] }, // fluids and tyres, in sealed drums, to a licensed waste carrier
+    lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 2000, permit: "card.rota.permitElv",
+  },
+  granulator: {
+    row: "yard", slot: 5, plot: "granulator", gate: "rung3", needs: null, price: 24000, deliver_s: 30, kind: "rate", in: ["tcab"], feedBy: "hands",
+    out: { tcab: [["cug", 0.35]] }, waste: { tcab: [["carrier", 0.65]] }, rate_kg_s: 0.14, lev: 0.15, maxLevel: 10, inbuf: 200, tray: 500,
+  },
+  // ---- the shredder line (back field, rung 4; 2.8): from the bays by route, into the bays by its belt weigher
+  shredder: {
+    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 600000, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
+    out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
+    waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
+    feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
+  },
+  eddy: {
+    row: "shredder", slot: 1, plot: "eddy", gate: "rung4", needs: "shredder", price: 250000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
+    // no hopper and no level of its own: it runs at the shredder's stream (B16)
+    out: { stream: [["zorba", 0.286]] }, waste: { stream: [["carrier", 0.714]] }, lev: 0, maxLevel: 1, inbuf: 0, tray: 0,
+  },
+  sorter: {
+    row: "shredder", slot: 2, plot: "sorter", gate: "rung4", needs: "eddy", price: 300000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
+    out: { zorba: [["twitch", 0.7], ["no2", 0.03], ["brs", 0.04], ["znh", 0.08], ["ss", 0.05]] }, waste: { zorba: [["carrier", 0.1]] },
+    rate_kg_s: 1, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
+  },
+  // ---- the melt halls (back field, rung 4): each bought with its filter, charged from covered bays by "Take from bays"
+  rotary: {
+    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 450000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    batch: { kg: 2000, s: 2400, start_share: 0.4, start_idle: 60 },
+    // salt slag and the salt-flux filter's dust to a licensed waste carrier (T3); salt flux paid at the heat's start
+    recipes: { alu: { in: ["alw", "alcast", "twitch"], out: [["ali", 0.88], ["ald", 0.055]], waste: [["carrier", 0.1], ["carrier", 0.015]], reagents: [["saltFlux", 0.05, 0.3]] } },
+    lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
+  },
+  induction: {
+    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 350000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    batch: { kg: 500, s: 480, start_share: 0.4, start_idle: 60 },
+    // its filter's zinc oxide dust is the one sellable dust (T3)
+    recipes: {
+      brass: { in: ["brs"], out: [["bri", 0.97], ["brd", 0.015], ["dust", 0.015]] },
+      bronze: { in: ["bzs"], out: [["bzi", 0.97], ["bzd", 0.015], ["dust", 0.015]] },
+    },
+    lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
+  },
+  // ---- the lead line (back field, rung 4; a separate area behind the painted line, masks on)
+  breaker: {
+    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 200000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
+    // electrolyte 0.30 neutralised with soda ash (0.05 kg a kg at §0.40) leaves as a salt solution, 0.35, to a licensed waste carrier (T20)
+    out: { pbb: [["pp", 0.06], ["pbp", 0.64]] }, waste: { pbb: [["carrier", 0.35]] }, reagents: [["sodaAsh", 0.05, 0.4]],
+    rate_kg_s: 0.28, lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 0, permit: "card.rota.permitLead",
+  },
+  smelter: {
+    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 400000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    batch: { kg: 1000, s: 1800, start_share: 0.4, start_idle: 60 },
+    // coke and iron 0.06 kg a kg; slag 0.12 to a licensed waste carrier; the filter's lead dust goes back into the next heat (no grade; T3, T20)
+    recipes: { lead: { in: ["pbp"], out: [["pbi", 0.94]], waste: [["carrier", 0.12]], reagents: [["cokeIron", 0.06, 0.3]] } },
+    lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 0,
+  },
+};
+
+type MapWorks = NonNullable<Input['map']['works']>;
+type PlaceIn = NonNullable<MapWorks['places']>[string];
+/**
+ * THE WORKS LAYER OF THE MAP (yard-stage2.md section 3): [x, y, w, d, place] per place, centre and size in
+ * metres; the place's world layer (solid, height, card, label). Fitted with the checker
+ * (python3 -I scripts/content/yard_map.py --works) and looked at (--png); where a position moved from 3.3's
+ * first value the comment says why (the checker is right where a position moves to pass it).
+ */
+const WORKS_PLACES: Record<string, [number, number, number, number, Omit<PlaceIn, 'w' | 'd'>]> = {
+  // the south yard (inside the first fence, south of the drive line, by the tipping floor; 3.3)
+  granulator: [26.95, 30.25, 2.5, 2.5, { h: 1.6, solid: false, card: "works", label: "place.granulator" }],
+  shear: [32, 31, 6, 4, { h: 1.8, solid: false, card: "works", label: "place.shear" }],
+  // 3.3's (38, 31.5) put the floor 10.5 m away (3.6 (5): floor-crane at most 10): one metre east
+  crane: [39, 31.5, 4, 4, { h: 6, solid: false, card: "works", label: "place.crane" }],
+  baler: [31.5, 36.75, 5, 3.5, { h: 2, solid: false, card: "works", label: "place.baler" }],
+  depollution: [38.75, 37.75, 5.5, 4.5, { h: 3.2, solid: true, card: "works", label: "place.depollution" }],
+  "depollution.apron": [38.75, 34.75, 5.5, 1.5, { h: 0.05, solid: false, card: false }],
+  elvPad: [42.75, 34.7, 2.5, 4.2, { h: 0.05, solid: false, card: false, label: "place.carPad" }],
+  forklift: [43.75, 38.35, 2.5, 3, { h: 0.05, solid: false, card: false, label: "place.forklift" }],
+  oversize: [47, 35, 6, 3, { h: 0.05, solid: false, card: "lot", label: "place.oversizePad" }],
+  crate: [48.9, 35, 2, 2, { h: 0.9, solid: false, card: "crate", label: "place.pickingTable" }],
+  // the Yard sale, by the gate in the railed public bay (T7). The rack 0.2 m east of 3.3's 56 so that the gap
+  // to the bay's west rail is 1.5 m (M6: 1.3 m was a pocket); its zone, the corner and the card reader with it.
+  reuseRack: [56.2, 39.6, 4, 0.8, { h: 1.6, solid: true, card: "yardSale", label: "place.yardSale" }],
+  "reuseRack.zone": [56.2, 38.3, 4, 1.6, { h: 0.02, solid: false, card: false }],
+  corner: [59.2, 39, 2, 1.6, { h: 0.2, solid: false, card: false }],
+  firstThing: [51.6, 38.6, 1.7, 0.8, { h: 0.6, solid: false, card: false }],
+  // the back field (x -56 to 0): plants with their backs on the back wall, in the processes' order westwards
+  shredder: [-5, 18.6, 6, 6, { h: 7, solid: true, card: "works", label: "place.shredder" }],
+  "shredder.apron": [-5, 22.6, 4, 2, { h: 0.3, solid: false, card: false }],
+  eddy: [-10, 17.6, 4, 4, { h: 4, solid: true, card: "works" }],
+  sorter: [-14.5, 17.6, 5, 4, { h: 4, solid: true, card: "works" }],
+  rotary: [-22.75, 19.1, 8.5, 7, { h: 7, solid: true, card: "works", label: "place.rotaryHall" }],
+  "rotary.apron": [-22.75, 23.1, 4, 1, { h: 0.05, solid: false, card: false }],
+  "rotary.filter": [-28.75, 17.6, 3.5, 4, { h: 6, solid: true, card: false }],
+  induction: [-35, 18.6, 6, 6, { h: 6, solid: true, card: "works", label: "place.inductionHall" }],
+  "induction.apron": [-35, 22.6, 3, 2, { h: 0.05, solid: false, card: false }],
+  "induction.filter": [-39.5, 17.1, 3, 3, { h: 5, solid: true, card: false }],
+  breaker: [-44.5, 17.6, 4, 4, { h: 4, solid: true, card: "works", label: "place.leadLine" }],
+  batteryBox: [-45.3, 20.3, 2.4, 1.4, { h: 1.2, solid: true, card: "board" }],
+  smelter: [-50, 18.6, 7, 6, { h: 6, solid: true, card: "works" }],
+  "smelter.apron": [-50, 22.6, 3, 2, { h: 0.05, solid: false, card: false }],
+  "smelter.filter": [-54.75, 17.1, 2.5, 3, { h: 5, solid: true, card: false }],
+  worksBays: [-18.5, 30.6, 33, 3, { h: 1.4, solid: true, card: "board", label: "place.worksBunkers" }],
+  worksStillages: [-39.2, 30.6, 8.4, 3, { h: 1.4, solid: true, card: "board" }],
+  leadArea: [-49.6, 23.5, 12.8, 0.1, { h: 0.01, solid: false, card: false }],
+  "backfield.sign": [0.6, 33.4, 1.6, 0.4, { h: 2, solid: true, card: false, label: "place.backField" }],
+  // the first yard's padlocked gate becomes the field gateway (3.2): replaces `backfield` from rung 3
+  backfield: [0, 37, 1, 6, { h: 2, solid: false, card: false }],
+  // the wall gate's blocks, set along the wall's foot as dressing (3.2: y 30 to 34; moved to 32 to 36 off the granulator's pad)
+  "wallGate.blocks": [25.6, 34, 0.8, 4, { h: 0.8, solid: false, card: false }],
+};
+const MAP_WORKS: MapWorks = {
+  x0: -56,
+  points: Object.fromEntries(Object.entries(WORKS_PLACES).map(([k, [x, y]]) => [k, [x, y] as [number, number]])),
+  footprints: Object.fromEntries(Object.entries(WORKS_PLACES).map(([k, [x, y, w, d]]) => [k, { x, y, w, d }])),
+  places: Object.fromEntries(Object.entries(WORKS_PLACES).map(([k, [, , w, d, p]]) => [k, { w, d, ...p }])),
+  // the wall gate (wall section 2, props wall-2) is lifted out; the rubble piles the works road, its lay-by and the baler stand on go (3.2)
+  drop: { props: ["wall-2", "pile-1", "pile-2", "pile-3"], walls: [1] },
+  // the old west fence stays, with the works road's opening and the field gateway (3.2)
+  fence: { x: 0, openings: [[23.6, 27.6], [34, 40]] },
+  driveLine: {
+    // the works road (to the first yard's corridor at 39.5), the turning place, the lay-by (3.2)
+    rects: [{ x0: -56, y0: 23.6, w: 95.5, d: 4 }, { x0: -56, y0: 27.6, w: 8, d: 4 }, { x0: 8, y0: 27.6, w: 8, d: 4 }],
+    stops: { works: [-20, 25.6], breaker: [-44.5, 25.6], turnWest: [-52, 27.6], southYard: [33, 25.6] },
+  },
+  laneStops: { van: [67.5, 28.6] },
+  roofs: {
+    "worksBays.roof": { x0: -35, y0: 28.9, w: 12, d: 3.4 },
+    "worksStillages.roof": { x0: -43.4, y0: 28.9, w: 8.4, d: 3.4 },
+    // the first yard's stillage block (x 34.1 to 43.1, by the back wall), drawn roofed from rung 3 (T5)
+    "stillages.roof": { x0: 34.1, y0: 15.6, w: 9, d: 2.5 },
+    "reuseRack.canopy": { x0: 53.8, y0: 36.9, w: 4.8, d: 3.1 },
+  },
+  publicBay: {
+    rect: { x0: 52.6, y0: 36.5, w: 11.4, d: 3.5 },
+    // its north and west rails (solid, 0.1 m) with the staff gap in the north rail: 1.5 m (3.3's 1.2 m is a pocket by M6)
+    rail: [{ x0: 52.6, y0: 36.5, w: 0.5, d: 0.1 }, { x0: 54.6, y0: 36.5, w: 9.4, d: 0.1 }, { x0: 52.6, y0: 36.5, w: 0.1, d: 3.5 }],
+    staff: [53.1, 54.6],
+    wicket: [37.3, 38.5],
+  },
+  // wicket, the card reader on the canopy's east post ("Pay here"), wicket (3.3.2)
+  visitorPath: [[64, 37.9], [58.6, 38], [64, 37.9]],
+  // the van on the lane's south kerb, along the fence outside, in by the wicket, to the corner
+  vanPath: [[67.5, 28.6], [67.5, 37.9], [64, 37.9], [59.2, 39]],
+  publicGap_m: 3,
+  forkliftZone: [{ x0: 42.5, y0: 36.85, w: 2.5, d: 3 }, { x0: 29, y0: 29, w: 16, d: 11 }],
+  lane: { garage_m: 430, plumbing_m: 480, barrier_m: 520 },
+  routes: {},
+  heroWorks: { x0: -31, y0: 15.2, w: 16.7, d: 9.7, places: ["rotary", "rotary.filter", "rotary.apron"] },
+};
+
+/** The works layer of the families (joined from rung 3). */
+const WORKS_LAYER: NonNullable<Input['worksLayer']> = {
+  // 2.5.1: the sixteen grades (names here as the first yard's; text.json's words lay over them, T10)
+  grades: {
+    lib: { name: "Baled light iron", pbar: 0.62, family: "fe", material: "lightiron", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "bunker", place: "worksBays", slot: 9 } },
+    ss: { name: "Stainless 304", pbar: 4.8, family: "nf", material: "stainless", kind: "grade", asFound: 1, boardTab: "nonFerrous", bay: { kind: "bunker", place: "worksBays", slot: 2 } },
+    ssu: { name: "Mixed stainless", pbar: 2.9, family: "nf", material: "stainless", kind: "grade", asFound: 0.7, boardTab: "nonFerrous", bay: { kind: "bunker", place: "worksBays", slot: 6 } },
+    bzs: { name: "Bronze solids", pbar: 29, family: "nf", material: "bronze", kind: "grade", asFound: 0.75, boardTab: "nonFerrous", bay: { kind: "bunker", place: "worksBays", slot: 0 } },
+    bzi: { name: "Bronze ingot", pbar: 42, family: "nf", material: "bronze", kind: "product", asFound: 1, boardTab: "works", bay: { kind: "stillage", place: "worksStillages", slot: 0 } },
+    bzd: { name: "Bronze dross", pbar: 3, family: "nf", material: "bronze", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "stillage", place: "worksStillages", slot: 1 } },
+    pbb: { name: "Lead batteries", pbar: 1.8, family: "nf", material: null, kind: "intermediate", asFound: 0.75, boardTab: "intermediates", bay: { kind: "box", place: "batteryBox", slot: 0 } },
+    pbp: { name: "Paste and grids", pbar: 3.1, family: "nf", material: null, kind: "intermediate", asFound: 1, boardTab: "intermediates", bay: { kind: "bunker", place: "worksBays", slot: 3 } },
+    pbi: { name: "Lead ingot", pbar: 5.4, family: "nf", material: "lead", kind: "product", asFound: 1, boardTab: "works", bay: { kind: "stillage", place: "worksStillages", slot: 2 } },
+    pp: { name: "Plastic chips", pbar: 0.9, family: "nf", material: null, kind: "grade", asFound: 1, boardTab: "intermediates", bay: { kind: "bunker", place: "worksBays", slot: 4 } },
+    shred: { name: "Shredded steel", pbar: 1.26, family: "fe", material: "steel", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "bunker", place: "worksBays", slot: 10 } },
+    zorba: { name: "Zorba", pbar: 4.1, family: "nf", material: null, kind: "intermediate", asFound: 1, boardTab: "intermediates", bay: { kind: "bunker", place: "worksBays", slot: 8 } },
+    // 2.5.1 writes the material "aluminium"; the first yard's id for it is "alu" (one material, not a tenth)
+    twitch: { name: "Twitch", pbar: 4.7, family: "nf", material: "alu", kind: "grade", asFound: 1, boardTab: "nonFerrous", bay: { kind: "bunker", place: "worksBays", slot: 1 } },
+    znh: { name: "Mixed heavies", pbar: 1.5, family: "nf", material: null, kind: "grade", asFound: 1, boardTab: "intermediates", bay: { kind: "bunker", place: "worksBays", slot: 7 } },
+    cug: { name: "Copper granules", pbar: 34.8, family: "nf", material: "copper", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "bunker", place: "worksBays", slot: 5 } },
+    dust: { name: "Zinc filter dust", pbar: 0.4, family: "nf", material: null, kind: "grade", asFound: 1, boardTab: "intermediates", bay: { kind: "bags", place: "worksStillages", slot: 3 } },
+  },
+  // 5.1: the new things. Masses are first values (content2) where the specification gives none; a lot's mass is set on arrival (2.10.1).
+  objects: {
+    elv: {
+      name: "End-of-life car", tier: 3, h: 2,
+      pieces: [["pbb", 15000, 1], ["alw", 9000, 4, "piece.alu.wheel"], ["tcab", 4000, 1, "piece.cable"], ["conv", 1500, 1, "piece.converter"]],
+      pieceTiers: [1, 1, 1, 3], shell: { grade: "cbody", g: 800000 }, waste_g: 143500, whole: null, gross_g: 1000000, preparedValue: 830.6, asFoundValue: 622.95,
+      source: { type: "partner", partner: "partner.garage", ref: "garage-elv" }, tags: ["carPart", "fuel", "battery"], arrives: "pad", asFound: 0.75,
+      text: "the garage's end-of-life car on the hook-lift's flatrack, set down on the car pad, depolluted at the bay before anything comes off it",
+      size: { w: 2.8, d: 1.2, h: 1 }, sprite: "thing.car",
+    },
+    pbb: { name: "Car battery", tier: 0, h: 0, pieces: [["pbb", 15000, 1]], waste_g: 0, whole: "pbb", gross_g: 15000, preparedValue: 27, asFoundValue: 20.25, tags: ["battery"], arrives: "batteryBox", size: { w: 0.35, d: 0.2, h: 0.2 } },
+    bushing: { name: "Bronze bushing", tier: 0, h: 0, pieces: [["bzs", 1500, 1]], waste_g: 0, whole: "bzs", gross_g: 1500, preparedValue: 43.5, asFoundValue: 32.62, size: { w: 0.2, d: 0.2, h: 0.15 } },
+    sink: { name: "Stainless sink", tier: 0, h: 0, pieces: [["ssu", 8000, 1, null, "ss"]], waste_g: 0, whole: "ssu", gross_g: 8000, preparedValue: 23.2, asFoundValue: 16.24, size: { w: 1, d: 0.6, h: 0.3 } },
+    bronzeValve: { name: "Bronze valve", tier: 0, h: 0, pieces: [["brs", 2500, 1, "piece.brass.fittings", "bzs"]], waste_g: 0, whole: "brs", gross_g: 2500, preparedValue: 56, asFoundValue: 50.4, size: { w: 0.4, d: 0.3, h: 0.3 } },
+    loom: { name: "Wiring loom", tier: 0, h: 0, pieces: [["tcab", 4000, 1, "piece.cable"]], waste_g: 0, whole: "tcab", gross_g: 4000, preparedValue: 42, asFoundValue: 42, size: { w: 0.6, d: 0.6, h: 0.3 } },
+    catcon: { name: "Catalytic converter", tier: 0, h: 0, pieces: [["conv", 1500, 1, "piece.converter"]], waste_g: 0, whole: "conv", gross_g: 1500, preparedValue: 0, asFoundValue: 0, source: { type: "partner", partner: "partner.garage", ref: "garage-conv" }, tags: ["carPart"], size: { w: 0.5, d: 0.3, h: 0.2 } },
+    discs: { name: "Brake discs", tier: 0, h: 0, pieces: [["ci", 8000, 1, "piece.cast.shard"]], waste_g: 0, whole: "ci", gross_g: 8000, preparedValue: 7.6, asFoundValue: 6, tags: ["carPart"], size: { w: 0.35, d: 0.35, h: 0.1 } },
+    springs: { name: "Coil springs", tier: 0, h: 0, pieces: [["hms", 5000, 1, "piece.steel.plate"]], waste_g: 0, whole: "hms", gross_g: 5000, preparedValue: 6, asFoundValue: 4.26, tags: ["carPart"], size: { w: 0.3, d: 0.3, h: 0.4 } },
+    bath2: { name: "Cast-iron bath", tier: 2, h: 1.5, pieces: [["ci", 27500, 4, "piece.cast.enamel"]], waste_g: 0, whole: null, gross_g: 110000, preparedValue: 104.5, asFoundValue: 82.56, size: { w: 1.7, d: 0.8, h: 0.6 }, sprite: "thing.bath" },
+    radiatorCI: { name: "Cast-iron radiator", tier: 2, h: 1.5, pieces: [["ci", 15000, 3, "piece.cast.section"], ["brs", 500, 2, "piece.brass.fittings"]], waste_g: 0, whole: "ciu", gross_g: 46000, preparedValue: 65.15, asFoundValue: 53.93, size: { w: 1.2, d: 0.4, h: 0.7 }, sprite: "thing.radiator" },
+    ironGate: { name: "Iron gate", tier: 2, h: 1, pieces: [["li", 20000, 2, "piece.iron.gate"]], waste_g: 0, whole: "appl", gross_g: 40000, preparedValue: 20, asFoundValue: 14.4, size: { w: 2, d: 0.3, h: 1.2 }, sprite: "thing.gate" },
+    bicycle2: { name: "Bicycle", tier: 1, h: 1, pieces: [["li", 6000, 2, "piece.iron.bike"]], waste_g: 3000, whole: "appl", gross_g: 15000, preparedValue: 6, asFoundValue: 4.32, size: { w: 1.7, d: 0.5, h: 1 }, sprite: "thing.bike" },
+    // the oversize pieces (lots.kinds): stainless and non-ferrous, so the plasma cutter's tier 4 (2.9, B4)
+    propeller: { name: "Bronze propeller", tier: 4, h: 3, pieces: [["bzs", 25000, 4]], waste_g: 0, whole: null, gross_g: 100000, preparedValue: 2900, asFoundValue: 2175, size: { w: 1.6, d: 1.6, h: 0.4 } },
+    casing: { name: "Engine casing", tier: 4, h: 2, pieces: [["alcast", 20000, 4, "piece.alu.endcap"]], waste_g: 0, whole: null, gross_g: 80000, preparedValue: 368, asFoundValue: 331.2, size: { w: 1.4, d: 1, h: 0.8 } },
+    cateringTable: { name: "Catering table", tier: 4, h: 2.5, pieces: [["ss", 15000, 4]], waste_g: 0, whole: null, gross_g: 60000, preparedValue: 288, asFoundValue: 288, size: { w: 1.8, d: 0.7, h: 0.9 } },
+    bushingCrate: { name: "Crate of bushings", tier: 4, h: 2, pieces: [["bzs", 20000, 4]], waste_g: 0, whole: null, gross_g: 80000, preparedValue: 2320, asFoundValue: 1740, size: { w: 1.2, d: 1, h: 0.8 } },
+  },
+  // 2.9: the bridge partners (open with the three-axle hook-lift); loads grow with the plates owned (decision 30)
+  partners: {
+    "partner.garage": {
+      comment: "register: Parfitt's Garage; contact garageContact",
+      opens: "truckBridge", lane: "garage_m",
+      trial: { wheels: 4, loom: 1, discs: 6, springs: 10 },
+      skip: { wheels: 6, loom: 1, catcon: 2, discs: 10, springs: 20 },
+      fill_s: 150, k: 0.85, // fill_s (first value, content2)
+      trialMass_kg: 138, trialPrice: 150, trialPrepared: 349.2,
+      skipMass_kg: 241, skipPrice: 390, skipPrepared: 540.4, skipAsFound: 459.4,
+      grows: [
+        { needs: "depollution", body: "flatrack", contents: { elv: 1 } },
+        { needs: "breaker", body: "batteryBox", contents: { pbb: 40 } },
+        { needs: "induction", body: "skip", contents: { bushing: 20 } },
+      ],
+    },
+    "partner.plumbing": {
+      comment: "register: Tap Street Plumbing; contact plumbingContact",
+      opens: "truckBridge", lane: "plumbing_m",
+      trial: { pipe: 1, bronzeValve: 4, bath2: 1 },
+      skip: { pipe: 3, bronzeValve: 8, bath2: 1, radiatorCI: 3 },
+      fill_s: 180, k: 0.85, // fill_s (first value, content2)
+      trialMass_kg: 140, trialPrice: 400, trialPrepared: 1014.5,
+      skipMass_kg: 328, skipPrice: 2090, skipPrepared: 2805.95, skipAsFound: 2458.59,
+      grows: [{ needs: "analyser", body: "skip", contents: { sink: 4 } }],
+    },
+  },
+  // 2.9 vehicles and tools, and the plates (2.6.2: a plate is a scrip shop item bought on its plot's card); prices first values (content2) until the payback rule's
+  shop: [
+    { key: "truckBridge", kind: "vehicle", place: "park", price: 12000, gate: "rung3", deliver_s: 30, arrive: "truck" },
+    { key: "pallet", kind: "carry", place: "rack", price: 2500, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "forklift", kind: "vehicle", place: "forklift", price: 15000, gate: "rung3", deliver_s: 30, arrive: "machineFlatbed" },
+    { key: "plasma", kind: "tool", place: "rack", price: 8000, gate: "rung3", deliver_s: 6, arrive: "van" },
+    ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
+  ],
+  // the plasma cutter: tier 4, P 60, on every material (B4, T8)
+  tools: { plasma: { tier: 4, P: 60 } },
+  // the pallet truck: the boss's carrier, 300 kg
+  carriers: { pallet: 300 },
+  // the new bays' capacities, kg (first values, content2: "no bay full before the next sitting", 2.22)
+  bays: { shred: 40000, lib: 20000, zorba: 10000, znh: 5000, ssu: 5000, cug: 3000, pp: 3000, pbp: 10000, ss: 5000, twitch: 5000, bzs: 3000, bzi: 3000, bzd: 1000, pbi: 10000, dust: 1000, pbb: 5000 },
+};
+
 export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
@@ -369,7 +644,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       name: "",
       tier: 1,
       h: 1,
-      pieces: [["li", 4000, 1, "piece.panel"], ["li", 14000, 2, "piece.panel"], ["li", 8000, 1, "piece.drum"], ["mot", 6000, 1, "piece.motor"]],
+      pieces: [["li", 4000, 1, "piece.panel"], ["li", 14000, 2, "piece.panel"], ["li", 8000, 1, "piece.drum", "ss"], ["mot", 6000, 1, "piece.motor"]],
       waste_g: 24000,
       whole: "appl",
       text: "top panel 4 kg, cabinet sides 2 x 14 kg, stainless drum 8 kg (sold as light iron in stage 1), motor 6 kg; concrete counterweight 22 kg and plastics 2 kg to the rubble skip",
@@ -378,6 +653,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 34.8,
       sprite: "thing.washer",
       size: { w: 0.8, d: 0.8, h: 1 },
+      // STAGE 2 (2.5.2: the drum assays as 304 stainless with the analyser; 5.2 (5): never reusable)
+      tags: ["electrical"],
     },
     bike: {
       name: "",
@@ -504,6 +781,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 256.62,
       sprite: "thing.cylinder",
       size: { w: 0.5, d: 0.5, h: 1.2 },
+      tags: ["vessel", "sealed"], // STAGE 2 (5.2 (2), (5); content2)
       certifiedEmpty: true,
     },
     wheels: {
@@ -519,6 +797,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 45.36,
       sprite: "thing.wheels",
       size: { w: 0.7, d: 0.7, h: 0.4 },
+      tags: ["carPart"], // STAGE 2 (5.2 (2), (5); content2)
     },
     sheet: {
       name: "",
@@ -589,6 +868,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 170.4,
       sprite: "thing.tank",
       size: { w: 2, d: 1.2, h: 1.2 },
+      tags: ["vessel"], // STAGE 2 (5.2 (2), (5); content2)
       certifiedEmpty: true,
     },
     cladding: {
@@ -646,6 +926,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 40.8,
       sprite: "piece.motor",
       size: { w: 0.5, d: 0.4, h: 0.4 },
+      tags: ["electrical"], // STAGE 2 (5.2 (2), (5); content2)
     },
     car: {
       name: "",
@@ -667,6 +948,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       asFoundValue: 1773.94,
       sprite: "thing.car",
       size: { w: 2.8, d: 1.2, h: 1 },
+      tags: ["carPart", "fuel", "battery"], // STAGE 2 (5.2 (2), (5); content2)
       source: { type: "partner", partner: "partnerDemolition", ref: "0012" },
     },
   },
@@ -806,6 +1088,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     laneWidth: 6,
     // The chalk circles: south of the scale and the cable bundle, north of the drive line, 2 m off the drop-off -> scale walk.
     circles: [[54.3, 22.75, 0.8], [52.3, 22.75, 0.8]],
+    // STAGE 2: the works layer of the map, merged over this one from rung 3 (yard-stage2.md section 3; content2)
+    works: MAP_WORKS,
   },
   tools: { spanners: { tier: 1, P: 5 }, sledge: { tier: 2, P: 12 }, torch: { tier: 3, P: 30 } },
   carriers: { frame: 25, sack: 60, trolley: 150 },
@@ -862,6 +1146,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       skipAsFound: 1127,
       sprite: "lane.shed.farm",
       skipLook: "farm",
+      // STAGE 2 (2.12): a reusable batch of radiators on its skips from rung 3 (first value, content2: two)
+      reuseBatch: { obj: "radiator", n: 2 },
     },
     partnerDemolition: {
       comment: "register now: Ruddock Demolition",
@@ -880,6 +1166,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       skipAsFound: 2167,
       sprite: "lane.hoarding.gate",
       skipLook: "demolition",
+      // STAGE 2 (2.12): gates and railings, the second kind (cut first if the stage runs over) (first value, content2: two)
+      reuseBatch: { obj: "ironGate", n: 2 },
     },
   },
   floorRoom_kg: 4000,
@@ -1087,16 +1375,25 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       { n: 1, t: 0, range: 0 },
       { n: 2, t: 2.4, range: 3 },
       { n: 3, t: 27.5, range: 5 },
-      { n: 4, t: 150, range: 6 },
-      { n: 5, t: 800, range: 7 },
-      { n: 6, t: 4000, range: 8 },
-      { n: 7, t: 20000, range: 9 },
-      { n: 8, t: 100000, range: 10 },
-      { n: 9, t: 500000, range: 11 },
+      // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
+      // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
+      { n: 4, t: 1000, range: 8 },
+      { n: 5, t: 10000, range: 9 },
+      { n: 6, t: 50000, range: 10 },
+      { n: 7, t: 200000, range: 11 },
+      { n: 8, t: 600000, range: 12 },
+      { n: 9, t: 1500000, range: 13 },
     ],
+    // STAGE 2 (2.11, B18): the stage's top rung; theta_r from rung 4 = max(theta, thetaShare x T_r x §1,200 a tonne)
+    topRung: 5,
+    thetaShare: 0.01,
   },
-  ceilings_t_h: [6, 110, 400],
-  awayCapByRung_h: [0.5, 2, 4],
+  // rungs 1 to 3 as measured (REPORT6); STAGE 2 rungs 4 and 5 (2.11; E30's guard)
+  ceilings_t_h: [6, 110, 400, 800, 3500],
+  // STAGE 2 (2.11, E11): payback hours by rung (null at rungs 1 and 2; tau_4 > 20 h is a fixed lower bound)
+  tau_h: [null, null, 9, 22, 45],
+  // E33; STAGE 2 rungs 4 and 5 (2.11)
+  awayCapByRung_h: [0.5, 2, 4, 6, 8],
   nightWatch_h: 2,
   rivals: {
     rule: "tonnes = T0_t x (1 + g x min(d, 40)), d = market days since the player's first second (E27); the k-th rival below the player shows at most (1 - 0.03 k) x the player (S17)",
@@ -1168,7 +1465,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // Stage 2, 2.1 (RULING2.md 14.1, 14.3; engine2-fixA): crew work in runs from rung 3, in the boss's sight
   // (trip by trip) and out of it (planned ahead); a yard hand's run 30 s, a cutter's 120 s from its start.
   group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true },
-  advice: { minutes: 3, promptGapS: 60, reserveS: 60 },
+  // STAGE 2 (2.13): shearKg, uncut tier-3 steel on the floor that names a shear level
+  advice: { minutes: 3, promptGapS: 60, reserveS: 60, shearKg: 1500 },
   lessons: {
     li: "lesson.li",
     ci: "lesson.ci",

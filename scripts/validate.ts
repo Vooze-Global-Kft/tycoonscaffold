@@ -43,6 +43,14 @@ import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
 const { positional, flags } = args();
+// --no-sim and --release are switches. The shared parser reads `--no-sim pizza-empire` as the flag's value,
+// which ran the bots on EVERY game and validated no pizza-empire: a game id after a switch is a game.
+for (const sw of ['no-sim', 'release']) {
+  if (flags[sw] !== undefined && flags[sw] !== 'true') {
+    positional.push(flags[sw]);
+    flags[sw] = 'true';
+  }
+}
 const all: string[] = games.listGames();
 const ids: string[] = positional.length ? positional : all;
 const runSim = flags['no-sim'] !== 'true';

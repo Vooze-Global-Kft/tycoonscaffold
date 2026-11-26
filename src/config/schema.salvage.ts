@@ -42,7 +42,11 @@ const spriteId = z.string().regex(/^[a-z0-9]+(\.[a-z0-9]+)+$/);
  * board: the price board; park: the truck's row; dropoff: what waits at the drop-off; floor: the
  * tipping floor's things and its room in kg.
  */
-export const CARD_KINDS = ['rack', 'rota', 'partners', 'processBoard', 'machine', 'board', 'skip', 'deal', 'table', 'away', 'rung', 'clipboard', 'settings', 'help', 'park', 'dropoff', 'floor'] as const;
+export const CARD_KINDS = [
+  'rack', 'rota', 'partners', 'processBoard', 'machine', 'board', 'skip', 'deal', 'table', 'away', 'rung', 'clipboard', 'settings', 'help', 'park', 'dropoff', 'floor',
+  // STAGE 2 (yard-stage2.md 4.2; contract v3's CARD_KINDS_V3, content2): a place's card may name the first four.
+  'works', 'finance', 'letter', 'yardSale', 'lot', 'crate', 'shop', 'packSheet', 'ageQuestion', 'packCode', 'awayBonus',
+] as const;
 export type CardKind = (typeof CARD_KINDS)[number];
 /** The look family of a carried load (the art's people.draw.ts LoadFamily). */
 export const LOAD_FAMILIES = ['fe', 'ci', 'cu', 'br', 'al', 'cab', 'mot', 'hms'] as const;
@@ -269,6 +273,43 @@ export const PlaceSchema = z.object({
 });
 export type PlaceDef = z.infer<typeof PlaceSchema>;
 
+const mapRect = z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive() });
+/**
+ * STAGE 2: THE WORKS LAYER OF THE MAP (yard-stage2.md section 3; content2). `map` is the first yard's, and the
+ * whole map below rung 3; `map.works` is merged over it from the tick of `backFieldOpen` (3.1; the rules'
+ * `mapAt(rung)`, Phase B; the checker `scripts/content/yard_map.py` checks both). Merging: `points`,
+ * `footprints` and `places` of the same id REPLACE the first layer's (the field gateway `backfield`), new ids
+ * are added; `drop.props` (prop ids) and `drop.walls` (indices into `map.walls`) are lifted out (the wall
+ * gate; rubble the works stand on); `driveLine.rects` are added and `driveLine.stops` merged; `routes` and
+ * `lane` merged. The old west fence at `fence.x` stays with its `openings` (y ranges); the yard's west edge
+ * becomes `x0`. Metres, x east, y south.
+ */
+export const MapWorksSchema = z.object({
+  x0: z.number(),
+  points: z.record(id, xy).default({}),
+  footprints: z.record(id, FootprintSchema).default({}),
+  places: z.record(id, PlaceSchema).default({}),
+  drop: z.object({ props: z.array(z.string()).default([]), walls: z.array(z.number().int().nonnegative()).default([]) }).default({ props: [], walls: [] }),
+  fence: z.object({ x: z.number(), openings: z.array(z.tuple([z.number(), z.number()])) }),
+  driveLine: z.object({ rects: z.array(mapRect).default([]), stops: z.record(z.string(), xy).default({}) }).default({ rects: [], stops: {} }),
+  /** Stops off the yard (the reclamation dealer's van on the lane's south kerb, 3.3.2). */
+  laneStops: z.record(z.string(), xy).default({}),
+  /** Roofs (not solid): the bays a hall is charged from stand under one (T5, 3.6 (8)). */
+  roofs: z.record(id, mapRect).default({}),
+  /** The railed public bay (T7): its ground, its rails (solid), its staff gap (x0, x1 in the north rail) and the wicket's opening in the east fence (y0, y1). */
+  publicBay: z.object({ rect: mapRect, rail: z.array(mapRect), staff: z.tuple([z.number(), z.number()]), wicket: z.tuple([z.number(), z.number()]) }),
+  visitorPath: z.array(xy).min(2),
+  vanPath: z.array(xy).min(2),
+  publicGap_m: z.number().nonnegative(),
+  /** The ground the forklift drives (3.6 (6)): its bay and the south-yard rects between its pads. */
+  forkliftZone: z.array(mapRect).default([]),
+  lane: z.record(id, z.number().nonnegative()).default({}),
+  routes: z.record(z.string(), z.number().nonnegative()).default({}),
+  /** The second hero frame (3.5): the rotary hall, its filter and its apron whole. */
+  heroWorks: z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive(), places: z.array(id) }).optional(),
+});
+export type MapWorksDef = z.infer<typeof MapWorksSchema>;
+
 const MapObject = z
   .object({
     points: z.record(id, xy),
@@ -313,6 +354,8 @@ const MapObject = z
         stops: z.record(z.string(), xy).optional(),
       })
       .optional(),
+    /** STAGE 2: the works layer of the map (above). */
+    works: MapWorksSchema.optional(),
   })
   .strict();
 
@@ -516,7 +559,20 @@ export const RungSchema = z.object({ t: z.number().nonnegative(), range: z.numbe
  * table (rungs 4 to 9 show with their gates and a padlock, 2.11; default: 1 to 3 from rung2/rung3);
  * theta § at p̄ that makes a material count.
  */
-export const LadderSchema = z.object({ rung2: RungSchema, rung3: RungSchema, theta: z.number().positive(), rungs: z.array(z.object({ n: z.number().int().min(1).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).default([]) });
+export const LadderSchema = z.object({
+  rung2: RungSchema,
+  rung3: RungSchema,
+  theta: z.number().positive(),
+  rungs: z.array(z.object({ n: z.number().int().min(1).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).default([]),
+  /**
+   * STAGE 2 (yard-stage2.md 2.11, B18; content2): the stage's top rung (the first yard's `STAGE_TOP_RUNG` 3
+   * becomes content). Given, the per-rung lists (`ceilings_t_h`, `tau_h`, `awayCapByRung_h`, `lots.mu_min`,
+   * `reuse.shareI`, `ads.dayHours_h`) have exactly this length. Absent (the frozen test content): 3, lists unchecked.
+   */
+  topRung: z.number().int().min(3).max(9).optional(),
+  /** STAGE 2 (2.11): from rung 4, theta_r = max(theta, thetaShare x T_r x §1,200 a tonne); rungs 1 to 3 keep `theta`. */
+  thetaShare: z.number().nonnegative().optional(),
+});
 export type LadderDef = z.infer<typeof LadderSchema>;
 
 /**
@@ -594,7 +650,176 @@ export const GoalSchema = z.object({
 });
 export type GoalDef = z.infer<typeof GoalSchema>;
 /** The advice line (2.10): priced within cash + minutes × incomeRate; never below E19's reserve, the price of a load full within reserveS. */
-const AdviceSchema = z.object({ minutes: z.number().positive().default(3), promptGapS: z.number().nonnegative().default(60), reserveS: z.number().nonnegative().default(120) });
+const AdviceSchema = z.object({
+  minutes: z.number().positive().default(3),
+  promptGapS: z.number().nonnegative().default(60),
+  reserveS: z.number().nonnegative().default(120),
+  /** STAGE 2 (2.13): uncut tier-3 steel on the floor over this many kg, with the shear owned, names a shear level. */
+  shearKg: z.number().positive().optional(),
+});
+
+// ============================================================================================= STAGE 2
+// yard-stage2.md 5.1 (the keys and first values), 2.5 to 2.16 (the rules that read them), owner content2.
+// ADDITIVE: every block below is optional, so the frozen test content and every saved content parse as
+// before, and nothing the first yard's rules read changes. THE WORKS LAYER (`worksLayer`): the entries
+// stage 2 adds to the first yard's families (grades, objects, partners, shop, tools, carriers, bays) are
+// held apart, as `map.works` is held apart from `map` (3.1): the first yard's readers iterate those
+// families whole (the frame draws a heap for every non-stillage grade, create.ts gives every partner a
+// state, a shop item gated at rung 3 would be on sale at minute 57), so the layer joins them only from the
+// tick of `backFieldOpen`, through `withWorksLayer` below (the rules' merged view, Phase B).
+
+/** A rectangle on the ground: x0, y0 its north-west corner, w east, d south (metres). */
+export const RectSchema = z.object({ x0: z.number(), y0: z.number(), w: z.number().positive(), d: z.number().positive() });
+/** A share list [to, share] (a grade, an object, `stream` (a line's conveyor, 2.8.1) or `carrier`: to a licensed waste carrier). */
+const Shares = z.array(z.tuple([id, z.number().min(0).max(1)]));
+/** What a plate's output may name that is not a grade: the conveyor stream to the next plate of its line. */
+export const STREAM = 'stream';
+/** Waste "to a licensed waste carrier" (T13, P18). */
+export const CARRIER = 'carrier';
+
+/** A batch plate's heat (2.8): charge kg, seconds a heat, start at start_share after start_idle s without feed (the crucible's). */
+const BatchSchema = z.object({ kg: z.number().positive(), s: z.number().positive(), start_share: z.number().min(0).max(1), start_idle: z.number().nonnegative() });
+/** A hall's recipe (2.8): its inputs (one heat takes any of them), out and waste per kilogram of input, reagents. */
+const RecipeSchema = z.object({ in: z.array(id).min(1), out: Shares, waste: Shares.default([]), reagents: z.array(z.tuple([id, z.number().nonnegative(), z.number().nonnegative()])).default([]) });
+
+/**
+ * A works plate (yard-stage2.md 2.5.3, validated here, checked by build-yard.py 5.2): `row` its process
+ * board row, `slot` its order in that row (and S12's order after the bench), `plot` its place in
+ * `map.works`, `gate` a rung id, `needs` the plate that must be owned first, `price` § (the payback rule's,
+ * 2.6.4), `deliver_s` the machine flatbed's seconds. `in`: grades or objects; `out` and `waste` PER INPUT
+ * (E7); `reagents` [id, kg a kg of input, § a kg] paid at a heat's start or a segment's (never by the clock);
+ * `rate_kg_s` (rate plates; the shear's comes from `shear.P` / hardness) or `batch` (halls, with `recipes`);
+ * `feeds` a stream's next plate (the line's conveyor); `lev` a level's step of the level-1 rate,
+ * `maxLevel`; `inbuf` and `tray` kg (a bay-fed plate has no tray: 0); `financeable` is DERIVED by the build
+ * (true when `out` holds a sellable grade), never written by hand; `permit` the rota's licence row's text
+ * key, added when it is commissioned (T21).
+ */
+export const PlateSchema = z.object({
+  row: z.enum(['yard', 'shredder', 'melt', 'lead']),
+  slot: z.number().int().nonnegative(),
+  plot: id,
+  gate: z.string(),
+  needs: id.nullable().default(null),
+  price: z.number().positive(),
+  deliver_s: z.number().nonnegative(),
+  kind: z.enum(['rate', 'batch', 'station', 'assay', 'handling']),
+  in: z.array(id),
+  feedBy: z.enum(['hands', 'bays', 'stream']).nullable(),
+  out: z.record(id, Shares).default({}),
+  waste: z.record(id, Shares).default({}),
+  reagents: z.array(z.tuple([id, z.number().nonnegative(), z.number().nonnegative()])).default([]),
+  rate_kg_s: z.number().positive().optional(),
+  batch: BatchSchema.optional(),
+  recipes: z.record(id, RecipeSchema).optional(),
+  feeds: z.record(id, id).optional(),
+  lev: z.number().nonnegative(),
+  maxLevel: z.number().int().positive(),
+  inbuf: z.number().nonnegative(),
+  tray: z.number().nonnegative(),
+  financeable: z.boolean().optional(),
+  permit: z.string().optional(),
+});
+export type PlateDef = z.infer<typeof PlateSchema>;
+
+/** The works (2.6): commissioning, levels, the price floor, the plates. */
+export const WorksSchema = z.object({
+  commission_s: z.number().positive(),
+  selfCommission_s: z.number().positive(),
+  lev: z.number().nonnegative(),
+  maxLevel: z.number().int().positive(),
+  floor: z.number().nonnegative(),
+  plates: z.record(id, PlateSchema),
+});
+export type WorksDef = z.infer<typeof WorksSchema>;
+
+/** The magnet crane (2.7): kg a second, reach to the nearest edge (m), a move's kg, the materials it never lifts, and the things it never lifts. */
+const CraneSchema = z.object({ rate: z.number().positive(), reach_m: z.number().positive(), load_kg: z.number().positive(), never: z.array(z.string()), neverObjects: z.array(id).default([]) });
+/** The forklift (2.9): its load kg and speed m/s. */
+const ForkliftSchema = z.object({ load: z.number().positive(), v: z.number().positive() });
+
+/** Delivered lots, "oversize pieces" (2.10.1): yard seconds between arrivals, at most `max` waiting, μ minutes of I by rung, the boss's cut seconds [min, max], the kinds. */
+const LotKindSchema = z.object({
+  obj: id,
+  /** The named partner whose lorry brings it (a register id: partner.boatyard, partner.garage, ...). */
+  from: z.string(),
+  /** A kind comes only while the player owns one of these (a machine of the first yard or a plate; the analyser counts as stainless's line, decision 9). Empty: always ("an intermediate sold whole"). */
+  line: z.array(id).default([]),
+});
+const LotsSchema = z.object({ period_s: z.number().positive(), max: z.number().int().positive(), mu_min: z.array(z.number().positive().nullable()), cut_s: z.tuple([z.number().positive(), z.number().positive()]), kinds: z.array(LotKindSchema).min(1) });
+/** The crate, "the picking table" (2.10.2): share of a tip by hash, things it holds, seconds a thing, the factor on its prepared value. No hold time (P2). */
+const CrateSchema = z.object({ share: z.number().min(0).max(1), max: z.number().int().positive(), sort_s: z.number().positive(), u: z.number().positive() });
+/** The Yard sale (2.12). */
+const ReuseSchema = z.object({
+  slots: z.number().int().positive(),
+  levelSlots: z.number().int().nonnegative(),
+  levels: z.number().int().nonnegative(),
+  share: z.number().min(0).max(1),
+  /** The things that may be tagged reusable, by object id (`fromPartnerOnly`: only when it came in a named partner's load, and its tag adds "Checked", T15). */
+  kinds: z.record(id, z.object({ fromPartnerOnly: z.boolean().default(false) })),
+  /** The tags no reusable thing may carry (THING_TAGS; a content check, T23). */
+  never: z.array(z.enum(THING_TAGS)),
+  factor: z.number().positive(),
+  /** By rung (length ladder.topRung; null below rung 3): the share of max(I0, floorI) an hour the public pays at most. */
+  shareI: z.array(z.number().positive().nullable()),
+  floorI: z.number().nonnegative(),
+  period_s: z.number().nonnegative(),
+  firstVisitor_s: z.number().nonnegative(),
+  batchFactor: z.number().positive(),
+  vanPeriod_s: z.number().positive(),
+  firstThing: id,
+});
+/** Plant finance (2.14). `shareWords` the card's words for `share` ("A fifth" at 0.2, else its percentage). */
+const BankSchema = z.object({
+  share: z.number().min(0).max(1),
+  shareWords: z.string().min(1),
+  charge: z.number().nonnegative(),
+  maxShare: z.number().min(0).max(1),
+  maxF_h: z.number().nonnegative(),
+  maxF_tau: z.number().nonnegative(),
+  minPrice_h: z.number().nonnegative(),
+  maxAgreements: z.literal(1),
+});
+/** The mode's part of real money (2.15; the sixteen products are the shared list's, B5). */
+export const LOOK_SLOTS = ['colour', 'dressing', 'plaque', 'sign'] as const;
+const IapSchema = z.object({
+  packsFromRung: z.literal(4),
+  /** Store-account countries where packs are off at launch (ISO 3166-1 alpha-2: the EEA and Switzerland, fixed). */
+  packsOff: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1),
+  /** Product id -> the look slot it fills and the look's register id. */
+  lookOf: z.record(id, z.object({ slot: z.enum(LOOK_SLOTS), value: z.string() })),
+  looks: z.array(z.enum(LOOK_SLOTS)),
+});
+/** Rewarded ads (2.16). `dayHours_h`: "a day's income" in production hours of the twice-a-day habit, by rung (ruling 10.6; null below rung 3). */
+const AdsSchema = z.object({
+  awayPerDay: z.number().int().nonnegative(),
+  awayMinAbsence_min: z.number().positive(),
+  awayShare: z.number().min(0).max(1),
+  awayCap_min: z.number().nonnegative(),
+  spotShare: z.number().min(0).max(1),
+  spotCap_min: z.number().nonnegative(),
+  spotPerDay: z.number().int().nonnegative(),
+  maxDayShare: z.number().min(0).max(1),
+  dayHours_h: z.array(z.number().positive().nullable()),
+});
+
+/**
+ * THE WORKS LAYER of the families (see the head of this section): entries that join `grades`, `objects`,
+ * `partners`, `shop`, `tools`, `carriers` and `bays` from rung 3. An id may not repeat one of the first
+ * layer (a content check): the layer adds, it never replaces.
+ */
+const LayerGradeSchema = GradeSchema.extend({
+  bay: z.object({ kind: z.enum(BAY_KINDS), sprite: spriteId.optional(), place: id.optional(), slot: z.number().int().nonnegative().optional() }).optional(),
+});
+export const WorksLayerSchema = z.object({
+  grades: z.record(id, LayerGradeSchema).default({}),
+  objects: z.record(id, ObjectSchema).default({}),
+  partners: z.record(id, PartnerSchema).default({}),
+  shop: z.array(ShopItemSchema).default([]),
+  tools: z.record(id, ToolSchema).default({}),
+  carriers: z.record(id, z.number().positive()).default({}),
+  bays: z.record(id, z.number().positive()).default({}),
+});
+export type WorksLayerDef = z.infer<typeof WorksLayerSchema>;
 
 // ---------------------------------------------------------------------------------------- the block
 
@@ -655,8 +880,10 @@ const SalvageObject = z.object({
   wholeUnits_kg: z.record(id, z.number().positive()).default({}),
   levels: LevelsSchema,
   ladder: LadderSchema,
-  /** Capacity guards at rungs 1 to 3, t/h. */
-  ceilings_t_h: z.array(z.number().positive()).length(3),
+  /** Capacity guards by rung, t/h (rungs 1 to 3 in the first yard; STAGE 2: one a rung to `ladder.topRung`, B18). */
+  ceilings_t_h: z.array(z.number().positive()).min(3),
+  /** STAGE 2 (2.11, B18): tau_r, the payback hours of rung r for plate prices and level caps; null at rungs 1 and 2; length ladder.topRung. */
+  tau_h: z.array(z.number().positive().nullable()).optional(),
   /** E33 (rules-sim-a, 19:50): the away cap by rung, hours ([rung 1, rung 2, rung 3, ...]; the last holds beyond). */
   awayCapByRung_h: z.array(z.number().positive()).min(1),
   /** E33: hours the Night watch adds to the away cap on any rung. */
@@ -675,6 +902,19 @@ const SalvageObject = z.object({
   foreman: ForemanSchema.default({ boost: 0.25, windowS: 60, minutesPerDay: 45 }),
   away: AwaySchema.default({ gapS: 10, cardS: 60 }),
   group: GroupSchema.optional(),
+  // STAGE 2 (yard-stage2.md 5.1; content2): absent in the first yard's test content; nothing below rung 3 reads them.
+  works: WorksSchema.optional(),
+  crane: CraneSchema.optional(),
+  shear: z.object({ P: z.number().positive() }).optional(),
+  forklift: ForkliftSchema.optional(),
+  depollution: z.object({ s: z.number().positive() }).optional(),
+  lots: LotsSchema.optional(),
+  crate: CrateSchema.optional(),
+  reuse: ReuseSchema.optional(),
+  bank: BankSchema.optional(),
+  iap: IapSchema.optional(),
+  ads: AdsSchema.optional(),
+  worksLayer: WorksLayerSchema.optional(),
   goals: z.array(GoalSchema).default([]),
   /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
   dayOne: z.array(GoalSchema).default([]),
@@ -693,6 +933,25 @@ const SalvageObject = z.object({
       glossary: z.array(z.object({ term: z.string(), line: z.string() })).default([]),
     })
     .optional(),
+}).superRefine((s, ctx) => {
+  // STAGE 2, 5.2 (14), B18: with `ladder.topRung` given, every per-rung list has its length, and tau is null at rungs 1 and 2.
+  const top = s.ladder.topRung;
+  if (top === undefined) return;
+  const lists: [string, unknown[] | undefined][] = [
+    ['ceilings_t_h', s.ceilings_t_h],
+    ['tau_h', s.tau_h],
+    ['awayCapByRung_h', s.awayCapByRung_h],
+    ['lots.mu_min', s.lots?.mu_min],
+    ['reuse.shareI', s.reuse?.shareI],
+    ['ads.dayHours_h', s.ads?.dayHours_h],
+  ];
+  for (const [k, l] of lists) if (l && l.length !== top) ctx.addIssue({ code: 'custom', path: k.split('.'), message: `${k} has ${l.length} entries; ladder.topRung ${top} wants one a rung (B18; e.g. [${l.join(', ')}])` });
+  if (s.tau_h) {
+    s.tau_h.forEach((v, i) => {
+      if (i < 2 && v !== null) ctx.addIssue({ code: 'custom', path: ['tau_h', i], message: `tau_h[${i}] (rung ${i + 1}) is ${v}: tau is null at rungs 1 and 2 (B18)` });
+      if (i >= 2 && v === null) ctx.addIssue({ code: 'custom', path: ['tau_h', i], message: `tau_h[${i}] (rung ${i + 1}) is null: every rung from 3 has a payback time` });
+    });
+  }
 });
 
 /**
@@ -781,5 +1040,432 @@ export function lintSalvage(s: SalvageContent): string[] {
     if (p.x < 0 || p.y < 0 || p.x > s.yard.width || p.y > s.yard.depth) out.push(`prop "${p.id}" stands outside the yard`);
   }
   for (const [pid, [x, y]] of Object.entries(s.map.points)) if (pid in s.map.places && (x < 0 || y < 0 || x > s.yard.width || y > s.yard.depth)) out.push(`map point "${pid}" lies outside the yard`);
+  out.push(...lintStage2(s));
   return out;
+}
+
+// ============================================================================ STAGE 2: the merged view and the checks
+
+/**
+ * The content with the works layer joined to the families (grades, objects, partners, shop, tools,
+ * carriers, bays): what the rules read from the tick of `backFieldOpen` (Phase B: content.ts and
+ * positions.ts `mapAt` take it from here). Without a layer: the content itself.
+ */
+export function withWorksLayer(s: SalvageContent): SalvageContent {
+  const L = s.worksLayer;
+  if (!L) return s;
+  return {
+    ...s,
+    grades: { ...s.grades, ...(L.grades as Record<string, GradeDef>) },
+    objects: { ...s.objects, ...L.objects },
+    partners: { ...s.partners, ...L.partners },
+    shop: [...s.shop, ...L.shop],
+    tools: { ...s.tools, ...L.tools },
+    carriers: { ...s.carriers, ...L.carriers },
+    bays: { ...s.bays, ...L.bays },
+  };
+}
+
+/** Ruling 9.1 (fixed): the scrip packs' hours of I (pack2, pack5, pack10, pack20). */
+export const PACK_HOURS = [2, 5, 10, 20] as const;
+/** E5, 5.2 (8): the board moves a price by at most 5.7 % a day. */
+export const ONE_DAY_FALL = 0.943;
+/** Ruling 13.5, 5.2 (11): every plate and recipe nets at least this much more than its input at p̄. */
+export const PLATE_GAIN = 1.05;
+/** 5.2 (12): a sorter's sorted value is at most this many times its input's. */
+export const SORT_CAP = 1.5;
+/** Ruling 10.6: "a day's income" counts the twice-a-day habit's played hours beside its two capped absences. */
+export const HABIT_PLAY_H = 0.3;
+
+const rungOf = (gate: string | null | undefined): number => {
+  const m = /^rung(\d+)$/.exec(gate ?? '');
+  return m ? Number(m[1]) : 1;
+};
+
+/**
+ * The stage-2 checks of yard-stage2.md 5.2 that read the content alone (the map's, 3.6, are
+ * scripts/content/yard_map.py's; those that need the bots' table or the words are build-yard.py's
+ * warnings). Each finding names the key and the smallest failing case. Silent on a content without
+ * stage 2's blocks (the frozen test content).
+ */
+export function lintStage2(s0: SalvageContent): string[] {
+  const out: string[] = [];
+  const L = s0.worksLayer;
+  if (!L && !s0.works) return out;
+  const s = withWorksLayer(s0);
+  const G = s.grades;
+  const O = s.objects;
+  const plates = s.works?.plates ?? {};
+  const isGrade = (g: string) => !!G[g];
+  const pbar = (g: string) => (G[g] && G[g].family !== 'pm' ? G[g].pbar : 0);
+  const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9;
+  const mapPlaces = new Set([...Object.keys(s.map.points), ...Object.keys(s.map.works?.points ?? {})]);
+
+  // ---- the layer adds, never replaces; what it names exists
+  if (L) {
+    for (const [fam, a, b] of [
+      ['grades', s0.grades, L.grades],
+      ['objects', s0.objects, L.objects],
+      ['partners', s0.partners, L.partners],
+      ['tools', s0.tools, L.tools],
+      ['carriers', s0.carriers, L.carriers],
+      ['bays', s0.bays, L.bays],
+    ] as const)
+      for (const k of Object.keys(b)) if (k in a) out.push(`worksLayer.${fam}.${k} repeats a first-layer ${fam} id (the layer adds, it never replaces)`);
+    const keys = new Set([...s0.shop, ...s0.dayOneList].map((i) => i.key));
+    for (const i of L.shop) {
+      if (keys.has(i.key)) out.push(`worksLayer.shop "${i.key}" repeats a shop key`);
+      keys.add(i.key);
+      if (!mapPlaces.has(i.place)) out.push(`worksLayer.shop.${i.key}.place "${i.place}" is not a map point of either layer`);
+      if (i.needsItem && !keys.has(i.needsItem) && !plates[i.needsItem]) out.push(`worksLayer.shop.${i.key}.needsItem "${i.needsItem}" is neither a shop key nor a plate`);
+    }
+    for (const [oid, o] of Object.entries(L.objects)) {
+      o.pieces.forEach((p, i) => {
+        if (!isGrade(p[0])) out.push(`worksLayer.objects.${oid}.pieces[${i}] names grade "${p[0]}", which is in neither layer`);
+        if (p.length === 5 && !isGrade(p[4])) out.push(`worksLayer.objects.${oid}.pieces[${i}] assays to "${p[4]}", which is not a grade`);
+      });
+      if (o.whole && !isGrade(o.whole)) out.push(`worksLayer.objects.${oid}.whole "${o.whole}" is not a grade`);
+      if (o.shell && !isGrade(o.shell.grade)) out.push(`worksLayer.objects.${oid}.shell "${o.shell.grade}" is not a grade`);
+      const sum = o.pieces.reduce((a, p) => a + p[1] * p[2], 0) + o.waste_g + (o.shell?.g ?? 0);
+      if (sum !== o.gross_g) out.push(`worksLayer.objects.${oid}: pieces, shell and waste weigh ${sum} g, gross_g says ${o.gross_g} g (mass is kept)`);
+      if (o.pieces.some((p) => G[p[0]]?.family === 'pm') && !o.source) out.push(`worksLayer.objects.${oid} gives a converter but has no source (S7)`);
+      if (o.pieceTiers && o.pieceTiers.length !== o.pieces.length) out.push(`worksLayer.objects.${oid}.pieceTiers: one tier for each entry of pieces`);
+    }
+    for (const [oid, o] of Object.entries(s0.objects)) o.pieces.forEach((p, i) => p.length === 5 && !isGrade(p[4]) && out.push(`objects.${oid}.pieces[${i}] assays to "${p[4]}", which is in neither layer`));
+    const lanes = { ...s.map.lane, ...(s.map.works?.lane ?? {}) };
+    for (const [pid, p] of Object.entries(L.partners)) {
+      for (const o of [...Object.keys(p.trial), ...Object.keys(p.skip), ...(p.grows ?? []).flatMap((x) => Object.keys(x.contents))]) if (!O[o]) out.push(`worksLayer.partners.${pid} names object "${o}", which is in neither layer`);
+      if (lanes[p.lane] === undefined) out.push(`worksLayer.partners.${pid}.lane "${p.lane}" is in neither map.lane nor map.works.lane`);
+      if (!keys.has(p.opens)) out.push(`worksLayer.partners.${pid}.opens "${p.opens}" is not a shop key`);
+      for (const x of p.grows ?? []) if (!plates[x.needs]) out.push(`worksLayer.partners.${pid}.grows needs "${x.needs}", which is not a works plate`);
+    }
+    for (const g of Object.keys(L.bays)) if (!isGrade(g)) out.push(`worksLayer.bays.${g} is not a grade`);
+    for (const [g, gr] of Object.entries(L.grades)) if (gr.bay?.place && !mapPlaces.has(gr.bay.place)) out.push(`worksLayer.grades.${g}.bay.place "${gr.bay.place}" is not a map point of either layer`);
+  }
+  for (const [pid, p] of Object.entries(s0.partners)) if (p.reuseBatch && !O[p.reuseBatch.obj]) out.push(`partners.${pid}.reuseBatch names "${p.reuseBatch.obj}", which is not an object`);
+
+  // ---- the plates: (1) mass, (2) inputs, outputs, chains, (11) every plate pays, (12) price order
+  const valueIn = (x: string): number => {
+    if (x === STREAM) return 0;
+    if (isGrade(x)) return pbar(x);
+    const o = O[x];
+    if (!o) return 0;
+    if (o.whole && isGrade(o.whole)) return pbar(o.whole);
+    return objectAsFound(s, x) / (o.gross_g / 1000);
+  };
+  const valueOut = (sh: [string, number][]) => sh.reduce((a, [g, k]) => a + (isGrade(g) ? pbar(g) * k : 0), 0);
+  const sellable = (sh: [string, number][]) => sh.filter(([g]) => isGrade(g)).reduce((a, [, k]) => a + k, 0);
+  const known = (x: string) => isGrade(x) || !!O[x] || x === STREAM || x === CARRIER;
+  type Step = { where: string; inputs: string[]; outOf: (i: string) => [string, number][]; wasteOf: (i: string) => [string, number][]; reagents: [string, number, number][] };
+  const steps: Step[] = [];
+  for (const [pid, p] of Object.entries(plates)) {
+    if (p.kind === 'assay' || p.kind === 'handling') continue;
+    if (p.kind === 'batch') {
+      if (!p.batch) out.push(`works.plates.${pid}: a batch plate needs batch {kg, s, start_share, start_idle}`);
+      if (!p.recipes || !Object.keys(p.recipes).length) out.push(`works.plates.${pid}: a batch plate needs at least one recipe`);
+      for (const [rid, r] of Object.entries(p.recipes ?? {})) steps.push({ where: `works.plates.${pid}.recipes.${rid}`, inputs: r.in, outOf: () => r.out, wasteOf: () => r.waste, reagents: r.reagents });
+    } else {
+      if (p.kind === 'rate' && p.rate_kg_s === undefined && pid !== 'shear') out.push(`works.plates.${pid}: a rate plate needs rate_kg_s (only the shear's comes from shear.P)`);
+      steps.push({ where: `works.plates.${pid}`, inputs: p.in, outOf: (i) => p.out[i] ?? [], wasteOf: (i) => p.waste[i] ?? [], reagents: p.reagents });
+      for (const i of p.in) if (!p.out[i]) out.push(`works.plates.${pid}.out has no entry for its input "${i}" (out is given per input, E7)`);
+      for (const k of Object.keys(p.out)) if (!p.in.includes(k)) out.push(`works.plates.${pid}.out names "${k}", which is not one of its inputs`);
+    }
+    if (!mapPlaces.has(p.plot)) out.push(`works.plates.${pid}.plot "${p.plot}" is not a map point of either layer`);
+    if (p.needs && !plates[p.needs]) out.push(`works.plates.${pid}.needs "${p.needs}" is not a plate`);
+    for (const [k, q] of Object.entries(p.feeds ?? {})) {
+      if (!plates[q]) out.push(`works.plates.${pid}.feeds.${k} "${q}" is not a plate`);
+      else {
+        let n: string | null = plates[q].needs;
+        let ok = false;
+        for (let hop = 0; n && hop < 20; hop++, n = plates[n]?.needs ?? null) if (n === pid) ok = true;
+        if (!ok || plates[q].row !== p.row || plates[q].slot <= p.slot) out.push(`works.plates.${pid}.feeds ${q}: a feeds chain out of order (${q} must need ${pid} and follow it in its row: slot ${plates[q].slot} after ${p.slot})`);
+        if (plates[q].feedBy !== 'stream') out.push(`works.plates.${q} is fed by ${pid}'s stream: its feedBy is "stream"`);
+      }
+    }
+    if (s.works && p.financeable !== undefined) {
+      const fin = Object.values(p.recipes ?? {}).some((r) => sellable(r.out) > 0) || Object.values(p.out).some((sh) => sellable(sh) > 0);
+      if (fin !== p.financeable) out.push(`works.plates.${pid}.financeable is ${p.financeable}; it is derived: ${fin} (out holds a sellable grade)`);
+    }
+  }
+  // a needs cycle
+  for (const pid of Object.keys(plates)) {
+    const seen = new Set<string>();
+    for (let n: string | null = pid; n; n = plates[n]?.needs ?? null) {
+      if (seen.has(n)) {
+        out.push(`works.plates: a needs cycle through ${[...seen].join(' -> ')}`);
+        break;
+      }
+      seen.add(n);
+    }
+  }
+  for (const st of steps) {
+    for (const i of st.inputs) {
+      if (!known(i)) out.push(`${st.where}: input "${i}" is not a grade, an object or the stream`);
+      const o = st.outOf(i);
+      const w = st.wasteOf(i);
+      for (const [g] of [...o, ...w]) if (!known(g)) out.push(`${st.where}: "${g}" (out or waste of ${i}) is not a grade, an object, the stream or the carrier`);
+      const r = st.reagents.reduce((a, [, k]) => a + k, 0);
+      const sum = o.reduce((a, [, k]) => a + k, 0) + w.reduce((a, [, k]) => a + k, 0);
+      // (1) mass is kept
+      if (!near(sum, 1 + r)) out.push(`${st.where}: input ${i}: out + waste = ${+sum.toFixed(12)}, 1 + reagents = ${+(1 + r).toFixed(12)} (mass is kept, 5.2 (1))`);
+      // (2) no plate mints tonnes
+      if (sellable(o) > 1 + 1e-9) out.push(`${st.where}: input ${i} gives ${+sellable(o).toFixed(6)} kg of sellable grades a kilogram (at most 1, B16)`);
+      // (11) every plate and every recipe pays
+      const vin = valueIn(i);
+      const vout = valueOut(o) - st.reagents.reduce((a, [, k, pr]) => a + k * pr, 0);
+      if (vout <= 0 || (vin > 0 && vout < PLATE_GAIN * vin - 1e-9)) out.push(`${st.where}: input ${i} at p̄ is §${vin.toFixed(3)} a kg, its out after reagents §${vout.toFixed(3)} (+${vin > 0 ? (100 * (vout / vin - 1)).toFixed(1) : 'inf'} %; at least +5 %, ruling 13.5)`);
+    }
+  }
+  // (2) a closed vessel into the shear or the shredder is certified empty; a hands-fed plate stands in the south yard
+  for (const [pid, p] of Object.entries(plates)) {
+    for (const i of p.in) if (O[i]?.tags?.includes('vessel') && !O[i].certifiedEmpty && (pid === 'shear' || pid === 'shredder')) out.push(`works.plates.${pid} takes ${i}, a closed vessel without certifiedEmpty (T23)`);
+    const W = s.map.works;
+    const at = W?.points[p.plot] ?? s.map.points[p.plot];
+    if (p.feedBy === 'hands' && W && at && at[0] < W.fence.x) out.push(`works.plates.${pid} is fed by hands but its plot ${p.plot} (${at[0]}, ${at[1]}) is west of the field fence (x ${W.fence.x}): hands carry only in the south yard (2.8.1)`);
+    if (p.feedBy === 'bays' && W && at && at[0] >= W.fence.x) out.push(`works.plates.${pid} draws from the bays but stands in the first yard (${at[0]}, ${at[1]}): only back-field plates are bay-fed`);
+  }
+  // (2) every plate input is brought by a source open at the plate's gate
+  {
+    const src = sourcesByRung(s);
+    for (const [pid, p] of Object.entries(plates)) {
+      const r = rungOf(p.gate);
+      const ins = p.kind === 'batch' ? Object.values(p.recipes ?? {}).flatMap((x) => x.in) : p.in;
+      for (const i of ins) if (i !== STREAM && (src.get(i) ?? 99) > r) out.push(`works.plates.${pid} (gate rung ${r}) takes "${i}", which no source open by rung ${r} brings (${src.has(i) ? `first at rung ${src.get(i)}` : 'none at all'})`);
+    }
+  }
+  // (12) the trade's price order (T4)
+  if (G.twitch && G.alw && !(G.twitch.pbar < G.alw.pbar)) out.push(`grades.twitch §${G.twitch.pbar} is not below alloy wheels §${G.alw.pbar} (T4: wheels > twitch > zorba)`);
+  if (G.zorba && G.twitch && !(G.zorba.pbar < G.twitch.pbar)) out.push(`grades.zorba §${G.zorba.pbar} is not below twitch §${G.twitch.pbar} (T4)`);
+  if (plates.sorter)
+    for (const i of plates.sorter.in) {
+      const v = valueOut(plates.sorter.out[i] ?? []);
+      if (pbar(i) > 0 && v > SORT_CAP * pbar(i) + 1e-9) out.push(`works.plates.sorter: ${i} sorted is worth §${v.toFixed(3)} a kg, over ${SORT_CAP} x its §${pbar(i)} (T4)`);
+    }
+
+  // ---- (5) the Yard sale's kinds
+  if (s.reuse) {
+    for (const [k, def] of Object.entries(s.reuse.kinds)) {
+      const o = O[k];
+      if (!o) {
+        out.push(`reuse.kinds.${k} is not an object`);
+        continue;
+      }
+      const bad = (o.tags ?? []).filter((t) => s.reuse!.never.includes(t));
+      if (bad.length) out.push(`reuse.kinds.${k} is tagged ${bad.join(', ')} (never reusable, T23)`);
+      if (/bike|bicycle/i.test(k) && !def.fromPartnerOnly) out.push(`reuse.kinds.${k}: a bicycle is reusable only from a named partner's load (fromPartnerOnly, T15)`);
+    }
+    if (!O[s.reuse.firstThing]) out.push(`reuse.firstThing "${s.reuse.firstThing}" is not an object`);
+    else if (!s.reuse.kinds[s.reuse.firstThing]) out.push(`reuse.firstThing "${s.reuse.firstThing}" is not one of reuse.kinds`);
+    for (const t of ['electrical', 'sealed', 'vessel', 'battery', 'carPart', 'fuel', 'childSafety'] as const) if (!s.reuse.never.includes(t)) out.push(`reuse.never lacks "${t}" (T23)`);
+  }
+
+  // ---- (6) the ads fit the day; (7) the packs stay under tau_4
+  const top = s.ladder.topRung ?? 3;
+  if (s.ads) {
+    const a = s.ads;
+    for (let r = 3; r <= top; r++) {
+      const h = a.dayHours_h[r - 1];
+      if (h === null || h === undefined) {
+        out.push(`ads.dayHours_h[${r - 1}] (rung ${r}) is missing`);
+        continue;
+      }
+      const used = a.awayCap_min * a.awayPerDay + a.spotCap_min * a.spotPerDay;
+      if (used > a.maxDayShare * 60 * h + 1e-9) out.push(`ads at rung ${r}: ${a.awayCap_min} x ${a.awayPerDay} + ${a.spotCap_min} x ${a.spotPerDay} = ${used} minutes of I a day, over ${a.maxDayShare} x 60 x ${h} h = ${(a.maxDayShare * 60 * h).toFixed(2)} (5.2 (6))`);
+      const cap = s.awayCapByRung_h[Math.min(r, s.awayCapByRung_h.length) - 1];
+      const want = Math.round((2 * (cap + s.nightWatch_h) + HABIT_PLAY_H) * 100) / 100;
+      if (!near(h, want)) out.push(`ads.dayHours_h[${r - 1}] (rung ${r}) is ${h} h; the habit gives 2 x (${cap} + ${s.nightWatch_h}) + ${HABIT_PLAY_H} = ${want} h (ruling 10.6)`);
+    }
+  }
+  if (s.tau_h && s.tau_h.length >= 4) {
+    const t4 = s.tau_h[3];
+    if (t4 !== null && t4 <= 20) out.push(`tau_h[3] (rung 4) is ${t4} h: tau_4 > 20 h is fixed (E11), so that the 20 h pack stays under it`);
+    for (const H of PACK_HOURS) if (t4 !== null && H >= t4) out.push(`a pack of ${H} hours of I is not under tau_4 ${t4} h (5.2 (7))`);
+  }
+
+  // ---- (8) no bought load nets a loss with an agreement open, after a one-day fall (E5)
+  if (s.bank) {
+    const keep = (1 - s.bank.share) * ONE_DAY_FALL;
+    for (const [pid, ld] of partnerLoads(s)) if (ld.prepared * keep < ld.price - 1e-9) out.push(`partners.${pid} load "${ld.name}": prepared §${ld.prepared.toFixed(2)} x (1 - ${s.bank.share}) x ${ONE_DAY_FALL} = §${(ld.prepared * keep).toFixed(2)} is below its price §${ld.price.toFixed(2)} (E5, 5.2 (8))`);
+    const words = near(s.bank.share, 0.2) ? 'A fifth' : `${Math.round(s.bank.share * 100)} %`;
+    if (s.bank.shareWords !== words) out.push(`bank.shareWords "${s.bank.shareWords}" does not say bank.share ${s.bank.share} ("${words}")`);
+  }
+  // the layer partners' stored figures are their contents' (as the first yard's lint holds k x as found)
+  for (const [pid, p] of Object.entries(L?.partners ?? {})) {
+    const want = { trialMass_kg: massKg(s, p.trial), skipMass_kg: massKg(s, p.skip), trialPrepared: preparedValue(s, p.trial, []), skipPrepared: preparedValue(s, p.skip, []), skipPrice: Math.round(p.k * asFoundValue(s, p.skip)) };
+    for (const [k, v] of Object.entries(want)) {
+      const have = (p as unknown as Record<string, number>)[k];
+      if (Math.abs(have - v) > Math.max(1, 0.01 * v)) out.push(`worksLayer.partners.${pid}.${k} is ${have}; its contents give ${Math.round(v * 100) / 100}`);
+    }
+  }
+
+  // ---- (13) an oversize piece's kind needs a tool the yard can own by the first rung it can come
+  if (s.lots) {
+    const tierBy = toolTierByRung(s);
+    for (const k of s.lots.kinds) {
+      const o = O[k.obj];
+      if (!o) {
+        out.push(`lots.kinds: "${k.obj}" is not an object`);
+        continue;
+      }
+      for (const l of k.line) if (!plates[l] && !(l in s.machines)) out.push(`lots.kinds.${k.obj}.line "${l}" is neither a plate nor a first-yard machine`);
+      const first = Math.max(3, k.line.length ? Math.min(...k.line.map((l) => (plates[l] ? rungOf(plates[l].gate) : 1))) : 3);
+      const need = Math.max(o.tier, ...(o.pieceTiers ?? []));
+      if (need > tierBy(first)) out.push(`lots.kinds.${k.obj} needs tool tier ${need}; the yard can own at most tier ${tierBy(first)} by rung ${first}, the first at which it can come (decision 28)`);
+    }
+    if (s.lots.cut_s[0] > s.lots.cut_s[1]) out.push(`lots.cut_s [${s.lots.cut_s.join(', ')}]: the least seconds first`);
+  }
+  // ---- B4, 5.2 (4): what rung 4's range needs depends on no tool the player cannot own by then
+  if (top >= 4) {
+    const src = sourcesByRung(s);
+    const mats = new Set(Object.values(G).map((g) => g.material).filter((m): m is string => !!m));
+    const reach = [...mats].filter((m) => Object.entries(G).some(([g, d]) => d.material === m && (src.get(g) ?? 99) <= 4));
+    const need = (rungsOf4(s) ?? 0);
+    if (reach.length < need) out.push(`rung 4 asks a range of ${need}; by rung 4 the sources reach only ${reach.length} materials (${reach.join(', ')}) (B4, D14)`);
+  }
+  return out;
+}
+
+const rungsOf4 = (s: SalvageContent) => s.ladder.rungs.find((r) => r.n === 4)?.range;
+
+/** The value at p̄ a thing fetches as found (E3): its override share x prepared, else its pieces at their grades' as-found shares; a converter (pm) counts nothing. */
+export function objectAsFound(s: SalvageContent, oid: string): number {
+  const o = s.objects[oid];
+  if (!o) return 0;
+  const g = (id0: string) => s.grades[id0];
+  if (o.asFound !== undefined) return o.asFound * objectPrepared(s, oid, false);
+  let v = 0;
+  for (const p of o.pieces) if (g(p[0]) && g(p[0]).family !== 'pm') v += ((p[1] * p[2]) / 1000) * g(p[0]).pbar * g(p[0]).asFound;
+  if (o.shell && g(o.shell.grade)) v += (o.shell.g / 1000) * g(o.shell.grade).pbar * g(o.shell.grade).asFound;
+  return v;
+}
+/** The value at p̄ a thing's pieces and shell fetch prepared (assayed where `assayed`). */
+export function objectPrepared(s: SalvageContent, oid: string, assayed: boolean): number {
+  const o = s.objects[oid];
+  if (!o) return 0;
+  let v = 0;
+  for (const p of o.pieces) {
+    const gid = assayed && p.length === 5 ? p[4] : p[0];
+    const gr = s.grades[gid];
+    if (gr && gr.family !== 'pm') v += ((p[1] * p[2]) / 1000) * gr.pbar;
+  }
+  if (o.shell && s.grades[o.shell.grade]) v += (o.shell.g / 1000) * s.grades[o.shell.grade].pbar;
+  return v;
+}
+const massKg = (s: SalvageContent, c: Record<string, number>) => Object.entries(c).reduce((a, [o, n]) => a + (n * (s.objects[o]?.gross_g ?? 0)) / 1000, 0);
+const asFoundValue = (s: SalvageContent, c: Record<string, number>) => Object.entries(c).reduce((a, [o, n]) => a + n * objectAsFound(s, o), 0);
+/** A load's prepared value at the plates it is valued at (`owned`: with the analyser among them its assay grades count). */
+function preparedValue(s: SalvageContent, c: Record<string, number>, owned: string[]): number {
+  const assayed = owned.includes('analyser');
+  return Object.entries(c).reduce((a, [o, n]) => a + n * objectPrepared(s, o, assayed), 0);
+}
+
+/**
+ * Every load a partner sells (5.2 (8)): the first yard's trial and skip at their stored figures (the
+ * measured ones the first yard's lint holds), and from the works layer's `grows` the grown skip and each
+ * load of its own, valued at the plates its gate guarantees (`needs` and those of the loads before it).
+ */
+export function partnerLoads(s: SalvageContent): [string, { name: string; prepared: number; price: number }][] {
+  const rows: [string, { name: string; prepared: number; price: number }][] = [];
+  for (const [pid, p] of Object.entries(s.partners)) {
+    rows.push([pid, { name: 'trial', prepared: p.trialPrepared, price: p.trialPrice }]);
+    rows.push([pid, { name: 'skip', prepared: p.skipPrepared, price: p.skipPrice }]);
+    let skip = { ...p.skip };
+    const owned: string[] = [];
+    for (const gr of p.grows ?? []) {
+      owned.push(gr.needs);
+      if (gr.body === 'skip') {
+        for (const [o, n] of Object.entries(gr.contents)) skip[o] = (skip[o] ?? 0) + n;
+        rows.push([pid, { name: `skip with ${gr.needs}`, prepared: preparedValue(s, skip, owned), price: Math.round(p.k * asFoundValue(s, skip)) }]);
+      } else rows.push([pid, { name: `${gr.body} (${gr.needs})`, prepared: preparedValue(s, gr.contents, owned), price: Math.round(p.k * asFoundValue(s, gr.contents)) }]);
+    }
+  }
+  return rows;
+}
+
+/** The highest tool tier the yard can own by rung r (tools bought from the shop of either layer whose gate is met; tier 1 is the start's spanners). */
+function toolTierByRung(s: SalvageContent): (r: number) => number {
+  return (r: number) => {
+    let t = 1;
+    for (const i of [...s.shop, ...s.dayOneList]) if (i.kind === 'tool' && s.tools[i.key] && rungOf(i.gate) <= r) t = Math.max(t, s.tools[i.key].tier);
+    return t;
+  };
+}
+
+/**
+ * The first rung at which each grade and object reaches the yard (5.2 (2), (4)): the first yard's sources
+ * (zones, the drop-off, its partners, their pieces, shells and whole grades, the machines' outputs) at
+ * rung 1; a works-layer partner at its opener's gate and its `grows` at the needed plate's gate; oversize
+ * pieces at rung 3 (or their line's gate); a plate's outputs at its gate once its inputs have come;
+ * assay grades with the analyser. Pieces cut with a tool count at the rung that tool can be owned.
+ */
+export function sourcesByRung(s: SalvageContent): Map<string, number> {
+  const at = new Map<string, number>();
+  const plates = s.works?.plates ?? {};
+  const tierBy = toolTierByRung(s);
+  const put = (x: string, r: number) => {
+    if ((at.get(x) ?? 99) > r) {
+      at.set(x, r);
+      return true;
+    }
+    return false;
+  };
+  const shopGate = (key: string) => {
+    const i = [...s.shop, ...s.dayOneList].find((x) => x.key === key);
+    return i ? rungOf(i.gate) : plates[key] ? rungOf(plates[key].gate) : 99;
+  };
+  const objAt = (oid: string, r: number) => put(oid, r);
+  for (const z of Object.values(s.zones)) for (const o of Object.keys(z.things)) objAt(o, 1);
+  for (const [o] of s.dropoff.mix) objAt(o, 1);
+  for (const o of [...s.dropoff.initial, ...s.dropoff.opening]) objAt(o, 1);
+  for (const p of Object.values(s.partners)) {
+    const r = Math.max(1, shopGate(p.opens));
+    for (const o of [...Object.keys(p.trial), ...Object.keys(p.skip)]) objAt(o, r);
+    for (const gr of p.grows ?? []) for (const o of Object.keys(gr.contents)) objAt(o, Math.max(r, shopGate(gr.needs)));
+  }
+  for (const k of s.lots?.kinds ?? []) objAt(k.obj, Math.max(3, k.line.length ? Math.min(...k.line.map((l) => (plates[l] ? rungOf(plates[l].gate) : 1))) : 3));
+  const analyser = plates.analyser ? rungOf(plates.analyser.gate) : 99;
+  // grades from things; machine and plate outputs; to a fixpoint
+  for (let pass = 0; pass < 12; pass++) {
+    let moved = false;
+    for (const [oid, o] of Object.entries(s.objects)) {
+      const r0 = at.get(oid);
+      if (r0 === undefined) continue;
+      o.pieces.forEach((p, i) => {
+        const tier = o.pieceTiers?.[i] ?? o.tier;
+        let tr = 1;
+        while (tr < 9 && tierBy(tr) < tier) tr++;
+        const r = Math.max(r0, tier <= 1 ? r0 : tr);
+        moved = put(p[0], r) || moved;
+        if (p.length === 5) moved = put(p[4], Math.max(r, analyser)) || moved;
+      });
+      if (o.whole) moved = put(o.whole, r0) || moved;
+      if (o.shell) moved = put(o.shell.grade, r0) || moved;
+    }
+    // the first yard's machines
+    const m = s.machines;
+    const cab = at.get('cab');
+    if (cab !== undefined) for (const g of ['no2', 'bb']) moved = put(g, cab) || moved;
+    const mot = at.get('mot');
+    if (mot !== undefined) for (const [g] of m.bench.out) moved = put(g, mot) || moved;
+    for (const r of Object.values(m.crucible.recipes)) {
+      const ins = Array.isArray(r[0]) ? r[0] : [r[0]];
+      const ri = Math.min(...ins.map((g) => at.get(g) ?? 99));
+      if (ri < 99) for (const g of [r[1], r[3]]) moved = put(g, ri) || moved;
+    }
+    for (const p of Object.values(plates)) {
+      const gate = rungOf(p.gate);
+      const lists: [string[], (i: string) => [string, number][]][] =
+        p.kind === 'batch' ? Object.values(p.recipes ?? {}).map((r) => [r.in, () => r.out] as [string[], (i: string) => [string, number][]]) : [[p.in, (i: string) => p.out[i] ?? []]];
+      for (const [ins, outOf] of lists)
+        for (const i of ins) {
+          const ri = i === STREAM ? (p.needs ? at.get(`plate:${p.needs}`) : undefined) : at.get(i);
+          if (ri === undefined) continue;
+          const r = Math.max(ri, gate);
+          moved = put(`plate:${Object.keys(plates).find((k) => plates[k] === p)}`, r) || moved;
+          for (const [g] of outOf(i)) if (g !== CARRIER) moved = put(g, r) || moved;
+        }
+    }
+    if (!moved) break;
+  }
+  return at;
 }

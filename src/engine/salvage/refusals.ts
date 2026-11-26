@@ -29,5 +29,6 @@ export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem'
  */
 export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap'] as const;
 export type RefusalKeyV3 = (typeof REFUSAL_KEYS_V3)[number];
-/** Every refusal key, stage 1 and stage 2 (an event's `key`). */
-export type RefusalKey = (typeof REFUSAL_KEYS)[number] | RefusalKeyV3;
+export type RefusalKey = (typeof REFUSAL_KEYS)[number];
+/** Every refusal key of version 3 (stage 1 and stage 2). Phase B: RefusalKey becomes this once strings2 has the texts. */
+export type RefusalKeyAll = RefusalKey | RefusalKeyV3;
