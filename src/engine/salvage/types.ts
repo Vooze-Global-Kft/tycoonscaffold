@@ -225,6 +225,11 @@ export interface MachineWork {
   credited: Stock;
   /** Grams of the piece worked before `startAt` (a rate change credits to that instant and restarts the segment from it). Absent = 0. */
   base_g?: number;
+  /**
+   * 2.1 (engine2-group): a GROUPED segment, started with no boss within sight, took every hopper piece of
+   * its grade with it: `piece` is their sum (the first one's uid) and `n` how many pieces it holds. Absent = 1.
+   */
+  n?: number;
 }
 
 export interface MachineState {

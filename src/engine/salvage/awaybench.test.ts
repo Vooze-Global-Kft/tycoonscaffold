@@ -32,7 +32,7 @@ function cpuMs(f: () => void): number {
 }
 
 describe('the away bench on the real content', () => {
-  it('a played minute-60 state, six hours away, at most 1000 ms of node CPU (stage-1 ruling; 150 ms after the next stage\'s crew-leg aggregation)', () => {
+  it('a played minute-60 state, six hours away, at most 150 ms of node CPU (RULING2.md 10.4; the aim stays 50)', () => {
     const cfg = seededCfg(realCfg(), 257);
     const b = newBot(cfg, startGame(cfg, NOW), NOW, { seed: 257, hand: 'normal', habit: 'all', route: 'A' } as Parameters<typeof newBot>[3]);
     playTo(b, 3600);
@@ -45,7 +45,10 @@ describe('the away bench on the real content', () => {
     process.stderr.write(`away bench (real content, minute 60, seed 257): six hours away ${best.toFixed(1)} ms node CPU (ran ${a?.seconds} s; sales ${a?.money}; loads ${a?.loads}; things ${g.salvage.things.length}, crew ${g.salvage.crew.length})\n`);
     expect(a?.seconds).toBe(6 * 3600);
     // 22:40, the lead: after the final tuning (REPORT6) and E35 the minute-60 yard is busier and the six hours
-    // measure 670 to 715 ms; a rung-3 yard without the Night watch runs four hours (about two thirds of it).
-    expect(best).toBeLessThanOrEqual(1000);
+    // measured 670 to 715 ms (stage 1's limit was 1000). engine2-group (26 November, 03:20, load average 0.6
+    // to 0.8): crew trips grouped out of sight (2.1: hands' runs of 30 s, the cutter's of 120 s, the driver's
+    // trip planned, the merchant's round 120 s) and the leg-by-leg decisions made cheaper without changing
+    // them: MEASURED_MS below (727 ms before, same machine); the limit is the ruling's 150.
+    expect(best).toBeLessThanOrEqual(150);
   }, 600_000);
 });

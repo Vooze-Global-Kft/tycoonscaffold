@@ -8,6 +8,7 @@
  */
 import { boostFactor, boostOn, bossFresh, count, type Ctx } from './clock';
 import { machineInputs, machinePlace, machineShares, sumStock } from './content';
+import { bossSees, grouping } from './group';
 import { pointOf } from './positions';
 import type { MachineId, MachineState, Piece } from './types';
 
@@ -102,6 +103,17 @@ export function machineFor(x: Ctx, p: Piece): MachineId | null {
   return null;
 }
 
+/** content.ts machineShares, memoised per content, machine and input grade (a pure function of the content; read only). */
+const SHARES = new WeakMap<object, Map<string, [string, number][]>>();
+function sharesOf(x: Ctx, id: MachineId, input: string): [string, number][] {
+  let m = SHARES.get(x.c);
+  if (!m) SHARES.set(x.c, (m = new Map()));
+  const k = `${id}|${input}`;
+  let v = m.get(k);
+  if (!v) m.set(k, (v = machineShares(x.c, id, input)));
+  return v;
+}
+
 /** Processed grams of the piece in work at yard second t. */
 function processed(m: MachineState, t: number): number {
   const w = m.work!;
@@ -114,7 +126,7 @@ export function credit(x: Ctx, id: MachineId, t: number): void {
   const w = m.work;
   if (!w) return;
   const done = processed(m, t);
-  for (const [g, share] of machineShares(x.c, id, w.piece.grade)) {
+  for (const [g, share] of sharesOf(x, id, w.piece.grade)) {
     const target = Math.floor(share * done + 1e-6);
     const add = target - (w.credited[g] ?? 0);
     if (add > 0) {
@@ -162,9 +174,27 @@ export function start(x: Ctx, id: MachineId, t: number): void {
   if (m.hopper.length) {
     if (trayFull(x, id)) status = 'trayFull';
     else {
-      const piece = m.hopper.shift()!;
+      let piece = m.hopper.shift()!;
       const r = rateOf(x, id, t);
-      m.work = { piece, startAt: t, rate_kg_s: r, credited: {}, base_g: 0 };
+      // 2.1: a segment started with no boss within sight of the machine takes every hopper piece of its
+      // grade with it (one dated end; credited by the cumulative rule over their summed grams). The hand
+      // stripper runs only while the boss stands at it, so it is never grouped.
+      let n = 1;
+      if (id !== 'hand_stripper' && m.hopper.length && grouping(x) && !bossSees(x, t, [], [machinePlace(id)])) {
+        let g = piece.g;
+        const rest: Piece[] = [];
+        for (const q of m.hopper) {
+          if (q.grade === piece.grade) {
+            g += q.g;
+            n++;
+          } else rest.push(q);
+        }
+        if (n > 1) {
+          m.hopper = rest;
+          piece = { ...piece, g };
+        }
+      }
+      m.work = { piece, startAt: t, rate_kg_s: r, credited: {}, base_g: 0, ...(n > 1 ? { n } : {}) };
       status = r > 0 ? 'working' : 'waiting';
     }
   }
@@ -181,7 +211,7 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
   const w = m.work;
   if (!w) return;
   let outSum = 0;
-  for (const [g, share] of machineShares(x.c, id, w.piece.grade)) {
+  for (const [g, share] of sharesOf(x, id, w.piece.grade)) {
     const total = Math.floor(share * w.piece.g + 1e-6);
     const add = total - (w.credited[g] ?? 0);
     if (add > 0) m.tray_g[g] = (m.tray_g[g] ?? 0) + add;
@@ -193,7 +223,7 @@ export function finishPiece(x: Ctx, id: MachineId, t: number): void {
   }
   x.s.waste_g += w.piece.g - outSum;
   m.work = null;
-  count(x, `worked:${id}`);
+  count(x, `worked:${id}`, w.n ?? 1);
   start(x, id, t);
 }
 

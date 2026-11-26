@@ -385,8 +385,8 @@ export const FLOOR_CLEAR_SHARE = 0.5;
 /** Where a whole thing that needs no cutting goes from the floor (E35): motors to the bench's hopper, cable to the powered stripper's, else the scale. */
 function floorWholeDest(x: Ctx, th: ThingState): MachineId | 'scale' {
   const grade = pieceSpec(x.c, th.obj, th.cut)?.grade ?? '';
-  for (const id of ['bench', 'stripper'] as MachineId[]) {
-    if (x.s.machines[id]?.owned && machineInputs(x.c, x.s, id).includes(grade) && hopperRoom(x, id) > 0) return id;
+  for (const id of ['bench', 'stripper'] as const) {
+    if (x.s.machines[id]?.owned && inputSet(x, id).has(grade) && hopperRoom(x, id) > 0) return id;
   }
   return 'scale';
 }
@@ -426,7 +426,27 @@ function floorWholeTrip(x: Ctx, cap: number): { things: ThingState[]; dest: Mach
 function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number): Piece[] {
   const s = x.s;
   const load: Piece[] = [];
+  // A trip's claims are all ground pieces, all tray grams or all things (handDepart never mixes them): the
+  // claimed pieces are found in one look at the piles and taken off in the claims' order, as one by one.
+  const want = new Set<string>();
+  for (const c of claims) if (!c.startsWith('tray.') && !c.startsWith('loose:')) want.add(c);
+  const found = new Map<string, number>();
+  if (want.size) for (let i = 0; i < s.pieces.length; i++) if (want.has(s.pieces[i].uid) && s.pieces[i].claim === m.id) found.set(s.pieces[i].uid, i);
+  if (found.size) {
+    const byUid = new Map<string, GroundPiece>();
+    for (const [uid, i] of found) byUid.set(uid, s.pieces[i]);
+    const idx = [...found.values()].sort((p, q) => q - p);
+    for (const i of idx) s.pieces.splice(i, 1);
+    for (const c of claims) {
+      const q = byUid.get(c);
+      if (!q) continue;
+      const p: Piece = { uid: q.uid, grade: q.grade, g: q.g, from: q.from, spec: q.spec };
+      if (q.whole) p.whole = q.whole;
+      load.push(p);
+    }
+  }
   for (const c of claims) {
+    if (found.has(c)) continue;
     if (c.startsWith('tray.')) {
       const [, id, grade, gs] = c.split('.');
       const mach = s.machines[id as MachineId];
@@ -457,16 +477,6 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
           if (r.gone) break;
         }
       }
-      continue;
-    }
-    // takeFromPile's piece, found once (the claimed one of this uid).
-    const gi = s.pieces.findIndex((p) => p.uid === c);
-    if (gi >= 0 && s.pieces[gi].claim === m.id) {
-      const q = s.pieces[gi];
-      s.pieces.splice(gi, 1);
-      const p: Piece = { uid: q.uid, grade: q.grade, g: q.g, from: q.from, spec: q.spec };
-      if (q.whole) p.whole = q.whole;
-      load.push(p);
       continue;
     }
     const th = thingOf(x, c);

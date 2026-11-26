@@ -10,7 +10,6 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { bossFresh, type Ctx } from './clock';
-import { atPlace } from './machines';
 
 export interface GroupCfg {
   /** The first rung on which runs are grouped (below it every leg is its own event, as in stage 1). */
@@ -62,8 +61,18 @@ export function bossSees(x: Ctx, t: number, pts: readonly { x: number; y: number
   const p = x.s.presence;
   const r = x.c.reach.sight;
   for (const q of pts) if (Math.hypot(q.x - p.x, q.y - p.y) <= r) return true;
-  for (const pl of places) if (atPlace(x, pl, p.x, p.y, r)) return true;
+  for (const pl of places) if (nearPlace(x, pl, p.x, p.y, r)) return true;
   return false;
+}
+
+/** machines.ts atPlace (within `reach` of a place's footprint), here to keep the imports one way. */
+function nearPlace(x: Ctx, place: string, px: number, py: number, reach: number): boolean {
+  const pt = x.c.map.points[place];
+  if (!pt) return false;
+  const pl = x.c.map.places[place];
+  const dx = Math.max(0, Math.abs(px - pt[0]) - (pl?.w ?? 0) / 2);
+  const dy = Math.max(0, Math.abs(py - pt[1]) - (pl?.d ?? 0) / 2);
+  return Math.hypot(dx, dy) <= reach;
 }
 
 /** Slack for comparing planned instants. */

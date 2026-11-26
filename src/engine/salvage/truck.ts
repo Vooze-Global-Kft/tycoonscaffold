@@ -133,14 +133,21 @@ function tipNow(x: Ctx, t: number): void {
   const sk = tr.skip;
   if (!sk) return;
   let things = 0;
+  // floorSlot's first free slot for each thing in turn, from one look at the floor.
+  const used = new Set<number>();
+  for (const q of x.s.things) if (q.at.at === 'floor') used.add((q.at as { slot: number }).slot);
+  let slot = 0;
   for (const [obj, n] of Object.entries(sk.contents)) {
     for (let i = 0; i < n; i++) {
       const k = (x.s.counts!.floorThings ?? 0) + 1;
       x.s.counts!.floorThings = k;
-      x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot: floorSlot(x) }, cut: 0, progress: 0, by: null });
+      while (used.has(slot)) slot++;
+      used.add(slot);
+      x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });
       things++;
     }
   }
+  void floorSlot;
   tr.skip = null;
   count(x, `fetched:${sk.partner}`);
   if (x.away) x.away.loads += 1;
