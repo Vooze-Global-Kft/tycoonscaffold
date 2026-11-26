@@ -26,7 +26,7 @@
  * Uids are unique in a yard (notes/contract.md item 7); should an array ever hold two items with one uid, the uid
  * lookups fall back to the array's own `find` (the first in array order), as before.
  */
-import { MEMO_CHECK } from './memo';
+import { MEMO_CHECK, memoMismatch } from './memo';
 import type { GroundPiece, ThingState } from './types';
 
 interface Idx<T> {
@@ -41,6 +41,16 @@ interface Idx<T> {
   uid: Map<string, T>;
   /** Some uid occurs twice: the uid lookups use the array's own find. */
   dup: boolean;
+  /** floorKept's values (things' index only), each with the versions and the content it was computed at. */
+  kept?: Map<string, { c: object; p: Idx<GroundPiece>; pv: number; tv: number; v: number }>;
+  /** pileKs's per-pile counts of the pieces' k (pieces' index only, piles asked for only). */
+  ks?: Map<string, PileKs>;
+}
+
+/** The k's in use on one pile: how many pieces hold each, and `low` (every k below it is in use). */
+export interface PileKs {
+  n: Map<number, number>;
+  low: number;
 }
 
 const EMPTY: readonly never[] = Object.freeze([]) as readonly never[];
@@ -115,6 +125,12 @@ function live<T>(map: WeakMap<readonly T[], Idx<T>>, arr: readonly T[], what: st
 }
 
 function fileIn<T extends { uid: string }>(i: Idx<T>, q: T, k: string): void {
+  const ks = i.ks?.get(k);
+  if (ks) {
+    const kk = (q as unknown as GroundPiece).k;
+    ks.n.set(kk, (ks.n.get(kk) ?? 0) + 1);
+    while (ks.n.has(ks.low)) ks.low++;
+  }
   const l = i.by.get(k);
   if (l) l.push(q);
   else i.by.set(k, [q]);
@@ -131,6 +147,16 @@ function fileOut<T extends { uid: string }>(i: Idx<T>, q: T, k: string): boolean
   l.splice(j, 1);
   if (!l.length) i.by.delete(k);
   i.uid.delete(q.uid);
+  const ks = i.ks?.get(k);
+  if (ks) {
+    const kk = (q as unknown as GroundPiece).k;
+    const c = (ks.n.get(kk) ?? 0) - 1;
+    if (c > 0) ks.n.set(kk, c);
+    else {
+      ks.n.delete(kk);
+      if (kk < ks.low) ks.low = kk;
+    }
+  }
   return true;
 }
 
@@ -145,6 +171,38 @@ export function piecesOn(arr: readonly GroundPiece[], pile: string): readonly Gr
 export function pieceById(arr: readonly GroundPiece[], uid: string): GroundPiece | undefined {
   const i = get(PIECES, arr, pileOf, 'pieces');
   return i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
+}
+
+function ksOf(l: readonly GroundPiece[]): PileKs {
+  const n = new Map<number, number>();
+  for (const q of l) n.set(q.k, (n.get(q.k) ?? 0) + 1);
+  let low = 0;
+  while (n.has(low)) low++;
+  return { n, low };
+}
+
+/**
+ * The k's in use on a pile (things.ts dropAllOnPile: the first free index), kept by the writers once asked for (read
+ * only). Verify mode: compared with the counts built afresh from the pile's pieces.
+ */
+export function pileKs(arr: readonly GroundPiece[], pile: string): PileKs {
+  const i = get(PIECES, arr, pileOf, 'pieces');
+  const ks = (i.ks ??= new Map());
+  let e = ks.get(pile);
+  if (e && MEMO_CHECK.verify) {
+    const f = ksOf(i.by.get(pile) ?? EMPTY);
+    if (f.low !== e.low || f.n.size !== e.n.size || [...f.n].some(([k, c]) => e!.n.get(k) !== c)) mismatch('pieces', `pile ${pile}: kept k's differ from the pile's`);
+  }
+  if (!e) ks.set(pile, (e = ksOf(i.by.get(pile) ?? EMPTY)));
+  return e;
+}
+
+/** The first ground piece with this uid claimed by `by` (`arr.find((q) => q.uid === uid && q.claim === by)`). */
+export function pieceClaimed(arr: readonly GroundPiece[], uid: string, by: string): GroundPiece | undefined {
+  const i = get(PIECES, arr, pileOf, 'pieces');
+  if (i.dup) return arr.find((q) => q.uid === uid && q.claim === by);
+  const q = i.uid.get(uid);
+  return q !== undefined && q.claim === by ? q : undefined;
 }
 
 /** No two ground pieces share a uid (so pieceById's piece is the only one with its uid). */
@@ -251,4 +309,38 @@ export function spliceThing(arr: ThingState[], at: number): ThingState | undefin
   i.last = arr[arr.length - 1];
   i.ver++;
   return gone;
+}
+
+/**
+ * A thing's cut count changed (things.ts cutOff, its only writer): what floorKept keeps of the things is no longer
+ * sure. Bumps the things' index version (the array itself is unchanged).
+ */
+export function thingCut(arr: readonly ThingState[]): void {
+  const i = THINGS.get(arr);
+  if (i && fresh(i, arr)) i.ver++;
+}
+
+/**
+ * A number derived ONLY from the floor (things.ts floorMass_g, truck.ts floorGrams: the objects and cut counts of the
+ * things whose place is the floor, the grams of the pieces on the floor pile, and the content), kept until either
+ * array is written (pushes, splices: the index versions) or a cut count changes (thingCut) or the content object
+ * differs. An object never changes for a thing, a piece's grams never change, a thing's cut count changes only in
+ * cutOff: so an unchanged pair of versions means the same floor and the same number. Verify mode: recomputed at every
+ * hit and compared.
+ */
+export function floorKept(x: { c: object; s: { things: readonly ThingState[]; pieces: readonly GroundPiece[] } }, slot: string, compute: () => number): number {
+  const ti = get(THINGS, x.s.things, placeOf, 'things');
+  const pi = get(PIECES, x.s.pieces, pileOf, 'pieces');
+  const kept = (ti.kept ??= new Map());
+  const e = kept.get(slot);
+  if (e && e.c === x.c && e.p === pi && e.pv === pi.ver && e.tv === ti.ver) {
+    if (MEMO_CHECK.verify) {
+      const v = compute();
+      if (!Object.is(v, e.v)) memoMismatch(`floorKept ${slot}`, e.v, v);
+    }
+    return e.v;
+  }
+  const v = compute();
+  kept.set(slot, { c: x.c, p: pi, pv: pi.ver, tv: ti.ver, v });
+  return v;
 }

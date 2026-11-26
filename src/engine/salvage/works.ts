@@ -44,7 +44,7 @@ import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
-import { pushThing, spliceThing } from './lookup';
+import { pieceClaimed, pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
 //
@@ -824,7 +824,7 @@ function pickPlateClaims(x: Ctx, m: CrewMember, t: number): Piece[] {
       if (w.status === 'trayFull') startPlate(x, id, w, t);
       continue;
     }
-    const gp = s.pieces.find((q) => q.uid === c && q.claim === m.id);
+    const gp = pieceClaimed(s.pieces, c, m.id);
     if (!gp) continue;
     const p = takeFromPile(x, gp.uid);
     if (p) load.push(p);
@@ -987,7 +987,7 @@ function craneTargets(x: Ctx, id: string): { targets: { to: string; gmin: number
       return routeOf(x, grade) === to;
     };
     let gmin = Infinity;
-    for (const th of x.s.things) {
+    for (const th of thingsAt(x.s.things, 'floor')) {
       if (th.at.at !== 'floor' || th.by || th.shell || th.cut !== 0) continue;
       const o = x.c.objects[th.obj];
       if (o?.whole && craneMayLift(x, o.whole, th.obj) && o.gross_g < gmin && keyRoute(o.whole, th.obj)) gmin = o.gross_g;
@@ -1002,7 +1002,7 @@ function craneSnap(x: Ctx, id: string): CraneIdle {
   const { keys, objs } = craneKeys(x.c);
   const things: ThingState[] = [];
   const thingV: unknown[] = [];
-  for (const th of x.s.things) if (th.at.at === 'floor' && objs.has(th.obj)) {
+  for (const th of thingsAt(x.s.things, 'floor')) if (objs.has(th.obj)) {
     things.push(th);
     thingV.push(th.by, th.shell, th.cut);
   }
@@ -1033,7 +1033,7 @@ function craneStill(x: Ctx, m: CraneIdle): boolean {
   if (!cranePlates(x, null, m.plates)) return false;
   const { keys, objs } = craneKeys(x.c);
   let i = 0;
-  for (const th of x.s.things) if (th.at.at === 'floor' && objs.has(th.obj)) {
+  for (const th of thingsAt(x.s.things, 'floor')) if (objs.has(th.obj)) {
     if (m.things[i] !== th || m.thingV[3 * i] !== th.by || m.thingV[3 * i + 1] !== th.shell || m.thingV[3 * i + 2] !== th.cut) return false;
     i++;
   }
@@ -1086,7 +1086,7 @@ function craneDepartNow(x: Ctx, id: string, w: WorksState, t: number): boolean {
     // Whole things on the floor first (the shear's beams and tanks), then loose pieces on the floor.
     if (!floorThings) {
       floorThings = [];
-      for (const th of x.s.things) {
+      for (const th of thingsAt(x.s.things, 'floor')) {
         if (th.at.at !== 'floor' || th.by || th.shell || th.cut !== 0) continue;
         const o = x.c.objects[th.obj];
         if (o?.whole && craneMayLift(x, o.whole, th.obj)) floorThings.push(th);
@@ -1134,7 +1134,7 @@ function craneLand(x: Ctx, id: string, w: WorksState, t: number): void {
   const by = `crane.${id}`;
   for (const uid of mv.items) {
     let p: Piece | null = null;
-    const gp = x.s.pieces.find((q) => q.uid === uid && q.claim === by);
+    const gp = pieceClaimed(x.s.pieces, uid, by);
     if (gp) p = takeFromPile(x, uid);
     else {
       const th = thingOf(x, uid);
@@ -1195,7 +1195,7 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
 
 /** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
 export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
-  const th = x.s.things.find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
+  const th = thingsAt(x.s.things, 'apron').find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
   if (!th) return;
   const d = plateDef(x.c, id)!;
   const s = (x.c.depollution?.s ?? 0) / (1 + d.lev * Math.max(0, w.level - 1));
@@ -1212,7 +1212,7 @@ export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
 function carDrained(x: Ctx, id: string, w: WorksState, t: number): void {
   const car = w.car!;
   w.car = null;
-  const th = x.s.things.find((q) => q.uid === car.thing);
+  const th = thingById(x.s.things, car.thing);
   if (th) {
     const o = x.c.objects[th.obj];
     spliceThing(x.s.things, x.s.things.indexOf(th));

@@ -67,7 +67,7 @@ import type { DatedAdd } from './works';
 import { boostFactor } from './clock';
 import { legM } from './content';
 import type { Spot } from './types';
-import { pushThing, spliceThing } from './lookup';
+import { pushThing, spliceThing, thingsAt } from './lookup';
 
 // A yard hand's leg and rest (works.ts handLeg / handIdle's rule, crew.ts's own: the same speed, handling and event),
 // written here so that reuse.ts does not import works.ts at run time (works.ts imports this file).
@@ -141,7 +141,7 @@ export function rackCap(x: Pick<Ctx, 'c' | 's'>): number {
 /** Things on the rack. */
 export function rackCount(x: Pick<Ctx, 's'>): number {
   let n = 0;
-  for (const th of x.s.things) if (th.at.at === 'rack') n++;
+  n += thingsAt(x.s.things, 'rack').length;
   return n;
 }
 
@@ -284,7 +284,7 @@ export function rackActEnd(x: Ctx, t: number): void {
 function rackThing(x: Ctx, p: Piece, by: string, t: number): void {
   const R = x.c.reuse!;
   const used = new Set<number>();
-  for (const th of x.s.things) if (th.at.at === 'rack') used.add(th.at.slot);
+  for (const th of thingsAt(x.s.things, 'rack')) if (th.at.at === 'rack') used.add(th.at.slot);
   const empty = used.size === 0;
   let slot = 0;
   while (used.has(slot)) slot++;
@@ -329,7 +329,7 @@ export function reuseDated(x: Ctx, add: DatedAdd<ReuseKind>): void {
   const r = x.s.reuse;
   if (!r) return;
   if (r.nextAt !== null) {
-    for (const th of x.s.things)
+    for (const th of thingsAt(x.s.things, 'rack'))
       if (th.at.at === 'rack') {
         add(r.nextAt, 'visitor', '');
         break;
@@ -380,7 +380,7 @@ function visitorBuys(x: Ctx, t: number): void {
   const R = x.c.reuse!;
   const r = x.s.reuse;
   let th: ThingState | null = null;
-  for (const q of x.s.things) {
+  for (const q of thingsAt(x.s.things, 'rack')) {
     if (q.at.at !== 'rack') continue;
     if (!th || q.at.since < (th.at as { since: number }).since || (q.at.since === (th.at as { since: number }).since && q.uid < th.uid)) th = q;
   }
@@ -412,7 +412,7 @@ function visitorBuys(x: Ctx, t: number): void {
 /** A batch thing set down at the trade corner at t (crate.ts tipDivert): its place; the van dated when none is. */
 export function toCorner(x: Ctx, t: number): { at: 'corner'; k: number; since: number } {
   const used = new Set<number>();
-  for (const th of x.s.things) if (th.at.at === 'corner') used.add(th.at.k);
+  for (const th of thingsAt(x.s.things, 'corner')) if (th.at.at === 'corner') used.add(th.at.k);
   let k = 0;
   while (used.has(k)) k++;
   const r = x.s.reuse;
@@ -427,7 +427,7 @@ function vanCollects(x: Ctx, t: number): void {
   const R = x.c.reuse!;
   const r = x.s.reuse;
   r.vanAt = null;
-  const batch = x.s.things.filter((q) => q.at.at === 'corner');
+  const batch = thingsAt(x.s.things, 'corner').filter((q) => q.at.at === 'corner');
   if (!batch.length) return;
   const day = dayAt(x, t);
   const lines: TicketLine[] = [];

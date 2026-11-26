@@ -18,7 +18,7 @@ import { bossFresh } from './clock';
 import { plateDef } from './content';
 import { nearPlace } from './positions';
 import { carStart, plateIds } from './works';
-import { pushThing, spliceThing } from './lookup';
+import { pushThing, spliceThing, thingsAt } from './lookup';
 
 /** The boss in (or entering) the forklift at yard second t: true when this step was the forklift's. */
 export function forkliftStep(x: Ctx, t: number): boolean {
@@ -43,7 +43,7 @@ export function forkliftStep(x: Ctx, t: number): boolean {
   const reach = c.reach.place;
   const capG = (c.forklift?.load ?? 0) * 1000;
   if (!f.load.length) {
-    const car = x.s.things.find((q) => q.at.at === 'elvPad' && !q.by);
+    const car = thingsAt(x.s.things, 'elvPad').find((q) => q.at.at === 'elvPad' && !q.by);
     const o = car ? c.objects[car.obj] : undefined;
     if (car && o && o.gross_g <= capG && nearPlace(c, 'elvPad', p.x, p.y, reach)) {
       spliceThing(x.s.things, x.s.things.indexOf(car));
@@ -58,7 +58,7 @@ export function forkliftStep(x: Ctx, t: number): boolean {
     const w = x.s.works[id];
     const d = plateDef(c, id);
     if (!w || w.phase !== 'running' || !d || d.kind !== 'station' || d.feedBy !== 'forklift' || !load.whole || !d.in.includes(load.whole)) continue;
-    if (x.s.things.some((q) => q.at.at === 'apron' && q.at.plate === id)) continue;
+    if (thingsAt(x.s.things, 'apron').some((q) => q.at.at === 'apron' && q.at.plate === id)) continue;
     if (!nearPlace(c, `${id}.apron`, p.x, p.y, reach)) continue;
     f.load = [];
     pushThing(x.s.things, { uid: load.uid, obj: load.whole, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null });

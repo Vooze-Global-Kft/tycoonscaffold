@@ -20,7 +20,7 @@ import { landBody } from './works';
 import { loadRanks } from './rate';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
-import { pushThing, spliceThing } from './lookup';
+import { floorKept, piecesOn, pushThing, spliceThing, thingsAt } from './lookup';
 
 /**
  * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
@@ -50,17 +50,21 @@ function remainingRow(c: SalvageContent, byObj: Map<string, number[]>, obj: stri
 
 /** Grams on the tipping floor: things.ts floorMass_g exactly, with the per-thing sum memoised (R3). */
 export function floorGrams(x: Ctx): number {
+  // engine4: kept until the floor changes (lookup.ts floorKept).
+  return floorKept(x, 'grams', () => floorGramsNow(x));
+}
+function floorGramsNow(x: Ctx): number {
   const byObj = remainingRows(x.c);
   let g = 0;
-  const things = x.s.things;
+  // engine4: the floor's things and pieces by the index (the same items in the same order: the same sum).
+  const things = thingsAt(x.s.things, 'floor');
   for (let i = 0; i < things.length; i++) {
     const th = things[i];
-    if (th.at.at !== 'floor') continue;
     const row = remainingRow(x.c, byObj, th.obj);
     if (row.length) g += row[th.cut < 0 ? 0 : th.cut >= row.length ? row.length - 1 : th.cut];
   }
-  const pieces = x.s.pieces;
-  for (let i = 0; i < pieces.length; i++) if (pieces[i].pile === 'floor') g += pieces[i].g;
+  const pieces = piecesOn(x.s.pieces, 'floor');
+  for (let i = 0; i < pieces.length; i++) g += pieces[i].g;
   return g;
 }
 void floorMass_g;
@@ -154,7 +158,7 @@ function tipNow(x: Ctx, t: number): void {
   let things = 0;
   // floorSlot's first free slot for each thing in turn, from one look at the floor.
   const used = new Set<number>();
-  for (const q of x.s.things) if (q.at.at === 'floor') used.add((q.at as { slot: number }).slot);
+  for (const q of thingsAt(x.s.things, 'floor')) used.add((q.at as { slot: number }).slot);
   let slot = 0;
   for (const [obj, n] of Object.entries(sk.contents)) {
     for (let i = 0; i < n; i++) {

@@ -40,14 +40,14 @@ import { ratedIncome } from './rate';
 import { dropOnPile } from './things';
 import { hashString } from '../rng';
 import type { Piece, ThingState } from './types';
-import { pushThing, spliceThing } from './lookup';
+import { pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
 const H_LOT = hashString('lot');
 
 /** Oversize pieces waiting on the pad. */
 export function lotsWaiting(x: Pick<Ctx, 's'>): number {
   let n = 0;
-  for (const th of x.s.things) if (th.at.at === 'lot') n++;
+  n += thingsAt(x.s.things, 'lot').length;
   return n;
 }
 
@@ -123,7 +123,7 @@ export function lotArrive(x: Ctx, t: number): void {
   const wv = wholeValue(x, kind.obj);
   const g = want > 0 && wv > 0 ? Math.max(1, Math.round((o.gross_g * want) / wv)) : o.gross_g;
   const used = new Set<number>();
-  for (const th of x.s.things) if (th.at.at === 'lot') used.add(th.at.k);
+  for (const th of thingsAt(x.s.things, 'lot')) if (th.at.at === 'lot') used.add(th.at.k);
   let k = 0;
   while (used.has(k)) k++;
   const uid = `lot${n}`;
@@ -140,7 +140,7 @@ function lotInReach(x: Ctx): ThingState | null {
   const p = x.s.presence;
   let best: ThingState | null = null;
   let bestD = Infinity;
-  for (const th of x.s.things) {
+  for (const th of thingsAt(x.s.things, 'lot')) {
     if (th.at.at !== 'lot' || th.by) continue;
     const o = x.c.objects[th.obj];
     if (!o || o.tier > x.s.tier) continue;
@@ -173,7 +173,7 @@ export function lotAct(x: Ctx, t: number): boolean {
 export function lotActHolds(x: Ctx, t: number): boolean {
   void t;
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   const p = x.s.presence;
   let ok = !!th && !p.moving;
   if (ok) {
@@ -187,7 +187,7 @@ export function lotActHolds(x: Ctx, t: number): boolean {
 /** The act `lot` ends: the oversize piece comes apart onto the floor's pile; a lot is dated at once if four were waiting. */
 export function lotActEnd(x: Ctx, t: number): void {
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   if (!th || th.at.at !== 'lot') return;
   const { specs, waste } = lotSplit(x, th);
   spliceThing(x.s.things, x.s.things.indexOf(th));

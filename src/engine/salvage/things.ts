@@ -5,7 +5,7 @@
 import { hash01 } from './board';
 import { heard, printTicket, ticketBase, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
-import { pieceById, piecesOn, pushPiece, pushThing, spliceThing, splicePiece, thingById, thingsAt } from './lookup';
+import { floorKept, pieceById, pileKs, piecesOn, pushPiece, pushThing, spliceThing, splicePiece, thingById, thingCut, thingsAt } from './lookup';
 import { weighIn } from './scales';
 import type { GroundPiece, Piece, PileKey, ThingState } from './types';
 
@@ -16,17 +16,19 @@ export function dropOnPile(x: Ctx, p: Piece, pile: PileKey): GroundPiece {
 
 /** Several pieces onto one pile in order, each at the first free index then (one look at the pile for all). */
 export function dropAllOnPile(x: Ctx, ps: readonly Piece[], pile: PileKey): GroundPiece[] {
-  const used = new Set<number>();
-  // engine4: the pile's own pieces (lookup.ts piecesOn: the same pieces in the same order as the filter of s.pieces).
-  for (const q of piecesOn(x.s.pieces, pile)) used.add(q.k);
+  // engine4: the pile's indices in use from the index (lookup.ts pileKs: every k of the pile's pieces, and `low`, below
+  // which every k is in use), kept as each piece is filed: the same first free k for each piece as the set of the
+  // pile's k's built here once and added to after each drop. Looked up again after each drop (a dropped index is
+  // rebuilt from the pile, which then holds the new pieces too).
   const out: GroundPiece[] = [];
-  let k = 0;
+  let ks = pileKs(x.s.pieces, pile);
+  let k = ks.low;
   for (const p of ps) {
-    while (used.has(k)) k++;
-    used.add(k);
+    while (ks.n.has(k)) k++;
     const gp: GroundPiece = { uid: p.uid, grade: p.grade, g: p.g, from: p.from, spec: p.spec, ...(p.whole ? { whole: p.whole } : {}), pile, k, claim: null };
     pushPiece(x.s.pieces, gp);
     out.push(gp);
+    ks = pileKs(x.s.pieces, pile);
   }
   return out;
 }
@@ -36,9 +38,14 @@ export function dropAllOnPile(x: Ctx, ps: readonly Piece[], pile: PileKey): Grou
  * object (a pure function of the content; integer grams, so the sum is the same in any order).
  */
 const REMAIN = new WeakMap<object, Map<string, number[]>>();
+// engine4: the last content's rows held beside the WeakMap (the same rows; one lookup fewer a call).
+let REMAIN_C: object | null = null;
+let REMAIN_ROWS: Map<string, number[]> | null = null;
 export function remainingG(c: Ctx['c'], obj: string, cut: number): number {
-  let byObj = REMAIN.get(c);
+  let byObj = c === REMAIN_C ? REMAIN_ROWS : REMAIN.get(c);
   if (!byObj) REMAIN.set(c, (byObj = new Map()));
+  REMAIN_C = c;
+  REMAIN_ROWS = byObj;
   let row = byObj.get(obj);
   if (!row) {
     const o = c.objects[obj];
@@ -118,6 +125,7 @@ export function cutOff(x: Ctx, th: ThingState, by: string, t: number): { piece: 
   const piece = nextPiece(x, th);
   if (!piece) return null;
   th.cut += 1;
+  thingCut(x.s.things);
   th.progress = 0;
   const gone = th.cut >= countOf(x.c, th.obj);
   if (gone && x.c.objects[th.obj]?.shell) shellWeighIn(x, th, by, t);
@@ -249,6 +257,10 @@ export function floorSlot(x: Ctx): number {
 
 /** Grams on the tipping floor (things and loose pieces): the hook's room check (2.7). */
 export function floorMass_g(x: Ctx): number {
+  // engine4: kept until the floor changes (lookup.ts floorKept).
+  return floorKept(x, 'mass', () => floorMassNow(x));
+}
+function floorMassNow(x: Ctx): number {
   let g = 0;
   // engine4: the floor's things and pieces by the index (the same items in the same order: the same sum).
   for (const th of thingsAt(x.s.things, 'floor')) g += remainingG(x.c, th.obj, th.cut);
