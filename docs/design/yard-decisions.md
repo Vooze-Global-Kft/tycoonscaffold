@@ -12,6 +12,10 @@ are complete here.
 - Part 3: the first yard after its review (S1 to S24).
 - Part 4: the first yard's map after the review of the built game (M1 to M7).
 - Part 5: the rulings on the review of the built game, by finding (S, R, H, P, W, L).
+- Part 6: the owner's decisions of 26 November (purchases limited to looks and scrip, bank loans,
+  investments, yard sales, companies in the manner of neighbourhoods) and the lead's ruling on them
+  (sections 1 to 8). The specification carries it as D20 to D68 in its section 14, and its amended
+  passages are marked [26 Nov].
 
 ---
 
@@ -990,3 +994,279 @@ Six reviewers played and read the joined first yard and reported 101 findings. E
   Ruling: do.
 - **W26** (minor). E31b ('a cutter's and a yard hand's level adds a quarter') and E31d (rung 2 at 2.4 t) are not in the content: hand.lev 0.12, cutter.lev 0.15, rung2.t 2.2.
   Ruling: do with R4 (E31b and rung 2 at 2.4 t).
+
+---
+
+## The lead's ruling on the owner's decisions of 26 November
+
+(Part 6. The ruling as the lead wrote it, `RULING2.md` in the working folder, complete; the
+proposals, the judges' notes and their verdicts are `design2/proposal-*.md`, `notes/judge2-*.md`
+and `design2/verdicts.json` beside it.)
+
+After the first yard was delivered, the owner decided: "Purchases should be limited to cosmetics,
+currency etc. Maybe you could even get bank loans, Etc... investments, yard sales," and "30 players
+could join a company like for instance how Hay Day is designed you can have neighborhoods".
+
+Four researchers gathered the facts and a second person checked each (`docs/design/research/`:
+`yard-social.md`, `yard-policy2.md`, `yard-money.md`, `yard-finance.md`). Three designers proposed
+inside a frame the lead set (`design2/FRAME.md`); four judges judged (a player and the owner's
+intent; store policy, ratings and fair boards; the economy and its exploits; the builder). This
+ruling stands above the proposals and the judges. A point that cannot work is reported with its
+smallest example, never quietly replaced. Numbers given here are starting values for the numbers
+prototype unless a point says "fixed".
+
+### 1. How the owner's words are read
+
+1. "Cosmetics" are LOOKS: things that change how a yard looks and nothing else.
+2. "Currency" is SCRIP (§), the one currency the first yard has, sold only as hours of the buyer's
+   own yard's rated income. There is no second, paid currency (the EU consumer authorities warn
+   against mixing currencies and against exchanges before a purchase).
+3. "Etc." is read narrowly: a NO AD VIDEOS purchase, and bundles of looks with it. No pass, nothing
+   random, no timer on any offer, nothing that adds tonnes or rank directly.
+4. "Bank loans" are the bank's PLANT FINANCE (stage 2), a merchant's ADVANCE (stage 3) and a SITE
+   LOAN (stage 4): each repaid only out of sales.
+5. "Investments" are A PART IN A PARTNER that comes back as better terms on real trade with that
+   partner (stage 3), and A PASSED RIVAL'S YARD bought as a site (stage 4). Player text never says
+   invest, returns, shares, stock, dividend or stake.
+6. "Yard sales" are a REUSE RACK at the gate from which the public buys (stage 2). Between players
+   nothing is ever sold at a price a player sets.
+7. "A company like a neighbourhood": every player keeps their own yard; a company is founded and
+   joined, at most 30 members (the design's section 7 stands), and members HELP each other a
+   little every day and share a WEEKLY ORDER. The groups, the rack and the weekly order are our
+   own in theme, words, rules and numbers: nothing of another game is copied.
+
+### 2. Money
+
+2.1 **Rated income, I (fixed).** Everything priced in hours uses one measure: the scrip an hour the
+    yard would earn with its present assets, no boss, at usual prices (rated capacity times the
+    margin a tonne of what that capacity makes). It is computed from ASSETS, never from the moving
+    average of recent sales (a player can pump that: hold every bay through a low day, sell all,
+    open the card). The rated function must count the step that binds (the bots found cutting and
+    the one truck bind late). Gate: I is within 0.9 to 1.1 of the measured away income an hour at
+    rungs 3, 4 and 5.
+2.2 **The catalogue of stage 2.** All real-money prices are on ONE card, the shop (opened from the
+    office and from Settings; it is not a new place on the first yard's map). No working card
+    (truck, crane, gate, machine) ever carries a real-money button.
+    - LOOKS, each $1.99 to $2.99, bought once, restored on reinstall: six fleet colours, four
+      yard-dressing sets, a founder's plaque poured in the yard's own crucible. Emblem parts and
+      company looks go on sale only in stage 5, when others can see them.
+    - EARNED LOOKS, never sold: a sign style at each rung and the foundry's plate, so that a player
+      who never pays has looks to show.
+    - NO AD VIDEOS, $4.99: every ad reward at once, same limits.
+    - ONE BUNDLE of looks with No ad videos, at one fixed price, always on sale, never timed, never
+      limited in number, offered only while the player owns none of its parts. A bundle never
+      holds scrip (a bundle with scrip is a consumable whose looks would not restore).
+    - SCRIP PACKS: 2, 5.5, 11.5 and 24 hours of I at $1.99, $4.99, $9.99 and $19.99. The largest
+      pack is at most the payback time of the rung where packs open.
+2.3 **How a scrip pack works (fixed).**
+    - Packs open at RUNG 4, never before: the measured first day is the same for everyone.
+    - The amount S = H x I is fixed when the card opens (shown again if the market step changed
+      before the store's sheet opens) and granted exactly as shown however late the approval comes
+      (a parent's approval can take hours). A ledger of granted transaction ids, a listener for
+      pending purchases and a reconcile at start keep a paid pack from being lost or paid twice;
+      bought scrip survives a restore and a save migration.
+    - Headroom: a pack is offered only while the yard can spend it now (the sum of what is buyable
+      now under the rung's ceiling). Otherwise its row reads "Nothing to spend it on yet" and has
+      no Buy button.
+    - The card prints the scrip and "about H hours of your yard's earnings". It never says "H hours
+      ahead" (the real lead is tau x ln(1 + H / tau), less than H) and never promises success.
+    - The grant goes through this mode's own money rules (a salvage consumable kind), not the
+      shared time-warp kind, which pays a moving average.
+2.4 **The switch (fixed).** Scrip packs are switched by country in the game's data: OFF in the EEA
+    and Switzerland at launch (until the owner has a lawyer's answer on showing a real-money figure
+    beside every scrip price), OFF where the country is unknown, ON elsewhere. Settings carries a
+    plain switch "Scrip packs: shown / hidden" so that a parent can hide them. The frame's "off for
+    players the platform reports as under 18" cannot fire today: no age signal exists without a
+    native module, and Expo Go has none. It becomes real when a store build carries the platform's
+    age signal, which is the owner's decision before the first store build; until then nothing in
+    the game or its store page claims it. THE GAME IS WHOLE WITH PACKS OFF: a player without packs
+    lacks only time, and every aim is measured in both modes.
+2.5 **Never.** No goal, advice line, away card, refusal, ticket or debt card ever names a real-money
+    product. No real-money prompt in the first session. No ad and no shop button on any card or
+    ticket that shows a debt.
+2.6 **Ads.** Rewarded videos only, behind labelled buttons that show what they pay: together at
+    most 4 % of a day's rated income (two away bonuses of up to 15 minutes of I, three spot buyers
+    of up to 8 minutes of I: 54 minutes a day). The away bonus is offered on its own small card
+    after the away card is closed, never on the away card. Ad rewards never count on a board and
+    never repay anything.
+2.7 **Boards stay worth playing for someone who buys nothing (stage 5).**
+    - Weekly brackets: every player is credited at most min(D frozen at placement, the band's top)
+      for the whole week, so capacity bought on Tuesday moves nothing until next week's placement.
+    - The company order: a member's credited deliveries are at most 1.25 times their own frozen
+      share (6.2).
+    - The all-time board: the shared credit curve. A player is credited at most the tonnes an
+      always-on player who never pays would have reached by that day; the figure is labelled
+      "credited", and the private ladder keeps every real tonne.
+2.8 **The store sentence.** With packs on: "Purchases change how your yard looks, remove ad videos,
+    or add scrip worth some hours of your own yard's earnings. Nothing sold adds tonnes directly,
+    and shared boards credit no more than play can reach." With packs off: "Purchases change how
+    your yard looks or remove ad videos. They never add scrip or tonnes."
+2.9 **Ratings expected.** Apple 13+ (contests); the European rating 3 to 7 (nothing timed, nothing
+    random, no relegation; "in-game purchases" shown); the German rating very likely 12 where packs
+    are on ("increased incentives to buy"): accepted.
+2.10 **On the owner's phone.** In Expo Go purchases are simulated: Buy gives the look or the scrip
+    and no money is taken. A dev switch sets the region so that the owner can see the shop with
+    packs on and off. Real charges begin with the first store build.
+
+### 3. The bank
+
+3.1 **ECONOMY E11 is amended by name.** "No credit in the first hour's shop: tools, carriers, crew
+    and the first machines are bought with cash. From rung 3 the bank's plant finance exists, on
+    works plates only."
+3.2 **Plant finance (stage 2, from rung 3; fixed in form).**
+    - Who: one invented lender, the bank's plant-finance desk ([bank]).
+    - What: a works plate that earns (a machine with its own output grades), priced at least half
+      an hour of I. "Finance what earns" is the only sentence the advice line ever says about it.
+    - How much: the bank pays F, at most 80 % of the price and at most F_max = min(2 h, 0.15 x
+      tau_r) x I; the player pays the rest now (the deposit, at least 20 %), and the deposit never
+      takes the reserve the driver's next load needs (E19, E29).
+    - What it costs: a flat charge c = 8 % of F (tune 5 to 12), fixed at signing. Total T = F x
+      (1 + c), printed on the card.
+    - How it is repaid: a share s = 25 % (tune 15 to 30) of each payment for lots of the financed
+      plate's OWN OUTPUT GRADES, until T is paid: the machine pays for itself, and nothing is taken
+      from the yard's other trade. No due date, nothing that grows, no "repay now" button, cash
+      never below zero. A plate that stands idle pays nothing and its debt stays as it was.
+    - How many: one agreement at a time in stage 2; later never more than 40 % of any payment in
+      all.
+    - Time away: the same function; lots collected while away repay by the same share.
+    - What the player sees: the lender's letter the first time a works card costs more than the
+      cash in hand while the deposit is in hand; on the card "Finance" beside "Save up (about x)"
+      (only the time is "about": every other number is applied as shown); a tag and a ring that
+      fills on the machine; on each ticket for those lots "Paid §x · to the bank §y · to you §z";
+      a ledger page in the office. A debt never shows in the top bar, the goal card or the advice
+      line.
+    - Worked example (rung 3, I about §54,500 an hour, tau about 9 h): a baler at §80,000. Deposit
+      §16,000; F = §64,000 (under F_max = 1.35 h x I = §73,600); T = §69,120; a quarter of each
+      bale lot goes to the bank until §69,120 is paid.
+3.3 **Aims (measured by the bots before the screens exist).** The sum taken equals T exactly; cash
+    never below zero; a tick equals a jump with an agreement open; with an agreement open no
+    bought load loses money at any rung (else s falls); a bot that always finances reaches rung 5
+    at most a tenth sooner than one that never does; by the card's own numbers finance is the
+    better choice on a quarter to a half of the purchases where it is offered.
+3.4 **Later.** Stage 3: the merchant's advance: a charge fixed at signing; repaid from every lot of
+    the advanced grade whoever buys it; no delivery date and no penalty. Stage 4: the site loan,
+    repaid from that site's payments; a grant with conditions the player can see and meet.
+3.5 **The server (stage 5).** The bound on a client's claims becomes: assets + cash <= gross
+    earnings + verified pack grants + financed - repaid.
+3.6 The agreement is in the save and changes the contract's version. The review notes carry one
+    line: loans in the game are fictional, in scrip, and pay nothing out.
+
+### 4. Holdings
+
+4.1 **Words.** "A part in [partner]", "your part", "terms"; the office's ledger page is "Holdings";
+    Help says: fictional, scrip only, nothing is paid out, not financial advice.
+4.2 **A part in a partner (stage 3).** One per partner, in three steps. It returns only as better
+    terms on real trade with that partner: at most a tenth off that partner's load price for the
+    lane partners; a fixed percentage more on deliveries for the foundry co-op (membership). It is
+    priced by the payback rule on the trade done with that partner WHEN BOUGHT and it is capped to
+    that trade (so many loads or tonnes a market day; raised only by buying the next step): raising
+    the flow later never raises the benefit for free. It is never resold and never lost; it pays
+    only on loads actually bought; it never adds tonnes. The weighbridge ticket prints "Your part:
+    -§x". ECONOMY E20 is restated: with every holding owned, three fifths of a load's margin still
+    come from the yard's work.
+4.3 **A passed rival's yard (stage 4).** A simulated firm the player has passed may offer its yard
+    on the key board; bought as a site, with its old stock in heaps (hand work at once); its
+    tonnes count from the day bought. Simulated firms only, never players.
+4.4 **Not built.** A resale of anything; a price or a return set by chance; a deposit that pays by
+    the clock; anything in another player's company; a company pot or project paid in scrip (bought
+    scrip would reach every member's yard, and paying in would become a social duty). If a company
+    build comes in stage 5 it is paid in delivered tonnes and gives a look only; it is the first
+    thing cut.
+4.5 **Aims.** Each holding pays back in 0.8 to 1.5 tau; all holdings together add at most a tenth
+    of a day's income at day 14; no holding changes tonnes.
+
+### 5. Yard sales
+
+5.1 **The reuse rack (stage 2, from rung 3).** A rack under a canopy by the gate, new at rung 3 (the
+    first yard's map before rung 3 does not change). A thing fit for reuse is fixed as such when it
+    is made (a hash; a green tag shows it before any choice): single real things (a bath, a
+    radiator, a bicycle, brass taps, a stove, gates). Never racked: anything electrical or sealed,
+    cylinders, batteries, converters, car parts. The hand lifts a tagged thing whole instead of
+    cutting it and carries it to the rack; yard hands carry tagged things there too.
+5.2 **The sale.** Members of the public come on foot (agents on dated legs, off the drive line),
+    one every period while the rack holds anything, the same whether the player is there or away,
+    with a defined restart when an empty rack gets a thing (a tick equals a jump). One price in
+    stage 2: 2.5 times the thing's scrap value at the sale's step (no timing edge from racking on
+    a high day). A choice of price tags is the first thing cut and comes back only if the rack
+    fills in play.
+5.3 **So that it is still felt at rung 5.** Partner loads may carry a reusable batch, printed on the
+    load's label before paying; set aside whole at the rack's trade corner, it is collected by a
+    reclamation dealer's van (not carried out by the public) at 1.5 times its cut value.
+5.4 **The first moment.** At rung 3 one reusable bath stands beside the new rack; the first visitor
+    comes within four minutes.
+5.5 **The ladder.** Mass sold from the rack counts as supplied tonnes (one ladder), with its term in
+    the server's bound.
+5.6 **Aims.** 2 to 5 % of a day's income at rungs 3 to 5, never above 8 %; a minute of the boss's
+    racking earns at least 1.2 times a minute of his cutting; the same result present or away.
+5.7 **Between players (stage 5).** A member's rack is read-only on a tour (an emote may be left). No
+    stand, no price a player sets, no scrip from one player to another, no "send a buyer".
+
+### 6. The company
+
+6.1 The design's section 7 stands. The company's place is a flagpole at every member's gate.
+6.2 **The weekly order.** Each member sets "in" or "out" before the week; the roster freezes at the
+    week's start. The order is 25 h x the sum of the in-members' rated capacity at the freeze. A
+    member's credited deliveries are at most 1.25 times their own frozen share, so capacity bought
+    in mid-week cannot lift the company. Lines by grade where at least two members can supply. A
+    claim ("I can cover copper.") stays the visible marker the design gave it and lapses quietly
+    after 24 hours at no cost. Tiers at 50, 80, 100 and 125 % are credited automatically at the
+    week's close; rewards are looks, kept for good, and kept by a member removed in mid-week. Once
+    a month a calm week (an inspection week): the order at 60 %, no class moves.
+6.3 **Classes, not leagues.** Companies are ranked within classes of about fifteen companies of
+    like size and capacity, by how much of their order they completed; pennants for the top three,
+    kept for good; nothing is ever lost for a quiet week; no relegation (losing status for not
+    returning is what the European rating calls pressure, and rates 12).
+6.4 **Help, every day.** (a) A request for feed: a grade one of the poster's machines takes; one
+    request a market day; at most two hours of the requester's I; the price is locked at posting
+    for both sides; the requester pays the game, the helper is paid the same amount by the game;
+    a helper gives at most one hour of their own flow a day; the received mass is booked so that no
+    tonne is counted twice; it applies at the first event after the client receives it, never
+    back-dated; the server writes it; an unfilled request stays open and withdrawing it returns
+    what was set aside (no merchant's fallback at a premium). (b) Covering a short delivery of a
+    member's supply deal: it moves neither goods nor scrip, prevents a loss of trust and never adds
+    trust. If stage 5 runs over, (a) is kept and its lorry animation is cut first.
+6.5 Nothing bought and no ad ever buys a claim, a request, points, an allowance, a deadline, a
+    class or a second draw of rewards.
+6.6 A removed member keeps what they earned; the wait before joining another company grows with
+    each removal. A list for finding a company shows its emblem, its members, an activity word and
+    a mark where its average rung matches the player's. Fixed phrases and emotes; no free chat, no
+    typed names. Without a network, and for a player under 13, simulated firms play the whole
+    company in the local mode.
+
+### 7. The stages
+
+7.1 **Stage 2, the works (the next build)** is the design's stage 2 with: the shop (looks, No ad
+    videos, the bundle; scrip packs from rung 4 where the country's switch is on; simulated in
+    Expo Go); the earned sign styles; rewarded ads; plant finance; the reuse rack and its sale;
+    and two things owed from the first yard: the aggregation of crew legs so that time away is
+    cheap, and the tuning step of ECONOMY E36 (the driver's level or a second truck).
+    In the order a player meets it: the first hour as built; at rung 3 the back field with the
+    first works plate (a baler) and the lender's letter; the rack with its bath and the first
+    visitor; from the second session the shop; at rung 4 the scrip packs, the shredder line and
+    the melt lines; rung 5.
+    The shared store files change FIRST and by one owner, with the four other games' tests green,
+    before any shop screen is built.
+7.2 **If stage 2 runs over**, one melt line (the battery breaker and lead) moves to stage 3. Never
+    cut: the country switch and its unknown-country default; the rung-4 gate on packs; the refusal
+    above headroom; the frozen quote and the ledger; the share and the total printed on finance and
+    their tests; no shop and no ad on a debt card. Cut first, in this order: the second kind of
+    reusable batch, the 11.5 h and 24 h packs, two dressing sets, levels of the rack.
+7.3 Stage 3 (the market): the merchant's advance; a part in a partner. Stage 4 (territories): the
+    site loan, a grant, a passed rival's yard as a site, a rack at each site. Stage 5 (other
+    players): the company's flagpole, the in and out roster, help, classes, the calm week, the
+    finder; the credit curve and the frozen brackets; emblem parts and company looks on sale; the
+    age signal if the owner chose it. Stage 6 as designed.
+7.4 Each stage's aims are measured only up to that stage's top rung; the buyer-against-non-buyer
+    aims at days 7, 14 and 30 stay in the numbers prototype until the stages they need exist.
+
+### 8. What the owner is told and asked
+
+1. Scrip packs are in, as hours of your own yard's earnings. They are off in the EU and
+   Switzerland at launch until a lawyer has answered one question (there, every scrip price might
+   have to show its real-money value); looks and No ad videos sell everywhere.
+2. With packs on, Germany's rating will very likely be 12. A buyer climbs their own ladder faster;
+   the shared boards credit no more than play can reach.
+3. Companies compete in classes of like companies for pennants; no company is ever dropped down
+   for a quiet week (that would raise the European age rating).
+4. Hiding packs from under-18s needs the phone to report an age, which needs a native module in
+   the first store build: your decision then. On your phone in Expo Go all purchases are pretend.
