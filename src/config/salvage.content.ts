@@ -348,6 +348,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     "owner1-rules (26 Nov, RULING-owner1.md H7): ladder rung 2 2.4 -> 2.8 t and rung 3 28.5 -> 31.5 t (both `rung2`/`rung3` and `rungs`): H1 to H4 brought rung 2 two minutes and rung 3 four and a half minutes earlier on the bots (15 seeds, 2 routes; 3.6 t was tried and put rung 2 at 15.8 min and the torch out of its band; notes/owner1-rules.md)",
     "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
     "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
+    "owner1-fix-rules (26 Nov, finding 5's first hour): ladder rung 2 2.8 -> 3.0 t and rung 3 31.5 -> 32.2 t (both `rung2`/`rung3` and `rungs`): the helper's new rule brought rung 2 about 40 s and rung 3 about 30 s to 80 s earlier on the bots (15 seeds, 2 routes; notes/owner1-fix-rules.md)",
     "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
     "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -1427,13 +1428,13 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     },
   },
   ladder: {
-    rung2: { t: 2.8, range: 3 },
-    rung3: { t: 31.5, range: 5 },
+    rung2: { t: 3.0, range: 3 },
+    rung3: { t: 32.2, range: 5 },
     theta: 300,
     rungs: [
       { n: 1, t: 0, range: 0 },
-      { n: 2, t: 2.8, range: 3 },
-      { n: 3, t: 31.5, range: 5 },
+      { n: 2, t: 3.0, range: 3 },
+      { n: 3, t: 32.2, range: 5 },
       // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
       // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
       { n: 4, t: 1000, range: 8 },
