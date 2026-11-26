@@ -511,3 +511,47 @@ describe('the money\'s promises over every card of the joined states (2.14.5, 2.
     }
   });
 });
+
+describe('the plates in rated income and in the yard hands\' order (2.3.1 step 5, 2.5.3; join2b)', () => {
+  it('no plate and no plate level lowers I (17.1, gate two): r3 on the works\' content, the plates bought one by one in content order, then each running plate one level up', async () => {
+    const { ratedIncome, ratedIncome0 } = await import('./rate');
+    const { R4_ORDER } = await import('../fixtures/salvage2works');
+    const cfg = worksCfg();
+    const I = (g: SalvageGame) => ratedIncome(contentAt(cfg.salvage, g.salvage), g.salvage);
+    let g: SalvageGame = { ...staleBoss(r3Works()), cash: 1e7 };
+    let prev = I(g);
+    const steps: string[] = [];
+    for (const id of R4_ORDER) {
+      g = buy(cfg, g, id, 1000, g.salvage.t);
+      g = jump(cfg, g, g.salvage.t + 111);
+      const now = I(g);
+      steps.push(`${id} ${prev.toFixed(0)} -> ${now.toFixed(0)}`);
+      expect(now, steps.join('; ')).toBeGreaterThanOrEqual(prev - 0.005);
+      expect(ratedIncome0(contentAt(cfg.salvage, g.salvage), g.salvage)).toBeLessThanOrEqual(now);
+      prev = now;
+    }
+    // every plate's level, one at a time from this yard
+    for (const id of R4_ORDER) {
+      const w = g.salvage.works[id];
+      if (!w || w.phase !== 'running') continue;
+      const s = structuredClone(g.salvage);
+      s.works[id].level += 1;
+      expect(I({ ...g, salvage: s }), `${id} level ${w.level + 1}`).toBeGreaterThanOrEqual(I(g) - 0.005);
+    }
+  });
+
+  it('a hands-fed plate is fed inside the yard hands\' order on a busy yard (not only by an idle hand): the baler on r3, light iron routed to it', () => {
+    const cfg = worksCfg();
+    let g: SalvageGame = { ...staleBoss(r3Works()), cash: 1e6 };
+    g = buy(cfg, g, 'baler', 1000, g.salvage.t);
+    g = jump(cfg, g, g.salvage.t + 111);
+    g = setRoute(cfg, g, 'li', 'baler', g.salvage.t);
+    const s = structuredClone(g.salvage) as SalvageState;
+    for (let i = 0; i < 20; i++) s.pieces.push({ uid: `jb.${i}`, grade: 'li', g: 20_000, from: `jb${i}`, spec: 0, pile: 'floor', k: i % 10, claim: null } as SalvageState['pieces'][number]);
+    g = { ...g, salvage: s };
+    const busy = g.salvage.crew.filter((m) => m.role === 'hand' && m.job !== 'idle').length;
+    const h = jump(cfg, g, g.salvage.t + 600);
+    expect(busy, 'the hands were at work').toBeGreaterThan(0);
+    expect((h.salvage.counts?.['worked:baler'] ?? 0) - (g.salvage.counts?.['worked:baler'] ?? 0)).toBeGreaterThan(0);
+  });
+});
