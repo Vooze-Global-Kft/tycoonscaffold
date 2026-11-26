@@ -1,10 +1,10 @@
 {
  "game": "scrap-yard",
- "date": "2026-11-26T18:28:21.941Z",
+ "date": "2026-11-26T20:33:29.728Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "4ff3603d619e2033076c0b7c47bc95abfd919c2c0cb6223c481b964b1ba8e9be",
+ "sourceHash": "82e716e7880062aa7dd4a867aa5f54cd27a2fd472428bc77d5a8b6cfa8ef3814",
  "sources": [
   "app.config.ts",
   "games/scrap-yard/assets/sfx/amb_yard_1.m4a",
@@ -190,6 +190,7 @@
   "src/modes/salvage/devViews.ts",
   "src/modes/salvage/index.tsx",
   "src/modes/salvage/presets.ts",
+  "src/modes/salvage/returning.ts",
   "src/modes/salvage/soundKeys.ts",
   "src/services/ads.ts",
   "src/services/firebase.ts",
@@ -287,6 +288,7 @@
   "src/ui/salvage/overlays/AwayCard.tsx",
   "src/ui/salvage/overlays/CentredCard.tsx",
   "src/ui/salvage/overlays/Clipboard.tsx",
+  "src/ui/salvage/overlays/CountingCard.tsx",
   "src/ui/salvage/overlays/Crucible.tsx",
   "src/ui/salvage/overlays/Help.tsx",
   "src/ui/salvage/overlays/IndustryTable.tsx",
@@ -307,6 +309,8 @@
   "src/ui/salvage/overlays/awayDocket.ts",
   "src/ui/salvage/overlays/backGuard.ts",
   "src/ui/salvage/overlays/cardStack.ts",
+  "src/ui/salvage/overlays/counting.ts",
+  "src/ui/salvage/overlays/countingOrder.ts",
   "src/ui/salvage/overlays/devOpen.ts",
   "src/ui/salvage/overlays/layout.ts",
   "src/ui/salvage/overlays/machineView.ts",
@@ -344,7 +348,7 @@
   "src/ui/theme.ts"
  ],
  "violations": [],
- "modules": 1938,
+ "modules": 1942,
  "assets": 99,
- "bytes": 5656258
+ "bytes": 5686019
 }
