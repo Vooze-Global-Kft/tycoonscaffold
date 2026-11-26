@@ -410,7 +410,11 @@ function sample(b: Bot, x: number, y: number, moving: boolean, heading = b.g.sal
 
 function step(b: Bot, dt: number): void {
   b.now += dt * 1000;
+  const cash0 = b.g.cash;
+  const e0 = b.g.lifetimeEarnings;
   b.g = advanceSalvage(b.cfg, b.g, dt, b.now, b.ev);
+  // Hard promise (8.3): cash rises only by what was earned or credited (lot payments, ads, grants: lifetime earnings).
+  if (b.g.cash - cash0 > b.g.lifetimeEarnings - e0 + 0.011) b.rec.broken.push({ t: b.g.salvage.t, what: `cash rose ${(b.g.cash - cash0).toFixed(2)} with earnings up ${(b.g.lifetimeEarnings - e0).toFixed(2)}` });
   observe(b);
 }
 
@@ -558,6 +562,10 @@ function observe(b: Bot): void {
         break;
       case 'pour':
         mark(b, 'pour', t);
+        if (e.plate) {
+          mark(b, `poured:${e.plate}`, t);
+          if (e.first) b.rec.s2.pours.push({ t, plate: e.plate });
+        }
         break;
       case 'rung':
         b.rec.rungs[e.n] ??= t;
@@ -567,6 +575,29 @@ function observe(b: Bot): void {
         b.rec.passed.push(t);
         break;
       case 'goal':
+        break;
+      // Stage 2 (8.2): what the bots' table counts.
+      case 'commissioned':
+        b.rec.s2.commissioned.push({ t, plate: e.plate, by: e.by });
+        mark(b, `commissioned:${e.plate}`, t);
+        break;
+      case 'racked':
+        b.rec.s2.racked += 1;
+        break;
+      case 'rackSold':
+        if (e.ticket.kind === 'rackSale') b.rec.s2.rackSold.push({ t, money: e.ticket.paid });
+        break;
+      case 'lotOpened':
+        b.rec.s2.lots += 1;
+        break;
+      case 'crateSorted':
+        b.rec.s2.crates += 1;
+        break;
+      case 'repaid':
+        b.rec.s2.repaid.push({ t, plate: e.plate });
+        break;
+      case 'letter':
+        b.rec.s2.letter ??= t;
         break;
       default:
         break;
@@ -1351,9 +1382,26 @@ function standAt(b: Bot, place: string, cond: () => boolean, max: number, what: 
 
 /** A plate set down and waiting to be started up: the boss stands at its plot (2.6.3). */
 function commissionLeg(b: Bot, id: string): void {
-  const plot = C(b).works!.plates[id].plot;
-  const ok = standAt(b, plot, () => b.g.salvage.works[id]?.phase === 'running', (C(b).works?.commission_s ?? 0) + 6, `commission ${id}`);
-  if (!ok) b.rec.refused.push({ t: b.g.salvage.t, key: 'commission', what: `${id}: standing at ${JSON.stringify(pos(b))} did not start it` });
+  const c = C(b);
+  const plot = c.works!.plates[id].plot;
+  const run = () => b.g.salvage.works[id]?.phase === 'running';
+  const max = (c.works?.commission_s ?? 0) + 6;
+  if (standAt(b, plot, run, max, `commission ${id}`)) return;
+  // The spot beside it did nothing (the analyser on the scale house: its south side is the platform scale's approach,
+  // s2c-join2b 6): a person tries the plot's other sides, 0.6 m out of its footprint.
+  const f = (mapAt(c, true).footprints as Record<string, { x: number; y: number; w: number; d: number }>)[plot];
+  const tried: string[] = [JSON.stringify(pos(b))];
+  if (f) {
+    for (const q of [{ x: f.x, y: f.y - f.d / 2 - 0.6 }, { x: f.x + f.w / 2 + 0.6, y: f.y }, { x: f.x - f.w / 2 - 0.6, y: f.y }, { x: f.x, y: f.y + f.d / 2 + 0.6 }]) {
+      walk(b, q);
+      if (standUntil(b, run, max)) {
+        b.rec.refused.push({ t: b.g.salvage.t, key: 'commissionSide', what: `${id}: started from ${q.x.toFixed(1)},${q.y.toFixed(1)} after ${tried.join(' ')} did nothing` });
+        return;
+      }
+      tried.push(JSON.stringify(pos(b)));
+    }
+  }
+  b.rec.refused.push({ t: b.g.salvage.t, key: 'commission', what: `${id}: standing at ${tried.join(' ')} did not start it` });
 }
 
 /** A hall's first heat at "Ready to pour" waits for the boss (S11): he walks to its apron. */
@@ -1576,6 +1624,14 @@ function decide2(b: Bot): boolean {
     standAt(b, 'crate', () => b.g.salvage.things.filter((th) => th.at.at === 'crate').length === 0, 90, 'crate');
     return true;
   }
+  // A place the goal card sends him to (the day-1 list's "visited:" goals: the back field's gateway).
+  const def = goalDef(b, id);
+  if (def?.done.startsWith('visited:') && s2Note(b, `visit:${id}:${b.sitting}`)) {
+    react(b, `visit ${def.done}`);
+    walk(b, placeSpot(b, def.done.slice(8)));
+    stand(b, 1);
+    return true;
+  }
   if (id === 'walkBackfield') {
     if (!take) return skip();
     if (s2Note(b, 'backfield')) {
@@ -1628,9 +1684,18 @@ export function away(b: Bot, seconds: number): void {
   const earned0 = b.g.lifetimeEarnings;
   const sup0 = b.g.salvage.ladder.supplied_g;
   const t0 = b.g.salvage.t;
+  const cash0 = b.g.cash;
   b.now += seconds * 1000;
   step(b, b.opts.dt);
   b.rec.away.push({ t: t0, seconds, earned: b.g.lifetimeEarnings - earned0, supplied_g: b.g.salvage.ladder.supplied_g - sup0 });
+  // Hard promise (8.3, stage 2): time away is paid once inside the state, and the card says what the cash moved by:
+  // money (gross) − the bank's share − what was spent. (The one live tick after it may add a few cents: 1 § of slack.)
+  const card = b.g.salvage.away;
+  if (card && worksOpened(b.g.salvage)) {
+    const moved = b.g.cash - cash0;
+    const said = card.money - (card.bank ?? 0) - (card.spent ?? 0);
+    if (Math.abs(moved - said) > 1) b.rec.broken.push({ t: b.g.salvage.t, what: `away card says ${said.toFixed(2)}, cash moved ${moved.toFixed(2)}` });
+  }
 }
 
 /** The shop keys the record shows bought (goal purchases, in order). */
@@ -1685,6 +1750,41 @@ export function playTo(b: Bot, t: number, onMinute?: (b: Bot, minute: number) =>
     if (onMinute) for (let k = m + 1; k <= m2; k++) onMinute(b, k);
     m = m2;
   }
+}
+
+/** Play until `cond` holds or yard second `tMax` (the same decisions as playTo: a run stopped here and continued is the same run). */
+export function playUntil(b: Bot, cond: (b: Bot) => boolean, tMax: number): void {
+  let guard = 0;
+  while (b.g.salvage.t < tMax && !cond(b) && guard++ < 200_000) {
+    const t0 = b.g.salvage.t;
+    decide(b);
+    if (b.g.salvage.t <= t0 + 1e-9) stand(b, b.opts.standDt);
+  }
+}
+
+/** A bot's play so far as plain data (yard-bot.ts --cache: runs that differ only from the works' opening share their first part). */
+export interface BotSnap {
+  g: SalvageGame;
+  now: number;
+  k: number;
+  standing: number;
+  rec: BotRecord;
+  known: string[];
+  lastGoal: string | null;
+  lastMinute: number;
+  heldDay: number | null;
+  managing: boolean;
+  sitting: number;
+  sat: string[];
+}
+export function snapBot(b: Bot): BotSnap {
+  return JSON.parse(JSON.stringify({ g: b.g, now: b.now, k: b.k, standing: b.standing, rec: b.rec, known: [...b.known], lastGoal: b.lastGoal, lastMinute: b.lastMinute, heldDay: b.heldDay, managing: b.managing, sitting: b.sitting, sat: [...b.sat] })) as BotSnap;
+}
+/** A bot with `opts` resumed from a snapshot (the state is data: the content may be another variant's). */
+export function resumeBot(cfg: SalvageConfig, snap: BotSnap, opts: BotOptions): Bot {
+  const b = newBot(cfg, snap.g, snap.now, opts);
+  Object.assign(b, { k: snap.k, standing: snap.standing, rec: snap.rec, known: new Set(snap.known), lastGoal: snap.lastGoal, lastMinute: snap.lastMinute, heldDay: snap.heldDay, managing: snap.managing, sitting: snap.sitting, sat: new Set(snap.sat) });
+  return b;
 }
 
 export { ratedCapacity };

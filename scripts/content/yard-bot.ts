@@ -41,7 +41,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SalvageSchema } from '../../src/config/schema.salvage';
 import * as R from '../../src/engine/salvage';
-import { away, newBot, playTo, ratedCapacity, seededCfg, startGame, tickJumpGate, type Bot, type BotOptions } from '../../src/engine/salvage/bot';
+import { away, newBot, newSitting, playTo, playUntil, ratedCapacity, resumeBot, seededCfg, snapBot, startGame, tickJumpGate, type Bot, type BotOptions, type BotSnap } from '../../src/engine/salvage/bot';
+import { contentAt, worksOpened } from '../../src/engine/salvage/layer';
 import { awayPass } from '../../src/engine/salvage/away';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
@@ -60,13 +61,19 @@ function arg(name: string, dflt: string | null = null): string | null {
 
 function loadCfg(file: string): R.SalvageConfig {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
-  return { mode: 'salvage', salvage: SalvageSchema.parse(raw.salvage) } as unknown as R.SalvageConfig;
+  // --stage 2 (content2-bots): the real content read with release.stage 2, as a stage-2 copy of game.json would be; the
+  // real content's key stays 1 (ruling 18.1 S1). The shared product list rides along (the shop reads cfg.monetization).
+  const stage = Number(arg('stage', '0'));
+  const salvage = SalvageSchema.parse(stage ? { ...raw.salvage, release: { ...(raw.salvage.release ?? {}), stage } } : raw.salvage);
+  return { mode: 'salvage', salvage, ...(stage ? { monetization: raw.monetization } : {}) } as unknown as R.SalvageConfig;
 }
 
 // ============================================================================================ one run
 
 interface Spec extends BotOptions {
-  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income' | 'walk';
+  kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income' | 'walk' | 'stage2';
+  /** stage2 only: which bot of yard-stage2.md 8.2 (its habit on the first yard's bot). */
+  bot?: Bot2;
   minutes: number;
   gate?: boolean;
   /** income only: the board the yard is PLAYED with ('flat': board.a 0 throughout; 'normal': the shipped board, G at usual prices). */
@@ -229,7 +236,206 @@ function walkSection(L: string[], all: Summary[]): void {
   L.push(` GATE (17.1): ${fails ? `${fails} of ${n} steps FAIL` : `met on all ${n} steps`}`);
 }
 
+// ============================================================================================ stage 2 (yard-stage2.md 8.2; content2-bots)
+
+/** The bots of 8.2's table, each a habit on the first yard's normal hand unless it names another hand. */
+type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut';
+const BOTS2: Record<Bot2, Partial<BotOptions>> = {
+  normal: {},
+  brisk: { hand: 'brisk' },
+  slow: { hand: 'slow' },
+  manager: { manager: true },
+  always: { finance: 'always' },
+  packs: { packs: true },
+  ads: { ads: true },
+  racker: { rack: 'rack' },
+  cutter: { rack: 'cut' },
+  holder: { holder: true },
+  steelMax: { steelMax: true },
+  leadCut: {},
+};
+/** The bots whose first part (to the works' opening) is the normal hand's own: they share one snapshot per seed. */
+const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut']);
+const S2_SITTINGS = Number(arg('sittings', '16')); // 8 days twice a day (8.2)
+const S2_AWAY_S = 11.75 * 3600;
+const S2_PLAY_S = 15 * 60;
+
+/** The lead cut (8.2, ruling 10.3): the lead line moved to stage 3: no breaker, no smelter, no lead goals. */
+function leadCut(cfg: R.SalvageConfig): R.SalvageConfig {
+  const c = JSON.parse(JSON.stringify(cfg.salvage)) as R.SalvageConfig['salvage'] & { stage2?: { id: string }[] };
+  const drop = new Set(['breaker', 'smelter']);
+  if (c.works) for (const k of drop) delete (c.works.plates as Record<string, unknown>)[k];
+  if (c.worksLayer) c.worksLayer.shop = c.worksLayer.shop.filter((i) => !drop.has(i.key));
+  if (c.stage2) c.stage2 = c.stage2.filter((g) => !['buyBreaker', 'buySmelter', 'pourLead'].includes(g.id));
+  return { ...cfg, salvage: c };
+}
+
+interface Sitting2 {
+  n: number;
+  h: number;
+  rung: number;
+  t: number;
+  cash: number;
+  cashBack: number;
+  awayNet: number;
+  awayBank: number;
+  awayMs: number;
+  I: number;
+  bought: number;
+  spent: number;
+  goal: string | null;
+  works: string;
+}
+
+/**
+ * One stage-2 run (8.2's twice-a-day habit to rung 5): a first hour, then 15 minutes every 11.75 h, up to 8 days (16
+ * sittings), stopping at rung 5. The first part (to the works' opening) is cached per seed and hand under --cache and
+ * shared by every bot whose habit differs only from there (SHARES_NORMAL). Hard promises are the bot's own checks
+ * (bot.ts: shown = applied, cash only from earnings, the away card's sum, nothing of money before the second session)
+ * plus, for the normal bot, a tick against a jump at four sittings.
+ */
+function run2(base0: R.SalvageConfig, spec: Spec): Summary {
+  const t0 = performance.now();
+  const which = spec.bot ?? 'normal';
+  const base = which === 'leadCut' ? leadCut(base0) : base0;
+  const cfg = seededCfg(base, spec.seed);
+  const opts: BotOptions = { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed, ...BOTS2[which] };
+  const cacheDir = arg('cache');
+  const share = SHARES_NORMAL.has(which) ? 'normal' : which;
+  const snapFile = cacheDir ? path.join(cacheDir, `snap-${createHash('sha1').update(JSON.stringify({ share, seed: spec.seed, game: gameHash })).digest('hex').slice(0, 16)}.json`) : null;
+  let b: Bot;
+  let snapMs = 0;
+  if (snapFile && fs.existsSync(snapFile)) {
+    b = resumeBot(cfg, JSON.parse(fs.readFileSync(snapFile, 'utf8')) as BotSnap, opts);
+  } else {
+    const a = performance.now();
+    b = newBot(cfg, startGame(cfg, NOW), NOW, share === 'normal' ? { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed } : opts);
+    playUntil(b, (bb) => worksOpened(bb.g.salvage), 3600);
+    snapMs = performance.now() - a;
+    if (snapFile) {
+      fs.mkdirSync(path.dirname(snapFile), { recursive: true });
+      fs.writeFileSync(snapFile, JSON.stringify(snapBot(b)));
+    }
+    if (share === 'normal') b = resumeBot(cfg, snapBot(b), opts);
+  }
+  playTo(b, 3600);
+  const sittings: Sitting2[] = [];
+  const nohandStates: R.SalvageGame[] = [];
+  let n0 = b.rec.purchases.length;
+  for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
+    newSitting(b);
+    const cash0 = b.g.cash;
+    const a = performance.now();
+    away(b, S2_AWAY_S);
+    const awayMs = performance.now() - a;
+    const card = b.g.salvage.away;
+    const cashBack = b.g.cash;
+    playTo(b, b.g.salvage.t + S2_PLAY_S);
+    const ps = b.rec.purchases.slice(n0);
+    n0 = b.rec.purchases.length;
+    const s = b.g.salvage;
+    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(R.ratedIncome(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(',') });
+    if (spec.gate && [1, 4, 8, 12].includes(k)) {
+      const d = tickJumpGate(cfg, b.g, b.now, 30);
+      if (d) b.rec.s2.gate.push(`sitting ${k}: ${d}`);
+    }
+    if (which === 'normal' && worksOpened(s)) nohandStates.push(b.g);
+  }
+  // No hand (8.2): stage-2 states of the normal run, the stick untouched: is the next purchase (the goal's, else the advice
+  // line's) affordable after the next absence, or after how many (at most 4)?
+  const nohand: { h: number; next: string | null; price: number | null; absences: number | null }[] = [];
+  for (const g of arg('nohand') === 'false' ? [] : nohandStates.slice(0, 20)) {
+    const goal = R.nextGoal(cfg, g);
+    const adv = goal?.buy ? null : R.advice(cfg, g, g.salvage.clock.highMs);
+    const item = goal?.buy ?? (adv?.action.act === 'buy' ? adv.action.item : adv ? JSON.stringify(adv.action).slice(0, 50) : null);
+    const price = goal?.buy ? buyCheck(cfg, g, goal.buy as never).price : adv?.price ?? null;
+    let reached: number | null = null;
+    if (price !== null) {
+      const nb = newBot(cfg, g, g.salvage.clock.highMs, opts);
+      for (let a = 1; a <= 4; a++) {
+        away(nb, S2_AWAY_S);
+        if (nb.g.cash >= price) {
+          reached = a;
+          break;
+        }
+      }
+    }
+    nohand.push({ h: +(g.salvage.t / 3600).toFixed(1), next: item, price, absences: reached });
+  }
+  const sum = summary(b, spec, [], [], {}, t0);
+  sum.extra = { s2: b.rec.s2, sittings, nohand, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0 }, plates: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
+  sum.minutes = [];
+  return sum;
+}
+
+const hours = (t: number | undefined) => (t === undefined ? '   -  ' : `${(t / 3600).toFixed(1).padStart(5)}h`);
+
+/** S2. THE STAGE-2 BOTS (8.2): per bot and seed the rungs' hours, the sittings, what stalled; then the money's habits. */
+function report2(all: Summary[], seeds: number[]): string {
+  const L: string[] = [];
+  const runs = all.filter((r) => r.spec.kind === 'stage2');
+  L.push(`STAGE-2 BOTS (yard-stage2.md 8.2; the real content read with release.stage 2; ${seeds.length} seeds ${seeds[0]}..${seeds.at(-1)}; twice a day to rung 5, at most ${S2_SITTINGS} sittings), generated by scripts/content/yard-bot.ts --stage 2`);
+  const broken = runs.flatMap((r) => [...r.broken.map((b) => `${r.spec.bot}/s${r.spec.seed} t=${Math.round(b.t)} (${hours(b.t)}): ${b.what}`), ...((r.extra.s2 as Bot['rec']['s2']).gate ?? []).map((g) => `${r.spec.bot}/s${r.spec.seed} TICK != JUMP ${g}`)]);
+  L.push(`0. HARD PROMISES (8.3) on ${runs.length} runs: ${broken.length ? `${broken.length} BROKEN` : 'none broken'}`);
+  for (const x of broken.slice(0, 20)) L.push(`   ${x}`);
+  const refusedKeys: Record<string, number> = {};
+  for (const r of runs) for (const f of r.refused) refusedKeys[f.key] = (refusedKeys[f.key] ?? 0) + 1;
+  L.push(`   presses refused (and the bot's own notes, commission/commissionSide): ${JSON.stringify(refusedKeys)}`);
+  for (const r of runs) for (const f of r.refused.filter((q) => q.key === 'commission')) L.push(`   ${r.spec.bot}/s${r.spec.seed} ${hours(f.t)} ${f.what.slice(0, 160)}`);
+  L.push('');
+  L.push("1. RUNGS (hours of the yard's clock: rung 3 / 4 / 5; aims rung 4 day 2 to 3 = 48-72 h, rung 5 day 4 to 6 = 96-144 h), where a run stopped, CPU");
+  const bots = [...new Set(runs.map((r) => r.spec.bot!))];
+  for (const bot of bots) {
+    for (const r of runs.filter((q) => q.spec.bot === bot)) {
+      const ss = r.extra.sittings as Sitting2[];
+      const dry = ss.filter((x) => x.bought === 0).length;
+      let streak = 0;
+      let worst = 0;
+      for (const x of ss) {
+        streak = x.bought === 0 ? streak + 1 : 0;
+        worst = Math.max(worst, streak);
+      }
+      L.push(`   ${String(bot).padEnd(9)} s${pad(r.spec.seed, 2)}  r3 ${hours(r.rungs[3])} r4 ${hours(r.rungs[4])} r5 ${hours(r.rungs[5])}  ${ss.length} sittings, ${dry} without a purchase (longest run ${worst}); end ${r.extra.supplied_t} t, cash §${r.extra.cash}, goal ${r.extra.lastGoal}  cpu ${Math.round(r.ms / 1000)} s`);
+    }
+  }
+  L.push('');
+  L.push("2. THE SITTINGS (normal bot): hour, rung, supplied t, cash on return -> after, the away pass's cash moved (bank's share), I, purchases (§), the goal after, the away pass's CPU");
+  for (const r of runs.filter((q) => q.spec.bot === 'normal')) {
+    L.push(`   seed ${r.spec.seed}:`);
+    for (const x of r.extra.sittings as Sitting2[]) L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 6)} r${x.rung} ${pad(x.t, 8)} t  §${pad(x.cashBack, 9)} -> §${pad(x.cash, 9)}  away +${pad(x.awayNet, 8)} (bank ${x.awayBank})  I ${pad(x.I, 7)}  +${pad(x.bought, 2)} (§${x.spent})  ${String(x.goal).padEnd(15)} ${x.awayMs} ms  ${x.works}`);
+  }
+  L.push('');
+  L.push("3. THE MONEY'S HABITS AND THE WORKS' OWN LEGS");
+  for (const r of runs) {
+    const s2 = r.extra.s2 as Bot['rec']['s2'];
+    const ss = r.extra.sittings as Sitting2[];
+    const r3 = r.rungs[3];
+    const sitOf = (t: number) => ss.findIndex((x) => x.h * 3600 >= t) + 1;
+    const parts: string[] = [];
+    if (s2.letter !== undefined) parts.push(`letter ${hours(s2.letter)} (sitting ${sitOf(s2.letter)})`);
+    if (s2.offers.length) parts.push(`offers ${s2.offers.length}: first ${s2.offers[0].plate} §${s2.offers[0].P} at ${hours(s2.offers[0].t)} (sitting ${sitOf(s2.offers[0].t)}${r3 !== undefined ? `, ${((s2.offers[0].t - r3) / 3600).toFixed(1)} h after rung 3` : ''})`);
+    if (s2.loans.length) parts.push(`loans ${s2.loans.map((l) => `${l.plate} P${l.P} F${l.F} at ${hours(l.t)}`).join(', ')}; repaid ${s2.repaid.map((q) => `${q.plate} at ${hours(q.t)}`).join(', ') || 'none'}${r.rungs[4] !== undefined && s2.repaid[0] && s2.repaid[0].t < r.rungs[4] ? ' (before rung 4)' : ' (NOT before rung 4)'}`);
+    if (s2.packs.length) parts.push(`packs ${s2.packs.length} (§${Math.round(s2.packs.reduce((a, p) => a + p.S, 0))}): ${s2.packs.map((p) => p.product).join(',')}`);
+    if (s2.ads.length) parts.push(`ads ${s2.ads.length} (§${Math.round(s2.ads.reduce((a, p) => a + p.amount, 0))})`);
+    parts.push(`racked ${s2.racked}, gate sales seen live ${s2.rackSold.length} (§${Math.round(s2.rackSold.reduce((a, p) => a + p.money, 0))}), rackSold count ${(r.extra.counts as { rackSold: number }).rackSold}; lots ${s2.lots}; crate ${s2.crates}; first pours ${s2.pours.map((p) => `${p.plate} ${hours(p.t)}`).join(', ') || '-'}; started up ${s2.commissioned.map((q) => `${q.plate}${q.by === 'self' ? '(self)' : ''}`).join(',') || '-'}; put aside ${s2.skipped.map((q) => q.id).join(',') || '-'}`);
+    L.push(`   ${String(r.spec.bot).padEnd(9)} s${pad(r.spec.seed, 2)}: ${parts.join('; ')}`);
+  }
+  const nh = runs.filter((r) => (r.extra.nohand as unknown[] | undefined)?.length);
+  if (nh.length) {
+    L.push('');
+    L.push("4. NO HAND (8.2): the normal run's stage-2 states, the stick untouched: absences of 11.75 h until the next purchase (goal or advice) is affordable");
+    for (const r of nh) L.push(`   seed ${r.spec.seed}: ${(r.extra.nohand as { h: number; next: string | null; price: number | null; absences: number | null }[]).map((x) => `h${x.h} ${x.next ?? '-'} ${x.absences === null ? (x.price === null ? 'n/a' : 'NO (4)') : x.absences}`).join('; ')}`);
+  }
+  L.push('');
+  L.push(`run time: ${Math.round(runs.reduce((a, r) => a + r.ms, 0) / 1000)} s of CPU over ${runs.length} runs (first parts played in this call: ${runs.filter((r) => (r.extra.snapMs as number) > 0).length})`);
+  return L.join('\n');
+}
+
+let gameHash = '';
+
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
+  if (spec.kind === 'stage2') return run2(base, spec);
   const t0 = performance.now();
   if (spec.kind === 'income' && spec.board !== 'normal') base = { ...base, salvage: { ...base.salvage, board: { ...base.salvage.board, a: 0 } } };
   const cfg = seededCfg(base, spec.seed);
@@ -777,6 +983,7 @@ function incomeSection(L: string[], all: Summary[]): void {
 
 async function main(): Promise<void> {
   const gameFile = path.resolve(ROOT, arg('game', 'games/scrap-yard/game.json')!);
+  gameHash = createHash('sha1').update(fs.readFileSync(gameFile)).update(fs.readFileSync(path.join(ROOT, 'src/engine/salvage/bot.ts'))).update(String(arg('stage', '0'))).digest('hex');
   const one = arg('one');
   if (one) {
     const cfg = loadCfg(gameFile);
@@ -789,6 +996,24 @@ async function main(): Promise<void> {
   const first = Number(arg('first', '1'));
   const seeds = unseen ? [101, 102, 103, 104, 105] : Array.from({ length: nSeeds }, (_, i) => i + first);
   const routes = Number(arg('routes', '2')) >= 2 ? ['A', 'B'] : ['A'];
+  // --stage 2 (content2-bots): the bots of yard-stage2.md 8.2 on the real content read at release.stage 2. --bots a,b,c picks
+  // them (default every one); --shard i/n runs every n-th spec from i (a background command here is stopped after 30 min:
+  // run the shards one after another with the same --cache, then once more without --shard to print the table).
+  if (Number(arg('stage', '0')) === 2) {
+    const names = (arg('bots', Object.keys(BOTS2).join(',')) ?? '').split(',') as Bot2[];
+    let specs2: Spec[] = [];
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal' });
+    const sh = arg('shard');
+    if (sh) {
+      const [i, n] = sh.split('/').map(Number);
+      specs2 = specs2.filter((_, k) => k % n === i);
+    }
+    const all2 = await runAll(gameFile, specs2, Number(arg('jobs', '2')));
+    const json2 = arg('json');
+    if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
+    process.stdout.write(`${report2(all2, seeds)}\n`);
+    process.exit(all2.some((r) => r.broken.length || ((r.extra.s2 as Bot['rec']['s2'])?.gate ?? []).length) ? 2 : 0);
+  }
   const only = (arg('only', 'beats,hand,away,days,nohand,gate,income,walk') ?? '').split(',');
   const jobs = Number(arg('jobs', '2'));
   const specs: Spec[] = [];

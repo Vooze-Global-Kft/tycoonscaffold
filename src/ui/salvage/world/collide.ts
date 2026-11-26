@@ -61,6 +61,8 @@ export function pushOut(out: number[], r: number, solids: readonly number[], o: 
 
 /** Numbers per body of a vehicle list (./motion.ts VB_STRIDE: x, y, ux, uy, half length, half width, vx, vy, ...). Kept equal by a test. */
 export const BODY_STRIDE = 13;
+/** A body overlapping a vehicle's rectangle by more than this at the start of a move (it stopped on him) is let out of it; less is a slide along it. */
+const LET_OUT_M = 0.05;
 /** Below this speed (m/s) a vehicle stands (./motion.ts MOVING_V). */
 const STAND_V = 0.3;
 
@@ -154,7 +156,7 @@ export function moveBody(out: number[], x: number, y: number, dx: number, dy: nu
       for (let q = 0; q < nvb; q++) {
         const o = q * BODY_STRIDE;
         if (VB![o + 6] * VB![o + 6] + VB![o + 7] * VB![o + 7] >= STAND_V * STAND_V) continue;
-        if (overlapsBody(x, y, r, VB!, o)) continue;
+        if (overlapsBody(x, y, r - LET_OUT_M, VB!, o)) continue;
         if (pushOutBody(out, r, VB!, o)) moved = true;
       }
       if (er > 0) {

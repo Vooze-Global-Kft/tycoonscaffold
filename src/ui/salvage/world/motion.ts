@@ -736,6 +736,26 @@ export function behindStanding(VB: number[] | Float64Array, n: number, px: numbe
   return k;
 }
 
+/**
+ * owner2-fix P2 (A PLAYER ALWAYS SEES HIMSELF): does the picture of body o of VB (its box, any speed) cover a
+ * person standing at (px, py), sorted at `pkey`: drawn after him (a later depth band) and over at least a fifth
+ * of his drawn box (PB = actors.ts personBox(); the roofs' measure, actors.ts underRoof)? Pure.
+ */
+export function vehicleCovers(VB: number[] | Float64Array, o: number, px: number, py: number, pkey: number, tilt: number, PB: readonly number[]): boolean {
+  'worklet';
+  const vk = VB[o + 12];
+  if (!(vk === vk) || !(VB[o + 8] < VB[o + 9])) return false;
+  if (Math.floor(vk / DEPTH_BAND) <= Math.floor(pkey / DEPTH_BAND)) return false;
+  const x0 = px + PB[0];
+  const x1 = px + PB[1];
+  const y0 = py * tilt + PB[2];
+  const y1 = py * tilt + PB[3];
+  const w = Math.min(x1, VB[o] + VB[o + 9]) - Math.max(x0, VB[o] + VB[o + 8]);
+  const h = Math.min(y1, (VB[o + 1] + VB[o + 11]) * tilt) - Math.max(y0, (VB[o + 1] + VB[o + 10]) * tilt);
+  if (w <= 0 || h <= 0) return false;
+  return w * h >= 0.2 * (x1 - x0) * (y1 - y0);
+}
+
 /** Is (px, py) inside the drawn body o of VB (its footprint as drawn, no pad)? Pure (the test's measure). */
 export function insideBody(VB: number[] | Float64Array, o: number, px: number, py: number): boolean {
   'worklet';

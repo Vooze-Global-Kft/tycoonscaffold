@@ -56,7 +56,15 @@ describe('owner1 play 1: a player always sees himself', () => {
   it('every roofed place of the map has a roof, matched to its own static sprite', () => {
     const roofed = Object.entries(GAME.map.places).filter(([, pl]) => A.ROOFED_IDS.includes(pl.sprite));
     expect(roofed.map(([id]) => id).sort()).toEqual(['board', 'noticeboard', 'office', 'rack', 'scalehouse']);
-    expect(nRoofs).toBe(roofed.length);
+    // owner2-fix P7: and each container of the container wall (props of kind 'wall').
+    const walls = GAME.props.filter((p) => p.kind === 'wall');
+    expect(walls.length).toBe(5);
+    expect(nRoofs).toBe(roofed.length + walls.length);
+    for (const w of walls) {
+      let found = false;
+      for (let r = 0; r < nRoofs; r++) if (statics[RF[r * A.ROOF + 5] * A.ITEM + 3] === w.x && statics[RF[r * A.ROOF + 5] * A.ITEM + 4] === w.y) found = true;
+      expect(found, w.id).toBe(true);
+    }
     for (const [id] of roofed) expect(roofOfPlace(id), id).toBeGreaterThanOrEqual(0);
     expect(A.ROOF_BAND).toBe(A.DEPTH_BAND);
   });
@@ -91,6 +99,22 @@ describe('owner1 play 1: a player always sees himself', () => {
     }
     expect(checked).toBeGreaterThan(200);
     expect(covered).toBeGreaterThan(20);
+  });
+
+  it('owner2-fix P7: the boss in the passage between two containers of the wall (behind the southern one) sees it turn see-through; beside the wall it does not', () => {
+    const walls = GAME.props.filter((p) => p.kind === 'wall');
+    const wallRoof = (id: string) => {
+      const w = walls.find((p) => p.id === id)!;
+      for (let r = 0; r < nRoofs; r++) if (statics[RF[r * A.ROOF + 5] * A.ITEM + 3] === w.x && statics[RF[r * A.ROOF + 5] * A.ITEM + 4] === w.y) return r;
+      return -1;
+    };
+    const w2 = walls.find((p) => p.id === 'wall-2')!;
+    // The passage: between wall-1's south end and wall-2's north end, on the wall's line.
+    const gy = w2.y - w2.d / 2 - 0.5;
+    expect(blocked(w2.x, gy, 0.35, Y.solids, Y.width, Y.depth)).toBe(false);
+    expect(A.underRoof(RF, wallRoof('wall-2'), w2.x, gy, gy + 0.25, Y.tilt, PB)).toBe(true);
+    // West of the wall, level with its middle: not behind it.
+    expect(A.underRoof(RF, wallRoof('wall-3'), w2.x - w2.w / 2 - 0.5, 30.4, 30.65, Y.tilt, PB)).toBe(false);
   });
 
   it('the roof\'s ink eases to a third in a fifth of a second and back', () => {

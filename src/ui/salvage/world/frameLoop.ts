@@ -140,6 +140,8 @@ const CELL_BASE = 2_000_000;
 const CAM_EPS_PX = 0.05;
 const MOVE_EPS_M = 0.01;
 const NO_ITEMS: number[] = [];
+/** owner2-fix P6: the time constant (s) of the followed point's switch between the boss and the truck (gone in about 0.3 s). */
+const FOLLOW_SWITCH_S = 0.1;
 const NO_LANE: number[] = [];
 
 /** What the frame draws with, set once per bake (H8): the host-object pools, the paint, the statics and the sheets. */
@@ -161,6 +163,8 @@ interface DrawKit {
   VD: number[];
   /** owner2-fix P2: the ground each vehicle picture covers, per heading (./actors.ts vehicleBoxes). */
   VX: number[];
+  /** owner2-fix P3: the south edge of the lane's north hedge (metres; NaN: no lane). */
+  HS: number;
 }
 
 /** A vehicle sprite and its shadow. */
@@ -333,7 +337,9 @@ export function useYardLoop(opts: {
       return [(f?.w ?? w) / 2, (f?.d ?? d) / 2];
     };
     const VD = [...half('vehicle.truck', 4.6, 2), ...half('vehicle.flatbed', 4.6, 2), ...half('vehicle.van', 3.4, 1.8), ...half('vehicle.trailer', 1.6, 1.3)];
-    return { statics, T, images, rects, dens, roofs, roofOf, PB: personBox(), VD, VX: vehicleBoxes(yard.tilt) };
+    const hedgeD = entryOf('lane.hedge')?.footprint.d ?? 0;
+    const HS = yard.lane.length === 4 ? yard.lane[2] - 0.6 + hedgeD / 2 : NaN;
+    return { statics, T, images, rects, dens, roofs, roofOf, PB: personBox(), VD, VX: vehicleBoxes(yard.tilt), HS };
   }, [art, content, yard]);
 
   // H8: the pools, the statics and the sheets live in ONE shared value, set once per bake, so the frame
@@ -719,8 +725,24 @@ export function useYardLoop(opts: {
         st[30] = B[7];
       }
       const nudging = clock < st[26];
-      const fx = nudging ? (bx + st[29]) / 2 : bx + vx * motion.lead;
-      const fy = nudging ? (by + st[30]) / 2 : by + vy * motion.lead;
+      // owner2-fix P6: getting in or out switches the followed point (the boss, the truck) at once; the switch is
+      // eased out over about FOLLOW_SWITCH_S * 3 (the offset of the old point decays), on top of the camera's own
+      // ease, so the view glides onto the truck instead of starting off towards it at the camera's full rate.
+      if (snap) {
+        st[38] = 0;
+        st[39] = 0;
+      } else if (st[5] !== st[11]) {
+        st[38] += st[20] - bx;
+        st[39] += st[21] - by;
+      }
+      st[11] = st[5];
+      st[20] = bx;
+      st[21] = by;
+      const fk = Math.exp(-dt / FOLLOW_SWITCH_S);
+      st[38] *= fk;
+      st[39] *= fk;
+      const fx = (nudging ? (bx + st[29]) / 2 : bx + vx * motion.lead) + st[38];
+      const fy = (nudging ? (by + st[30]) / 2 : by + vy * motion.lead) + st[39];
       const wantZoom = st[5] === 1 ? FEEL.driveZoom : 1;
       st[24] += (wantZoom - st[24]) * (1 - Math.exp(-dt / FEEL.zoomEase));
       const zoom = st[24];
@@ -949,7 +971,16 @@ export function useYardLoop(opts: {
           }
           // The facing turns through the eight headings, never flips (the boss's wheel turns it itself).
           h8 = turnFacing(S.face, h8, clock, driving || snap || hook >= 0);
-          const key = ty + 1;
+          let key = ty + 1;
+          // owner2-fix P3: a truck slanted through the gate pokes its north corner into the lane's north hedge row: while
+          // it does, it sorts from that corner, so the hedge and the gate's post are drawn over the part behind them.
+          const HSk = K !== null ? K.HS : NaN;
+          if (HSk === HSk && tx > YW - 3) {
+            const ca = Math.abs(Math.sin((h8 * Math.PI) / 4));
+            const sa = Math.abs(Math.cos((h8 * Math.PI) / 4));
+            const northY = ty - (VD[0] * sa + VD[1] * ca);
+            if (northY < HSk) key = Math.min(key, northY);
+          }
           const i0 = L.n;
           let tbox = (VBOX_TRUCK * 8 + h8) * 4;
           if (hook >= 0) {
