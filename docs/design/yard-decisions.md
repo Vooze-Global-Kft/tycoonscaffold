@@ -1868,3 +1868,29 @@ on the floor.) The lead rules:
     (with the late hour's sales a minute: the aim of §2,000 at minutes 55 to 60 may now be met).
     IF NOT, both keys stay at 3 and the table goes to the lead. Either way the first yard's
     pinned figures that move are listed one by one.
+
+16.5 **The rank is what a load nets for the step it loads most (12:25; it replaces 16.1 (a)).** The
+    engineer built 16.1 as worded and measured it (`notes/dispatch-engine2.md` 3.3): the farm's
+    fault is gone, but a DEMOLITION level now makes a cut-bound yard poorer (-8 to -9 % from
+    minute 60 on the bots' yards): a demolition load nets 2.15 times a farm load, but it needs
+    1,200 s of cutting against 433 s, so a cutting second earns less on it (0.58 against 0.75).
+    "No ranking from the content alone can be right both ways": the lead's (a) was wrong. THE
+    RANK NOW: a load's rated net divided by the time it costs the yard's slowest step for it: the
+    greatest of the truck's round trip, its cutting seconds over the cutters the yard has, and
+    its carrying seconds over the yard hands it has (rated income's own per-load terms, from the
+    content and the yard's ASSETS; cached on rated income's asset key; never a switch a player can
+    flip, never recent sales). 16.1 (b) to (f) stand as built. The engineer measured this ("rate")
+    before the ruling allowed it: the demolition level passes from minute 60 on, and four steps
+    are left at minute 30 or on one seed, at the size of the yard's own noise. It is built in the
+    step's one pass of fixes, with the walk of 17.1 printed again; rated income's replay follows
+    the same rank.
+16.6 **What a player is told.** A truck that stands while a skip shows ready, and a machine that
+    waits while the hands are on the floor, each get one line where the player looks: on the
+    waiting skip's card and label ("The driver is keeping the floor for a better load"), on the
+    machine's card ("The yard hands are clearing the floor first"). The words' and screens'
+    engineers build them in Phase C; the rules give the card the reason now.
+16.7 **The measurement over three days is owed again** once the bots know stage 2: today the
+    bots follow the goal card into stage 2's list, which they cannot play yet, and three days
+    earn half of this morning's with the old rules too (the engineer's 5c). The comparison of new
+    against old over three days (16.3 ii) is run by the bots' engineer after the join, on bots
+    that play the stage.
