@@ -15,7 +15,8 @@ import { contentsMass_g, fullestSkip, setSkipDown } from './partners';
 import { pointOf, skipZone } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
-import type { CrewMember, RefusalKey, TripPhase, TxtArgs } from './types';
+import { tipDivert } from './crate';
+import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 
 /**
@@ -141,6 +142,14 @@ function tipNow(x: Ctx, t: number): void {
     for (let i = 0; i < n; i++) {
       const k = (x.s.counts!.floorThings ?? 0) + 1;
       x.s.counts!.floorThings = k;
+      // Stage 2 (2.10.2): a share of a tipped load goes to the crate instead of the floor (crate.ts tipDivert;
+      // the stub never diverts). A diverted thing takes no floor slot.
+      const divert = tipDivert(x, { uid: `f${k}`, obj }, sk.partner, t);
+      if (divert) {
+        x.s.things.push({ uid: `f${k}`, obj, at: divert, cut: 0, progress: 0, by: null } as unknown as ThingState);
+        things++;
+        continue;
+      }
       while (used.has(slot)) slot++;
       used.add(slot);
       x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });

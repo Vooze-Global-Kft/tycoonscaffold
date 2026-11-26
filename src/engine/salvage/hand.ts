@@ -10,6 +10,7 @@ import { bossFresh, count, standingFor, type Ctx } from './clock';
 import { byValue, carrierCap_g, cutTime, pieceSpec, tierOf, toolKey, toolP, vpk } from './content';
 import { crucibleCheckReady, meltPiece } from './crucible';
 import { openCrewInSight } from './crew';
+import { rackChoice } from './reuse';
 import { accepts, atPlace, bossWorked, feedPiece, rerate, takeTray, trayFree } from './machines';
 import { circleCount, circlePos, piecePos, thingNear, thingPos } from './positions';
 import { weighIn } from './scales';
@@ -200,6 +201,9 @@ export function bossStep(x: Ctx, t: number): void {
     if (loaded && stood >= c.feel.workDelay) setAct(x, 'circle', `circle.${ci}`, t, t + c.pick_s);
     return;
   }
+  // Stage 2 (2.12, ruling 13.1): a tagged thing within his sight is his for the Yard sale while a place is
+  // free: he lifts it whole, or sets it on the rack in its chalk zone (reuse.ts rackChoice; the stub never acts).
+  if (rackChoice(x, 'boss', t, null)) return;
   // Pickup (moving or still) and the swap (still).
   const room = room_g(x);
   const cands = pickables(x, p.x, p.y);

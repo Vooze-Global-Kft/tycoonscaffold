@@ -348,3 +348,76 @@ describe("the merchant's round is never lengthened (14.3)", () => {
 function FIXTURE_T0(): number {
   return R.createSalvage(cfgOf(), base(0), FIXTURE_NOW).salvage.t;
 }
+
+/**
+ * engine2-hooks (26 Nov; the confirmation of the engine step, attack/engine2b/ahead.ts, ahead2.ts; ruling
+ * 14.1 (b) "nothing a person can see is claimed ahead"): a yard hand's run was planned ahead after a sight
+ * test of its start, its FIRST pick-up spot and its destination only, so a later trip from another spot of
+ * the same pile could lie in the boss's sight and stay claimed there until the next presence sample (the
+ * confirmer's smallest case: seed 263, minute 60, at +61.8 s, hand.0, a planned run of two loads whose
+ * second spot a fresh boss saw). Now the plan stops before a trip whose pick-up spot he sees.
+ */
+describe('a planned run never holds a trip the boss can see (14.1 b; the confirmer\'s case)', () => {
+  // Six 10 kg pieces at the floor pile's first spots and six from its spot k = 16: a hand's load (60 kg here)
+  // takes six, so the run's first trip picks at k 0 and its second at k 16 (south-east of k 0 by 1.1 m).
+  const pieceAt = (uid: string, k: number): GroundPiece => ({ uid, grade: 'li', g: 10_000, from: null, spec: 0, pile: 'floor', k, claim: null });
+  const yard = (cfg: SalvageConfig): SalvageGame => {
+    const g = floorYard(cfg, 0);
+    const pieces = [0, 1, 2, 3, 4, 5].map((i) => pieceAt(`t0${i}`, i)).concat([0, 1, 2, 3, 4, 5].map((i) => pieceAt(`t1${i}`, 16 + i)));
+    return { ...g, salvage: { ...g.salvage, pieces } };
+  };
+  const none = () => null;
+  const A = piecePos(C, 'floor', 0, none);
+  const B = piecePos(C, 'floor', 16, none);
+  const d = Math.hypot(B.x - A.x, B.y - A.y);
+  // The boss stands beyond spot k 16, within sight of it and out of sight of spot k 0, the scale and the office.
+  const BOSS = { x: B.x + ((B.x - A.x) / d) * (C.reach.sight - 0.5), y: B.y + ((B.y - A.y) / d) * (C.reach.sight - 0.5) };
+  const dist = (p: { x: number; y: number }) => Math.hypot(p.x - BOSS.x, p.y - BOSS.y);
+
+  it('the geometry of the case: spot k 0, the scale and the office out of his sight, spot k 16 within it', () => {
+    expect(dist(A)).toBeGreaterThan(C.reach.sight);
+    expect(dist(B)).toBeLessThanOrEqual(C.reach.sight);
+    expect(dist(pointOf(C, 'scale'))).toBeGreaterThan(C.reach.sight);
+    expect(dist(pointOf(C, 'office'))).toBeGreaterThan(C.reach.sight + 2);
+  });
+
+  it('no planned load stands within his sight at any sample; the seen trip is made as an ordinary trip of the run', () => {
+    const cfg = cfgOf();
+    const r = hand(cfg, () => BOSS, FIXTURE_T0() + 90, yard(cfg));
+    let planned = 0;
+    for (const g of r.states)
+      for (const m of g.salvage.crew) {
+        if (!m.run) continue;
+        planned++;
+        for (const L of m.run.loads ?? []) {
+          const sp = L.spot as { pile: string; k: number };
+          expect(dist(piecePos(C, sp.pile, sp.k, none)), `planned load at k ${sp.k}`).toBeGreaterThan(C.reach.sight);
+        }
+      }
+    // The first trip (out of his sight) was planned; the second (in his sight) was not planned ahead...
+    expect(planned).toBeGreaterThan(0);
+    // ...but made, as a trip of the same run (both trips from the floor, every piece weighed in once).
+    expect(r.trips.length).toBeGreaterThanOrEqual(2);
+    expect(r.trips.every((q) => q.kind === 'floor')).toBe(true);
+    expect(r.trips.reduce((a, q) => a + q.n, 0)).toBe(12);
+    expect(r.g.salvage.pieces.length).toBe(0);
+  });
+
+  it('a tick equals a jump on the case (whole state), the boss standing there with a sample every half second', () => {
+    const cfg = cfgOf();
+    let a = R.hire(cfg, presence(cfg, yard(cfg), BOSS, FIXTURE_T0()), 'hand', hireCheck(cfg, yard(cfg), 'hand').price ?? 0, FIXTURE_T0());
+    let b = a;
+    let ms = a.salvage.clock.highMs;
+    for (let k = 0; k < 160; k++) {
+      a = presence(cfg, a, BOSS, a.salvage.t);
+      b = presence(cfg, b, BOSS, b.salvage.t);
+      for (let i = 0; i < 5; i++) {
+        ms += 100;
+        a = R.advanceSalvage(cfg, a, 0.1, ms);
+      }
+      b = R.jump(cfg, b, a.salvage.t);
+    }
+    expect(whole(b)).toEqual(whole(a));
+    expect(a.salvage.pieces.length).toBe(0);
+  });
+});

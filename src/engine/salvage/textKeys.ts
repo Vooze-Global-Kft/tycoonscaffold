@@ -8,17 +8,17 @@
  * Refusal keys live in types.ts (`REFUSAL_KEYS`, the rules' list); their text keys `refusal.<key>`
  * are derived here.
  */
-import { REFUSAL_KEYS } from './refusals';
+import { REFUSAL_KEYS, REFUSAL_KEYS_V3, type RefusalKeyAll } from './refusals';
 
 export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
   hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
-  place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages'],
+  place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages', 'place.shredder', 'place.rotaryHall', 'place.inductionHall', 'place.leadLine', 'place.yardSale', 'place.oversizePad', 'place.pickingTable', 'place.carPad', 'place.worksBunkers', 'place.worksStillages', 'place.batteryBox', 'place.forklift', 'place.baler', 'place.crane', 'place.depollution', 'place.granulator', 'place.shear', 'place.eddy', 'place.sorter', 'place.smelter'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
-  chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.bayHeld', 'chip.bayKg', 'chip.bayKgHeld', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate', 'chip.count'],
+  chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.bayHeld', 'chip.bayKg', 'chip.bayKgHeld', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate', 'chip.count', 'chip.works.bankTag', 'chip.commissioned', 'chip.weighedAtWorks', 'chip.cod', 'chip.lotSoldBank', 'chip.rackSold', 'chip.van', 'chip.forPlate', 'chip.leadArea', 'chip.visitorsKeep', 'chip.payHere'],
   /** Package 4: card titles (4.3). */
-  title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place'],
+  title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place', 'title.works.crane', 'title.works.shear', 'title.works.baler', 'title.works.analyser', 'title.works.depollution', 'title.works.granulator', 'title.works.shredder', 'title.works.eddy', 'title.works.sorter', 'title.works.rotary', 'title.works.induction', 'title.works.breaker', 'title.works.smelter', 'title.finance', 'title.letter', 'title.agreements', 'title.shop', 'title.yardSale', 'title.lot', 'title.crate', 'title.packSheet', 'title.ageQuestion', 'title.packCode', 'title.awayBonus'],
   /** Package 4: card rows and buttons (4.3, 5.2). */
   card: [
     'card.buy',
@@ -131,21 +131,30 @@ export const TEXT_KEYS = {
     'effect.hand',
     'effect.cutter',
     'effect.driver',
+    // stage 2 (strings2): the scrip shop's new vehicles, carrier and tool (5.3; 2.9)
+    'item.truckBridge',
+    'item.pallet',
+    'item.forklift',
+    'item.plasma',
+    'effect.truckBridge',
+    'effect.pallet',
+    'effect.forklift',
+    'effect.plasma',
   ],
   /** Package 4: the price board and bays (4.4). */
-  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice', 'board.empty'],
+  board: ['board.head', 'board.usual', 'board.lowDay', 'board.highDay', 'board.firstHint', 'board.heldUntil', 'board.sellTotal', 'board.stock', 'board.today', 'board.usualPrice', 'board.empty', 'board.tabEmpty'],
   /** Package 4: the process board's plates (4.5). */
-  plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung'],
+  plate: ['plate.handStripper', 'plate.stripper', 'plate.bench', 'plate.crucible', 'plate.brass', 'plate.alu', 'plate.bronze', 'plate.lead', 'plate.lithium', 'plate.pgm', 'plate.tungsten', 'plate.owned', 'plate.price', 'plate.levelPrice', 'plate.locked', 'plate.needsCrucible', 'plate.atRung', 'plate.works.buyable', 'plate.works.arriving', 'plate.works.commission', 'plate.works.selfStart', 'plate.works.hopperFull', 'plate.works.trayFull', 'plate.works.waiting', 'plate.works.ready', 'plate.opens', 'plate.filter', 'plate.reuse.tag', 'plate.reuse.tagChecked', 'plate.reuse.prices', 'plate.reuse.heavy', 'plate.reuse.full', 'plate.reuse.hands', 'plate.lot', 'plate.lotValue', 'plate.crate', 'plate.crateStand'],
   /** Package 4: the industry table and the rung sign (2.11). */
-  table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare'],
+  table: ['table.headline', 'table.simulated', 'table.rivalsSimulated', 'table.rung', 'table.rungGate', 'table.range', 'table.you', 'table.rungSign', 'table.rungOpens', 'table.next', 'table.nextRung', 'table.locked', 'opens.rung2', 'opens.rung3', 'table.mine', 'table.lockedBare', 'table.rungN', 'opens.works', 'opens.backfield', 'opens.yardSale', 'opens.shredder', 'opens.halls', 'opens.lead', 'opens.levelsOn'],
   /** Package 4: the away card (4.4). */
-  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.heldSold', 'away.next', 'away.longerRung', 'away.longerNight'],
+  away: ['away.head', 'away.line', 'away.supplied', 'away.loads', 'away.deliveries', 'away.passed', 'away.passedN', 'away.hintCutter', 'away.hintHand', 'away.nothing', 'away.sales', 'away.bought', 'away.boughtFrom', 'away.net', 'away.netLoss', 'away.unsold', 'away.heldSold', 'away.next', 'away.longerRung', 'away.longerNight', 'away.bank', 'away.repaid', 'away.rack', 'away.van', 'away.lots', 'away.lotOne'],
   /** Packages 3 and 4: tickets and slips (2.2). */
-  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date'],
+  ticket: ['ticket.weighInHead', 'ticket.gradeToday', 'ticket.todaysValue', 'ticket.weighInLegal', 'ticket.dropOffSlip', 'ticket.skipHead', 'ticket.trial', 'ticket.grossTareNet', 'ticket.partnerLegal', 'ticket.collectionHead', 'ticket.gradeAmount', 'ticket.paid', 'ticket.boughtFor', 'ticket.lotSoldTo', 'ticket.weighedOut', 'ticket.dealDelivery', 'ticket.more', 'ticket.fromCar', 'ticket.certifiedEmpty', 'ticket.date', 'ticket.bankSplit', 'ticket.rackHead', 'ticket.rackSale', 'ticket.vanCollection', 'ticket.vanLine', 'ticket.crateLot', 'ticket.note.analysed', 'ticket.note.drained', 'ticket.cod'],
   /** Package 4: lines of 5.2. */
   line: ['line.portal', 'line.crewAway', 'line.backfield', 'line.fictional', 'line.shortened', 'line.carName'],
   /** Package 4: the clipboard, Settings and Help (4.3). */
-  clip: ['clip.goals', 'clip.places', 'clip.tickets', 'clip.settings', 'clip.sound', 'clip.music', 'clip.haptics', 'clip.help', 'clip.privacy', 'clip.privacyLine', 'clip.version', 'clip.restart', 'clip.restartConfirm', 'clip.restartYes', 'clip.restartNo', 'clip.glossary', 'help.lessons', 'help.glossary', 'help.about'],
+  clip: ['clip.goals', 'clip.places', 'clip.tickets', 'clip.settings', 'clip.sound', 'clip.music', 'clip.haptics', 'clip.help', 'clip.privacy', 'clip.privacyLine', 'clip.version', 'clip.restart', 'clip.restartConfirm', 'clip.restartYes', 'clip.restartNo', 'clip.glossary', 'help.lessons', 'help.glossary', 'help.about', 'clip.shop', 'clip.packsShown', 'clip.packsHidden', 'help.bank', 'help.bankBody', 'help.yardSale', 'help.yardSaleBody', 'help.packs', 'help.packsBody', 'help.code', 'help.codeBody', 'help.packLost', 'help.breaker', 'help.breakerBody'],
   /** Package 8: the goals (5.3, ≤ 30), in 1.3's order; `goal.widen` / `goal.widenLevel` are the repeating goal of the lead's ruling (args {item: {text}}). */
   goal: [
     'goal.takeWasher',
@@ -185,13 +194,154 @@ export const TEXT_KEYS = {
     'goal.finishDeal',
     'goal.passRival',
     'goal.visitBackfield',
+    // stage 2 (strings2): goals.json list `stage2`, 1.3's order (T11, T12, T25, P10, P14)
+    'goal.rackBath',
+    'goal.buyBaler',
+    'goal.startBaler',
+    'goal.buyAnalyser',
+    'goal.buyShear',
+    'goal.buyTruckBridge',
+    'goal.fetchGarage',
+    'goal.fetchPlumbing',
+    'goal.cutLot',
+    'goal.sortCrate',
+    'goal.buyDepollution',
+    'goal.supplyRung4',
+    'goal.buyCrane',
+    'goal.walkBackfield',
+    'goal.buyShredder',
+    'goal.buyRotary',
+    'goal.pourRotary',
+    'goal.buyInduction',
+    'goal.buyBreaker',
+    'goal.buySmelter',
+    'goal.pourLead',
+    'goal.supplyRung5',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
-  advice: ['advice.buy', 'advice.level'],
+  advice: ['advice.buy', 'advice.level', 'advice.loanHint'],
   /** Package 8 and the tickets: lessons (5.5, ≤ 48 on the ticket). */
-  lesson: ['lesson.li', 'lesson.drum', 'lesson.mot', 'lesson.cab', 'lesson.bb', 'lesson.no2', 'lesson.brs', 'lesson.alw', 'lesson.alcast', 'lesson.ci', 'lesson.hms', 'lesson.hmsu', 'lesson.cbody', 'lesson.bri', 'lesson.dross', 'lesson.ali', 'lesson.conv'],
-  /** Every package: refusals (5.4). */
-  refusal: REFUSAL_KEYS.map((k) => `refusal.${k}` as const),
+  lesson: ['lesson.li', 'lesson.drum', 'lesson.mot', 'lesson.cab', 'lesson.bb', 'lesson.no2', 'lesson.brs', 'lesson.alw', 'lesson.alcast', 'lesson.ci', 'lesson.hms', 'lesson.hmsu', 'lesson.cbody', 'lesson.bri', 'lesson.dross', 'lesson.ali', 'lesson.conv', 'lesson.ss', 'lesson.bzs', 'lesson.bzi', 'lesson.pb', 'lesson.zorba', 'lesson.lib'],
+  /**
+   * Every package: refusals (5.4), and stage 2's (2.19; contract version 3's REFUSAL_KEYS_V3, which Phase B
+   * moves into REFUSAL_KEYS: a key in both lists is listed once).
+   */
+  refusal: [...new Set<RefusalKeyAll>([...REFUSAL_KEYS, ...REFUSAL_KEYS_V3])].map((k) => `refusal.${k}` as const),
+
+  // ============================================================================ STAGE 2 (strings2, 26 November; yard-stage2.md 4, 5.3)
+  /** Tabs: the process board's three pages (4.4: `tab.<page>`) and the price board's four families (4.11: `tab.<BoardTab>`, content BOARD_TABS). */
+  tab: ['tab.first', 'tab.yard', 'tab.melt', 'tab.ferrous', 'tab.nonFerrous', 'tab.works', 'tab.intermediates'],
+  /** A hall's recipes on its works card (`recipe.<RecipeId>` of content works.plates.<id>.recipes; 2.8). */
+  recipe: ['recipe.alu', 'recipe.brass', 'recipe.bronze', 'recipe.lead'],
+  /** 4.3: the works card (rules-works / rules-money cards.ts; overlays-a Works). */
+  works: [
+    'card.works.inOut',
+    'card.works.inOut2',
+    'card.works.gain',
+    'card.works.installed',
+    'card.works.selfStart',
+    'card.works.levelGain',
+    'card.works.takesFrom',
+    'card.works.takesFrom2',
+    'card.works.takesFrom3',
+    'card.works.toBays',
+    'card.works.depollution',
+    'card.works.waste',
+    'card.works.car',
+    'card.works.carIn',
+    'card.works.noCar',
+    'card.works.filter',
+    'card.works.loan',
+    'card.works.saveUp',
+    'card.works.loanShort',
+    'card.works.bankLeft',
+    'card.rota.permitElv',
+    'card.rota.permitLead',
+    'card.bay.route',
+    'card.bay.sellFromBay',
+  ],
+  /** 2.14, 4.5: the lender's letter, the finance card, the Agreements page; the bank's share in words (`share.*`, see strings.ts). */
+  bank: [
+    'card.letter.lend',
+    'card.letter.split',
+    'card.letter.rule',
+    'card.finance.price',
+    'card.finance.deposit',
+    'card.finance.lent',
+    'card.finance.charge',
+    'card.finance.total',
+    'card.finance.rule',
+    'card.agreements.row',
+    'card.agreements.repay',
+    'card.agreements.left',
+    'card.agreements.history',
+    'card.agreements.historyHead',
+    'card.agreements.none',
+    'share.fifth',
+    'share.fifthIn',
+  ],
+  /** 2.10, 2.12, 4.6, 4.7: the Yard sale, oversize pieces, the picking table, the batch on a label. */
+  yard2: [
+    'card.yardSale.thing',
+    'card.yardSale.free',
+    'card.yardSale.freeOne',
+    'card.yardSale.full',
+    'card.yardSale.next',
+    'card.yardSale.empty',
+    'card.yardSale.soldToday',
+    'card.yardSale.level',
+    'card.yardSale.corner',
+    'card.yardSale.cornerEmpty',
+    'card.lot.value',
+    'card.lot.cut',
+    'card.lot.from',
+    'card.crate.count',
+    'card.crate.stand',
+    'card.crate.empty',
+    'skip.reuseBatch',
+    'card.rung.styleNew',
+    'card.rung.useIt',
+  ],
+  /** 2.15, 4.8: the shop, the pack sheet, the age question, the code pad, the restart's line. */
+  shop: [
+    'card.shop.row',
+    'card.shop.looks',
+    'card.shop.colours',
+    'card.shop.coloursLine',
+    'card.shop.decorations',
+    'card.shop.plaqueLine',
+    'card.shop.look',
+    'card.shop.earned',
+    'card.shop.signStyle',
+    'card.shop.foundryPlate',
+    'card.shop.reachRung',
+    'card.shop.use',
+    'card.shop.inUse',
+    'card.shop.buy',
+    'card.shop.unavailable',
+    'card.shop.noAds',
+    'card.shop.noAdsLine',
+    'card.shop.packs',
+    'card.shop.packName',
+    'card.shop.packLine',
+    'card.shop.noRoom',
+    'card.shop.waiting',
+    'card.shop.unconfirmed',
+    'card.shop.nothingCharged',
+    'card.shop.unreachable',
+    'card.shop.expired',
+    'card.shop.updated',
+    'card.shop.restore',
+    'card.shop.restoreLine',
+    'card.packSheet.amount',
+    'card.packSheet.save',
+    'card.code.set',
+    'card.code.confirm',
+    'card.code.enter',
+    'card.restart.packLost',
+  ],
+  /** 2.16, 4.9: rewarded ads. */
+  ad: ['card.ad.spot', 'card.ad.bonus', 'card.ad.video', 'card.ad.take', 'card.ad.amount', 'card.ad.notReady'],
 } as const;
 
 type Values<T> = T extends readonly (infer U)[] ? U : never;

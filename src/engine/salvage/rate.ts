@@ -15,6 +15,7 @@ import { defOf } from './machines';
 import { openPartners } from './partners';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
+import { worksOpen } from './works';
 import { floorSlots, pointOf, thingPos } from './positions';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
@@ -183,6 +184,9 @@ export function checks(x: Ctx, t: number, force = true): void {
     s.ladder.rung += 1;
     x.ev.push({ type: 'rung', n: s.ladder.rung });
   }
+  // Stage 2 (2.20, B14): the works layer opens from the STATE, not from the rung event: at every check while
+  // the yard stands at or above the works layer's rung and the bath has not been set (works.ts worksOpen).
+  if (s.ladder.rung >= worksRungOf(x.c) && s.counts!.bathSet === undefined) worksOpen(x, t);
   const passed = passedNow(x.cfg, view(x));
   if (passed > s.ladder.passed) {
     const list = x.c.rivals.list;
@@ -209,6 +213,26 @@ export function checks(x: Ctx, t: number, force = true): void {
   // What the checks themselves changed (a partner opened, a rung, the offer) needs no second look at the
   // next instant: each check is a function of the state and gives the same answer again.
   x.dirty = false;
+}
+
+/**
+ * The rung the works layer opens at (stage 2, 1.4 and 2.6.1: rung 3 on the game's content), from the content:
+ * the lowest `rung<n>` gate among `works.plates`; Infinity for a content with no plates (the first yard's
+ * test content: nothing opens). Memoised per content object.
+ */
+const WORKS_RUNG = new WeakMap<object, number>();
+export function worksRungOf(c: Ctx['c']): number {
+  let r = WORKS_RUNG.get(c);
+  if (r === undefined) {
+    r = Infinity;
+    const plates = (c as unknown as { works?: { plates?: Record<string, { gate?: string }> } }).works?.plates ?? {};
+    for (const id in plates) {
+      const m = /^rung(\d+)$/.exec(plates[id]?.gate ?? '');
+      if (m) r = Math.min(r, Number(m[1]));
+    }
+    WORKS_RUNG.set(c, r);
+  }
+  return r;
 }
 
 void count;

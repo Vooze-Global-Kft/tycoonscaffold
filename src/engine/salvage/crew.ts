@@ -9,6 +9,7 @@ import { cutTime, legM, machineInputs, tierOf, machinePlace, pieceCount, pieceSp
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
+import { rackChoice } from './reuse';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
@@ -193,6 +194,9 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     break;
   }
   if (!any) return false;
+  // Stage 2 (2.12, ruling 13.1): a tagged thing for the Yard sale comes FIRST in a yard hand's order while a
+  // place is free (reuse.ts rackChoice sets him off with it; the stub never does).
+  if (rackChoice(x, m, t, null)) return true;
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
   for (const id of RATE_FED) {
     const mach = s.machines[id];
@@ -702,6 +706,11 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
     if (!c) break;
     const last = loads[loads.length - 1];
     const sp = posOf(x, c.spot);
+    // Ruling 14.1 (b), engine2-hooks: nothing a person can see is claimed ahead. The departure's test above
+    // saw only the start, the FIRST pick-up spot and the destination; a later trip of the same pile (another
+    // spot of it) may lie within his sight: the plan stops before it (that trip is then made as an ordinary
+    // trip of the run at its own departure, 2.1.2). The same points openCrewInSight tests (runPoints).
+    if (bossSees(x, t, [sp])) break;
     const pickAt = last.dropAt + dur(dpos, sp);
     const dropAt = pickAt + dur(sp, dpos);
     if (dropAt - t0 > maxRun + RUN_EPS) break;
@@ -974,10 +983,13 @@ function cutLeft(x: Ctx, th: ThingState, P: number): number {
   return Math.max(0, t - th.progress);
 }
 
-/** The things a cutter may take at a place, best score first (value per second of cutting, then uid). */
-function cutCands(x: Ctx, where: 'dropoff' | 'floor', P: number): ThingState[] {
+/**
+ * The things a cutter may take at a place, best score first (value per second of cutting, then uid). Stage 2
+ * (2.12, ruling 13.1): he keeps off a tagged thing the boss or a yard hand racks (reuse.ts rackChoice).
+ */
+function cutCands(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P: number): ThingState[] {
   const s = x.s;
-  const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier);
+  const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier && !rackChoice(x, m, t, th));
   if (cands.length < 2) return cands;
   // The score is a pure function of the thing (memoised for the sort; the order is the same).
   const scores = new Map<ThingState, number>();
@@ -1003,7 +1015,7 @@ function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const c = runs ? m.course : undefined;
   if (c && c.kind.k === 'cut') {
     const where = c.kind.where;
-    const cands = cutCands(x, where, P);
+    const cands = cutCands(x, m, t, where, P);
     if (cands.length) {
       const start = posOf(x, m.to);
       const walkEnd = t + Math.max(1e-3, legM(x.c, start, posOf(x, { thing: cands[0].uid })) / handV(x, m));
@@ -1016,7 +1028,7 @@ function cutterDepart(x: Ctx, m: CrewMember, t: number): boolean {
   }
   if (c) delete m.course;
   for (const where of ['dropoff', 'floor'] as const) {
-    const cands = cutCands(x, where, P);
+    const cands = cutCands(x, m, t, where, P);
     if (!cands.length) continue;
     const job: CrewJob = where === 'dropoff' ? 'cutDropoff' : 'cutFloor';
     if (runs) m.course = { t0: t, job, kind: { k: 'cut', where } };
