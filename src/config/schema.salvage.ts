@@ -46,6 +46,19 @@ export const CARD_KINDS = ['rack', 'rota', 'partners', 'processBoard', 'machine'
 export type CardKind = (typeof CARD_KINDS)[number];
 /** The look family of a carried load (the art's people.draw.ts LoadFamily). */
 export const LOAD_FAMILIES = ['fe', 'ci', 'cu', 'br', 'al', 'cab', 'mot', 'hms'] as const;
+/**
+ * A bay's look (grades.<id>.bay.kind). heap, stillage, cage: the first yard's. STAGE 2 (yard-stage2.md 2.5.1,
+ * 3.3; content2): bunker (a lock-block bunker of the works bunkers, 3 m), box (the closed battery box, `pbb`;
+ * never a heap, T1), bags (big bags on a pallet, the zinc filter dust, T3).
+ */
+export const BAY_KINDS = ['heap', 'stillage', 'cage', 'bunker', 'box', 'bags'] as const;
+/** STAGE 2 (4.11): the price board's tabs by family. */
+export const BOARD_TABS = ['ferrous', 'nonFerrous', 'works', 'intermediates'] as const;
+/**
+ * STAGE 2 (5.2 (2), (5); T23): what a thing is, for the content checks: a Yard sale kind may carry none of
+ * `reuse.never`; a shear or shredder input with `vessel` must be `certifiedEmpty`.
+ */
+export const THING_TAGS = ['electrical', 'sealed', 'vessel', 'battery', 'carPart', 'fuel', 'childSafety'] as const;
 /** A footprint on the ground, metres (content3 `map.footprints`, `zones.*.footprint`: centre x, y, width w along x, depth d along y; x0..y1 its edges, informative). */
 export const FootprintSchema = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), d: z.number().positive(), x0: z.number().optional(), y0: z.number().optional(), x1: z.number().optional(), y1: z.number().optional() });
 export type Footprint = z.infer<typeof FootprintSchema>;
@@ -105,7 +118,9 @@ export const GradeSchema = z.object({
   /** BUILD: the look family of a load of it (people.draw.ts LoadFamily); default by family in the frame. */
   load: z.enum(LOAD_FAMILIES).optional(),
   /** BUILD: its bay's look (a lock-block heap, a stillage, the converter cage), the manifest entry, and where it stands (a map point and the slot along it). */
-  bay: z.object({ kind: z.enum(['heap', 'stillage', 'cage']), sprite: spriteId, place: id.optional(), slot: z.number().int().nonnegative().optional() }).optional(),
+  bay: z.object({ kind: z.enum(BAY_KINDS), sprite: spriteId, place: id.optional(), slot: z.number().int().nonnegative().optional() }).optional(),
+  /** STAGE 2 (4.11; content2): the price board's tab (absent: by family; the board's own default). */
+  boardTab: z.enum(BOARD_TABS).optional(),
   /** BUILD: its pictogram (ui.picto.<grade>). */
   picto: spriteId.optional(),
   /** BUILD (strings' text.json): the ticket row's short name (≤ 12) and Help's long line. */
@@ -150,7 +165,16 @@ export type ConverterDef = z.infer<typeof ConverterSchema>;
  * pieces are a panel, two sides and a drum, which one grade cannot tell apart. Its index in `pieces` is
  * `Piece.spec`.
  */
-export const PieceSpecSchema = z.union([z.tuple([id, z.number().int().positive(), z.number().int().positive()]), z.tuple([id, z.number().int().positive(), z.number().int().positive(), spriteId])]);
+export const PieceSpecSchema = z.union([
+  z.tuple([id, z.number().int().positive(), z.number().int().positive()]),
+  z.tuple([id, z.number().int().positive(), z.number().int().positive(), spriteId]),
+  /**
+   * STAGE 2 (yard-stage2.md 2.5.2; content2): [grade, g, n, sprite | null, assay]: with the analyser owned and
+   * commissioned the piece weighs in at `assay` (the washer's stainless drum li -> ss, a sink ssu -> ss, a
+   * bronze valve brs -> bzs). The sprite may be null while the art has none (the frame falls back to the grade's).
+   */
+  z.tuple([id, z.number().int().positive(), z.number().int().positive(), spriteId.nullable(), id]),
+]);
 export type PieceSpec = z.infer<typeof PieceSpecSchema>;
 
 /** A thing (yard-stage1.md 2.4; content2 `objects`). */
@@ -158,8 +182,8 @@ export const ObjectSchema = z.object({
   /** BUILD: the thing's name on cards and slips (text.json via the build script); Help's long line. */
   name: z.string().default(''),
   long: z.string().optional(),
-  /** Tool tier it needs: 0 loose (picked up as it is), 1 spanners, 2 sledgehammer and grinder, 3 torch. */
-  tier: z.number().int().min(0).max(3),
+  /** Tool tier it needs: 0 loose (picked up as it is), 1 spanners, 2 sledgehammer and grinder, 3 torch; STAGE 2: 4 the plasma cutter (stainless and non-ferrous oversize pieces, 2.9). */
+  tier: z.number().int().min(0).max(4),
   /** Hardness h in the cut time max(cut.minS, m h / P). */
   h: z.number().nonnegative(),
   pieces: z.array(PieceSpecSchema).min(1),
@@ -182,7 +206,21 @@ export const ObjectSchema = z.object({
   /** ADDED: a closed vessel, "certified empty" on the thing, its card and its ticket line. */
   certifiedEmpty: z.boolean().default(false),
   /** ADDED (finding W9): the tool tier each entry of `pieces` needs (the car's wheels and loom by hand, its converter with the torch); missing: the object's `tier`. */
-  pieceTiers: z.array(z.number().int().min(0).max(3)).optional(),
+  pieceTiers: z.array(z.number().int().min(0).max(4)).optional(),
+  /** STAGE 2 (5.2 (2), (5); T23; content2): what it is (THING_TAGS), read by the content checks only. */
+  tags: z.array(z.enum(THING_TAGS)).optional(),
+  /**
+   * STAGE 2 (2.9, T1; content2): how it reaches the yard when a partner's load brings it: tipped on the floor
+   * (absent, 'tip'), set down on the car pad from the hook-lift's flatrack ('pad': the end-of-life car, never
+   * tipped), or in the closed battery box ('batteryBox': a battery, weighed as one weigh-in, never on the floor).
+   */
+  arrives: z.enum(['tip', 'pad', 'batteryBox']).optional(),
+  /**
+   * STAGE 2 (content2): the share of its prepared value the WHOLE thing fetches as found, where its grades'
+   * own `asFound` would overvalue it (the end-of-life car before depollution: nobody but a permitted bay takes
+   * it). Absent: its grades' as-found shares (E3).
+   */
+  asFound: z.number().min(0).max(1).optional(),
   /**
    * ADDED (finding W9): what stays when the last piece is off (the car's stripped body): weighed in WHOLE
    * at once where it stands, one line of `grade`, into its bay; the thing stays on its spot as a shell
@@ -295,7 +333,7 @@ export const MapSchema = z.preprocess((raw) => {
 export type MapDef = z.infer<typeof MapObject>;
 
 /** A tool tier (content2 `tools`): tier and cutting power P, kg a second. */
-export const ToolSchema = z.object({ tier: z.number().int().min(1).max(3), P: z.number().positive() });
+export const ToolSchema = z.object({ tier: z.number().int().min(1).max(4), P: z.number().positive() });
 export type ToolDef = z.infer<typeof ToolSchema>;
 
 export const TruckSchema = z.object({
@@ -396,6 +434,18 @@ export const PartnerSchema = z.object({
   /** content3 extras (checks, not rules). */
   trial_price: z.number().nonnegative().optional(),
   skipAsFound: z.number().nonnegative().optional(),
+  /**
+   * STAGE 2 (yard-stage2.md 2.12, 5.1; content2): a reusable batch on its skip from rung 3 ({obj} n of them,
+   * printed on the label, set down whole at the Yard sale's trade corner at the tip). Not read below rung 3.
+   */
+  reuseBatch: z.object({ obj: id, n: z.number().int().positive() }).optional(),
+  /**
+   * STAGE 2 (2.9, decision 30; content2): what its loads gain once a plate is owned (`needs`, a works plate
+   * id): `skip` adds `contents` to every skip filled after; `flatrack` (the end-of-life car, one a load, set
+   * down on the car pad) and `batteryBox` (whole batteries, one weigh-in) are loads of their own in the
+   * partner's rotation, each with its label fixed at fill (E3). The label price stays k x as found.
+   */
+  grows: z.array(z.object({ needs: id, body: z.enum(['skip', 'flatrack', 'batteryBox']), contents: z.record(id, z.number().int().positive()) })).optional(),
 });
 export type PartnerDef = z.infer<typeof PartnerSchema>;
 
@@ -404,7 +454,7 @@ export const MerchantSchema = z.object({ id: id, load_s: z.number().positive(), 
 export type MerchantDef = z.infer<typeof MerchantSchema>;
 
 /** Kinds of purchase (content2 `shop[].kind`). */
-export const SHOP_KINDS = ['carry', 'crew', 'tool', 'machine', 'vehicle', 'recipe', 'office'] as const;
+export const SHOP_KINDS = ['carry', 'crew', 'tool', 'machine', 'vehicle', 'recipe', 'office', 'works'] as const;
 export type ShopKind = (typeof SHOP_KINDS)[number];
 
 /**
@@ -422,6 +472,8 @@ export const ShopItemSchema = z.object({
   /** BUILD: seconds from paying to its arrival (2.15; 0: at once), and what brings it (default by kind: tools and carriers the van, machines the machine flatbed, the truck itself, crew out of the office). */
   deliver_s: z.number().nonnegative().default(0),
   arrive: z.enum(['van', 'machineFlatbed', 'truck', 'crew']).optional(),
+  /** STAGE 2 (2.6.2; content2): a shop key or works plate that must be owned first (the eddy current needs the shredder). */
+  needsItem: id.optional(),
   /** The prototype's measures (checks, never rules). */
   addsPerMin: z.number().optional(),
   incomeNow: z.number().optional(),

@@ -3383,6 +3383,896 @@
     "d_four_games": "clear: no exact match and no word within one letter or one Soundex step in games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, scripts/content/{space,night,office}-store.json (grep -wi re-run 2026-11-25 by the fix pass: no hit)"
    },
    "readability": "RED-port: two everyday words. Note: one letter from the word 'report', and of the same form as the east's city Sandport; the lead chose it knowing both."
+  },
+  {
+   "id": "bank",
+   "name": "Tinmill Finance",
+   "short": "Tinmill",
+   "kind": "the plant-finance lender (stage 2, from rung 3): letter title \"Tinmill Finance · loans for machines\"; away card \"To Tinmill: §y\"; Agreements page lender",
+   "usedIn": "yard-stage2.md 1.1 (4), 2.14 ([bank]), 6.1 (Bank); RULING2.md 3.2",
+   "verdict": "new (fourth pass)",
+   "mark": {
+    "colours": [
+     "olive",
+     "cream"
+    ],
+    "hex": {
+     "olive": "#6B7A3A",
+     "cream": "#F1E9D2"
+    },
+    "note": "two-colour word mark with a plain mill-wheel or rivet sign; no crest, column, vault, coin or shield (6.1). No famous bank uses olive with cream (search below); avoided pairs: HSBC red/white, Barclays cyan/blue, Lloyds green/black, NatWest purple/red, Santander red, TSB blue/aqua, Monzo coral/navy, Starling purple/teal, Co-op Bank teal, Commonwealth Bank yellow/black, ING and Rabobank orange/blue, Chase blue, Wells Fargo red/yellow, TD green/white, Bank of America red/blue"
+   },
+   "candidates": [
+    {
+     "name": "Tinmill Finance / Tinmill",
+     "result": "chosen"
+    },
+    {
+     "name": "Lockgate Finance",
+     "result": "fails (a)(b): Lockgate Capital, a real US lender (web search: lenderly.co lender profile)"
+    },
+    {
+     "name": "Ledgerwood Finance",
+     "result": "fails: contains \"Ledger\", a famous crypto-wallet brand in finance; Ledge Finance, a real commercial finance broker (Australia), one morpheme away"
+    },
+    {
+     "name": "Wagonway Finance",
+     "result": "fails: WAGON FINANCE LTD and WAGON BANK LTD at Companies House, Wagonex (car leasing): same first morpheme and the word finance"
+    },
+    {
+     "name": "Millrace Finance",
+     "result": "fails (c): the game \"Millrace: Tile Delivery Puzzle\" on the App Store"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "Web search \"Tinmill\" finance OR lender OR bank OR leasing: no firm of the name in finance (one real equipment lender shares only the word mill: North Mill Equipment Finance, US; recorded, not one letter or one sound). Web search \"TINMILL\" trademark: no exact mark (nearest TINKERMILL, workshop services; TINYMILLS dead; TINMYL pending, trading). Companies House: TINMILL LIMITED (activity not shown). No register searched directly (TMview refused this machine; USPTO search needs a browser). Revision (names4-2), from the independent check: Companies House also shows TIN FINANCE LIMITED (08692262), dormant (SIC 99999) and dissolved, and TINT FINANCE LTD, active, a financial-services holding company. Neither is one letter or one sound from Tinmill, and the dormant one never traded: Tinmill kept (unlike Wagonway, whose near firms WAGON FINANCE / WAGON BANK are live).",
+    "b_exchange_index_port_town_region": "\"tin mill\" is a trade term (a tinplate rolling mill), not a place or a bank",
+    "c_apps_and_games_on_the_stores": "App Store search API (US) \"Tinmill\": none; Google Play (US): \"Timill\" (a team-news app, one letter, not finance or a game)",
+    "d_four_games": "clear (corpus.py over games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files); register: no word within one letter; shares the morpheme \"mill\" with rivals Brookmill Metals and Millbeck Ferrous (recorded, chips differ)"
+   },
+   "readability": "TIN-mill: two everyday words, spelled as said; reads as a small-town works-area lender, not a bank of any country.",
+   "note": "The proper name carries no \"Bank\", \"Trust\", \"Savings\", \"Credit Union\" or \"Building Society\" (see notes.md: these words are restricted for real firms in the UK and US states; a point for the lead). The button stays \"Bank loan\" (the owner's words, fixed by the lead). Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "reclaimer",
+   "name": "Pump Handle Reclamation",
+   "short": "Pump Handle",
+   "kind": "the reclamation dealer whose van collects reusable batches from the Yard sale's trade corner (ticket vanCollection)",
+   "usedIn": "yard-stage2.md 2.12 ([reclamation dealer]), 6.1 (Vehicles); RULING2.md 5.3",
+   "verdict": "new (fourth pass, revised: replaces Chimney Pot Reclamation)",
+   "livery": {
+    "colours": [
+     "wine",
+     "stone grey"
+    ],
+    "hex": {
+     "wine": "#381926",
+     "stone grey": "#A7A49B"
+    },
+    "note": "van body stone grey, a dark wine band and lettering; a pump-and-handle silhouette as its sign. The band was maroon #6A2432 in the first pass; the check found it only ΔE2000 11.1 from the yard colour Cherry red (12.4 under deuteranopia), so it is darkened to wine #381926: now at least 23.0 from every yard colour and the stamp blue in normal vision and deuteranopia (nearest Cherry red 23.0 / 26.1), at least 19.1 from the 52 brand colours of brand.py (nearest Cadbury purple 19.1, NatWest purple 20.9). Its brown alternative #5A2A1E was rejected: 7.6 under deuteranopia from UPS brown, a colour that firm uses on its delivery vans. Band against body: luminance contrast 6.3. Scripts: scratchpad/names4r/grid.py, search.py. Unlike the merchant's flatbed: art step to confirm."
+   },
+   "candidates": [
+    {
+     "name": "Pump Handle Reclamation / Pump Handle",
+     "result": "chosen (revision)"
+    },
+    {
+     "name": "Coal Scuttle Reclamation / Coal Scuttle",
+     "result": "runner-up: stores, Companies House and web clean; loses on readability (\"scuttle\" is an older word a ten-year-old or a non-native speaker may not know; \"Scuttle\" alone is a game title)"
+    },
+    {
+     "name": "Chimney Pot Reclamation / Chimney Pot",
+     "result": "REPLACED (a): THE CHIMNEY POT SHOP LTD (16878193) active, online retail of the trade's own stock; CHIMNEY POTS LIMITED; (c): the app \"Chimneypots Estate Agents\" on both stores (independent check)"
+    },
+    {
+     "name": "Gatepost Reclamation",
+     "result": "weaker: an app \"Gatepost\" on both stores and nine GATEPOST companies"
+    },
+    {
+     "name": "Hobnail Reclamation",
+     "result": "fails (d): \"Hob\" is the register's Hob Garnett / Hob's Farm Clearance"
+    },
+    {
+     "name": "Lintel Reclamation",
+     "result": "fails (c) and readability: six \"Lintel\" apps on each store"
+    },
+    {
+     "name": "Bathstone Reclamation",
+     "result": "fails (a): BATHSTONE RECLAMATION LTD (same trade)"
+    },
+    {
+     "name": "Fanlight, Latchkey, Mangle, Door Knocker, Weathercock, Mantelpiece, Firedog",
+     "result": "dropped by the check: apps, UK companies, a light-stick maker (FANLIGHT Co.), a game publisher (Firedog Creative)"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "Web \"Pump Handle\" reclamation OR salvage OR \"architectural antiques\" yard: no business of the name (only a reclaimed pump for sale). Web \"Pump Handle\" trademark registered word mark: no word mark PUMP HANDLE; only two US configuration (shape) marks of a T-shaped pump handle (2001, Justia) and other PUMP- word marks (PUMP STICK, PUMP WORKS, PUMP PAL), none for reclamation or building materials. The independent check also searched \"Pump Handle Reclamation\" OR \"Pump Handle Antiques\" OR \"Pump Handle Salvage\" and Ireland/Australia/Germany: none. Companies House \"Pump Handle\": none.",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "App Store (US) and Google Play (US) \"Pump Handle\": none (check3.py, names4r/r1_out.json); the check found none on App Store US, GB, DE and Google Play US, GB either",
+    "d_four_games": "corpus.py: \"Pump\" and \"Handle\" occur only as plain words in the fourth game (high-office game.json, papers, phrases); \"Pump\" is one letter from the plain word \"Jump\" (allowed: not a distinctive name). Register: no word within one letter; \"handle\" is also the register's word for a player handle (an everyday word, different sense; recorded)."
+   },
+   "readability": "PUMP HAN-dle: two everyday words; an old cast-iron yard pump is classic reclamation stock. Ticket \"Collected by Pump Handle\" (24); short form 11 characters (chip 14, ticket line 18).",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json, scratchpad/names4c/q*_out.json, scratchpad/names4r/r1_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "garageContact",
+   "name": "Joy Parfitt",
+   "kind": "the person on Parfitt's Garage's business card (partner.garage)",
+   "usedIn": "yard-stage2.md 5.4",
+   "verdict": "new (fourth pass)",
+   "candidates": [
+    {
+     "name": "Joy Parfitt",
+     "result": "chosen"
+    },
+    {
+     "name": "Ruth Parfitt",
+     "result": "kept as runner-up: clear, but Ruth is within one letter of the plain word \"rush\" in the four games (lower case only; allowed) and Ruth goes to the plumber"
+    },
+    {
+     "name": "Rose Parfitt",
+     "result": "fails (d): one letter from Pizza Empire's \"Rosa\""
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "Web search \"Joy Parfitt\": no result for the exact name (no well-known person). Surname Parfitt is the register's own (Parfitt's Garage); Rick Parfitt (musician) is the surname's famous bearer: \"Joy\" is not his. Revision: the independent check found that searches for \"Joy Parfitt\" are filled by Judy Parfitt, a well-known English actress. Joy and Judy are two letters apart and sound different (one syllable against two), so the desk's one-letter-or-one-sound rule does not catch it: kept and recorded. If the lead wants more distance, \"Nell Parfitt\" is the option (not searched).",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "App Store and Google Play (US) \"Joy Parfitt\": none",
+    "d_four_games": "clear (corpus.py over games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files); not a crew name, not within one letter of one (crew-names.json)"
+   },
+   "readability": "JOY PAR-fit: both spelled as said.",
+   "note": "Follows the register's convention: the contact carries the firm's surname (Hob Garnett / Hob's Farm Clearance, Edie Cottle / Cottle Demolition). Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "plumbingContact",
+   "name": "Ruth Okoro",
+   "kind": "the person on Tap Street Plumbing's card (partner.plumbing)",
+   "usedIn": "yard-stage2.md 5.4",
+   "verdict": "new (fourth pass)",
+   "candidates": [
+    {
+     "name": "Ruth Okoro",
+     "result": "chosen"
+    },
+    {
+     "name": "Abi Mensah",
+     "result": "fails (d): \"Abi\" is one letter from the crew name \"Ali\""
+    },
+    {
+     "name": "Ada Mensah",
+     "result": "fails (d): \"Ada\" is a character name of the four games (crew-names.json removed Ana and Ida for it)"
+    },
+    {
+     "name": "Tess Varga",
+     "result": "clear on stores and corpus (only plain words near), not web-searched; not chosen"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "Web search \"Ruth Okoro\": no result for the exact name; nearest a Ruth Okafor (an advocate in Nigeria, not famous, different surname). Okoro is a common Nigerian surname (a basketball player, Isaac Okoro, bears it: from memory, not famous enough to matter and a different first name).",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "App Store and Google Play (US) \"Ruth Okoro\": none",
+    "d_four_games": "clear for Okoro; \"Ruth\" is one letter from the plain word \"rush\" (lower case only in the four games: allowed by the second pass's rule)"
+   },
+   "readability": "ROOTH oh-KOR-oh: spelled as said; the crew list's many-countries convention (Tap Street is a street, so the contact's surname is free).",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "partner.boatyard",
+   "name": "Saltreach Boatyard",
+   "short": "the boatyard",
+   "kind": "the boatyard that sends a bronze propeller as an oversize piece (T15); its crane lorry's livery",
+   "usedIn": "yard-stage2.md 5.4, 6.1 (Oversize pieces, Vehicles)",
+   "verdict": "new (fourth pass)",
+   "livery": {
+    "colours": [
+     "deep sea",
+     "white"
+    ],
+    "hex": {
+     "deep sea": "#204047",
+     "white": "#F4F4F0"
+    },
+    "note": "white cab, a deep-sea lower band, a plain anchor or propeller sign. The first pass's sea blue #2D5F8A was ΔE2000 4.6 from the game's stamp blue #2C5DA8 (and 4.1 from IKEA blue); deep sea #204047 is darker and greener: at least 16.1 from every yard colour, the stamp blue and the other liveries in normal vision and deuteranopia (nearest Teal 21.0 / 16.1, Indigo 17.9, stamp blue 21.3 / 19.8), at least 14.6 from the 52 brand colours (nearest Cadbury purple, NatWest purple, Bosch blue). Band against white: luminance contrast 10.1. Scripts: scratchpad/names4r/grid.py, search.py."
+   },
+   "candidates": [
+    {
+     "name": "Saltreach Boatyard",
+     "result": "chosen: Saltreach is the register's own deep-water port (site.port), the coast town of the home country"
+    },
+    {
+     "name": "Tiller Boatyard / Tiller & Sons",
+     "result": "fails (a): Tiller Marine, a real boat builder and fabricator (Ontario, listed as closed) and \"Tiller boats\" of a real boat maker"
+    },
+    {
+     "name": "Gull Quay Boatyard",
+     "result": "fails (d): \"Quay\" is a word of the fourth game's text; Gull is one letter from Hull"
+    },
+    {
+     "name": "Slipway Boatyard",
+     "result": "clear on stores and Companies House for the phrase; not web-searched; a generic word many real yards use"
+    }
+   ],
+   "check": {
+    "a_company_brand_product": "Web search \"Saltreach\" boatyard OR boatworks OR marine OR propeller: nothing named Saltreach. Companies House and stores \"Saltreach Boatyard\": none (the first pass recorded SALTREACH LIMITED, sector unknown)",
+    "b_exchange_index_port_town_region": "Saltreach: the register's invented port (no real place found by the first and second passes)",
+    "c_apps_and_games_on_the_stores": "App Store and Google Play (US) \"Saltreach Boatyard\": none",
+    "d_four_games": "clear (corpus.py over games/{pizza-empire,space-miner,night-market,high-office}/game.json, src/ui/{haul,merge,decree}/strings.ts, scripts/content/office/*.json, the three store files)"
+   },
+   "readability": "SALT-reach BOAT-yard: four everyday morphemes. The full name is 18 characters (a ticket line holds it); no chip short form is \"Saltreach\" because rival.16's chip is \"Saltreach\": a chip says \"the boatyard\".",
+   "note": "Saltreach lies 220 km west (site.port): the propeller comes on the partner's crane lorry, so distance is no rule. Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "look.colour1",
+   "name": "Cherry red",
+   "hex": "#9E1F35",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 35,
+   "deltaE2000VsConcrete": 49.0,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Cherry red: an everyday colour word.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.colour2",
+   "name": "Indigo",
+   "hex": "#33378F",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 28,
+   "deltaE2000VsConcrete": 59.5,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Indigo: an everyday colour word.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.colour3",
+   "name": "Teal",
+   "hex": "#1E7A78",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 46,
+   "deltaE2000VsConcrete": 35.5,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Teal: an everyday colour word.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.colour4",
+   "name": "Mint",
+   "hex": "#BDEFC0",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 90,
+   "deltaE2000VsConcrete": 20.3,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Mint: an everyday colour word.",
+   "note": "Revision: hex lightened from #A2DCA6 to #BDEFC0 (the check's suggestion) so that a mint truck reads on the concrete floor #C9C4B8: luminance contrast 1.10 → 1.35. Under deuteranopia Mint against concrete stays about ΔE 10 at any lightness (hue lost): the art step keeps an outline. Brand distance of the new hex: at least 47.8 (brand.py). Set minimum unchanged or better (see notes.md). Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json, scratchpad/names4c/q*_out.json, scratchpad/names4r/r1_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "look.colour5",
+   "name": "Mustard",
+   "hex": "#C99520",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 65,
+   "deltaE2000VsConcrete": 24.8,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Mustard: an everyday colour word.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.colour6",
+   "name": "Lavender",
+   "hex": "#CDB8E8",
+   "kind": "yard colour (a look sold; tint of vest, truck cab and skip body)",
+   "usedIn": "yard-stage2.md 2.15.1 ([colour n]), 6.1 (Looks sold)",
+   "verdict": "new (fourth pass)",
+   "lightnessL": 78,
+   "deltaE2000VsConcrete": 25.3,
+   "check": {
+    "a_company_brand_product": "a generic colour word, never a maker's coined name (no Farrow & Ball, Dulux, Pantone, RAL or Crayola coined name); hex kept at least ΔE2000 9.8 from 52 famous brand colours (approximate hexes from memory; scratchpad/names4w/brand.py), Tiffany Blue, Milka lilac, Kubota and Stihl orange, JCB and Caterpillar yellow among them",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "a colour word; not searched as a title",
+    "d_four_games": "no colour look of this name in the four games; never \"green\" (banned in player text)"
+   },
+   "readability": "Lavender: an everyday colour word.",
+   "note": "Revision: the check's suggested darker hex #B39BDD was NOT adopted: it is ΔE2000 6.0 from Milka lilac (#A28CC0, approximate), a colour Mondelez says it holds as a colour trade mark in Europe for chocolate. A search of lavender hexes (hue 240-300, scratchpad/names4r/lav.py) found none that both lifts floor contrast to 1.2 and stays 10 from the brand list, so #CDB8E8 stays (Milka 12.5). Floor contrast is 1.04 (ΔE2000 25.3 normal, 20.0 deuteranopia): a lavender truck reads on the floor by hue and outline; the art step keeps a dark outline on tinted trucks. Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json, scratchpad/names4c/q*_out.json, scratchpad/names4r/r1_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "look.set1",
+   "name": "Tub garden",
+   "kind": "a set of yard decorations (4 to 5 props: planters; contents are the art's, 6.1)",
+   "usedIn": "yard-stage2.md 2.15.1 (dressing1 to 4, \"Yard decorations: [set n]\", T18), 6.1",
+   "verdict": "new (fourth pass)",
+   "check": {
+    "a_company_brand_product": "plain phrase; no brand found",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "none",
+    "d_four_games": "no exact phrase in the four games (the first choices \"Flower tubs\" and \"Tea break\" are exact phrases of the fourth game and were replaced)"
+   },
+   "readability": "Tub garden: two everyday words; \"Yard decorations: Tub garden\" is 28 characters.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.set2",
+   "name": "Open day",
+   "kind": "a set of yard decorations (4 to 5 props: flags and bunting; contents are the art's, 6.1)",
+   "usedIn": "yard-stage2.md 2.15.1 (dressing1 to 4, \"Yard decorations: [set n]\", T18), 6.1",
+   "verdict": "new (fourth pass)",
+   "check": {
+    "a_company_brand_product": "plain phrase; no brand found",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "\"OpenDay: Live Shopping\" (a shopping app, one word, not a game): recorded",
+    "d_four_games": "no exact phrase in the four games (the first choices \"Flower tubs\" and \"Tea break\" are exact phrases of the fourth game and were replaced)"
+   },
+   "readability": "Open day: two everyday words; \"Yard decorations: Open day\" is 26 characters.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.set3",
+   "name": "Bench corner",
+   "kind": "a set of yard decorations (4 to 5 props: benches; contents are the art's, 6.1)",
+   "usedIn": "yard-stage2.md 2.15.1 (dressing1 to 4, \"Yard decorations: [set n]\", T18), 6.1",
+   "verdict": "new (fourth pass)",
+   "check": {
+    "a_company_brand_product": "plain phrase; no brand found",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "none",
+    "d_four_games": "no exact phrase in the four games (the first choices \"Flower tubs\" and \"Tea break\" are exact phrases of the fourth game and were replaced)"
+   },
+   "readability": "Bench corner: two everyday words; \"Yard decorations: Bench corner\" is 30 characters.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "look.set4",
+   "name": "Tidy lines",
+   "kind": "a set of yard decorations (4 to 5 props: painted kerbs and lines; contents are the art's, 6.1)",
+   "usedIn": "yard-stage2.md 2.15.1 (dressing1 to 4, \"Yard decorations: [set n]\", T18), 6.1",
+   "verdict": "new (fourth pass, revised: replaces Fresh paint)",
+   "check": {
+    "a_company_brand_product": "Web \"Tidy Lines\" game OR app OR paint OR trademark: no product, app or mark of that name (results only \"Lines the Game\", \"Line Paint!\", \"Lined\", \"Lines FRVR\": none named Tidy Lines). The check: \"TIDY LINES\" OR \"TIDYLINES\" trademark: none. Companies House: TIDYLINES LIMITED only (sector unknown, not a game or a paint maker found).",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "App Store (US) and Google Play (US) \"Tidy lines\": none (names4r/r1_out.json); the check: none on five storefronts",
+    "d_four_games": "corpus.py: \"Tidy\" and \"lines\" are plain words in the four games; \"Tidy\" is one letter from the plain word \"Tiny\", \"lines\" from \"Line\" and the crew name Ines (lower case, plain words: allowed). No exact phrase."
+   },
+   "readability": "Tidy lines: two everyday words (the painted kerbs and lines of 6.1); \"Yard decorations: Tidy lines\" is 28 characters.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json, scratchpad/names4c/q*_out.json, scratchpad/names4r/r1_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true,
+   "candidates": [
+    {
+     "name": "Tidy lines",
+     "result": "chosen (revision)"
+    },
+    {
+     "name": "Neat lines",
+     "result": "runner-up: no app; NEATLINES LTD and NEATLINE STUDIO LTD exist (sector unknown); \"Neat\" is one letter from the plain words near, seat, next"
+    },
+    {
+     "name": "Fresh paint",
+     "result": "REPLACED: Microsoft Fresh Paint, a well-known painting app; a live US mark FRESH PAINT INC. for painting services; seven FRESH PAINT decorating firms (independent check)"
+    },
+    {
+     "name": "Line paint",
+     "result": "fails (c): the App Store game \"Line Paint!\" (AI Games FZ)"
+    },
+    {
+     "name": "Painted lines",
+     "result": "fails: product title 31 characters, over Apple's 30"
+    },
+    {
+     "name": "Bright lines / New lines",
+     "result": "fail (c): games \"Connect Dots: Bright Lines\", \"New Lines: Color Match\""
+    }
+   ]
+  },
+  {
+   "id": "look.plaque",
+   "name": "Founder's plaque",
+   "kind": "the founder's plaque (a look sold: bronze, poured in the yard's own crucible, set by the gate)",
+   "usedIn": "yard-stage2.md 2.15.1, 6.1",
+   "verdict": "kept (the specification's role name)",
+   "check": {
+    "a_company_brand_product": "web search \"Founder's Plaque\" game OR app: none",
+    "b_exchange_index_port_town_region": "not a place",
+    "c_apps_and_games_on_the_stores": "App Store and Google Play (US) \"Founders plaque\": none",
+    "d_four_games": "\"plaque\" is a plain word in the fourth game; \"Founder\" one letter from nothing distinctive (Foundry is this game's own word)"
+   },
+   "readability": "FOUN-der's PLAQUE: plain.",
+   "note": "Engineer's check, not legal clearance. Raw results: scratchpad/names4w/c*_out.json; queries in names4/notes.md.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour1",
+   "name": "Yard colours: Cherry red",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour1",
+   "title": "Yard colours: Cherry red",
+   "descriptionApple": "Trucks, vests and skips in cherry red.",
+   "descriptionGoogle": "Trucks, vests and skips in cherry red.",
+   "lengths": {
+    "title": 24,
+    "descriptionApple": 38,
+    "descriptionGoogle": 38
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour2",
+   "name": "Yard colours: Indigo",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour2",
+   "title": "Yard colours: Indigo",
+   "descriptionApple": "Trucks, vests and skips in indigo.",
+   "descriptionGoogle": "Trucks, vests and skips in indigo.",
+   "lengths": {
+    "title": 20,
+    "descriptionApple": 34,
+    "descriptionGoogle": 34
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour3",
+   "name": "Yard colours: Teal",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour3",
+   "title": "Yard colours: Teal",
+   "descriptionApple": "Trucks, vests and skips in teal.",
+   "descriptionGoogle": "Trucks, vests and skips in teal.",
+   "lengths": {
+    "title": 18,
+    "descriptionApple": 32,
+    "descriptionGoogle": 32
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour4",
+   "name": "Yard colours: Mint",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour4",
+   "title": "Yard colours: Mint",
+   "descriptionApple": "Trucks, vests and skips in mint.",
+   "descriptionGoogle": "Trucks, vests and skips in mint.",
+   "lengths": {
+    "title": 18,
+    "descriptionApple": 32,
+    "descriptionGoogle": 32
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour5",
+   "name": "Yard colours: Mustard",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour5",
+   "title": "Yard colours: Mustard",
+   "descriptionApple": "Trucks, vests and skips in mustard.",
+   "descriptionGoogle": "Trucks, vests and skips in mustard.",
+   "lengths": {
+    "title": 21,
+    "descriptionApple": 35,
+    "descriptionGoogle": 35
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.colour6",
+   "name": "Yard colours: Lavender",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "colour6",
+   "title": "Yard colours: Lavender",
+   "descriptionApple": "Trucks, vests and skips in lavender.",
+   "descriptionGoogle": "Trucks, vests and skips in lavender.",
+   "lengths": {
+    "title": 22,
+    "descriptionApple": 36,
+    "descriptionGoogle": 36
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.dressing1",
+   "name": "Yard decorations: Tub garden",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "dressing1",
+   "title": "Yard decorations: Tub garden",
+   "descriptionApple": "Planters in old tubs around your yard.",
+   "descriptionGoogle": "Planters in old tubs around your yard.",
+   "lengths": {
+    "title": 28,
+    "descriptionApple": 38,
+    "descriptionGoogle": 38
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "Over Google's recommended 25 characters (allowed up to 55; Apple's 30 holds).",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.dressing2",
+   "name": "Yard decorations: Open day",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "dressing2",
+   "title": "Yard decorations: Open day",
+   "descriptionApple": "Flags and bunting for your yard.",
+   "descriptionGoogle": "Flags and bunting for your yard.",
+   "lengths": {
+    "title": 26,
+    "descriptionApple": 32,
+    "descriptionGoogle": 32
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "Over Google's recommended 25 characters (allowed up to 55; Apple's 30 holds).",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.dressing3",
+   "name": "Yard decorations: Bench corner",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "dressing3",
+   "title": "Yard decorations: Bench corner",
+   "descriptionApple": "Benches and a table for your yard.",
+   "descriptionGoogle": "Benches and a table for your yard.",
+   "lengths": {
+    "title": 30,
+    "descriptionApple": 34,
+    "descriptionGoogle": 34
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "Over Google's recommended 25 characters (allowed up to 55; Apple's 30 holds).",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.dressing4",
+   "name": "Yard decorations: Tidy lines",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "dressing4",
+   "title": "Yard decorations: Tidy lines",
+   "descriptionApple": "Painted kerbs and lines for your yard.",
+   "descriptionGoogle": "Painted kerbs and lines for your yard.",
+   "lengths": {
+    "title": 28,
+    "descriptionApple": 38,
+    "descriptionGoogle": 38
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "Revision: was \"Yard decorations: Fresh paint\". 28 characters: over Google's recommended 25 (allowed up to 55; Apple's 30 holds).",
+   "checkedOn": "2026-11-26",
+   "label": "names4-2 (revision after check.md)",
+   "current": true
+  },
+  {
+   "id": "product.plaque",
+   "name": "Founder's plaque",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "plaque",
+   "title": "Founder's plaque",
+   "descriptionApple": "A bronze plaque for your yard's gate.",
+   "descriptionGoogle": "A bronze plaque for your yard's gate.",
+   "lengths": {
+    "title": 16,
+    "descriptionApple": 37,
+    "descriptionGoogle": 37
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.skipAds",
+   "name": "No ad videos",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "skipAds",
+   "title": "No ad videos",
+   "descriptionApple": "Get every ad reward without watching.",
+   "descriptionGoogle": "Get every ad reward without watching a video. The rewards and their limits stay the same.",
+   "lengths": {
+    "title": 12,
+    "descriptionApple": 37,
+    "descriptionGoogle": 89
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": "",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.pack2",
+   "name": "Scrip: 2 hours' earnings",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "pack2",
+   "title": "Scrip: 2 hours' earnings",
+   "descriptionApple": "Scrip: about 2 hours of your yard's earnings",
+   "descriptionGoogle": "Scrip worth about 2 hours of your yard's earnings in the game. Scrip is used only in this game and cannot be paid out.",
+   "lengths": {
+    "title": 24,
+    "descriptionApple": 44,
+    "descriptionGoogle": 118
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": " Apple's 45-character description cannot hold the specification's sentence; Google's carries it whole.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.pack5",
+   "name": "Scrip: 5 hours' earnings",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "pack5",
+   "title": "Scrip: 5 hours' earnings",
+   "descriptionApple": "Scrip: about 5 hours of your yard's earnings",
+   "descriptionGoogle": "Scrip worth about 5 hours of your yard's earnings in the game. Scrip is used only in this game and cannot be paid out.",
+   "lengths": {
+    "title": 24,
+    "descriptionApple": 44,
+    "descriptionGoogle": 118
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": " Apple's 45-character description cannot hold the specification's sentence; Google's carries it whole.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.pack10",
+   "name": "Scrip: 10 hours' earnings",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "pack10",
+   "title": "Scrip: 10 hours' earnings",
+   "descriptionApple": "Scrip: about 10 hours of your yard's earnings",
+   "descriptionGoogle": "Scrip worth about 10 hours of your yard's earnings in the game. Scrip is used only in this game and cannot be paid out.",
+   "lengths": {
+    "title": 25,
+    "descriptionApple": 45,
+    "descriptionGoogle": 119
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": " Apple's 45-character description cannot hold the specification's sentence; Google's carries it whole.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
+  },
+  {
+   "id": "product.pack20",
+   "name": "Scrip: 20 hours' earnings",
+   "kind": "store product (in-app purchase) title and descriptions",
+   "usedIn": "yard-stage2.md 2.15.1, 5.4 (product.*)",
+   "verdict": "new (fourth pass; the specification's wording, cut to the limits)",
+   "productId": "pack20",
+   "title": "Scrip: 20 hours' earnings",
+   "descriptionApple": "Scrip: about 20 hours of your yard's earnings",
+   "descriptionGoogle": "Scrip worth about 20 hours of your yard's earnings in the game. Scrip is used only in this game and cannot be paid out.",
+   "lengths": {
+    "title": 25,
+    "descriptionApple": 45,
+    "descriptionGoogle": 119
+   },
+   "limits": "App Store Connect: display name 2 to 30 characters, description at most 45 (developer.apple.com help, In-App Purchase information, read 2026-11-26, page undated, (c) 2026). Google Play Console: title up to 55 characters (25 recommended), description up to 200 (support.google.com answer 1153481, read 2026-11-26).",
+   "check": {
+    "a_company_brand_product": "composed of the names above",
+    "c_apps_and_games_on_the_stores": "not a game title",
+    "d_four_games": "the word lists of 5.3 (never said) and \"time\", \"skip\", \"faster\", \"rank\" checked absent by build.py"
+   },
+   "note": " Apple's 45-character description cannot hold the specification's sentence; Google's carries it whole.",
+   "checkedOn": "2026-11-26",
+   "label": "names4 (fourth pass)",
+   "current": true
   }
  ],
  "generated": {
@@ -3423,6 +4313,7 @@
   }
  },
  "byId": {
+  "bank": "Tinmill Finance",
   "city.capital": "Bellmarch",
   "city.east": "Sandport",
   "corp.aerospace": "Overvane Aerospace",
@@ -3439,15 +4330,46 @@
   "exchange.west": "Bellmarch Metal Exchange",
   "farmContact": "Hob Garnett",
   "foundry": "Oakbridge Foundry Co-op",
+  "garageContact": "Joy Parfitt",
   "homeDistrict": "Oakbridge Vale",
   "homeLane": "Cinder Lane",
   "homeTown": "Oakbridge",
   "homeYard": "Cinder Lane Yard",
+  "look.colour1": "Cherry red",
+  "look.colour2": "Indigo",
+  "look.colour3": "Teal",
+  "look.colour4": "Mint",
+  "look.colour5": "Mustard",
+  "look.colour6": "Lavender",
+  "look.plaque": "Founder's plaque",
+  "look.set1": "Tub garden",
+  "look.set2": "Open day",
+  "look.set3": "Bench corner",
+  "look.set4": "Tidy lines",
   "merchant": "Tollbridge Metals",
+  "partner.boatyard": "Saltreach Boatyard",
   "partner.garage": "Parfitt's Garage",
   "partner.plumbing": "Tap Street Plumbing",
   "partnerDemolition": "Cottle Demolition",
   "partnerFarm": "Hob's Farm Clearance",
+  "plumbingContact": "Ruth Okoro",
+  "product.colour1": "Yard colours: Cherry red",
+  "product.colour2": "Yard colours: Indigo",
+  "product.colour3": "Yard colours: Teal",
+  "product.colour4": "Yard colours: Mint",
+  "product.colour5": "Yard colours: Mustard",
+  "product.colour6": "Yard colours: Lavender",
+  "product.dressing1": "Yard decorations: Tub garden",
+  "product.dressing2": "Yard decorations: Open day",
+  "product.dressing3": "Yard decorations: Bench corner",
+  "product.dressing4": "Yard decorations: Tidy lines",
+  "product.pack10": "Scrip: 10 hours' earnings",
+  "product.pack2": "Scrip: 2 hours' earnings",
+  "product.pack20": "Scrip: 20 hours' earnings",
+  "product.pack5": "Scrip: 5 hours' earnings",
+  "product.plaque": "Founder's plaque",
+  "product.skipAds": "No ad videos",
+  "reclaimer": "Pump Handle Reclamation",
   "regional.cable": "Rowkirk Cable Works",
   "regional.steel": "Garrowfield Steel",
   "rival.1": "Marchford & Daughters Scrap",
