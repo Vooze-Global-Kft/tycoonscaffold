@@ -85,7 +85,8 @@ function firstEvent(x: Ctx): QueuedEvent | null {
   if (s.dropoff.nextAt >= 0) consider(s.dropoff.nextAt, 'dropoffArrival', '');
   for (const pid in s.partners) {
     const p = s.partners[pid];
-    if (p.open) for (const sk of p.skips) if (sk.phase === 'filling') consider(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
+    // The ref is built only when the skip can be the earliest (it decides ties only).
+    if (p.open) for (const sk of p.skips) if (sk.phase === 'filling' && (!bSet || sk.fullAt <= bAt + 1e-9)) consider(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
   }
   for (const a of s.arriving) consider(a.at, 'arrival', a.item);
   consider(nextDayAt(x), 'day', '');

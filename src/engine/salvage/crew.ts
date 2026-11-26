@@ -11,10 +11,10 @@ import { bossSees, groupCfg, grouping, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
-import { cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, takeFromPile, thingGone, thingOf, dropoffCount } from './things';
+import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCut, RunLoad, Spot, ThingState } from './types';
 
-const RATE_FED: MachineId[] = ['stripper', 'bench'];
+const RATE_FED: Exclude<MachineId, 'crucible'>[] = ['stripper', 'bench'];
 
 function posOf(x: Ctx, spot: Spot): { x: number; y: number } {
   return spotPos(x.c, spot, x.s.things, x.s.truck);
@@ -169,11 +169,27 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
   const s = x.s;
   const cap = x.c.crew.hand.load * 1000;
   const inYard = bossFresh(x, t);
-  const carryable = (p: GroundPiece) => !(inYard && isCable(x, p.grade));
+  const cable = inYard ? inputSet(x, 'hand_stripper') : null;
   // Nothing anywhere to carry: stay at the stand (offered work again at every later event).
   // Only the piles a yard hand takes from count (2.6: never from the heaps; pieces beside a thing in a zone are the boss's).
+  // One pass sorts the free pieces by where they wait (in their order): every list below is a filter of `free`.
   const free: GroundPiece[] = [];
-  for (const p of s.pieces) if (!p.claim && waitsAt(x, p)) free.push(p);
+  const circles: GroundPiece[] = [];
+  const floor: GroundPiece[] = [];
+  const drop: GroundPiece[] = [];
+  let floorG = 0;
+  for (const p of s.pieces) {
+    if (p.claim) continue;
+    const w = waitsAt(x, p);
+    if (!w) continue;
+    free.push(p);
+    if (cable && cable.has(p.grade)) continue;
+    if (w === 'floor') {
+      floor.push(p);
+      floorG += p.g;
+    } else if (w === 'dropoff') drop.push(p);
+    else if (p.pile.startsWith('circle.')) circles.push(p);
+  }
   let any = free.length > 0;
   if (!any) for (const id of ['stripper', 'hand_stripper', 'bench', 'crucible'] as MachineId[]) if (trayFree(x, id) > 0) {
     any = true;
@@ -184,23 +200,29 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     break;
   }
   if (!any) return false;
-  const claim = (ps: GroundPiece[]) => {
-    for (const p of ps) p.claim = m.id;
-    m.claims = ps.map((p) => p.uid);
-  };
   // (1) feed: a machine with room for its input lying in a circle, at the drop-off or on the floor.
-  for (const id of [...RATE_FED, 'crucible' as MachineId]) {
+  for (const id of RATE_FED) {
     const mach = s.machines[id];
     if (!mach.owned) continue;
     // accepts(x, id, p) for each piece, with the machine's inputs and its hopper's room looked up once.
-    const room = id === 'crucible' ? -Infinity : hopperRoom(x, id);
-    const inputs = id === 'crucible' ? null : inputSet(x, id);
-    const src = inputs ? free.filter((p) => inputs.has(p.grade) && room >= p.g) : [];
-    if (!src.length) continue;
-    const pile = [...src].sort((a, b) => pileOrder(a) - pileOrder(b))[0].pile;
-    const pick = choose(x, src.filter((p) => p.pile === pile), Math.min(cap, (x.c.machines as unknown as Record<string, { inbuf: number }>)[id].inbuf * 1000));
+    const room = hopperRoom(x, id);
+    const inputs = inputSet(x, id);
+    let pile: string | null = null;
+    let order = Infinity;
+    for (const p of free) {
+      if (!inputs.has(p.grade) || room < p.g) continue;
+      const o = pileOrder(p);
+      if (o < order) {
+        order = o;
+        pile = p.pile;
+      }
+    }
+    if (pile === null) continue;
+    const src: GroundPiece[] = [];
+    for (const p of free) if (p.pile === pile && inputs.has(p.grade) && room >= p.g) src.push(p);
+    const pick = choose(x, src, Math.min(cap, (x.c.machines as unknown as Record<string, { inbuf: number }>)[id].inbuf * 1000));
     if (!pick.length) continue;
-    claim(pick);
+    claimPieces(m, pick);
     m.cut = null;
     PLAN = { k: 'feed', pile, dest: id };
     leg(x, m, 'feed', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
@@ -208,12 +230,11 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     return true;
   }
   // (2) chalk circles.
-  const circles = free.filter((p) => p.pile.startsWith('circle.') && carryable(p));
   if (circles.length) {
     const pile = circles[0].pile;
     const pick = choose(x, circles.filter((p) => p.pile === pile), cap);
     if (pick.length) {
-      claim(pick);
+      claimPieces(m, pick);
       PLAN = { k: 'pile', pile };
       leg(x, m, 'circle', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
@@ -242,82 +263,47 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
     m.dest = 'scale';
     return true;
   }
-  // Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry: they go with the pieces of their place.
-  const loose = (where: 'dropoff' | 'floor'): ThingState | null => looseAt(x, where, cap, inYard);
-  const takeLoose = (th: ThingState, job: CrewJob): boolean => {
-    th.by = m.id;
-    m.claims = [`loose:${th.uid}`];
-    PLAN = { k: 'loose', where: th.at.at === 'dropoff' ? 'dropoff' : 'floor' };
-    leg(x, m, job, 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
-    m.dest = 'scale';
-    return true;
-  };
   // (6) the tipping floor (E35): its pieces and its whole things that need no cutting. While more than half
   // of the floor's room is used the floor comes BEFORE the drop-off (4, 5): else a drop-off that never runs
   // dry (the public's things arriving all the absence) keeps the hands off a full floor for good and the
   // truck tips nothing more.
-  const floorStep = (): boolean => {
-    const floor = free.filter((p) => waitsAt(x, p) === 'floor' && carryable(p));
-    // E35: whole things that need no cutting leave the floor whenever the boss is away, and while he is in
-    // the yard once more than half of the floor's room is used; the bigger waiting heap goes first.
-    if (!inYard || floorFirst) {
-      const trip = floorWholeTrip(x, cap);
-      if (trip && trip.waiting_g >= floor.reduce((a, p) => a + p.g, 0)) {
-        for (const th of trip.things) th.by = m.id;
-        m.claims = trip.things.map((th) => `loose:${th.uid}`);
-        m.cut = null;
-        PLAN = { k: 'floorWhole', dest: trip.dest };
-        leg(x, m, 'floor', 'walkTo', { thing: trip.things[0].uid }, t, x.c.crew.hand.handle_s);
-        m.dest = trip.dest;
-        return true;
-      }
-    }
-    const looseFloor = loose('floor');
-    if (!floor.length && looseFloor) return takeLoose(looseFloor, 'floor');
-    if (floor.length) {
-      const pile = floor.some((p) => p.pile === 'floor') ? 'floor' : floor[0].pile;
-      const pick = choose(x, floor.filter((p) => p.pile === pile), cap);
-      if (pick.length) {
-        claim(pick);
-        PLAN = { k: 'pile', pile };
-        leg(x, m, 'floor', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
-        m.dest = 'scale';
-        return true;
-      }
-    }
-    return false;
-  };
   const floorFirst = floorMass_g(x) > FLOOR_CLEAR_SHARE * x.c.floorRoom_kg * 1000;
-  if (floorFirst && floorStep()) return true;
-  // (4) the drop-off's pieces.
-  const drop = free.filter((p) => waitsAt(x, p) === 'dropoff' && carryable(p));
-  const looseDrop = loose('dropoff');
-  if (!drop.length && looseDrop) return takeLoose(looseDrop, 'dropoff');
+  if (floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
+  // (4) the drop-off's pieces. Loose things (tier 0: a cable bundle, a crate of taps) are pieces to carry:
+  // they go with the pieces of their place.
+  if (!drop.length) {
+    const looseDrop = looseAt(x, 'dropoff', cap, inYard);
+    if (looseDrop) return takeLoose(x, m, t, looseDrop, 'dropoff');
+  }
   if (drop.length) {
     // One pile a trip (the drop-off's own pile or the pieces beside one thing there): the nearest to him first.
     const me = posOf(x, m.to);
     const at = (uid: string) => thingOf(x, uid)?.at ?? null;
-    const dist = new Map<GroundPiece, number>();
+    let near: GroundPiece | null = null;
+    let nd = Infinity;
     for (const p of drop) {
       const pp = piecePos(x.c, p.pile, p.k, at);
-      dist.set(p, Math.hypot(pp.x - me.x, pp.y - me.y));
+      const d = Math.hypot(pp.x - me.x, pp.y - me.y);
+      if (near === null || d < nd || (d === nd && p.uid < near.uid)) {
+        near = p;
+        nd = d;
+      }
     }
-    const near = [...drop].sort((a, b) => dist.get(a)! - dist.get(b)! || (a.uid < b.uid ? -1 : 1))[0].pile;
-    const pick = choose(x, drop.filter((p) => p.pile === near), cap);
+    const pile = near!.pile;
+    const pick = choose(x, drop.filter((p) => p.pile === pile), cap);
     if (pick.length) {
-      claim(pick);
-      PLAN = { k: 'pile', pile: near };
-      leg(x, m, 'dropoff', 'walkTo', { pile: near, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+      claimPieces(m, pick);
+      PLAN = { k: 'pile', pile };
+      leg(x, m, 'dropoff', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
       m.dest = 'scale';
       return true;
     }
   }
   // (5) a whole thing at the drop-off at its whole grade, when no cutter is hired or every place is taken (E4).
   const noCutter = !s.crew.some((c) => c.role === 'cutter');
-  const wholeThing = (where: 'dropoff' | 'floor'): ThingState | null => wholeAt(x, where, cap);
   const full = dropoffCount(x) >= x.c.dropoff.places;
   if (inYard ? full : noCutter || full) {
-    const th = wholeThing('dropoff');
+    const th = wholeAt(x, 'dropoff', cap);
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
@@ -327,9 +313,9 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
       return true;
     }
   }
-  if (!floorFirst && floorStep()) return true;
+  if (!floorFirst && floorStep(x, m, t, cap, inYard, floorFirst, floor, floorG)) return true;
   if (!inYard && noCutter) {
-    const th = wholeThing('floor');
+    const th = wholeAt(x, 'floor', cap);
     if (th) {
       th.by = m.id;
       m.claims = [th.uid];
@@ -338,6 +324,57 @@ function handDepart(x: Ctx, m: CrewMember, t: number): boolean {
       m.dest = 'scale';
       return true;
     }
+  }
+  return false;
+}
+
+function claimPieces(m: CrewMember, ps: GroundPiece[]): void {
+  for (const p of ps) p.claim = m.id;
+  m.claims = ps.map((p) => p.uid);
+}
+
+function takeLoose(x: Ctx, m: CrewMember, t: number, th: ThingState, job: CrewJob): boolean {
+  th.by = m.id;
+  m.claims = [`loose:${th.uid}`];
+  PLAN = { k: 'loose', where: th.at.at === 'dropoff' ? 'dropoff' : 'floor' };
+  leg(x, m, job, 'walkTo', { thing: th.uid }, t, x.c.crew.hand.handle_s);
+  m.dest = 'scale';
+  return true;
+}
+
+/** handDepart's (6): the tipping floor's whole things (E35), its loose things, then its pieces. */
+function floorStep(x: Ctx, m: CrewMember, t: number, cap: number, inYard: boolean, floorFirst: boolean, floor: GroundPiece[], floorG: number): boolean {
+  // E35: whole things that need no cutting leave the floor whenever the boss is away, and while he is in
+  // the yard once more than half of the floor's room is used; the bigger waiting heap goes first.
+  if (!inYard || floorFirst) {
+    const trip = floorWholeTrip(x, cap);
+    if (trip && trip.waiting_g >= floorG) {
+      for (const th of trip.things) th.by = m.id;
+      m.claims = trip.things.map((th) => `loose:${th.uid}`);
+      m.cut = null;
+      PLAN = { k: 'floorWhole', dest: trip.dest };
+      leg(x, m, 'floor', 'walkTo', { thing: trip.things[0].uid }, t, x.c.crew.hand.handle_s);
+      m.dest = trip.dest;
+      return true;
+    }
+  }
+  if (!floor.length) {
+    const looseFloor = looseAt(x, 'floor', cap, inYard);
+    if (looseFloor) return takeLoose(x, m, t, looseFloor, 'floor');
+    return false;
+  }
+  let pile = floor[0].pile;
+  for (const p of floor) if (p.pile === 'floor') {
+    pile = 'floor';
+    break;
+  }
+  const pick = choose(x, floor.filter((p) => p.pile === pile), cap);
+  if (pick.length) {
+    claimPieces(m, pick);
+    PLAN = { k: 'pile', pile };
+    leg(x, m, 'floor', 'walkTo', { pile, k: pick[0].k }, t, x.c.crew.hand.handle_s);
+    m.dest = 'scale';
+    return true;
   }
   return false;
 }
@@ -922,9 +959,9 @@ export function cutterP(x: Ctx, m: CrewMember): number {
 /** The time to cut what is left of a thing at power P. */
 function cutLeft(x: Ctx, th: ThingState, P: number): number {
   let t = 0;
-  const n = pieceCount(x.c, th.obj);
+  const n = countOf(x.c, th.obj);
   for (let k = th.cut; k < n; k++) {
-    const sp = pieceSpec(x.c, th.obj, k);
+    const sp = specAt(x.c, th.obj, k);
     if (sp) t += cutTime(x.c, th.obj, sp.g, P);
   }
   return Math.max(0, t - th.progress);

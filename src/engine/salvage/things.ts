@@ -68,9 +68,36 @@ export function thingOf(x: Ctx, uid: string | null): ThingState | undefined {
   return uid ? x.s.things.find((t) => t.uid === uid) : undefined;
 }
 
+/** content.ts pieceSpec and pieceCount, memoised per content object (pure functions of the content; read only). */
+type SpecK = { grade: string; g: number; spec: number };
+const SPECS = new WeakMap<object, Map<string, SpecK[]>>();
+function specRow(c: Ctx['c'], obj: string): SpecK[] {
+  let byObj = SPECS.get(c);
+  if (!byObj) SPECS.set(c, (byObj = new Map()));
+  let row = byObj.get(obj);
+  if (!row) {
+    row = [];
+    const n = pieceCount(c, obj);
+    for (let k = 0; k < n; k++) {
+      const sp = pieceSpec(c, obj, k);
+      if (!sp) break;
+      row.push(sp);
+    }
+    byObj.set(obj, row);
+  }
+  return row;
+}
+export function specAt(c: Ctx['c'], obj: string, k: number): SpecK | null {
+  if (k < 0) return pieceSpec(c, obj, k);
+  return specRow(c, obj)[k] ?? null;
+}
+export function countOf(c: Ctx['c'], obj: string): number {
+  return specRow(c, obj).length;
+}
+
 /** The next piece cut off a thing (its uid `${thing}.p${cut}`), or null when nothing is left. */
 export function nextPiece(x: Ctx, th: ThingState): Piece | null {
-  const sp = pieceSpec(x.c, th.obj, th.cut);
+  const sp = specAt(x.c, th.obj, th.cut);
   if (!sp) return null;
   return { uid: `${th.uid}.p${th.cut}`, grade: sp.grade, g: sp.g, from: th.uid, spec: sp.spec };
 }
@@ -90,7 +117,7 @@ export function cutOff(x: Ctx, th: ThingState, by: string, t: number): { piece: 
   if (!piece) return null;
   th.cut += 1;
   th.progress = 0;
-  const gone = th.cut >= pieceCount(x.c, th.obj);
+  const gone = th.cut >= countOf(x.c, th.obj);
   if (gone && x.c.objects[th.obj]?.shell) shellWeighIn(x, th, by, t);
   else if (gone) thingGone(x, th, by, t);
   return { piece, gone };
@@ -114,7 +141,8 @@ export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): voi
   x.s.counts![`cut:${th.obj}`] = (x.s.counts![`cut:${th.obj}`] ?? 0) + 1;
   // Pieces left beside it go to its place's pile as when a thing is gone.
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
-  for (const q of x.s.pieces.filter((p) => p.pile === `beside.${th.uid}`)) {
+  const beside = `beside.${th.uid}`;
+  for (const q of x.s.pieces.filter((p) => p.pile === beside)) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
     gp.claim = q.claim;
@@ -147,7 +175,8 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
   x.ev.push({ type: 'thingGone', thing: th.uid });
   // Pieces left beside it move to its place's pile (a beside.<uid> pile has no thing to stand by any more).
   const home = th.at.at === 'zone' ? `zone.${th.at.zone}` : th.at.at === 'dropoff' ? 'dropoff' : 'floor';
-  for (const q of x.s.pieces.filter((p) => p.pile === `beside.${th.uid}`)) {
+  const beside = `beside.${th.uid}`;
+  for (const q of x.s.pieces.filter((p) => p.pile === beside)) {
     const p = takeFromPile(x, q.uid)!;
     const gp = dropOnPile(x, p, home);
     gp.claim = q.claim;
