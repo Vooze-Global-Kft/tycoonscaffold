@@ -42,7 +42,7 @@ async function start() {
   Object.assign(baseGame, salvageEngineMode.config!(baseGame));
   const R = await import('./returning');
   R.recordPassErrorsWith((_e, where) => void crashes.push(where));
-  installEngineMode(R.deferAwayInPlace(salvageEngineMode));
+  installEngineMode(R.salvageReturningEngine);
   const { useGame } = await import('../../state/store');
   await useGame.getState().boot();
   const S = () => (useGame.getState().game as unknown as { salvage: Yard }).salvage;
@@ -80,11 +80,11 @@ afterEach(async () => {
 });
 
 describe('A1: the absence survives a kill (the real load path)', () => {
-  it('the entry hands over the engine itself, deferred in place; twice is the same as once', async () => {
+  it('the entry hands over a wrapper: the rules themselves are left as they are', async () => {
     const a = await start();
-    const own = a.salvageEngineMode.offline;
-    expect(a.R.deferAwayInPlace(a.salvageEngineMode)).toBe(a.salvageEngineMode);
-    expect(a.salvageEngineMode.offline).not.toBe(own);
+    expect(a.R.salvageReturningEngine).not.toBe(a.salvageEngineMode);
+    expect(a.R.salvageReturningEngine.offline).not.toBe(a.salvageEngineMode.offline);
+    expect(a.R.salvageReturningEngine.create).toBe(a.salvageEngineMode.create);
   });
 
   it('(attacker, sequence 1) back after 3 h, resume holds it and saves, killed; restart an hour later: all 4 h are owed', async () => {

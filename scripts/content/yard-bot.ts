@@ -49,6 +49,18 @@ import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder
 import { own } from '../../src/engine/salvage/rate';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// The facade's ratedIncome, ratedTerms and stockValue read cfg.salvage, the BASE content (rate.ts ratedIncomeCfg): at stage 2
+// they leave out every plate, the works layer's grades and their stock. The rules themselves (shop.ts ratedI, bank.ts, lots)
+// read the content at the state (layer.ts contentAt), and so do the bots' measures (content2-bots). Before the works open
+// contentAt is the base content itself: every stage-1 figure is unchanged.
+const at = (cfg: R.SalvageConfig, g: R.SalvageGame): R.SalvageConfig => {
+  const c = contentAt(cfg.salvage, g.salvage);
+  return c === cfg.salvage ? cfg : ({ ...cfg, salvage: c } as R.SalvageConfig);
+};
+const stockAt = (cfg: R.SalvageConfig, g: R.SalvageGame) => R.stockValue(at(cfg, g), g);
+const termsAt = (cfg: R.SalvageConfig, g: R.SalvageGame) => R.ratedTerms(at(cfg, g), g);
+const incomeAt = (cfg: R.SalvageConfig, g: R.SalvageGame) => R.ratedIncome(at(cfg, g), g);
 const ROOT = path.resolve(HERE, '../..');
 const NOW = Date.UTC(2026, 10, 25, 9, 0, 0);
 
@@ -74,6 +86,8 @@ interface Spec extends BotOptions {
   kind: 'hour' | 'manager' | 'days' | 'nohand' | 'holder' | 'income' | 'walk' | 'stage2';
   /** stage2 only: which bot of yard-stage2.md 8.2 (its habit on the first yard's bot). */
   bot?: Bot2;
+  /** stage2 only: the game file's and bot.ts's hash, so that --cache never reads back a run of other content or rules. */
+  tag?: string;
   minutes: number;
   gate?: boolean;
   /** income only: the board the yard is PLAYED with ('flat': board.a 0 throughout; 'normal': the shipped board, G at usual prices). */
@@ -132,13 +146,13 @@ function incomeRow(cfg: R.SalvageConfig, g: R.SalvageGame, spec: Spec, at: strin
   if (cfg.salvage.board.a !== 0) cfg = { ...cfg, salvage: { ...cfg.salvage, board: { ...cfg.salvage.board, a: 0 } } };
   const ab = newBot(cfg, g, NOW + g.salvage.t * 1000, spec);
   ab.now = NOW + Math.round(g.salvage.clock.highMs - NOW);
-  const v0 = R.stockValue(cfg, g);
+  const v0 = stockAt(cfg, g);
   away(ab, 24 * 3600);
   const card = ab.g.salvage.away!;
   const h = card.seconds / 3600;
-  const G = (ab.g.cash - g.cash + R.stockValue(cfg, ab.g) - v0) / Math.max(1e-9, h);
-  const T = R.ratedTerms(cfg, g);
-  return { at, t: g.salvage.t, rung: g.salvage.ladder.rung, ran_h: h, G, I: T.I, bind: T.bind, Isales: T.sales, Ispent: T.spent, sales: card.money / h, spent: (card.spent ?? 0) / h, stock: (R.stockValue(cfg, ab.g) - v0) / h };
+  const G = (ab.g.cash - g.cash + stockAt(cfg, ab.g) - v0) / Math.max(1e-9, h);
+  const T = termsAt(cfg, g);
+  return { at, t: g.salvage.t, rung: g.salvage.ladder.rung, ran_h: h, G, I: T.I, bind: T.bind, Isales: T.sales, Ispent: T.spent, sales: card.money / h, spent: (card.spent ?? 0) / h, stock: (stockAt(cfg, ab.g) - v0) / h };
 }
 
 /** A purchase landed at once (its arrival): the walk measures the asset, not its delivery. */
@@ -155,7 +169,7 @@ function walkG(cfg: R.SalvageConfig, g0: R.SalvageGame, hours = 24): { G: number
   const g = { ...g0, cash: 1e7, lastSavedAt: g0.salvage.clock.highMs } as R.SalvageGame;
   const o = awayPass(cfg, g, g.salvage.clock.highMs + Math.round(hours * 3600_000));
   const h = (o.salvage.away?.seconds ?? 0) / 3600;
-  return { G: (o.cash - g.cash + R.stockValue(cfg, o) - R.stockValue(cfg, g)) / Math.max(1e-9, h), h };
+  return { G: (o.cash - g.cash + stockAt(cfg, o) - stockAt(cfg, g)) / Math.max(1e-9, h), h };
 }
 
 /**
@@ -337,7 +351,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.map((p) => p.key) });
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
-    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(R.ratedIncome(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(',') });
+    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(',') });
     if (spec.gate && [1, 4, 8, 12].includes(k)) {
       const d = tickJumpGate(cfg, b.g, b.now, 30);
       if (d) b.rec.s2.gate.push(`sitting ${k}: ${d}`);
@@ -383,8 +397,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const span = (it?.deliver_s ?? 600) + (W!.selfCommission_s ?? 1200) + 60;
       const after = R.jump(cfg, R.buy(cfg, g, pid as never, ck.price, g.salvage.t), g.salvage.t + span);
       const before = R.jump(cfg, g, g.salvage.t + span);
-      const I0 = R.ratedIncome(cfg, before);
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(R.ratedIncome(cfg, after) - I0), bought };
+      const I0 = incomeAt(cfg, before);
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought };
     }
   }
   const sum = summary(b, spec, [], [], {}, t0);
@@ -619,7 +633,7 @@ function runOne(base: R.SalvageConfig, spec: Spec): Summary {
     playTo(b, 3600, onMinute);
     const sittings: { at_h: number; awayEarned: number; bought: number; cashBefore: number; cashAfter: number; useful: boolean; rank: number }[] = [];
     const marks: Record<string, { earned: number; t: number; stock: number }> = {};
-    const mark = (k: string) => (marks[k] = { earned: Math.round(b.g.lifetimeEarnings), t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(3), stock: Math.round(R.stockValue(b.cfg, b.g)) });
+    const mark = (k: string) => (marks[k] = { earned: Math.round(b.g.lifetimeEarnings), t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(3), stock: Math.round(stockAt(b.cfg, b.g)) });
     mark('hour');
     let n0 = b.rec.purchases.length;
     for (let k = 0; k < 6; k++) {
@@ -1053,7 +1067,7 @@ async function main(): Promise<void> {
   if (Number(arg('stage', '0')) === 2) {
     const names = (arg('bots', Object.keys(BOTS2).join(',')) ?? '').split(',') as Bot2[];
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal' });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') === 'true' ? 'p' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);

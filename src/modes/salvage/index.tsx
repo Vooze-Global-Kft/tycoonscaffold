@@ -31,7 +31,7 @@ import { SalvageShell } from '../../ui/salvage/SalvageShell';
 import type { ModeEntry } from '../contract';
 import { devViews } from './devViews';
 import { salvagePreset } from './presets';
-import { deferAwayInPlace } from './returning';
+import { salvageReturningEngine } from './returning';
 import { SALVAGE_SHARED_SOUNDS } from './soundKeys';
 
 const entry: ModeEntry = {
@@ -40,7 +40,7 @@ const entry: ModeEntry = {
   Loading: SalvageLoading,
   // owner2-hud (the second update, item 2): the away pass of an absence with a card waits for the counting card
   // (./returning.ts). owner2-fix-hud (L1): put on the engine in place, so the entry hands over the engine itself.
-  engine: deferAwayInPlace(salvageEngineMode),
+  engine: salvageReturningEngine,
   presets: salvagePreset,
   devViews,
   soundKeys: SALVAGE_SHARED_SOUNDS satisfies Partial<Record<FxName, SalvageFxName>>,

@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { SALVAGE_TEST } from '../fixtures/salvage';
-import { graphOf, newBot, pathLen, pathOf, playTo, startGame, tickJumpGate } from './bot';
+import { away, graphOf, newBot, newSitting, pathLen, pathOf, playTo, resumeBot, snapBot, startGame, tickJumpGate } from './bot';
+import { r3Works, r4Game, worksCfg } from '../fixtures/salvage2works';
 import type { SalvageConfig } from './types';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
@@ -75,5 +76,57 @@ describe('salvage bots on the frozen content', () => {
   it('ticking equals jumping on a state the bot reached (2.14 gate)', () => {
     const b = run(3);
     expect(tickJumpGate(cfg, b.g, b.now, 30)).toBeNull();
+  });
+});
+
+/**
+ * Stage 2 (content2-bots; yard-stage2.md 8.2): the stage-2 layer on the works' frozen content. No tuned number is pinned:
+ * the layer plays through the rules' actions, keeps the hard promises, is deterministic, starts up a plate that waits,
+ * and a snapshot resumed plays on exactly as the bot it was taken from.
+ */
+describe('salvage bots at stage 2 (the works frozen content)', () => {
+  const wcfg = worksCfg();
+  function sitting(g: ReturnType<typeof r3Works>, opts: Partial<Parameters<typeof newBot>[3]> = {}, minutes = 3) {
+    const b = newBot(wcfg, g, g.salvage.clock.highMs, { hand: 'normal', habit: 'goal', route: 'A', seed: 2, ...opts });
+    newSitting(b);
+    away(b, 3600);
+    playTo(b, b.g.salvage.t + minutes * 60);
+    return b;
+  }
+
+  it('from rung 3 a sitting keeps every hard promise and is deterministic', () => {
+    const a = sitting(r3Works());
+    const z = sitting(r3Works());
+    expect(a.rec.broken).toEqual([]);
+    expect(z.g.cash).toBe(a.g.cash);
+    expect(z.rec.purchases.map((p) => p.key)).toEqual(a.rec.purchases.map((p) => p.key));
+  });
+
+  it('a plate set down and waiting is started up by the boss standing at it', () => {
+    const g0 = structuredClone(r4Game());
+    const id = Object.keys(g0.salvage.works)[0];
+    g0.salvage.works[id] = { ...g0.salvage.works[id], phase: 'installed', commissionAt: g0.salvage.t + 10_000 };
+    const b = newBot(wcfg, g0, g0.salvage.clock.highMs, { hand: 'brisk', habit: 'goal', route: 'A', seed: 2 });
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 120);
+    expect(b.g.salvage.works[id].phase).toBe('running');
+    expect(b.rec.s2.commissioned.some((q) => q.plate === id && q.by === 'boss')).toBe(true);
+    expect(b.rec.broken).toEqual([]);
+  });
+
+  it('every habit plays a sitting from rung 4 with no promise broken', () => {
+    for (const o of [{ finance: 'always' as const }, { packs: true }, { ads: true }, { rack: 'rack' as const }, { rack: 'cut' as const }, { steelMax: true }, { holder: true }]) {
+      const b = sitting(r4Game(), o, 2);
+      expect(b.rec.broken).toEqual([]);
+    }
+  });
+
+  it('a snapshot resumed plays on as the bot it was taken from', () => {
+    const a = newBot(wcfg, r3Works(), r3Works().salvage.clock.highMs, { hand: 'normal', habit: 'goal', route: 'A', seed: 4 });
+    playTo(a, a.g.salvage.t + 60);
+    const r = resumeBot(wcfg, snapBot(a), { hand: 'normal', habit: 'goal', route: 'A', seed: 4 });
+    playTo(a, a.g.salvage.t + 90);
+    playTo(r, r.g.salvage.t + 90);
+    expect(JSON.stringify(r.g)).toBe(JSON.stringify(a.g));
   });
 });

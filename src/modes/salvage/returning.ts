@@ -206,36 +206,20 @@ export function deferAway(mode: EngineMode): EngineMode {
   };
 }
 
-/** Where the engine's own functions are kept on an engine deferred in place (one key per JavaScript context). */
-const INNER = Symbol.for('salvage.returning.inner');
-type Deferred = EngineMode & { [INNER]?: EngineMode };
-
-/** The engine's own functions (before the deferral), for the pass itself. */
-function innerOf(mode: EngineMode): EngineMode {
-  return (mode as Deferred)[INNER] ?? mode;
-}
-
 /**
- * The mode's entry hands the store `salvageEngineMode` ITSELF (src/modes/entries.test.ts pins that identity, a
- * shared test), so the deferral is put on it in place: its `reconcile`, `offline` and `tick` become deferAway's,
- * which call the engine's own (kept under INNER). Idempotent: a second call (a Fast Refresh of this file) wraps
- * the engine's own functions again, never the wrapped ones. Returns the same object.
+ * The engine the salvage entry hands the store: the rules themselves with their three time-away seams (reconcile,
+ * offline, tick) deferred as above, and everything else the rules' own. One object for the life of this module
+ * (src/modes/entries.test.ts pins that the entry hands over exactly this). The lead, 26 November: a plain wrapper,
+ * not the rules' object changed in place: whoever imports salvageEngineMode gets the rules as they are.
  */
-export function deferAwayInPlace(mode: EngineMode): EngineMode {
-  const d = mode as Deferred;
-  const inner = d[INNER] ?? { ...mode };
-  const w = deferAway(inner);
-  Object.assign(d, { reconcile: w.reconcile, offline: w.offline, tick: w.tick });
-  Object.defineProperty(d, INNER, { value: inner, enumerable: false, configurable: true });
-  return d;
-}
+export const salvageReturningEngine: EngineMode = deferAway(salvageEngineMode);
 
 /**
  * The deferred pass, exactly once: the waiting absence is cleared first, then the engine's own `offline` runs on
  * the store's game to device time `now`, and the result is stored (with the store's own save stamps) and saved.
  * False when nothing waited. The screen calls it two frames after the counting card is on screen.
  */
-export function runPending(now = Date.now(), engine: EngineMode = innerOf(salvageEngineMode)): boolean {
+export function runPending(now = Date.now(), engine: EngineMode = salvageEngineMode): boolean {
   const p = pending;
   if (!p) return false;
   pending = null;
