@@ -22,6 +22,7 @@ import { resolveGrams } from './money';
 import { own, checks } from './rate';
 import { setSkipDown } from './partners';
 import { leaveTruck } from './truck';
+import { mapAt } from './positions';
 import { marketDay } from './board';
 import type { CardAction, CardKind, CrewRole, DealTerms, GradeId, Heading, LevelTarget, MachineId, PlaceId, Presence, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, SellShown, ShopKey, TxtArgs } from './types';
 
@@ -46,7 +47,9 @@ const PRESENCE_SLACK_M = 3;
 export function clampPresence(cfg: SalvageConfig, s: SalvageGame['salvage'], px: number, py: number, clock: number): { x: number; y: number } {
   const c = cfg.salvage;
   const lane = Math.max(0, ...Object.values(c.map.lane).filter((v): v is number => typeof v === 'number' && Number.isFinite(v)));
-  let x = Math.min(c.yard.width + lane + 40, Math.max(0, px));
+  // join2b: once the works opened, the back field west of the old fence is the boss's too (the merged map's x0; 3.1).
+  const west = s.counts?.bathSet !== undefined ? mapAt(c, true).x0 : 0;
+  let x = Math.min(c.yard.width + lane + 40, Math.max(west, px));
   let y = Math.min(c.yard.depth, Math.max(0, py));
   const q = s.presence;
   const dt = clock - s.presenceAt;
@@ -319,6 +322,8 @@ export function stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: 
   const near = !!at && Number.isFinite(at.x) && Number.isFinite(at.y) && Math.hypot(at.x - here.x, at.y - here.y) <= PRESENCE_SLACK_M;
   const h = at && Number.isFinite(at.heading) ? ((Math.floor(at.heading) % 8) + 8) % 8 : here.heading;
   leaveTruck(x, near ? { x: at!.x, y: at!.y, heading: h } : { ...here, heading: h }, Math.max(clock, x.s.t));
+  // He is on foot from this instant (not only from the next sample): a sample at the wheel right after is a new one.
+  x.s.presence = { ...x.s.presence, driving: false };
   return finish(g, x);
 }
 

@@ -25,7 +25,7 @@ import type { GameState } from '../types';
 import { freshSalvage } from './create';
 import { RUN_MAX } from './group';
 import { mergedContent, topToolTier } from './layer';
-import { pointOf } from './positions';
+import { mapAt, pointOf } from './positions';
 import { repairStage2, STAGE2_KEYS, type Stage2Fields } from './state2';
 import type { BayState, CrewJob, CrewMember, CrewRole, CrewRun, MachineId, PartnerState, RunCourse, RunKind, SalvageConfig, SalvageGame, SalvageState, TripPlan } from './types';
 
@@ -35,9 +35,9 @@ const arr = <T>(x: unknown): T[] => (Array.isArray(x) ? (x as T[]) : []);
 const obj = <T extends object>(x: unknown): Partial<T> => (x && typeof x === 'object' && !Array.isArray(x) ? (x as Partial<T>) : {});
 
 /** Inside the yard (with a margin for the lane east of the gate)? */
-function inYard(c: SalvageContent, x: unknown, y: unknown): boolean {
+function inYard(c: SalvageContent, x: unknown, y: unknown, x0 = 0): boolean {
   const lane = Math.max(0, ...Object.values(c.map.lane));
-  return typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x <= c.yard.width + lane + 40 && y <= c.yard.depth;
+  return typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y) && x >= x0 && y >= 0 && x <= c.yard.width + lane + 40 && y <= c.yard.depth;
 }
 
 function bayOf(c: SalvageContent, b: Partial<BayState>): BayState {
@@ -214,7 +214,9 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
 
   // Positions are never trusted.
   const pr = obj<SalvageState['presence']>(raw.presence);
-  if (!inYard(c, pr.x, pr.y)) s.presence = { ...fresh.presence };
+  // join2b: once the works opened the boss may stand in the back field, west of the old fence (the merged map's x0).
+  const west = obj<Record<string, number>>(raw.counts).bathSet !== undefined ? mapAt(c, true).x0 : 0;
+  if (!inYard(c, pr.x, pr.y, west)) s.presence = { ...fresh.presence };
   else s.presence = { x: pr.x as number, y: pr.y as number, driving: !!pr.driving, moving: false, standingFor: 0, heading: Math.floor(num(pr.heading)) };
   s.presenceAt = -1;
   const tk = obj<SalvageState['truck']>(raw.truck);

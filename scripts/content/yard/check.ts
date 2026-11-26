@@ -209,7 +209,7 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^carryDriving$/, 'carryDriving'],
   [/^(carry)$/, 'carryChip'],
   [/^loadFull$/, 'worldChip'],
-  [/^(open|stepOut)$/, 'disc'],
+  [/^(open|stepOut|getIn)$/, 'disc'],
   [/^goalProgress$/, 'tally'],
   [/^turnSideways/, 'portrait'],
   [/^(menu|close|ok)$/, 'footButton'],
