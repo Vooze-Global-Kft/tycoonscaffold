@@ -40,5 +40,9 @@ export function lotArrive(x: Ctx, t: number): void {
 export function lotsOpen(x: Ctx, t: number): void {
   const L = x.c.lots;
   if (!L || x.s.lots.nextAt !== null) return;
-  x.s.lots.nextAt = t + L.period_s;
+  // Dated from the START of the transition in which the works open (x.t0), not from the instant inside it: they
+  // open at the first live check, which a run of ticks meets at its first tick's horizon and one jump at its first
+  // event or its own horizon; both are inside the transition that starts at the same yard second, so a tick and a
+  // jump date the first lot alike. Never before t (a date in the past would stop the feature).
+  x.s.lots.nextAt = Math.max(t, x.t0 + L.period_s);
 }

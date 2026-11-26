@@ -52,10 +52,10 @@ import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, Stat
 //   grams = floor(share × processed) per output of the piece's input key (2.5.3, out per input), the piece's end
 //   giving the exact remainder; the rest is waste. Rate = rate_kg_s (the shear: shear.P / the whole thing's
 //   hardness `h`, 1 for a loose piece) × (1 + lev × (L − 1)), fixed at the piece's start; a level re-rates at once.
-//   A hands-fed plate's outputs go to its TRAY (a full tray stops it before its next piece, nothing lost; yard
-//   hands carry the tray to the platform scale); a bay-fed plate's outputs go into their grades' BAYS as they are
-//   credited (its belt weigher), and its `stream` share to the eddy current's outputs while the eddy current runs
-//   (else waste). Reagents are paid when a piece (a bay-fed plate's draw) or a heat starts, never by the clock; a
+//   A hands-fed plate's outputs go to its TRAY as they are credited (a full tray stops it before its next piece,
+//   nothing lost; yard hands carry the tray to the platform scale); a bay-fed plate's outputs are credited on its
+//   belt and land in their grades' BAYS when the piece is done (its belt weigher), and its `stream` share becomes
+//   the eddy current's outputs while the eddy current runs (else waste). Reagents are paid when a piece (a bay-fed plate's draw) or a heat starts, never by the clock; a
 //   start the cash cannot pay waits.
 // - A BAY-FED plate draws, when idle, ONE piece of at most `inbuf` kg from the first bay of its `in` list whose
 //   route names it (shredder.ts bayDraw): the bay is debited at that instant (eagerly, once). A bay keeps a reserve
@@ -333,16 +333,15 @@ function deliver(x: Ctx, id: string, w: WorksState, to: string, add: number): vo
       const key = `>${g2}`;
       const target = Math.floor(sh2 * S + 1e-6);
       const a2 = target - (credited[key] ?? 0);
-      if (a2 > 0) {
-        credited[key] = (credited[key] ?? 0) + a2;
-        bayOf(x, g2).g += a2;
-      }
+      if (a2 > 0) credited[key] = (credited[key] ?? 0) + a2;
     }
     void add;
     return;
   }
+  // A bay-fed plate's credited grams stay on its belt (work.credited) and land in their bays when the piece is
+  // done (finishPlatePiece): a bay changes only at an instant of the queue, so a tick equals a jump (the bays'
+  // first-stock numbering, the round's lots) however the clock is cut.
   if (d.feedBy === 'hands') w.tray_g[to] = (w.tray_g[to] ?? 0) + add;
-  else bayOf(x, to).g += add;
 }
 
 /** Credit a plate's piece to yard second t by the cumulative rule (nothing at a rate of 0). */
@@ -371,6 +370,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
   const key = plateKey(d, k.piece) ?? k.piece.grade;
   creditPlate(x, id, w, t);
   let outSum = 0;
+  const toBays = d.feedBy !== 'hands';
   for (const [to, share] of plateOut(x.c, id, key)) {
     const total = Math.floor(share * k.piece.g + 1e-6);
     const add = total - (k.credited[to] ?? 0);
@@ -380,16 +380,20 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
     }
     if (to !== 'stream') {
       outSum += total;
+      if (toBays && total > 0) bayOf(x, to).g += total;
       if (total > 0) {
         count(x, `made:${to}`);
         if (heard(x)) x.ev.push({ type: 'plateOut', plate: id, grade: to, g: total });
       }
     }
   }
-  // The stream's own outputs (the eddy current's, credited to their bays as the stream was credited).
-  for (const kk in k.credited) if (kk.startsWith('>')) {
+  // The stream's own outputs (the eddy current's, credited on the belt as the stream was credited) land too.
+  for (const kk in k.credited) if (kk.startsWith('>') && k.credited[kk] > 0) {
+    const g2 = kk.slice(1);
     outSum += k.credited[kk];
-    count(x, `made:${kk.slice(1)}`);
+    bayOf(x, g2).g += k.credited[kk];
+    count(x, `made:${g2}`);
+    if (heard(x)) x.ev.push({ type: 'plateOut', plate: d.feeds?.stream ?? id, grade: g2, g: k.credited[kk] });
   }
   x.s.waste_g += k.piece.g - outSum;
   w.work = null;

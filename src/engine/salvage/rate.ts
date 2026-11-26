@@ -397,6 +397,8 @@ export interface RatedTerms {
     cutUse: number;
     carryUse: number;
   };
+  /** Each open partner's load rank for the driver when truck.pickRule is 'rate' (measured alternative of RULING2.md 16.1): net ÷ max(its round trip, the floor's work it needs at the crew's pace), § a second. */
+  rank?: Record<string, number>;
 }
 
 /** The hands' carrying a unit needs, by kind of trip: seconds and trips (2.3.1 item 2, as corrected). */
@@ -581,10 +583,13 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const cutHave = 3600 * cutters.length;
   const carryHave = 3600 * hands.length;
   const truckHave = driver && s.truck.owned ? 3600 : 0;
+  const rank: Record<string, number> = {};
   for (const p of parts) {
     p.cq = carryOf(p.u, 'floor');
     p.wc = p.u.cut;
     p.wh = sumC(p.cq);
+    const work = Math.max(p.wc > 1e-9 ? (cutHave > 0 ? p.wc / (cutHave / 3600) : Infinity) : 0, p.wh > 1e-9 ? p.wh / (carryHave / 3600) : 0);
+    rank[p.id] = Number.isFinite(work) ? p.net / Math.max(1e-9, p.trip, work) : 0;
   }
   // 3. The partners' loads first (rateQueue), at the steps' whole hour; then the drop-off with what they leave.
   const finish = (q: QueueResult, f: number): RatedTerms => {
@@ -632,6 +637,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       carryBy,
       sales: roundMoney(v.sales),
       spent: roundMoney(spent),
+      rank,
       detail: { trips: nBy, kgTrip: nBy.scale > 0 ? took.scaleKg / nBy.scale : 0, kgBy: v.kg, machH: v.machH, truckShare: q.truckShare, floorKg: q.floorKg, cutUse: cutHave > 0 ? cutUsed / cutHave : 0, carryUse: carryUsed / carryHave },
     };
   };
@@ -646,7 +652,9 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   // it before the drop-off (crew.ts handDepart, FLOOR_CLEAR_SHARE), so the loads are replayed at the steps'
   // whole hour, and the drop-off's things are taken with the seconds the loads leave (nothing is paid for
   // them).
-  const q = rateQueue(c, parts, cutHave, carryHave, s.ladder.rung >= pickFromRung(c));
+  const rule = s.ladder.rung >= pickFromRung(c) ? pickRuleOf(c) : null;
+  if (rule === 'rate') for (const p of parts) p.net = rank[p.id];
+  const q = rateQueue(c, parts, cutHave, carryHave, rule !== null, rule === 'nowait');
   const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
   const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
   const f = Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft));
@@ -694,7 +702,7 @@ interface QueueResult {
  * income2: at the steps' WHOLE hour: while the floor is busy the hands serve it before the drop-off).
  * Counted: the loads hooked in the second and third hours (the first fills the floor), halved.
  */
-function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false): QueueResult {
+function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false, noWait = false): QueueResult {
   const room = c.floorRoom_kg;
   const cutRate = cutHave / 3600;
   const carryRate = carryHave / 3600;
@@ -752,7 +760,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
     if (byNet) {
       for (let i = 0; i < skips.length; i++) {
         const sk = skips[i];
-        if (sk.fullAt > clock + 1e-9 || parts[sk.k].mass > room + 1e-9) continue;
+        if (sk.fullAt > clock + 1e-9 || parts[sk.k].mass > room + 1e-9 || (noWait && m + parts[sk.k].mass > room + 1e-9)) continue;
         if (pick < 0) {
           pick = i;
           continue;
@@ -872,6 +880,26 @@ function valueOf(c: Ctx['c'], s: Ctx['s'], u: Unit): { sales: number; kg: Record
     kg[b] = (kg[b] ?? 0) + m;
   }
   return { sales, kg, machH };
+}
+
+/** truck.pickRule (while the alternatives of RULING2.md 16.1 are measured): 'net' (the ruling), 'nowait', 'rate'. */
+export function pickRuleOf(c: Ctx['c']): 'net' | 'nowait' | 'rate' {
+  const r = (c.truck as { pickRule?: string }).pickRule;
+  return r === 'nowait' || r === 'rate' ? r : 'net';
+}
+
+/** The driver's ranks under truck.pickRule 'rate' (from the cached terms; no copy). */
+export function loadRanks(c: Ctx['c'], s: Ctx['s']): Record<string, number> {
+  const key = assetKey(c, s);
+  let byKey = rateCache.get(c);
+  if (!byKey) rateCache.set(c, (byKey = new Map()));
+  let hit = byKey.get(key);
+  if (!hit) {
+    hit = ratedCompute(c, s);
+    if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
+    byKey.set(key, hit);
+  }
+  return hit.rank ?? {};
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */
