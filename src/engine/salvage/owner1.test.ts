@@ -16,6 +16,10 @@ import { frameCfg } from './frame';
 import { chevronOf, loadStep, nextGoal } from './goals';
 import { awayPass } from './away';
 import { reconcileSalvage } from './save';
+import { STAGE2_KEYS } from './state2';
+
+/** Events only stage 2 emits (the works, lots, the Yard sale, the bank, packs, ads). */
+const STAGE2_EVENTS = new Set<string>(['adOffered', 'adPaid', 'ageAsked', 'analysed', 'backFieldOpen', 'bankTaken', 'commissioned', 'crateCleared', 'crateIn', 'crateSorted', 'depolluted', 'financed', 'forklift', 'granted', 'letter', 'lotArrived', 'lotOpened', 'plateArrived', 'plateOut', 'plateState', 'quoteUpdated', 'quoteWithdrawn', 'rackSold', 'racked', 'repaid', 'routeSet', 'vanCollected', 'vanDated', 'visitor']);
 import { drivePath, insideFence, pathSplit, piecePos, pointOf, skipZone, stopOf, thingPos } from './positions';
 import { driverDepart, driverLegEnd, hookRefusal, leaveTruck, truckBossStep } from './truck';
 import type { CrewMember, GroundPiece, SalvageConfig, SalvageEvent, SalvageGame, ThingState } from './types';
@@ -385,6 +389,15 @@ describe('the switch (S1, S2): stage 2 stays dark at release.stage 1', () => {
       for (let k = 0; k < 20; k++) g = R.advanceSalvage(seededCfg(cfg, 3), g, 0.1, g.salvage.clock.highMs + 100, ev);
     }
     const s = g.salvage as unknown as Record<string, unknown>;
+    // No stage-2 state touched: every stage-2 field as the yard was created (the Yard sale's day counter aside).
+    const s0 = startGame(seededCfg(cfg, 3), NOW).salvage as unknown as Record<string, unknown>;
+    for (const k of STAGE2_KEYS) {
+      if (k === 'reuse') {
+        const r = s.reuse as { nextAt: unknown; vanAt: unknown; level: number; sold: { n: number; money: number } };
+        expect([r.nextAt, r.vanAt, r.level, r.sold.n, r.sold.money]).toEqual([null, null, 0, 0, 0]);
+      } else expect(s[k], k).toEqual(s0[k]);
+    }
+    expect(ev.some((e) => STAGE2_EVENTS.has(e.type))).toBe(false);
     expect(Object.keys((s.works as object) ?? {}).length).toBe(0);
     expect(g.salvage.counts?.bathSet).toBeUndefined();
     expect(ev.some((e) => e.type === 'backFieldOpen')).toBe(false);

@@ -26,6 +26,9 @@
  */
 import { along, heading8, pathLen } from './actors';
 
+/** At most this many points of a vehicle's path (./actors.ts PATH_MAX). */
+const PATH_MAX_PTS = 12;
+
 /** Seconds the UI clock takes to absorb an error (the steering's time constant). */
 export const TAU_S = 0.5;
 /** An error over this many seconds is a jump (an epoch the table did not mark, a long stall): snap. */
@@ -162,70 +165,6 @@ const LEG_WALK = 5;
 const LEG_PARK = 6;
 
 /**
- * The driver's truck at rules time `tNow` from the scene's truck numbers (./actors.ts RulesScene.truck)
- * and its leg's path: out = [x, y, heading8, hook frame (-1: none, 0..3 the hook-lift frames)]. Returns
- * false when the truck is on no leg (it stands where the rules put it). `tmp` is a scratch of four.
- *   out, back, park: along the path from t0 to t1 (the whole leg drives);
- *   tip: along the path until the drive's end (TR[12]), then the tip frames at the floor;
- *   hook: the hook frames at the skip; weigh: standing on the bridge (driving there first when the path
- *   has two points); walk: standing where it is (the driver walks to it).
- */
-export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[], tNow: number, from = NaN, TA: number[] = NO_TIMES): boolean {
-  'worklet';
-  const leg = TR[6];
-  if (leg < 0) return false;
-  const np = Math.min(TR[11], PATH_MAX_PTS);
-  if (np >= 1 && TA.length >= np) return truckTimed(out, tmp, TR, TP, TA, np, tNow, from);
-  const t0 = from === from ? Math.max(TR[7], from) : TR[7];
-  const t1 = TR[8];
-  const driveEnd = TR[12] === TR[12] && TR[12] !== undefined ? Math.min(t1, TR[12]) : t1;
-  const face = TR[13] !== undefined && TR[13] >= 0 ? TR[13] : TR[3];
-  out[3] = -1;
-  if (np < 1) {
-    out[0] = TR[1];
-    out[1] = TR[2];
-    out[2] = face;
-    return true;
-  }
-  const drives = np >= 2 && (leg === LEG_OUT || leg === LEG_BACK || leg === LEG_PARK || leg === LEG_TIP || leg === LEG_WEIGH);
-  if (drives && tNow < driveEnd) {
-    const span = driveEnd - t0;
-    const u = span > 0 ? Math.max(0, Math.min(1, (tNow - t0) / span)) : 1;
-    alongFacing(tmp, out, TP, np, u);
-    out[0] = tmp[0];
-    out[1] = tmp[1];
-    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
-    out[3] = -1;
-    return true;
-  }
-  // Standing at the leg's end (its last point), facing the way it came in (or the frame's facing).
-  out[0] = TP[np * 2 - 2];
-  out[1] = TP[np * 2 - 1];
-  if (np >= 2) {
-    alongFacing(tmp, out, TP, np, 1);
-    out[0] = TP[np * 2 - 2];
-    out[1] = TP[np * 2 - 1];
-    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
-  } else out[2] = face;
-  out[3] = -1;
-  if (leg === LEG_HOOK) {
-    const span = t1 - t0;
-    const u = span > 0 ? (tNow - t0) / span : 1;
-    out[3] = u < 0.5 ? 1 : 0;
-  } else if (leg === LEG_TIP) {
-    const span = t1 - driveEnd;
-    const u = span > 0 ? (tNow - driveEnd) / span : 1;
-    out[3] = u < 0.35 ? 2 : 3;
-  } else if (leg === LEG_WALK || leg === LEG_WEIGH) out[3] = -1;
-  return true;
-}
-
-/** No dated points (a frame without `leg.at`: the leg is drawn evenly from t0 to its drive's end). */
-const NO_TIMES: number[] = [];
-/** At most this many points of a vehicle's path (./actors.ts PATH_MAX). */
-const PATH_MAX_PTS = 12;
-
-/**
  * The share of a polyline's LENGTH reached at time `tau` when its points are passed at the dates
  * TT[ti], TT[ti + 1], ... (the rules' `at`): before the first date it stands at the first point, after the last
  * at the last; between two dates it moves evenly along that segment. Pure.
@@ -314,6 +253,65 @@ function truckTimed(out: number[], tmp: number[], TR: number[], TP: number[], TA
     const span = t1 - aN;
     out[3] = (span > 0 ? (tNow - aN) / span : 1) < 0.35 ? 2 : 3;
   }
+  return true;
+}
+
+/**
+ * The driver's truck at rules time `tNow` from the scene's truck numbers (./actors.ts RulesScene.truck)
+ * and its leg's path: out = [x, y, heading8, hook frame (-1: none, 0..3 the hook-lift frames)]. Returns
+ * false when the truck is on no leg (it stands where the rules put it). `tmp` is a scratch of four.
+ *   out, back, park: along the path from t0 to t1 (the whole leg drives);
+ *   tip: along the path until the drive's end (TR[12]), then the tip frames at the floor;
+ *   hook: the hook frames at the skip; weigh: standing on the bridge (driving there first when the path
+ *   has two points); walk: standing where it is (the driver walks to it).
+ */
+export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[], tNow: number, from = NaN, TA?: number[]): boolean {
+  'worklet';
+  const leg = TR[6];
+  if (leg < 0) return false;
+  const np = Math.min(TR[11], PATH_MAX_PTS);
+  if (TA !== undefined && np >= 1 && TA.length >= np) return truckTimed(out, tmp, TR, TP, TA, np, tNow, from);
+  const t0 = from === from ? Math.max(TR[7], from) : TR[7];
+  const t1 = TR[8];
+  const driveEnd = TR[12] === TR[12] && TR[12] !== undefined ? Math.min(t1, TR[12]) : t1;
+  const face = TR[13] !== undefined && TR[13] >= 0 ? TR[13] : TR[3];
+  out[3] = -1;
+  if (np < 1) {
+    out[0] = TR[1];
+    out[1] = TR[2];
+    out[2] = face;
+    return true;
+  }
+  const drives = np >= 2 && (leg === LEG_OUT || leg === LEG_BACK || leg === LEG_PARK || leg === LEG_TIP || leg === LEG_WEIGH);
+  if (drives && tNow < driveEnd) {
+    const span = driveEnd - t0;
+    const u = span > 0 ? Math.max(0, Math.min(1, (tNow - t0) / span)) : 1;
+    alongFacing(tmp, out, TP, np, u);
+    out[0] = tmp[0];
+    out[1] = tmp[1];
+    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
+    out[3] = -1;
+    return true;
+  }
+  // Standing at the leg's end (its last point), facing the way it came in (or the frame's facing).
+  out[0] = TP[np * 2 - 2];
+  out[1] = TP[np * 2 - 1];
+  if (np >= 2) {
+    alongFacing(tmp, out, TP, np, 1);
+    out[0] = TP[np * 2 - 2];
+    out[1] = TP[np * 2 - 1];
+    out[2] = heading8(Math.atan2(tmp[3], tmp[2]));
+  } else out[2] = face;
+  out[3] = -1;
+  if (leg === LEG_HOOK) {
+    const span = t1 - t0;
+    const u = span > 0 ? (tNow - t0) / span : 1;
+    out[3] = u < 0.5 ? 1 : 0;
+  } else if (leg === LEG_TIP) {
+    const span = t1 - driveEnd;
+    const u = span > 0 ? (tNow - driveEnd) / span : 1;
+    out[3] = u < 0.35 ? 2 : 3;
+  } else if (leg === LEG_WALK || leg === LEG_WEIGH) out[3] = -1;
   return true;
 }
 
