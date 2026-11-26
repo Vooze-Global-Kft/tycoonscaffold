@@ -6,6 +6,7 @@
  * Owner: rules-sim.
  */
 import { asideOf, collectable } from './bays';
+import { payLot } from './bank';
 import { count, dayAt, earn, priceAt, printTicket, ticketBase, type Ctx } from './clock';
 import { roundMoney } from './money';
 import { shellsLeave } from './things';
@@ -83,8 +84,11 @@ export function roundEvent(x: Ctx, t: number): void {
     // withBoss: some of the lot was weighed in by the boss since the last collection (else the cab's one-line chip, 4.4 item 4).
     const withBoss = x.live && (x.s.counts!.bossWeighedSinceCollect ?? 0) > 0;
     x.s.counts!.bossWeighedSinceCollect = 0;
-    const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'collection' as const, buyer: x.c.merchant.id, lines, paid, withBoss, firstGrades });
-    earn(x, paid, t);
+    // 2.14.4 (stage 2): a lot payment goes through bank.ts payLot BEFORE its ticket prints; the ticket carries
+    // the bank's part (y > 0 only) and the player's part z is earned after it.
+    const { y, z } = payLot(x, paid, t);
+    const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'collection' as const, buyer: x.c.merchant.id, lines, paid, withBoss, firstGrades, ...(y > 0 ? { bank: { y } } : {}) });
+    earn(x, z, t);
     count(x, 'collected');
     const first = firstGrades.length > 0;
     x.ev.push({ type: 'collected', ticket, first });

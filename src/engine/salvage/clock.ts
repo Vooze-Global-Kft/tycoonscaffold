@@ -11,7 +11,7 @@ import { marketDay } from './board';
 import { lotPrice } from './content';
 import { commitCash, roundMoney } from './money';
 import { stampSeries } from './series';
-import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
+import type { CreditKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, Ticket } from './types';
 
 const DAY_MS = 86_400_000;
 
@@ -147,6 +147,23 @@ export function earn(x: Ctx, amount: number, t: number): void {
   }
   inc.buckets[inc.buckets.length - 1] = roundMoney(inc.buckets[inc.buckets.length - 1] + a);
   if (x.away) x.away.money = roundMoney(x.away.money + a);
+}
+
+/**
+ * Money in that is NOT a lot payment (stage 2, 2.14.4, B2): an ad reward (`'ad'`, 2.16) or granted scrip
+ * (`'grant'`, a pack's S, 2.15.5). It adds to cash and to the lifetime `earned` total ONLY: never to the
+ * income buckets (the advice line's budget, incomeRate), never to the away card's money, never through
+ * `bank.ts payLot` (the bank takes no share of it). `t` and `kind` decide nothing here; they name the
+ * credit for its caller (and for a later stage's books).
+ */
+export function credit(x: Ctx, amount: number, t: number, kind: CreditKind): void {
+  void t;
+  void kind;
+  const a = roundMoney(amount);
+  if (a <= 0) return;
+  x.cash = roundMoney(x.cash + a);
+  x.earned += a;
+  x.dirty = true;
 }
 
 /** Money out (a purchase, a load's price): never below zero (the checks refuse first). */

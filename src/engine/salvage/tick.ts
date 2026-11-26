@@ -7,6 +7,13 @@
  * boss's act, cutters and yard hands, the driver; (3) arrivals: drop-off, skips, purchases; (4) the
  * round; (5) departures of idle agents: cutters, yard hands, the driver; (6) checks: rung, rivals passed,
  * the deal offer, partners opening, goals.
+ *
+ * Stage 2 (engine2-hooks, Phase A): the queue's new kinds (B9) come after `machine` and before the
+ * crucible, in STAGE2_QUEUE_ORDER (plate, hall, commission, crane, lot, visitor, van), so every old kind
+ * keeps its order relative to every other (QUEUE_ORDER below is the whole order, pinned by hooks.test.ts).
+ * Each feature dates and applies its own kinds through a stub its package owns (works.ts, lots.ts,
+ * reuse.ts); the works also credit at every instant (worksCredit) and depart after the first yard's
+ * departures (worksDepart). With the stubs as written nothing of it dates or does anything.
  */
 import { awayPass } from './away';
 import { marketDay } from './board';
@@ -19,21 +26,33 @@ import { bossActEnd, bossStep } from './hand';
 import { credit, finishPiece, RATE_MACHINES, rerate, rerateAll, workEndsAt } from './machines';
 import { fillSkip, openPartners } from './partners';
 import { roundEvent, roundTry } from './round';
+import { lotArrive, lotsDated } from './lots';
 import { arrive, checks } from './rate';
+import { reuseApply, reuseDated } from './reuse';
 import { dropoffArrive } from './things';
 import { driverDepart, driverLegEnd, showTrip, tripEndsAt } from './truck';
-import type { MachineId, QueuedEvent, QueuedKind, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
-import { MAX_TICK } from './types';
+import type { MachineId, QueuedEvent, QueuedKindV3, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
+import { MAX_TICK, STAGE2_QUEUE_ORDER } from './types';
+import { worksApply, worksCredit, worksDated, worksDepart } from './works';
 
-/** Kinds in 2.12's order at one instant. */
-const ORDER: Record<QueuedKind, number> = { day: 0, machine: 1, crucible: 2, act: 3, crewLeg: 4, driverLeg: 5, boostEnd: 6, dropoffArrival: 7, skipFull: 8, arrival: 9, round: 10 };
+/**
+ * THE ORDER WITHIN ONE INSTANT (2.12; stage 2 B9): kinds earliest first. The first yard's eleven keep their
+ * order; stage 2's seven stand together right after `machine` (after it and before `round`, in
+ * STAGE2_QUEUE_ORDER's order). Ties within one kind go by ref.
+ */
+export const QUEUE_ORDER: readonly QueuedKindV3[] = ['day', 'machine', ...STAGE2_QUEUE_ORDER, 'crucible', 'act', 'crewLeg', 'driverLeg', 'boostEnd', 'dropoffArrival', 'skipFull', 'arrival', 'round'];
+const ORDER = Object.fromEntries(QUEUE_ORDER.map((k, i) => [k, i])) as Record<QueuedKindV3, number>;
+
+/** A dated event of the derived queue with stage 2's kinds (QueuedEvent's kind is the first yard's union until the contract widens it). */
+type QEvent = { at: number; kind: QueuedKindV3; ref: string };
 
 const EPS = 1e-6;
 
 /** Every dated event of a state (the queue is derived, 2.12), earliest first. `dayAt` is the yard second of the next day boundary. */
-function eventsOf(s: SalvageState, dayAt: number, boostAt: number | null = null): QueuedEvent[] {
-  const out: QueuedEvent[] = [];
-  const add = (at: number | null | undefined, kind: QueuedKind, ref = '') => {
+function eventsOf(x: Ctx, dayAt: number, boostAt: number | null = null): QEvent[] {
+  const s = x.s;
+  const out: QEvent[] = [];
+  const add = (at: number | null | undefined, kind: QueuedKindV3, ref = '') => {
     if (at !== null && at !== undefined && Number.isFinite(at) && at >= s.t - EPS) out.push({ at, kind, ref });
   };
   add(s.act.endsAt, 'act');
@@ -42,6 +61,10 @@ function eventsOf(s: SalvageState, dayAt: number, boostAt: number | null = null)
   else if (m.phase !== 'wait' && m.t1 > m.t0) add(m.t1, 'crewLeg', m.id);
   if (s.truck.trip) add(tripEndsAt(s.truck.trip), 'driverLeg', s.truck.trip.partner);
   for (const id of RATE_MACHINES) add(workEndsAt(s.machines[id]), 'machine', id);
+  // Stage 2's dated ends, each from its feature's stub (works.ts, lots.ts, reuse.ts).
+  worksDated(x, add);
+  add(lotsDated(x), 'lot');
+  reuseDated(x, add);
   const cr = s.machines.crucible;
   if (cr.phase === 'filling' || cr.phase === 'heating') add(cr.endsAt, 'crucible');
   if (s.merchant.phase !== 'waiting') add(s.merchant.endsAt, 'round');
@@ -56,11 +79,11 @@ function eventsOf(s: SalvageState, dayAt: number, boostAt: number | null = null)
 
 // The earliest event, found without allocating per candidate (the away pass calls this thousands of times).
 let bAt = 0;
-let bKind: QueuedKind = 'day';
+let bKind: QueuedKindV3 = 'day';
 let bRef = '';
 let bSet = false;
 let bMin = 0;
-function consider(at: number | null | undefined, kind: QueuedKind, ref: string): void {
+function consider(at: number | null | undefined, kind: QueuedKindV3, ref: string): void {
   if (at === null || at === undefined || !(at >= bMin) || !Number.isFinite(at)) return;
   if (!bSet || at < bAt - 1e-9 || (Math.abs(at - bAt) <= 1e-9 && (ORDER[kind] < ORDER[bKind] || (ORDER[kind] === ORDER[bKind] && ref < bRef)))) {
     bAt = at;
@@ -70,7 +93,7 @@ function consider(at: number | null | undefined, kind: QueuedKind, ref: string):
   }
 }
 
-function firstEvent(x: Ctx): QueuedEvent | null {
+function firstEvent(x: Ctx): QEvent | null {
   const s = x.s;
   bSet = false;
   bMin = s.t - EPS;
@@ -79,6 +102,10 @@ function firstEvent(x: Ctx): QueuedEvent | null {
   else if (m.phase !== 'wait' && m.t1 > m.t0) consider(m.t1, 'crewLeg', m.id);
   if (s.truck.trip) consider(tripEndsAt(s.truck.trip), 'driverLeg', s.truck.trip.partner);
   for (const id of RATE_MACHINES) consider(workEndsAt(s.machines[id]), 'machine', id);
+  // Stage 2's dated ends, each from its feature's stub (works.ts, lots.ts, reuse.ts).
+  worksDated(x, consider);
+  consider(lotsDated(x), 'lot', '');
+  reuseDated(x, consider);
   const cr = s.machines.crucible;
   if (cr.phase === 'filling' || cr.phase === 'heating') consider(cr.endsAt, 'crucible', '');
   if (s.merchant.phase !== 'waiting') consider(s.merchant.endsAt, 'round', '');
@@ -95,7 +122,7 @@ function firstEvent(x: Ctx): QueuedEvent | null {
 }
 
 /** Apply one dated event at its instant. */
-function apply(x: Ctx, e: QueuedEvent): void {
+function apply(x: Ctx, e: QEvent): void {
   const s = x.s;
   const t = s.t;
   switch (e.kind) {
@@ -112,6 +139,20 @@ function apply(x: Ctx, e: QueuedEvent): void {
     }
     case 'machine':
       finishPiece(x, e.ref as MachineId, t);
+      return;
+    // Stage 2 (B9): the works, a delivered lot, a visitor at the Yard sale, the van (each its feature's).
+    case 'plate':
+    case 'hall':
+    case 'commission':
+    case 'crane':
+      worksApply(x, e.kind, e.ref, t);
+      return;
+    case 'lot':
+      lotArrive(x, t);
+      return;
+    case 'visitor':
+    case 'van':
+      reuseApply(x, e.kind, t);
       return;
     case 'crucible':
       crucibleEvent(x, t);
@@ -159,6 +200,8 @@ function tail(x: Ctx, t: number): void {
   roundTry(x, t);
   crewDepart(x, t);
   driverDepart(x, t);
+  // Stage 2: the works' departures, after the first yard's (works.ts worksDepart).
+  worksDepart(x, t);
   checks(x, t, false);
 }
 
@@ -179,8 +222,9 @@ export function advance(x: Ctx, T: number): void {
     // at his departure): the cumulative rule makes this free of path, so ticking and jumping see the same
     // trays (the 17:30 gate case, bots/gate5-state.json: a stale tray claimed 45 g where the tick had 285 g).
     for (const id of RATE_MACHINES) credit(x, id, tt);
+    worksCredit(x, tt);
     let inner = 0;
-    for (let e2: QueuedEvent | null = e; e2 && e2.at <= tt + EPS; e2 = firstEvent(x)) {
+    for (let e2: QEvent | null = e; e2 && e2.at <= tt + EPS; e2 = firstEvent(x)) {
       apply(x, e2);
       if (++inner > 500) break;
     }
@@ -192,6 +236,7 @@ export function advance(x: Ctx, T: number): void {
     s.t = T;
   }
   for (const id of RATE_MACHINES) credit(x, id, s.t);
+  worksCredit(x, s.t);
   // Live play looks once more at the horizon; the away pass forces nothing at its end (RULING2.md 14.4: the
   // checks follow the state, not the pass: an absence cut into passes equals one pass).
   if (x.live) checks(x, s.t, false);
@@ -253,12 +298,17 @@ export function advanceNoBoss(x: Ctx, seconds: number): void {
   x.live = live;
 }
 
-/** The next dated event of a state (E17): the minimum over its dated fields. */
+/**
+ * The next dated event of a state (E17): the minimum over its dated fields. The features' stubs see a
+ * read-only view (`cfg`, `c`, `s`, `live`; no events, cash or away card). Its kind is typed as the first
+ * yard's QueuedKind until the contract widens QueuedEvent.kind to QueuedKindV3 (with the stubs as written
+ * only the first yard's kinds occur).
+ */
 export function nextEvent(cfg: SalvageConfig, g: SalvageGame): QueuedEvent | null {
   const s = g.salvage;
   const nextDayMs = cfg.salvage.board.epochMs + (s.clock.day + 1) * 86_400_000;
-  const live = { c: cfg.salvage, s, live: true } as unknown as Ctx;
-  return eventsOf(s, s.t + Math.max(0, (nextDayMs - s.clock.highMs) / 1000), boostEndsAt(live))[0] ?? null;
+  const live = { cfg, c: cfg.salvage, s, live: true } as unknown as Ctx;
+  return (eventsOf(live, s.t + Math.max(0, (nextDayMs - s.clock.highMs) / 1000), boostEndsAt(live))[0] ?? null) as QueuedEvent | null;
 }
 
 /**
