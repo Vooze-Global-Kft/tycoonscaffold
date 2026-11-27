@@ -1493,6 +1493,53 @@ function reportS2e(all: Summary[], tauH: (number | null)[], platesLines: string[
     L.push('   M8. A PERSON\'S RUNG-4 ENTRY SITTING (G15; the slow hand\'s pace from the normal hand\'s first rung-4 return): the second each step was done (within 900 s fits), the centred cards and what opened each');
     for (const q of persons) L.push(`     s${q.seed} h${q.t0_h} purse §${k$(q.cash)}: ${Object.entries(q.done).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v}s`).join(', ') || 'nothing'}; pieces waiting ${q.lotsWaiting}, cut ${q.lotsCut}; cards ${q.cards.map((c) => `${c.card}@${c.t}s (${c.by})`).join(', ')}; two cards without an action between: ${q.twoCards}; FITS 15 MIN: ${q.fits ? 'yes' : `NO (missing or late: ${q.missing.join(', ')})`}`);
   }
+  // s2e-measure: the lead's three things beyond the gates
+  type Idle = Record<string, Record<string, { n: number; idle: number; why: Record<string, number> }>>;
+  const idleRuns = runs.filter((r) => r.extra.idle && Object.keys(r.extra.idle as Idle).length);
+  for (const bot of [...new Set(idleRuns.map((r) => String(r.spec.bot)))]) {
+    const rs = idleRuns.filter((r) => r.spec.bot === bot);
+    L.push(`   M9. EACH CREW ROLE'S IDLE SHARE BY RUNG (RULING2.md 28.5 e; ${bot}, ${rs.length} seeds): away (a sample every 5 minutes of a probe absence from each return, over its running hours) and played (a sample a minute), pooled over seeds; the rules' reason for the idle samples (crew.ts idleWhyOf)`);
+    const keys = [...new Set(rs.flatMap((r) => Object.keys(r.extra.idle as Idle)))].sort();
+    for (const k of keys) {
+      const roles: Record<string, { n: number; idle: number; why: Record<string, number> }> = {};
+      for (const r of rs) for (const [role, v] of Object.entries((r.extra.idle as Idle)[k] ?? {})) { const o = (roles[role] ??= { n: 0, idle: 0, why: {} }); o.n += v.n; o.idle += v.idle; for (const [w, c] of Object.entries(v.why)) o.why[w] = (o.why[w] ?? 0) + c; }
+      L.push(`     ${k.padEnd(9)} ${Object.entries(roles).sort().map(([role, v]) => `${role} ${(100 * v.idle / Math.max(1, v.n)).toFixed(0)} % idle of ${v.n} (${Object.entries(v.why).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w, c]) => `${w} ${(100 * c / Math.max(1, v.idle)).toFixed(0)} %`).join(', ') || '-'})`).join('  |  ')}`);
+    }
+    const old = rs.map((r) => ({ s: r.spec.seed, o: (r.extra.oldStock as { n: number; rung: number; things: number; byZone: Record<string, number>; objs: Record<string, number> }[]) ?? [] }));
+    L.push(`     the old stock in the first yard's zones at each return (things): ${old.map((q) => `s${q.s} ${q.o.map((x) => x.things).join(' ')}`).join('; ')}`);
+    const first = old[0]?.o[0];
+    const last = old[0]?.o.at(-1);
+    if (first) L.push(`     seed ${old[0].s} at its first works return: ${JSON.stringify(first.byZone)} ${JSON.stringify(first.objs)}; at its last return (rung ${last?.rung}): ${JSON.stringify(last?.byZone)} ${JSON.stringify(last?.objs)}`);
+  }
+  // M10: rung 3's purchases by sitting (the lead's second thing: where the plasma and the hook-lift fall)
+  const r3 = runs.filter((r) => r.spec.bot === 'normal' || r.spec.bot === 'routeB' || r.spec.bot === 'always' || r.spec.bot === 'manager');
+  if (r3.length) {
+    L.push('   M10. RUNG 3\'S PURCHASES BY SITTING (machines, vehicles and tools; how many levels and hires beside them), and the sittings of rung 4 and rung 5');
+    for (const r of r3) {
+      const cells = SS(r).filter((x) => x.rung <= 3 || SS(r).find((q) => q.rung >= 4)?.n === x.n).map((x) => { const ks = x.keys ?? []; const big = ks.filter((q) => soldKeys.has(q.k)).map((q) => `${q.k}${q.via ? `[${q.via}]` : ''}`); const lv = ks.filter((q) => q.k.startsWith('lev:') || q.k.includes('level') || !soldKeys.has(q.k)).length; return `s${x.n} ${big.join('+') || '-'}${lv ? ` +${lv}` : ''}`; });
+      L.push(`     ${String(r.spec.bot).padEnd(8)} s${pad(r.spec.seed, 3)}: ${cells.join(' | ')}  -> rung 4 s${sitAt(r, 4) ?? '-'}, rung 5 s${sitAt(r, 5) ?? '-'}`);
+    }
+  }
+  // M11: the drop-off's pair (28.3 d): freeDrop (the old rule) beside the normal hand on the same seeds
+  const fd = by('freeDrop');
+  if (fd.length) {
+    L.push('   M11. THE DROP-OFF\'S PAIR (RULING2.md 28.3 d): the old rule (freeDrop: works.dropoffPeriod_s absent) against the rule as built (normal), same seeds');
+    for (const r of fd) {
+      const o = by('normal').find((q) => q.spec.seed === r.spec.seed);
+      if (!o) { L.push(`     s${r.spec.seed}: no normal run on this seed`); continue; }
+      const arr = (x: Summary) => SS(x).map((q, i) => { const p = i ? SS(x)[i - 1] : null; const dh = q.h - (p ? p.h : q.h - 12); return p && q.drop !== undefined && p.drop !== undefined ? ((q.drop - p.drop) / Math.max(1e-9, dh)).toFixed(0) : '-'; }).join(' ');
+      L.push(`     s${r.spec.seed}: lifetime at sitting 6 §${k$(SS(r)[5]?.Lend)} (old) vs §${k$(SS(o)[5]?.Lend)} (built); end tonnes ${r.extra.supplied_t} vs ${o.extra.supplied_t}; rung 4 at s${sitAt(r, 4) ?? '-'} vs s${sitAt(o, 4) ?? '-'}, rung 5 at s${sitAt(r, 5) ?? '-'} vs s${sitAt(o, 5) ?? '-'}`);
+      L.push(`         drop-off arrivals an hour by sitting: old ${arr(r)} | built ${arr(o)}`);
+      type W = { at: string; rows: { step: string; d: number }[] };
+      for (const at of ['r3s1', 'r4entry', 'day3']) {
+        const wr = ((r.extra.walk as W[]) ?? []).find((w) => w.at === at);
+        const wo = ((o.extra.walk as W[]) ?? []).find((w) => w.at === at);
+        const cell = (w: W | undefined) => (w ? ['level hand', 'level cutter', 'level driver'].map((st) => { const q = w.rows.find((z) => z.step === st); return `${st.slice(6)} ${q ? pc(q.d) : '-'}`; }).join(', ') : '-');
+        const failing = (w: W | undefined) => (w ? w.rows.filter((q) => q.d < -0.01).map((q) => q.step).join(', ') || 'none' : '-');
+        L.push(`         ${at.padEnd(7)} levels old: ${cell(wr)}; built: ${cell(wo)}; steps under -1 %: old ${failing(wr)}; built ${failing(wo)}`);
+      }
+    }
+  }
   L.push('');
   L.push(...gatesTable(runs, tauH, platesLines));
   return L.join('\n');

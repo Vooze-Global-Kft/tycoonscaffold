@@ -1464,6 +1464,24 @@ function manageWorks(b: Bot, res: number): void {
     return ok;
   };
   const goal = nextGoal(b.cfg, b.g);
+  // s2e-measure (RULING2.md 28.4 f): the goal card stood on a first-yard OPTIONAL goal ("Sign the deal") all stage long,
+  // because the manager only ever tapped purchases. A person who plays from the cards answers the card in front of him:
+  // he signs the deal at the office he stands in (as the normal hand does), else presses Not now. From the works' opening
+  // only (the first yard's manager is unchanged: first-yard.sh).
+  const def = goal ? goalDef(b, goal.id) : null;
+  if (goal && def?.optional && !stage2Goal(b, goal.id)) {
+    if ((def.done ?? '').startsWith('deal:signed')) {
+      const terms = dealTerms(b.cfg, b.g, b.now);
+      if (terms) {
+        stand(b, b.P.card);
+        if (press(b, { act: 'signDeal', terms }, true)) return;
+      }
+    }
+    if (!goal.buy) {
+      press(b, { act: 'skipGoal', id: goal.id }, false);
+      return;
+    }
+  }
   if (goal?.buy && tap(actionFor(b, goal.buy), true, { via: 'goal' })) return;
   const adv = advice(b.cfg, b.g, b.now) as AdviceW | null;
   if (adv && tap(adv.action, false, { via: 'advice', payback_h: adv.works?.payback_h })) return;
