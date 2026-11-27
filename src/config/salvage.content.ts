@@ -42,12 +42,22 @@ export const SALVAGE_PENDING = { levels: { floor: 1100, floorGrowth: 1.25 } } as
 
 type Plates = WorksInput['plates'];
 
+/**
+ * s2e-content (27 Nov; yard-stage2-economy.md 2.6.4's entry rule and 2.7 to 2.9's tables; RULING2.md 27.2 b, 27.3 D1, D2):
+ * A GATE PAST THE LADDER. What stage 2 does not sell (the magnet crane, baler, shear, granulator, depollution bay until
+ * the next wave makes it part of the shredder line, eddy current, sensor sorter, battery breaker, lead smelter, the
+ * forklift and the pallet truck) keeps its definition, its rules and their tests, and is gated at a rung no ladder has:
+ * never on sale, never a goal, never named by the advice or counted by the headroom (every check refuses its gate). The
+ * stage as REPORT9 measured it, with all of them sold, is frozen in src/engine/fixtures/salvage-report9.json.
+ */
+const DARK = "rung99";
+
 /** The works plates (2.5.3, 2.7, 2.8): level-1 numbers (tune). */
 const PLATES: Plates = {
   // ---- the yard's plates (south yard, rung 3; 2.7): fed by yard hands, the crane or the forklift
-  crane: { row: "yard", slot: 0, plot: "crane", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
+  crane: { row: "yard", slot: 0, plot: "crane", gate: DARK, needs: null, price: 3000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
   shear: {
-    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 5180, deliver_s: 30, kind: "rate",
+    row: "yard", slot: 1, plot: "shear", gate: DARK, needs: null, price: 5180, deliver_s: 30, kind: "rate",
     // whole steel things of the torch's tier (tanks certified empty) and unprepared steel pieces; rate = shear.P / hardness
     // (the first yard's plough frame is steel too, but no source brings one: 5.2 (2) refuses it as an input)
     in: ["beam", "tank", "hmsu"], feedBy: "hands",
@@ -55,13 +65,13 @@ const PLATES: Plates = {
     lev: 0.15, maxLevel: 10, inbuf: 1500, tray: 2000,
   },
   baler: {
-    row: "yard", slot: 2, plot: "baler", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["li"], feedBy: "hands",
+    row: "yard", slot: 2, plot: "baler", gate: DARK, needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["li"], feedBy: "hands",
     // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
-  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 32800, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 43800, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   depollution: {
-    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
+    row: "yard", slot: 4, plot: "depollution", gate: DARK, needs: null, price: 3000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
     // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
     // out whole: the battery, four wheels, the loom, the converter, the drained shell: the elv object's pieces, shell and waste by mass
     // (lintStage2More (e) holds the two equal: one definition of a car's yield)
@@ -70,36 +80,36 @@ const PLATES: Plates = {
     lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 2000, permit: "card.rota.permitElv",
   },
   granulator: {
-    row: "yard", slot: 5, plot: "granulator", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["tcab"], feedBy: "hands",
+    row: "yard", slot: 5, plot: "granulator", gate: DARK, needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["tcab"], feedBy: "hands",
     out: { tcab: [["cug", 0.35]] }, waste: { tcab: [["carrier", 0.65]] }, rate_kg_s: 0.14, lev: 0.15, maxLevel: 10, inbuf: 200, tray: 500,
   },
   // ---- the shredder line (back field, rung 4; 2.8): from the bays by route, into the bays by its belt weigher
   shredder: {
-    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 83200, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
+    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 136000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   eddy: {
-    row: "shredder", slot: 1, plot: "eddy", gate: "rung4", needs: "shredder", price: 3000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
+    row: "shredder", slot: 1, plot: "eddy", gate: DARK, needs: "shredder", price: 3000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
     // no hopper and no level of its own: it runs at the shredder's stream (B16)
     out: { stream: [["zorba", 0.286]] }, waste: { stream: [["carrier", 0.714]] }, lev: 0, maxLevel: 1, inbuf: 0, tray: 0,
   },
   sorter: {
-    row: "shredder", slot: 2, plot: "sorter", gate: "rung4", needs: "eddy", price: 3000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
+    row: "shredder", slot: 2, plot: "sorter", gate: DARK, needs: "eddy", price: 3000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
     out: { zorba: [["twitch", 0.7], ["no2", 0.03], ["brs", 0.04], ["znh", 0.08], ["ss", 0.05]] }, waste: { zorba: [["carrier", 0.1]] },
     rate_kg_s: 1, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
   },
   // ---- the melt halls (back field, rung 4): each bought with its filter, charged from covered bays by "Take from bays"
   rotary: {
-    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 65100, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 107000, financeable: true, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 2000, s: 2400, start_share: 0.4, start_idle: 60 },
     // salt slag and the salt-flux filter's dust to a licensed waste carrier (T3); salt flux paid at the heat's start
     recipes: { alu: { in: ["alw", "alcast", "twitch"], out: [["ali", 0.88], ["ald", 0.055]], waste: [["carrier", 0.1], ["carrier", 0.015]], reagents: [["saltFlux", 0.05, 0.3]] } },
     lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   induction: {
-    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 207000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 339000, financeable: true, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 500, s: 480, start_share: 0.4, start_idle: 60 },
     // its filter's zinc oxide dust is the one sellable dust (T3)
     recipes: {
@@ -110,13 +120,13 @@ const PLATES: Plates = {
   },
   // ---- the lead line (back field, rung 4; a separate area behind the painted line, masks on)
   breaker: {
-    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 3000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
+    row: "lead", slot: 0, plot: "breaker", gate: DARK, needs: null, price: 3000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
     // electrolyte 0.30 neutralised with soda ash (0.05 kg a kg at §0.40) leaves as a salt solution, 0.35, to a licensed waste carrier (T20)
     out: { pbb: [["pp", 0.06], ["pbp", 0.64]] }, waste: { pbb: [["carrier", 0.35]] }, reagents: [["sodaAsh", 0.05, 0.4]],
     rate_kg_s: 0.28, lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 0, permit: "card.rota.permitLead",
   },
   smelter: {
-    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 17700, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "lead", slot: 1, plot: "smelter", gate: DARK, needs: "breaker", price: 17700, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 1000, s: 1800, start_share: 0.4, start_idle: 60 },
     // coke and iron 0.06 kg a kg; slag 0.12 to a licensed waste carrier; the filter's lead dust goes back into the next heat (no grade; T3, T20)
     recipes: { lead: { in: ["pbp"], out: [["pbi", 0.94]], waste: [["carrier", 0.12]], reagents: [["cokeIron", 0.06, 0.3]] } },
@@ -283,6 +293,16 @@ const WORKS_LAYER: WorksLayerInput = {
     casing: { name: "Engine casing", tier: 4, h: 2, pieces: [["alcast", 20000, 4, "piece.alu.endcap"]], waste_g: 0, whole: null, gross_g: 80000, preparedValue: 368, asFoundValue: 331.2, size: { w: 1.4, d: 1, h: 0.8 } },
     cateringTable: { name: "Catering table", tier: 4, h: 2.5, pieces: [["ss", 15000, 4]], waste_g: 0, whole: null, gross_g: 60000, preparedValue: 288, asFoundValue: 288, size: { w: 1.8, d: 0.7, h: 0.9 } },
     bushingCrate: { name: "Crate of bushings", tier: 4, h: 2, pieces: [["bzs", 20000, 4]], waste_g: 0, whole: null, gross_g: 80000, preparedValue: 2320, asFoundValue: 1740, size: { w: 1.2, d: 1, h: 0.8 } },
+    // s2e-content (yard-stage2-economy.md 2.10; RULING2.md 27.3 D12): the three HEAVY oversize pieces, real masses (lots.kinds
+    // mass_kg draws each lot's mass in its range; the object's own gross is the range's middle, and its pieces are shares of it).
+    // A boiler drum: a pressure vessel's shell, HMS, "Certified empty" on its plate (certifiedEmpty; no method is shown), tier 3
+    // (the torch), 2 to 12 t. A press frame: a scrapped press's cast-steel frame, HMS, tier 3, 4 to 20 t. A transformer core:
+    // HMS 0.70 (its laminations), copper windings 0.25, waste 0.05 (insulation and oil-soaked board, to a licensed waste carrier),
+    // tier 4 (the plasma cutter), 1.5 to 6 t. The windings go to No.2 copper: the content has no No. 1 grade (s2e-content notes).
+    // No sprite yet (the screens' phase draws them; as the four REPORT9 kinds above).
+    boilerDrum: { name: "Boiler drum", tier: 3, h: 2.5, pieces: [["hms", 1500000, 4]], waste_g: 0, whole: null, gross_g: 6000000, preparedValue: 7200, asFoundValue: 5112, certifiedEmpty: true, tags: ["vessel"], size: { w: 3.6, d: 1.8, h: 1.8 } },
+    pressFrame: { name: "Press frame", tier: 3, h: 3, pieces: [["hms", 2500000, 4]], waste_g: 0, whole: null, gross_g: 10000000, preparedValue: 12000, asFoundValue: 8520, size: { w: 3, d: 2, h: 2.6 } },
+    transformerCore: { name: "Transformer core", tier: 4, h: 2.5, pieces: [["hms", 525000, 4], ["no2", 187500, 4]], waste_g: 150000, whole: null, gross_g: 3000000, preparedValue: 28245, asFoundValue: 24427.2, size: { w: 1.6, d: 1.1, h: 1.8 } },
   },
   // 2.9: the bridge partners (open with the three-axle hook-lift); loads grow with the plates owned (decision 30)
   partners: {
@@ -313,10 +333,10 @@ const WORKS_LAYER: WorksLayerInput = {
   },
   // 2.9 vehicles and tools, and the plates (2.6.2: a plate is a scrip shop item bought on its plot's card); prices first values (content2) until the payback rule's
   shop: [
-    { key: "truckBridge", kind: "vehicle", place: "park", price: 154000, gate: "rung3", deliver_s: 30, arrive: "truck" },
-    { key: "pallet", kind: "carry", place: "rack", price: 3000, gate: "rung3", deliver_s: 6, arrive: "van" },
-    { key: "forklift", kind: "vehicle", place: "forklift", price: 3000, gate: "rung3", deliver_s: 30, arrive: "machineFlatbed" },
-    { key: "plasma", kind: "tool", place: "rack", price: 64900, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "truckBridge", kind: "vehicle", place: "park", price: 206000, gate: "rung3", financeable: true, deliver_s: 30, arrive: "truck" },
+    { key: "pallet", kind: "carry", place: "rack", price: 3000, gate: DARK, deliver_s: 6, arrive: "van" },
+    { key: "forklift", kind: "vehicle", place: "forklift", price: 3000, gate: DARK, deliver_s: 30, arrive: "machineFlatbed" },
+    { key: "plasma", kind: "tool", place: "rack", price: 86500, gate: "rung3", deliver_s: 6, arrive: "van" },
     ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
   ],
   // the plasma cutter: tier 4, P 60, on every material (B4, T8)
@@ -1434,6 +1454,11 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       partnerFarm: "partner level L: L skips at the site, each full fill_s after it was hooked (E26)",
       partnerDemolition: "partner level L: L skips at the site, each full fill_s after it was hooked (E26)",
     },
+    // s2e-content (yard-stage2-economy.md 2.11; RULING2.md 27.2 c, 27.4): FROM THE WORKS' OPENING a level is sold only while its gain is at
+    // least minShareI x I; `book` holds the bots' measured ladders (g1 x d^(L-1) by ladder; empty until they write it). Both read only
+    // from the works' opening (levelGain, the levels' owner) and stripped at release.stage 1.
+    minShareI: 0.01,
+    book: {},
   },
   ladder: {
     rung2: { t: 3.0, range: 3 },
@@ -1467,7 +1492,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // rungs 1 to 3 as measured (REPORT6); STAGE 2 rungs 4 and 5 (2.11; E30's guard)
   ceilings_t_h: [6, 110, 400, 800, 3500],
   // STAGE 2 (2.11, E11): payback hours by rung (null at rungs 1 and 2; tau_4 > 20 h is a fixed lower bound)
-  tau_h: [null, null, 9, 22, 45],
+  // s2e-content (RULING2.md 27.3 D4): 9 / 22 / 45 -> 12 / 36 / 48 h. Read only from the works' opening (stripped at release.stage 1).
+  tau_h: [null, null, 12, 36, 48],
   // E33. STAGE 2 (2.11): 6 h at rung 4, 8 h at rung 5 (s2a-fix: away.ts runLongerOf now stops at the stage's top rung, so
   // rungs 1 to 3 read and print exactly the first yard's 0.5, 2 and 4 h; 5.2 (14) holds the list at ladder.topRung's length)
   awayCapByRung_h: [0.5, 2, 4, 6, 8],
@@ -1543,7 +1569,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   release: { stage: 1 },
   // Stage 2, 2.1 (RULING2.md 14.1, 14.3; engine2-fixA): crew work in runs from rung 3, in the boss's sight
   // (trip by trip) and out of it (planned ahead); a yard hand's run 30 s, a cutter's 120 s from its start.
-  group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true },
+  // s2e-content (yard-stage2-economy.md "Planning ahead"): aheadWorks false: from the works' opening crews go trip by trip in sight and
+  // out of it (read only when worksOpened, by the crews' owner; stripped at release.stage 1, where `ahead` stays true byte for byte).
+  group: { fromRung: 3, handRun_s: 30, cutRun_s: 120, ahead: true, aheadWorks: false },
   // STAGE 2 (2.13): shearKg, uncut tier-3 steel on the floor that names a shear level
   advice: { minutes: 3, promptGapS: 60, reserveS: 60, shearKg: 1500 },
   lessons: {
@@ -1569,7 +1597,12 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
 
   // ================================================================================= STAGE 2 (yard-stage2.md 5.1)
   // The works (2.6): commissioning by standing 5 s at a plate or by itself 20 minutes after arrival; levels +0.15 to 10; the price floor.
-  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 10, floor: 3000, plates: PLATES },
+  // s2e-content (yard-stage2-economy.md 2.6.4, T12; RULING2.md 27.1): maxLevel 1 at stage 2: no plate levels (each plate's rate is
+  // set to its feed, so a level adds capacity nothing fills; they come back with stage 3's flows).
+  // `rungs` (s2e-content; 1.4 and 2.11; ruling 27.3 D2): THE STAGE'S OWN rungs 4 and 5, read ONLY from the works' opening (the
+  // merged view, schema.salvage.ts withWorksLayer, lays them over ladder.rungs): rung 5's range 8 (lead waits for stage 3). The
+  // first yard's ladder.rungs (shown padlocked) keeps its own values.
+  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 1, floor: 3000, plates: PLATES, rungs: [{ n: 4, t: 1000, range: 8 }, { n: 5, t: 3600, range: 8 }] },
   // The magnet crane (2.7; T1, T24): never a car before depollution, a battery, or copper, brass, bronze, aluminium, lead or stainless.
   crane: { rate: 50, reach_m: 9, load_kg: 1500, never: ["copper", "brass", "bronze", "alu", "lead", "stainless"], neverObjects: ["elv", "pbb"] },
   shear: { P: 15 },
@@ -1591,7 +1624,15 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7, mass_kg: [200, 1000] },
       { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4, mass_kg: [60, 120] },
       { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10, mass_kg: [400, 3000] },
+      // s2e-content (yard-stage2-economy.md 2.10; RULING2.md 27.3 D12): the three heavy kinds, from the works' opening with no
+      // line (a demolition firm's factory and substation clearances: the register's partnerDemolition), so a piece comes at
+      // rung 3 before the plasma (the two tier-3 kinds need only the torch); the transformer core waits for the plasma's tier 4.
+      { obj: "boilerDrum", from: "partnerDemolition", line: [], cut_s: 8, mass_kg: [2000, 12000] },
+      { obj: "pressFrame", from: "partnerDemolition", line: [], cut_s: 10, mass_kg: [4000, 20000] },
+      { obj: "transformerCore", from: "partnerDemolition", line: [], cut_s: 7, mass_kg: [1500, 6000] },
     ],
+    // s2e-content (2.10; the content check's third clause, build-yard.py): what a low-loader brings at most, kg.
+    lorry_kg: 20000,
     // The lead's ruling 6 (26 Nov 09:50): no fallback thing ("else an intermediate sold whole" is withdrawn): while no kind
     // can be drawn (every kind is tier 4: before the plasma cutter) the lots WAIT for one the yard can open.
   },
@@ -1601,7 +1642,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   reuse: {
     slots: 6,
     levelSlots: 2,
-    levels: 3,
+    // s2e-content (2.7 to 2.9's table: "Yard sale rack levels: cut"; the take is set by the value ceiling, not by slots): no levels.
+    levels: 0,
     share: 0.25,
     // bath, radiator, bicycle (from a named partner only, "Checked"), crate of brass taps, stove, gate; and their partner-load twins
     kinds: {
@@ -1619,6 +1661,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     never: ["electrical", "sealed", "vessel", "battery", "carPart", "fuel", "childSafety"],
     factor: 2.5,
     shareI: [null, null, 0.025, 0.025, 0.025],
+    // s2e-content (yard-stage2-economy.md 2.12): the share by rung, for the Yard sale's owner to read in place of shareI; first values
+    // REPORT9 scaled by the calibrated I0: about 0.5 x today's at rung 3 and 2.5 x at rungs 4 and 5 (the bots set them, 2 to 5 % a day).
+    shareI_r: [null, null, 0.0125, 0.0625, 0.0625],
     floorI: 2000,
     period_s: 240,
     firstVisitor_s: 30,
@@ -1628,7 +1673,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     firstThing: "bath",
   },
   // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
-  bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
+  // s2e-content (yard-stage2-economy.md 2.14.3): F_max = min(maxF_h 6, maxF_tau 0.5 x tau_r) x I (was min(2 h, 0.15 tau)); what may be
+  // financed is marked `financeable` on its plate or shop item (the hook-lift and the five machines of the shredder line and the halls).
+  bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 6, maxF_tau: 0.5, minPrice_h: 0.5, maxAgreements: 1 },
   // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
   // The sixteen products are `products` below (the game's prefix `yard_`: the fingerprint's rule, every product id starts
   // with one prefix); lookOf names them by those ids (content2-bots). The shared list holds them at stage 2 only (M1).
@@ -1662,8 +1709,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       { id: "yard_skipAds", kind: "skipAds", fallbackPrice: "$4.99" },
       { id: "yard_pack2", kind: "hoursOfIncome", fallbackPrice: "$1.99", value: 2 },
       { id: "yard_pack5", kind: "hoursOfIncome", fallbackPrice: "$4.99", value: 5 },
-      { id: "yard_pack10", kind: "hoursOfIncome", fallbackPrice: "$9.99", value: 10 },
-      { id: "yard_pack20", kind: "hoursOfIncome", fallbackPrice: "$19.99", value: 20 },
+      // s2e-content (RULING2.md 27.3 D8): the 10- and 20-hour packs leave the list (they fitted at none of 180 measured moments, T11).
     ],
   },
   // Rewarded ads (2.16; L3): 15 + 3 x 4 = 27 minutes of I a day at most against 0.04 x a day's income; dayHours_h the habit's
@@ -1672,6 +1718,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // ceiling (maxDayShare of a day's income) holds wherever the second session begins; minOffer_min 2: the spot buyer offers a
   // video only for at least two minutes of I.
   ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [5.3, 8.3, 12.3, 16.3, 20.3], minOffer_min: 2 },
+  // s2e-content (yard-stage2-economy.md 2.3 item 3; RULING2.md 27.4): rated income's one bounded factor a rung, kappa_r (rungs 3, 4, 5;
+  // null below), written by the bots like plates.json; refused outside 0.85 to 1.15. First values 1. Read from the works' opening only.
+  rate: { kappa: [null, null, 1, 1, 1] },
   // The entries stage 2 adds to the families above, joined from rung 3 (schema.salvage.ts withWorksLayer).
   worksLayer: WORKS_LAYER,
 };

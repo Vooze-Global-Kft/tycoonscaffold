@@ -12,10 +12,10 @@ import { awayPass } from './away';
 import { begin, dayAt, finish, priceAt, type Ctx } from './clock';
 import { thingPos } from './positions';
 import { ratedIncome, ratedIncome0 } from './rate';
-import { FIRST_UID, rackCap, rackChoice, reuseApply, tagFigures, tagged, tagUid } from './reuse';
+import { FIRST_UID, rackCap, rackChoice, reuseApply, shareIAt, tagFigures, tagged, tagUid } from './reuse';
 import { advance, advanceSalvage, jump } from './tick';
 import type { SalvageContent } from '../../config/schema.salvage';
-import type { CrewMember, SalvageEvent, SalvageGame, SalvageState, ThingState } from './types';
+import type { CrewMember, SalvageConfig, SalvageEvent, SalvageGame, SalvageState, ThingState } from './types';
 
 const cfg = worksCfg();
 const C = (): SalvageContent => cfg.salvage;
@@ -254,6 +254,43 @@ describe('2.12 the sale', () => {
     const a = adv(g, t1 + 0.001, false);
     expect(a.salvage.reuse).toEqual(h.salvage.reuse);
     expect(a.cash).toBeCloseTo(h.cash, 9);
+  });
+
+  it("s2e-crew (2.12, the economy designed again): reuse.shareI_r sets the rung's share; absent, the rung's shareI; nothing else moves", () => {
+    const g = full();
+    const t1 = g.salvage.reuse.nextAt!;
+    const R = cfg.salvage.reuse!;
+    const rung = g.salvage.ladder.rung;
+    expect(rung).toBe(3);
+    const withR = (shareI_r: unknown): SalvageConfig => ({ ...cfg, salvage: { ...cfg.salvage, reuse: { ...R, shareI_r } } }) as unknown as SalvageConfig;
+    const run = (c: SalvageConfig) => {
+      const ev: SalvageEvent[] = [];
+      const x = begin(c, g, ev, true);
+      advance(x, t1 + 0.001);
+      return { h: finish(g, x), q: (ev.find((e) => e.type === 'rackSold') as Extract<SalvageEvent, { type: 'rackSold' }>).q };
+    };
+    // The share the rule reads: the list by rung (index rung - 1), the record by rung, else shareI's.
+    const at = (c: SalvageConfig) => shareIAt({ c: c.salvage, s: g.salvage });
+    const own = TEST_REUSE.shareI[rung - 1]!;
+    expect(at(cfg)).toBe(own);
+    expect(at(withR([null, null, own * 4, own * 5, own * 6]))).toBe(own * 4);
+    expect(at(withR({ 3: own * 3, 4: own * 7 }))).toBe(own * 3);
+    // Not given for this rung (or not a positive number): the rung's shareI.
+    expect(at(withR({ 4: own * 7 }))).toBe(own);
+    expect(at(withR([null, null, null, own * 5]))).toBe(own);
+    expect(at(withR('x'))).toBe(own);
+    expect(at(withR([null, null, -1]))).toBe(own);
+    // Applied: the next visitor at nextAt + 3,600 q / (shareI_r x max(I0, floorI)); the sale itself is the same.
+    const a = run(cfg);
+    const b = run(withR([null, null, own * 4, own * 4, own * 4]));
+    expect(b.q).toBe(a.q);
+    expect(b.h.cash).toBe(a.h.cash);
+    const I0 = ratedIncome0(cfg.salvage, a.h.salvage);
+    expect(b.h.salvage.reuse.nextAt! - t1).toBeCloseTo((3600 * b.q) / (own * 4 * Math.max(I0, TEST_REUSE.floorI)), 6);
+    expect(a.h.salvage.reuse.nextAt! - t1).toBeCloseTo(4 * (b.h.salvage.reuse.nextAt! - t1), 6);
+    // The rack's places are unchanged (no rack levels are part of it).
+    const xa = begin(withR([null, null, own * 4]), g, [], true);
+    expect(rackCap(xa)).toBe(rackCap(begin(cfg, g, [], true)));
   });
 
   it('the restart: a thing racked onto an empty rack dates the visitor max(nextAt, t + reuse.period_s), never sooner than its value allows', () => {

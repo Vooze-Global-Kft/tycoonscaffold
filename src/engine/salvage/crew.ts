@@ -9,6 +9,7 @@ import { carrierCap_g, owner1Rules, cutTime, legM, machineInputs, machineShares,
 import { meltPiece } from './crucible';
 import { bossSees, groupCfg, grouping, planAhead, RUN_EPS, RUN_MAX } from './group';
 import { accepts, atPlace, defOf, feedPiece, hopperRoom, inputSet, start as startMachine, takeTray, trayFree } from './machines';
+import { worksOpened } from './layer';
 import { rackChoice } from './reuse';
 import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
@@ -1297,6 +1298,9 @@ function cutLeft(x: Ctx, th: ThingState, P: number): number {
  */
 function cutCands(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P: number): ThingState[] {
   const s = x.s;
+  // s2e-crew (G9): from the works' opening with planning ahead off (group.aheadWorks false) nothing plans a run, so
+  // every caller reads only the first candidate: the best one is found in one scan (the same thing the sort puts first).
+  if (!planAhead(x) && worksOpened(s)) return bestCut(x, m, t, where, P);
   const cands = thingsAt(s.things, where).filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier && !rackChoice(x, m, t, th));
   if (cands.length < 2) return cands;
   // The score is a pure function of the thing (memoised for the sort; the order is the same).
@@ -1308,6 +1312,36 @@ function cutCands(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', 
   };
   cands.sort((a, b) => score(b) - score(a) || (a.uid < b.uid ? -1 : 1));
   return cands;
+}
+
+/** cutLeft of a thing, kept on the thing for the transition while its content, cut, progress and the power are the same (exact). */
+const CUT_LEFT = new WeakMap<ThingState, { c: Ctx['c']; obj: string; cut: number; progress: number; P: number; v: number }>();
+function cutLeftKept(x: Ctx, th: ThingState, P: number): number {
+  const q = CUT_LEFT.get(th);
+  if (q && q.c === x.c && q.obj === th.obj && q.cut === th.cut && q.progress === th.progress && q.P === P) return q.v;
+  const v = cutLeft(x, th, P);
+  CUT_LEFT.set(th, { c: x.c, obj: th.obj, cut: th.cut, progress: th.progress, P, v });
+  return v;
+}
+
+/**
+ * s2e-crew (G9): the first of cutCands' order alone (best score, then the smallest uid), as a list of at most one:
+ * the same filter, the same score, one scan instead of a sort. Read only with planning ahead off from the works' opening.
+ */
+function bestCut(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P: number): ThingState[] {
+  const s = x.s;
+  let best: ThingState | null = null;
+  let bestV = 0;
+  for (const th of thingsAt(s.things, where)) {
+    if (!(th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier)) continue;
+    const v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeftKept(x, th, P));
+    if (best && (v < bestV || (v === bestV && th.uid > best.uid))) continue;
+    // rackChoice last (the filter's order of tests does not matter: each is a pure read).
+    if (rackChoice(x, m, t, th)) continue;
+    best = th;
+    bestV = v;
+  }
+  return best ? [best] : [];
 }
 
 /**

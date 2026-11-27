@@ -577,6 +577,8 @@ export const ShopItemSchema = z.object({
   arrive: z.enum(['van', 'machineFlatbed', 'truck', 'crew']).optional(),
   /** STAGE 2 (2.6.2; content2): a shop key or works plate that must be owned first (the eddy current needs the shredder). */
   needsItem: id.optional(),
+  /** STAGE 2 (s2e-content; yard-stage2-economy.md 2.14.2): a vehicle that earns may be financed by the bank (the three-axle hook-lift); never a tool, a carrier or crew. */
+  financeable: z.boolean().optional(),
   /** The prototype's measures (checks, never rules). */
   addsPerMin: z.number().optional(),
   incomeNow: z.number().optional(),
@@ -610,6 +612,18 @@ export const LevelsSchema = z.object({
   /** REPORT4 R21: no level costs less than floor × floorGrowth^(L−1) (§). */
   floor: z.number().nonnegative().default(0),
   floorGrowth: z.number().positive().default(1),
+  /**
+   * STAGE 2 (s2e-content; yard-stage2-economy.md 2.11, RULING2.md 27.2 c): from the works' opening a level is SOLD only while its
+   * gain is at least minShareI x I (otherwise "Not the limit now", no Buy). Read only from the works' opening; stageView strips it
+   * at release.stage 1.
+   */
+  minShareI: z.number().min(0).max(1).optional(),
+  /**
+   * STAGE 2 (s2e-content; RULING2.md 27.4): the gain book, the bots' measured ladder by level ladder id (a crew role, a partner,
+   * `driver`, ...): g(L) = g1 x d^(L-1), § an hour; `levelGain` reads it for a ladder whose rated check fails. Empty until the bots
+   * write it. Read only from the works' opening; stageView strips it at release.stage 1.
+   */
+  book: z.record(z.string(), z.object({ g1: z.number().nonnegative(), d: z.number().positive().max(1), at: z.string().optional() })).optional(),
 });
 export type LevelsDef = z.infer<typeof LevelsSchema>;
 
@@ -698,7 +712,18 @@ const AwaySchema = z.object({ gapS: z.number().positive().default(10), cardS: z.
  * always goes); `ahead`: the rest of a run is planned at a departure out of the boss's sight (false: every
  * run trip by trip; tests and the bots' comparison). Read by src/engine/salvage/group.ts; no block: no runs.
  */
-const GroupSchema = z.object({ fromRung: z.number().int(), handRun_s: z.number().nonnegative(), cutRun_s: z.number().nonnegative(), ahead: z.boolean() });
+const GroupSchema = z.object({
+  fromRung: z.number().int(),
+  handRun_s: z.number().nonnegative(),
+  cutRun_s: z.number().nonnegative(),
+  ahead: z.boolean(),
+  /**
+   * STAGE 2 (s2e-content; yard-stage2-economy.md "Planning ahead"): `ahead` FROM THE WORKS' OPENING (false: trip by trip in sight
+   * and out of it). Read only when worksOpened (group.ts, the crews' owner); stageView strips it at release.stage 1, where
+   * `ahead` stays the first yard's.
+   */
+  aheadWorks: z.boolean().optional(),
+});
 /** A goal (2.10; goals.json by the goals package): id, text key, the chevron's target, a done condition, an optional purchase. */
 export const GoalSchema = z.object({
   id: id,
@@ -801,6 +826,12 @@ export const WorksSchema = z.object({
   maxLevel: z.number().int().positive(),
   floor: z.number().nonnegative(),
   plates: z.record(id, PlateSchema),
+  /**
+   * s2e-content (yard-stage2-economy.md 1.4, 2.11; RULING2.md 27.3 D2): THE STAGE'S OWN rungs from 4 ({n, t, range}), laid over
+   * `ladder.rungs` by number in the merged view (withWorksLayer), so they are read only from the works' opening; the first
+   * yard's `ladder.rungs` (shown padlocked) keeps its own values. Absent: the ladder's.
+   */
+  rungs: z.array(z.object({ n: z.number().int().min(4).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).optional(),
 });
 export type WorksDef = z.infer<typeof WorksSchema>;
 
@@ -832,6 +863,8 @@ const LotsSchema = z.object({
   cut_s: z.tuple([z.number().positive(), z.number().positive()]),
   /** The lead's ruling 6 (26 Nov 09:50): no fallback thing; while no kind can be drawn (before the plasma cutter, or before a line) lots WAIT for one the yard can open. */
   kinds: z.array(LotKindSchema).min(1),
+  /** s2e-content (yard-stage2-economy.md 2.10): what the low-loader brings at most, kg (build-yard.py's third clause: no kind's mass_kg max above it). */
+  lorry_kg: z.number().positive().optional(),
 });
 /** The crate, "the picking table" (2.10.2): share of a tip by hash, things it holds, seconds a thing, the factor on its prepared value. No hold time (P2). */
 const CrateSchema = z.object({ share: z.number().min(0).max(1), max: z.number().int().positive(), sort_s: z.number().positive(), u: z.number().positive() });
@@ -848,6 +881,8 @@ const ReuseSchema = z.object({
   factor: z.number().positive(),
   /** By rung (length ladder.topRung; null below rung 3): the share of max(I0, floorI) an hour the public pays at most. */
   shareI: z.array(z.number().positive().nullable()),
+  /** s2e-content (yard-stage2-economy.md 2.12): the share by rung (length ladder.topRung; null below rung 3), set by the bots so each day's median take is 2 to 5 %; read by the Yard sale's owner in place of `shareI`. */
+  shareI_r: z.array(z.number().positive().nullable()).optional(),
   floorI: z.number().nonnegative(),
   period_s: z.number().nonnegative(),
   firstVisitor_s: z.number().nonnegative(),
@@ -1032,6 +1067,13 @@ const SalvageObject = z.object({
   iap: IapSchema.optional(),
   ads: AdsSchema.optional(),
   worksLayer: WorksLayerSchema.optional(),
+  /**
+   * STAGE 2 (s2e-content; yard-stage2-economy.md 2.3 item 3, RULING2.md 27.4): rated income's one bounded factor a rung, kappa_r
+   * (length ladder.topRung, null below rung 3), the median of G / I_replay at the rung's named moments, written by the bots. A kappa
+   * outside 0.85 to 1.15 is refused (outside that band a term is wrong, and the term is fixed, not hidden). Read from the works'
+   * opening only (rate.ts, its owner); stripped at release.stage 1.
+   */
+  rate: z.object({ kappa: z.array(z.number().positive().nullable()) }).optional(),
   goals: z.array(GoalSchema).default([]),
   /** goals.json's day-one goals (after `goals` are all done or skipped, in order). */
   dayOne: z.array(GoalSchema).default([]),
@@ -1063,6 +1105,8 @@ const SalvageObject = z.object({
     // awayCapByRung_h's length is lintStage2More's (f) (s2a-fix): a content frozen before it (salvage-stage2.json) must still parse.
     ['lots.mu_min', s.lots?.mu_min],
     ['reuse.shareI', s.reuse?.shareI],
+    ['reuse.shareI_r', s.reuse?.shareI_r],
+    ['rate.kappa', s.rate?.kappa],
     ['ads.dayHours_h', s.ads?.dayHours_h],
   ];
   for (const [k, l] of lists) if (l && l.length !== top) ctx.addIssue({ code: 'custom', path: k.split('.'), message: `${k} has ${l.length} entries; ladder.topRung ${top} wants one a rung (B18; e.g. [${l.join(', ')}])` });
@@ -1070,6 +1114,13 @@ const SalvageObject = z.object({
     s.tau_h.forEach((v, i) => {
       if (i < 2 && v !== null) ctx.addIssue({ code: 'custom', path: ['tau_h', i], message: `tau_h[${i}] (rung ${i + 1}) is ${v}: tau is null at rungs 1 and 2 (B18)` });
       if (i >= 2 && v === null) ctx.addIssue({ code: 'custom', path: ['tau_h', i], message: `tau_h[${i}] (rung ${i + 1}) is null: every rung from 3 has a payback time` });
+    });
+  }
+  // s2e-content (RULING2.md 27.4): kappa_r within 0.85 to 1.15 at every rung from 3, null below.
+  if (s.rate) {
+    s.rate.kappa.forEach((v, i) => {
+      if (i < 2 && v !== null) ctx.addIssue({ code: 'custom', path: ['rate', 'kappa', i], message: `rate.kappa[${i}] (rung ${i + 1}) is ${v}: kappa is null at rungs 1 and 2` });
+      if (i >= 2 && (v === null || v < KAPPA_BAND[0] || v > KAPPA_BAND[1])) ctx.addIssue({ code: 'custom', path: ['rate', 'kappa', i], message: `rate.kappa[${i}] (rung ${i + 1}) is ${v}: outside ${KAPPA_BAND[0]} to ${KAPPA_BAND[1]} a term of rated income is wrong; fix the term, not the factor (ruling 27.4)` });
     });
   }
 });
@@ -1097,7 +1148,11 @@ function legacyAwayCap(raw: unknown): unknown {
  * content. `release` absent or 2: the content as written. A save made at stage 1 loads at stage 2 unchanged (the works
  * open at its first live instant at rung 3 or more).
  */
-export const STAGE2_BLOCKS = ['works', 'crane', 'shear', 'forklift', 'depollution', 'lots', 'crate', 'reuse', 'bank', 'iap', 'ads', 'worksLayer', 'stage2', 'tau_h'] as const;
+export const STAGE2_BLOCKS = ['works', 'crane', 'shear', 'forklift', 'depollution', 'lots', 'crate', 'reuse', 'bank', 'iap', 'ads', 'worksLayer', 'stage2', 'tau_h', 'rate'] as const;
+/** s2e-content: stage-2 keys inside blocks the first yard also parses (stripped at release.stage 1 so the first yard parses exactly what it did). */
+export const STAGE2_KEYS = { group: ['aheadWorks'], levels: ['minShareI', 'book'] } as const;
+/** s2e-content (RULING2.md 27.4): the band a rung's kappa must lie in. */
+export const KAPPA_BAND = [0.85, 1.15] as const;
 export function stageView<T extends { release?: { stage: number }; ladder: { topRung?: number }; map: { works?: unknown }; text?: { glossary?: { fromRung?: number }[] } }>(c: T): T {
   if ((c.release?.stage ?? 2) >= 2) return c;
   const out = { ...c } as Record<string, unknown>;
@@ -1106,6 +1161,13 @@ export function stageView<T extends { release?: { stage: number }; ladder: { top
   out.ladder = ladder;
   const { works: _w, ...map } = c.map as Record<string, unknown>;
   out.map = map;
+  for (const [blk, keys] of Object.entries(STAGE2_KEYS)) {
+    const b = out[blk] as Record<string, unknown> | undefined;
+    if (!b || !keys.some((k) => k in b)) continue;
+    const kept = { ...b };
+    for (const k of keys) delete kept[k];
+    out[blk] = kept;
+  }
   if (c.text?.glossary) out.text = { ...c.text, glossary: c.text.glossary.filter((g) => (g.fromRung ?? 1) < 3) };
   return out as T;
 }
@@ -1205,7 +1267,17 @@ export function withWorksLayer(s: SalvageContent): SalvageContent {
     tools: { ...s.tools, ...L.tools },
     carriers: { ...s.carriers, ...L.carriers },
     bays: { ...s.bays, ...L.bays },
+    // s2e-content: the stage's own rungs (works.rungs) over the first yard's, by number, read only from here (the works' opening).
+    ...(s.works?.rungs?.length ? { ladder: { ...s.ladder, rungs: withStageRungs(s.ladder.rungs, s.works.rungs) } } : {}),
   };
+}
+
+/** The ladder's rungs with the stage's own (works.rungs) in place of the same numbers (s2e-content); the rest as they are. */
+function withStageRungs<R extends { n: number; t: number; range: number }>(rungs: R[], stage: { n: number; t: number; range: number }[]): R[] {
+  const by = new Map(stage.map((r) => [r.n, r]));
+  const out = rungs.map((r) => (by.has(r.n) ? { ...r, ...by.get(r.n)! } : r));
+  for (const r of stage) if (!rungs.some((x) => x.n === r.n)) out.push(r as R);
+  return out.sort((a, b) => a.n - b.n);
 }
 
 /** RULING2 (fixed): the store-account countries where packs are off at launch: the EEA and Switzerland (iap.packsOff must be exactly these). */
@@ -1264,6 +1336,9 @@ export function lintStage2(s0: SalvageContent): string[] {
       keys.add(i.key);
       if (!mapPlaces.has(i.place)) out.push(`worksLayer.shop.${i.key}.place "${i.place}" is not a map point of either layer`);
       if (i.needsItem && !keys.has(i.needsItem) && !plates[i.needsItem]) out.push(`worksLayer.shop.${i.key}.needsItem "${i.needsItem}" is neither a shop key nor a plate`);
+      // s2e-content (2.14.2): only a vehicle or a machine that earns is financed; never a tool, a carrier or crew; never one not sold.
+      if (i.financeable && i.kind !== 'vehicle' && i.kind !== 'works') out.push(`worksLayer.shop.${i.key} (${i.kind}) is marked financeable: only a vehicle or a machine may be (2.14.2)`);
+      if (i.financeable && rungOf(i.gate) > (s0.ladder.topRung ?? 3)) out.push(`worksLayer.shop.${i.key} is marked financeable but is not sold at this stage (gate ${i.gate})`);
     }
     for (const [oid, o] of Object.entries(L.objects)) {
       o.pieces.forEach((p, i) => {
@@ -1305,10 +1380,9 @@ export function lintStage2(s0: SalvageContent): string[] {
   type Step = { where: string; inputs: string[]; outOf: (i: string) => [string, number][]; wasteOf: (i: string) => [string, number][]; reagents: [string, number, number][] };
   const steps: Step[] = [];
   for (const [pid, p] of Object.entries(plates)) {
-    if (s.works && p.financeable !== undefined) {
-      const fin = Object.values(p.recipes ?? {}).some((r) => sellable(r.out) > 0) || Object.values(p.out).some((sh) => sellable(sh) > 0);
-      if (fin !== p.financeable) out.push(`works.plates.${pid}.financeable is ${p.financeable}; it is derived: ${fin} (out holds a sellable grade)`);
-    }
+    // s2e-content (yard-stage2-economy.md 2.14.2): `financeable` is a mark of the content (a machine that earns), no longer derived;
+    // a plate the stage does not sell (its gate past the ladder) is never marked.
+    if (p.financeable === true && rungOf(p.gate) > (s.ladder.topRung ?? 3)) out.push(`works.plates.${pid} is marked financeable but is not sold at this stage (gate ${p.gate})`);
     if (p.kind === 'assay' || p.kind === 'handling') continue;
     if (p.kind === 'batch') {
       if (!p.batch) out.push(`works.plates.${pid}: a batch plate needs batch {kg, s, start_share, start_idle}`);

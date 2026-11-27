@@ -12,9 +12,12 @@ import { dealDeliver, dealReprice } from './deal';
 import { cancelAct } from './hand';
 import { floorGrams, lineAmount, roundMoney } from './money';
 import { topRungOf } from './ladder';
+import { crateCount } from './crate';
+import { worksOpened } from './layer';
+import { lotsWaiting } from './lots';
 import { advance } from './tick';
 import { driverTakesOver } from './truck';
-import type { AwayCard, SalvageConfig, SalvageEvent, SalvageGame } from './types';
+import type { AwayCard, AwayWorks, SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from './types';
 
 const DAY_MS = 86_400_000;
 
@@ -99,6 +102,86 @@ function card(x: Ctx, seconds: number, capS: number, absentS: number, runLonger:
   } as AwayCard;
 }
 
+/** s2e-crew (2.17): what the works' report reads from the state as the pass begins (pour counts, supplied worth by material). */
+interface WorksBefore {
+  poured: Record<string, number>;
+  worth: Record<string, number>;
+}
+
+function worksBefore(s: SalvageState): WorksBefore {
+  const poured: Record<string, number> = {};
+  for (const [k, v] of Object.entries(s.counts ?? {})) if (k.startsWith('poured:')) poured[k.slice(7)] = v ?? 0;
+  return { poured, worth: { ...s.ladder.worth } };
+}
+
+/** The content's plate order (pours are listed in it; a plate it does not name comes last, by id). */
+function byPlateOrder(order: readonly string[]): (a: { plate: string }, b: { plate: string }) => number {
+  const at = (p: string) => {
+    const i = order.indexOf(p);
+    return i < 0 ? Infinity : i;
+  };
+  return (a, b) => at(a.plate) - at(b.plate) || (a.plate < b.plate ? -1 : a.plate > b.plate ? 1 : 0);
+}
+
+const byGrowth = (a: { material: string; worth: number }, b: { material: string; worth: number }): number => b.worth - a.worth || (a.material < b.material ? -1 : a.material > b.material ? 1 : 0);
+
+/**
+ * s2e-crew (the economy designed again 2.17): the works' report of one pass, read at the pass's end. Gross is the card's
+ * money, the bank's part its `bank`: the numbers the pass applied (paid when computed, lesson 5).
+ */
+function worksReport(x: Ctx, b: WorksBefore): AwayWorks {
+  const acc = x.away!;
+  const s = x.s;
+  const gross = acc.money;
+  const toBank = acc.bank > 0 ? acc.bank : 0;
+  const a = s.bank?.agreement ?? null;
+  const loan: AwayWorks['loan'] = a
+    ? { plate: a.plate, left: roundMoney(Math.max(0, a.T - a.taken)), T: a.T }
+    : acc.repaid.length
+      ? { plate: acc.repaid[acc.repaid.length - 1], repaid: true }
+      : null;
+  const pours: AwayWorks['pours'] = [];
+  for (const [k, v] of Object.entries(s.counts ?? {})) {
+    if (!k.startsWith('poured:')) continue;
+    const plate = k.slice(7);
+    const n = (v ?? 0) - (b.poured[plate] ?? 0);
+    if (n > 0) pours.push({ plate, n });
+  }
+  pours.sort(byPlateOrder(Object.keys(x.c.works?.plates ?? {})));
+  const grown: AwayWorks['grown'] = [];
+  for (const [material, w] of Object.entries(s.ladder.worth)) {
+    const d = roundMoney(w - (b.worth[material] ?? 0));
+    if (d > 0) grown.push({ material, worth: d });
+  }
+  grown.sort(byGrowth);
+  return { gross, toBank, toYard: roundMoney(gross - toBank), loan, pours, lots: { n: lotsWaiting(x), max: x.c.lots?.max ?? 0 }, crate: crateCount(x), grown };
+}
+
+/**
+ * s2e-crew (2.17; ruling 22 X2): two passes' works reports on one open card. Money and pours add up; the pieces waiting
+ * and the picking table are the later pass's; the loan is the later pass's, and a loan repaid on the first pass stays
+ * "repaid" on the card (the same absence) unless an agreement stands at its end.
+ */
+function mergeWorks(p: AwayWorks | undefined, q: AwayWorks | undefined, order: readonly string[]): AwayWorks | undefined {
+  if (!p || !q) return q ?? p;
+  const pours = new Map(p.pours.map((r) => [r.plate, r.n] as const));
+  for (const r of q.pours) pours.set(r.plate, (pours.get(r.plate) ?? 0) + r.n);
+  const grown = new Map(p.grown.map((r) => [r.material, r.worth] as const));
+  for (const r of q.grown) grown.set(r.material, roundMoney((grown.get(r.material) ?? 0) + r.worth));
+  const gross = roundMoney(p.gross + q.gross);
+  const toBank = roundMoney(p.toBank + q.toBank);
+  return {
+    gross,
+    toBank,
+    toYard: roundMoney(gross - toBank),
+    loan: q.loan ?? (p.loan && 'repaid' in p.loan ? p.loan : null),
+    pours: [...pours].map(([plate, n]) => ({ plate, n })).sort(byPlateOrder(order)),
+    lots: { ...q.lots },
+    crate: q.crate,
+    grown: [...grown].map(([material, worth]) => ({ material, worth })).sort(byGrowth),
+  };
+}
+
 /** A sink for the pass's events: only awayReport, passed, rung and repaid reach the caller (types.ts MAX_TICK: never item events); the rest are dropped as they come (no 35,000-event array, R3). */
 function awaySink(out: SalvageEvent[] | undefined): SalvageEvent[] {
   const sink: SalvageEvent[] = [];
@@ -171,6 +254,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   const runLonger = runLongerOf(cfg, g, capS);
   // join3: the bays before the pass, so the card can say what the time away left in them unsold.
   const bays0 = new Map(Object.entries(s.bays).map(([gr, b]) => [gr, b.g] as const));
+  // s2e-crew (2.17): what the works' report counts from (read only once the works have opened).
+  const works0 = worksBefore(s);
   advance(x, s.t + A);
   // E34: deal deliveries at every midnight beyond the cap, up to the device time.
   const endMs = Number.isFinite(now) ? now : x.ms0 + A * 1000;
@@ -189,6 +274,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
     }
     c.bayDelta = roundMoney(dv);
     c.unsold = roundMoney(Math.max(0, dv));
+    // s2e-crew (2.17): the works' report, from the works' opening only (the first yard's card keeps its fields).
+    if (worksOpened(s)) c.works = worksReport(x, works0);
     if (s.away) {
       // A card still waiting: the two passes add up on one card (paid already, each when computed).
       const prev = s.away;
@@ -247,6 +334,10 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
         const n = (prev[k]?.n ?? 0) + (c[k]?.n ?? 0);
         if (n > 0) merged[k] = { n, money: roundMoney((prev[k]?.money ?? 0) + (c[k]?.money ?? 0)) };
       }
+      // s2e-crew (2.17): the works' report adds up across passes too (absent on a first-yard card).
+      delete merged.works;
+      const works = mergeWorks(prev.works, c.works, Object.keys(x.c.works?.plates ?? {}));
+      if (works) merged.works = works;
     } else s.away = c;
     s.beenAway = true;
     x.ev.push({ type: 'awayReport', card: s.away });

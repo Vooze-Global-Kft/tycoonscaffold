@@ -1375,6 +1375,40 @@ export interface AwayCard {
   van?: { n: number; money: number };
   /** Oversize pieces waiting at the card's end ("{n} oversize pieces wait for you"). */
   lotsWaiting?: number;
+  /**
+   * ADDED (s2e-crew, the economy designed again 2.17; the owner's review: the away card "looks too simple"): the stage-2
+   * card's report, PRESENT ONLY FROM THE WORKS' OPENING (layer.ts worksOpened at the card's end), so the first yard's card
+   * (release.stage 1) has exactly the fields it had. Every number is the one applied. Merged across passes (away.ts).
+   */
+  works?: AwayWorks;
+}
+
+/**
+ * s2e-crew (2.17): what the away card of the works reports, besides the first yard's lines (types.ts AwayCard.works).
+ * The screens' phase designs it (lesson 12); the rules hand these numbers and nothing else.
+ */
+export interface AwayWorks {
+  /** § of lot payments while away, GROSS (the card's `money`: the bank's share included). */
+  gross: number;
+  /** § of it taken by the bank (the card's `bank`, 0 without one) and § that went to the yard (gross − toBank). */
+  toBank: number;
+  toYard: number;
+  /**
+   * The bank: `left` (T − taken at the card's end) while an agreement is open; `repaid` on the card of the absence in
+   * which its total T was reached (once: the next absence's card has none); null without either.
+   */
+  loan: { plate: PlateId; left: number; T: number } | { plate: PlateId; repaid: true } | null;
+  /** Each hall's pours while away (`counts` poured:<plate>), only halls that poured, in the content's plate order. */
+  pours: { plate: PlateId; n: number }[];
+  /** Oversize pieces waiting at the card's end, of `lots.max` ("n of 4"); max 0 without the block. */
+  lots: { n: number; max: number };
+  /** Things on the picking table at the card's end. */
+  crate: number;
+  /**
+   * The materials whose supplied worth (ladder.worth, § at p̄: what counts for the rung) grew while away, largest first
+   * (ties by material id); the first is "the material that grew most". Empty when none grew.
+   */
+  grown: { material: string; worth: number }[];
 }
 
 /** The goal card (2.10): its first line, what follows, and a meter where the goal counts something. */

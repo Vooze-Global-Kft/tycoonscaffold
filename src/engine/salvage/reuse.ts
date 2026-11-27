@@ -361,11 +361,39 @@ export function tagFigures(x: Ctx, th: ThingState, t: number): { gate: number; s
   return { gate: roundMoney(x.c.reuse.factor * v), scrap: v };
 }
 
-/** The share of max(I₀, floorI) an hour the public pays at most, at the yard's rung (`reuse.shareI`; the last given at a rung past its end). */
-function shareIAt(x: Ctx): number | null {
+/**
+ * The share of max(I₀, floorI) an hour the public pays at most, at the yard's rung (`reuse.shareI`; the last given at a
+ * rung past its end). s2e-crew (the economy designed again, 2.12): `reuse.shareI_r`, the stage's share BY RUNG (rungs 3
+ * to 5), where the content gives it for this rung; the rung's `reuse.shareI` where it does not (the key absent, or no
+ * positive value at this rung). Nothing else of the rack changes. Exported for the tests.
+ */
+export function shareIAt(x: Pick<Ctx, 'c' | 's'>): number | null {
+  const r = shareIByRung(x.c.reuse, x.s.ladder.rung);
+  if (r !== null) return r;
   const sh = x.c.reuse!.shareI;
-  const r = Math.max(1, Math.min(x.s.ladder.rung, sh.length));
-  for (let k = r - 1; k >= 0; k--) if (sh[k] !== null && sh[k] !== undefined) return sh[k] as number;
+  const rr = Math.max(1, Math.min(x.s.ladder.rung, sh.length));
+  for (let k = rr - 1; k >= 0; k--) if (sh[k] !== null && sh[k] !== undefined) return sh[k] as number;
+  return null;
+}
+
+/**
+ * `reuse.shareI_r` at rung `rung` (read tolerantly: the key is the content owner's, added beside this rule). Its form is
+ * that of `reuse.shareI`: a list by rung (index rung − 1, null below rung 3; a rung past its end reads the last value
+ * given), or a record keyed by the rung ("3", "4", "5"). Anything else, or no positive finite value at the rung: null.
+ */
+function shareIByRung(R: unknown, rung: number): number | null {
+  const v = (R as { shareI_r?: unknown } | undefined)?.shareI_r;
+  const ok = (q: unknown): q is number => typeof q === 'number' && Number.isFinite(q) && q > 0;
+  if (Array.isArray(v)) {
+    if (!v.length) return null;
+    const r = Math.max(1, Math.min(Math.floor(rung), v.length));
+    for (let k = r - 1; k >= 0; k--) if (v[k] !== null && v[k] !== undefined) return ok(v[k]) ? v[k] : null;
+    return null;
+  }
+  if (v && typeof v === 'object') {
+    const q = (v as Record<string, unknown>)[String(Math.floor(rung))];
+    return ok(q) ? q : null;
+  }
   return null;
 }
 

@@ -8,6 +8,7 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { bossFresh, type Ctx } from './clock';
+import { worksOpened } from './layer';
 
 export interface GroupCfg {
   /** The first rung on which crew work in runs (below it every trip is chosen alone, as in stage 1). */
@@ -18,6 +19,12 @@ export interface GroupCfg {
   cutRun_s: number;
   /** Plan the rest of a run ahead at a departure out of the boss's sight (false: every run trip by trip). */
   ahead: boolean;
+  /**
+   * s2e-crew (the economy designed again, "Planning ahead"; RULING2.md 27; REPORT9 T3): `group.ahead` FROM THE WORKS'
+   * OPENING (content `group.aheadWorks`, false: crews go trip by trip in sight and out of sight). Read ONLY when
+   * `layer.ts worksOpened`; null (the key absent): `ahead` holds there too (the behaviour before this key).
+   */
+  aheadWorks: boolean | null;
 }
 
 /**
@@ -25,7 +32,7 @@ export interface GroupCfg {
  * (src/config/salvage.content.ts `group`); a field missing from a hand-made `group` (tests) means: no
  * runs (fromRung), single trips (the limits), plan ahead (ahead).
  */
-const OFF: GroupCfg = { fromRung: Infinity, handRun_s: 0, cutRun_s: 0, ahead: true };
+const OFF: GroupCfg = { fromRung: Infinity, handRun_s: 0, cutRun_s: 0, ahead: true, aheadWorks: null };
 
 const CACHE = new WeakMap<SalvageContent, GroupCfg>();
 
@@ -36,7 +43,7 @@ export function groupCfg(c: SalvageContent): GroupCfg {
   if (!g) {
     const raw = ((c as unknown as { group?: Record<string, unknown> }).group ?? null) as Record<string, unknown> | null;
     g = raw
-      ? { fromRung: num(raw.fromRung, OFF.fromRung, -Infinity), handRun_s: num(raw.handRun_s, OFF.handRun_s), cutRun_s: num(raw.cutRun_s, OFF.cutRun_s), ahead: typeof raw.ahead === 'boolean' ? raw.ahead : OFF.ahead }
+      ? { fromRung: num(raw.fromRung, OFF.fromRung, -Infinity), handRun_s: num(raw.handRun_s, OFF.handRun_s), cutRun_s: num(raw.cutRun_s, OFF.cutRun_s), ahead: typeof raw.ahead === 'boolean' ? raw.ahead : OFF.ahead, aheadWorks: typeof raw.aheadWorks === 'boolean' ? raw.aheadWorks : null }
       : OFF;
     CACHE.set(c, g);
   }
@@ -48,9 +55,15 @@ export function grouping(x: Ctx): boolean {
   return x.s.ladder.rung >= groupCfg(x.c).fromRung;
 }
 
-/** Is the rest of a run planned ahead when it departs out of sight (runs on this rung, and `group.ahead`)? */
+/**
+ * Is the rest of a run planned ahead when it departs out of sight (runs on this rung, and `group.ahead`; from the
+ * works' opening `group.aheadWorks` where the content gives it)? The crews' departures (crew.ts) and the driver's
+ * trip (truck.ts) all ask here. At release.stage 1 the works never open (layer.ts), so the first yard reads `ahead`.
+ */
 export function planAhead(x: Ctx): boolean {
-  return grouping(x) && groupCfg(x.c).ahead;
+  if (!grouping(x)) return false;
+  const g = groupCfg(x.c);
+  return g.aheadWorks !== null && worksOpened(x.s) ? g.aheadWorks : g.ahead;
 }
 
 /** Is a fresh boss within reach.sight of any of these points or places' footprints at yard second t? */

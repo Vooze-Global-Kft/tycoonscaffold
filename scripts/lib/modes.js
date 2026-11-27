@@ -32,7 +32,7 @@ const MODE_FOLDERS = {
   // content they were played on (engine2's), and the two Phase-B fixture files (rules-works', rules-money's).
   // The stage's new rules files (works, reuse, lots, crate, bank, shop, ads, halls, shredder, assay, forklift,
   // state2, samples2) are inside src/engine/salvage, which is the mode's already.
-  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
+  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/engine/fixtures/salvage-report9.json', 'src/engine/fixtures/report9.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
 };
 
 /**
@@ -228,6 +228,9 @@ const WEB_ONLY = [
   'src/engine/fixtures/salvage-stage2.json',
   'src/engine/fixtures/salvage2works.ts',
   'src/engine/fixtures/salvage2money.ts',
+  // s2e-content (27 Nov, ruling 27.7): the stage as REPORT9 measured it, frozen before the economy was built again (tests only).
+  'src/engine/fixtures/salvage-report9.json',
+  'src/engine/fixtures/report9.ts',
   'src/engine/salvage/samples2.ts',
   'src/ui/salvage/dev/DevPanel.web.tsx',
   'src/ui/salvage/dev/switches.web.ts',
