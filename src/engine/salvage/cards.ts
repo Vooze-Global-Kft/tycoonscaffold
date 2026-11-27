@@ -7,12 +7,12 @@
  */
 import { cardOfMoney, moneyOver, MONEY_CARD_KINDS } from './cardsMoney';
 import { cardOfWorks, WORKS_CARD_KINDS } from './cardsWorks';
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
-import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
+import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, levelQuote, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
 import { driverRoundF, machineShares } from './content';
 import { awayCapH } from './away';
 import { roundMoney } from './money';
@@ -125,6 +125,8 @@ function driverTripS(cfg: SalvageConfig, g: SalvageGame, m: CrewMember): number 
 
 /** A level row (crew, machine, partner): the level's state from levelCheck, "not the bottleneck now" when it binds nothing (E19). */
 function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
+  // s2e-levels: from the works' opening a level is sold only while worth having, and its row prints what it earns (levelWorksLine).
+  if (target.kind !== 'plate' && target.kind !== 'reuse' && worksOpened(g.salvage)) return levelButtonWorks(cfg, g, target, level);
   let ch = levelCheck(cfg, g, target);
   if (ch.state === 'buy' && !levelBinds(cfg, g, target, binding(cfg, g))) ch = { ...ch, state: 'notBottleneck' };
   const adds = levelAddsKgMin(cfg, g, target);
@@ -134,6 +136,38 @@ function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, le
   const button = purchaseButton(ch, 'card.level', { act: 'level', target, price: ch.price ?? 0 }, { n: { n: level }, m: { n: level + 1 } });
   const rungGate = ch.state === 'locked' && ch.refusal?.key === 'rung' ? ch.refusal.args.t : null;
   const line: Txt | null = rungGate ? { key: 'card.levelOpensAt', args: { t: rungGate } } : ch.state === 'locked' || ch.state === 'top' ? refusalTxt(ch) : ch.state === 'notBottleneck' ? { key: 'card.notBottleneck' } : adds > 0 ? addsLine : null;
+  return { ch, button, line };
+}
+
+/**
+ * THE LEVEL'S LINES FROM THE WORKS' OPENING (s2e-levels; yard-stage2-economy.md 2.11; RULING2.md 27.2 c, 27.3 D5): the rule a
+ * player reads where the price changes rule at the works' opening. Sold: [0] "+§x an hour on your figures" (x = levelQuote's
+ * gain, the one measure the price is made of: the change in I the step applies) and [1] "Pays for itself in about {t}" (t =
+ * price ÷ gain, hours of the yard's running); the Buy carries the price charged. Not sold: [0] the check's refusal "Not the
+ * limit now · +§x an hour", no Buy, no [1]. Empty below the works' opening, for a plate's level, and where the target has no
+ * next level. Every number is a typed argument (the screens format, never compute).
+ */
+export function levelWhyLines(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): Txt[] {
+  const q = levelQuote(cfg, g, target);
+  if (!q) return [];
+  if (!q.sold) return [{ key: 'refusal.notLimit' as TextKey, args: { x: { money: q.gain } } }];
+  return [
+    { key: 'card.levelEarns', args: { x: { money: q.gain } } },
+    { key: 'card.levelPays', args: { t: { secs: q.paybackH * 3600 } } },
+  ];
+}
+
+/** The first of levelWhyLines (the row's line), or null. */
+export function levelWorksLine(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): Txt | null {
+  return levelWhyLines(cfg, g, target)[0] ?? null;
+}
+
+/** levelButton from the works' opening: the check's state and Buy as levelCheck gives them (no "not the bottleneck" step: a level sold is worth having), the works' line. */
+function levelButtonWorks(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
+  const ch = levelCheck(cfg, g, target);
+  const button = purchaseButton(ch, 'card.level', { act: 'level', target, price: ch.price ?? 0 }, { n: { n: level }, m: { n: level + 1 } });
+  const rungGate = ch.state === 'locked' && ch.refusal?.key === 'rung' ? ch.refusal.args.t : null;
+  const line: Txt | null = rungGate ? { key: 'card.levelOpensAt', args: { t: rungGate } } : ch.state === 'buy' || ch.state === 'cantAfford' ? levelWorksLine(cfg, g, target) : refusalTxt(ch);
   return { ch, button, line };
 }
 
@@ -226,7 +260,9 @@ function partnerRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
       out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : lab.state === 'full' ? { key: 'card.skipState', args: { partner: { name: id } } } : { key: 'title.place', args: { place: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', lab.state === 'filling' ? null : { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
     }
     const lv = levelButton(cfg, g, { kind: 'partner', partner: id }, p.level);
-    out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.buy', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state));
+    // s2e-levels: from the works' opening the row's second line says how soon the step pays for itself (levelWhyLines[1]).
+    const pays = worksOpened(s) && (lv.ch.state === 'buy' || lv.ch.state === 'cantAfford') ? (levelWhyLines(cfg, g, { kind: 'partner', partner: id })[1] ?? null) : null;
+    out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.buy', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state, pays));
   }
   if (s.ladder.rung >= 2 || s.deal.step !== null) out.push(row('deal', { key: 'title.deal' }, dealLine(cfg, g), { label: { key: 'open' }, action: { act: 'open', card: { kind: 'deal' } }, refusal: null }, 'info'));
   return out;

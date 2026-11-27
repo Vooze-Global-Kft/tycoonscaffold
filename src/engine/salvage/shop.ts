@@ -30,8 +30,8 @@
  */
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
 import { begin, credit, finish } from './clock';
-import { buyCheck, hireCheck, levelCheck, shopItems } from './ladder';
-import { contentAt } from './layer';
+import { buyCheck, hireCheck, hiredState, levelCheck, levelCheckAt, levelled, levelQuote, ratedGain, shopItems, worksTauH } from './ladder';
+import { contentAt, worksOpened } from './layer';
 import { roundMoney } from './money';
 import { ratedTerms } from './rate';
 import { quoteId } from './state2';
@@ -170,6 +170,8 @@ const ROLES: readonly CrewRole[] = ['hand', 'cutter', 'driver'];
 export function headroomU(cfg0: SalvageConfig, g: SalvageGame): number {
   const c = contentAt(cfg0.salvage, g.salvage);
   const cfg = c === cfg0.salvage ? cfg0 : { ...cfg0, salvage: c };
+  // s2e-levels (yard-stage2-economy.md 2.15; RULING2 27.3 D11): from the works' opening, the headroom by payback (headroomWorks).
+  if (worksOpened(g.salvage)) return headroomWorks(cfg, g);
   const s = g.salvage;
   const counted = (st: string, price: number | null) => (price !== null && st !== 'locked' && st !== 'top' && st !== 'owned' && st !== 'arriving' && st !== 'info' ? price : 0);
   let u = 0;
@@ -194,6 +196,101 @@ export function headroomU(cfg0: SalvageConfig, g: SalvageGame): number {
     if (w.phase !== 'running') continue;
     const ch = plateLevelCheck(cfg, g, pid);
     u += counted(ch.state, ch.price);
+  }
+  return roundMoney(u);
+}
+
+/**
+ * The headroom's window, in tau_r (RULING2 27.3 D11: "the headroom counts what pays back within 1.5 tau_r"; the band's own
+ * error, a rule of the ruling like the advice's 1.25, not a tuned number). Content `iap.headroomTau` where given (a request to
+ * the content owner), else this.
+ */
+export const HEADROOM_TAU = 1.5;
+
+/**
+ * The state with a shop item owned, as rated income reads assets (advice.ts boughtState's rule, copied: that function is not
+ * exported and advice.ts is not this package's; requests.md): the item in `owned`, a tool's tier, a better carrier, a
+ * first-yard machine on its pad, the truck; a works plate running at level 1 and, a hall, poured once.
+ */
+function boughtFor(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
+  const s = g.salvage;
+  if (c.works?.plates[item]) {
+    const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
+    return { ...g, salvage: { ...s, works: { ...s.works, [item]: w }, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
+  }
+  const n = { ...s, owned: s.owned.includes(item) ? s.owned : [...s.owned, item] };
+  const tool = c.tools[item];
+  if (tool) n.tier = Math.max(s.tier, tool.tier);
+  if (c.carriers[item] !== undefined && (c.carriers[item] ?? 0) > (c.carriers[s.carrier] ?? 0)) n.carrier = item;
+  if (item === 'stripper' || item === 'bench' || item === 'crucible') n.machines = { ...s.machines, [item]: { ...s.machines[item], owned: true, level: Math.max(1, s.machines[item].level) } };
+  if (item === 'truck') n.truck = { ...s.truck, owned: true };
+  return { ...g, salvage: n };
+}
+
+/** A check's price counts toward U (a state that sells: Buy, or greyed for the cash or the earmark; never locked, top, owned, arriving or info). */
+const sells = (st: string, price: number | null): price is number => price !== null && (st === 'buy' || st === 'cantAfford');
+
+/**
+ * U FROM THE WORKS' OPENING (s2e-levels; yard-stage2-economy.md 2.15 "The headroom rule, changed"; RULING2 27.3 D11, 27.2 a):
+ * the sum of the price of every step buyable NOW whose payback on its calculated gain is within HEADROOM_TAU × tau_r:
+ * - every check is the one the card applies (buyCheck, plateBuyCheck, hireCheck, levelCheck), whose ceiling comes BEFORE the
+ *   money from the works' opening, so U never depends on the cash: a step greyed for the cash counts, a step the ceiling
+ *   refuses (or gated, dark, owned, arriving, at its top) counts nothing;
+ * - a step's gain: a shop item's or a plate's rated gain bought (ladder.ts ratedGain on the bought state: the replay), a
+ *   hire's on the hired state, a level's `levelGain` (levelQuote: the one measure its price is made of);
+ * - a step counts only while price ≤ window × gain (no item counts above what it earns; a zero gain counts nothing);
+ * - EACH LADDER IS COUNTED UP while each step pays: the next hire of a role on the state with the last one hired, the next
+ *   level of a target on the state one level up, until a step fails (a level not sold, under levels.minShareI × I, ends its
+ *   ladder: it counts nothing). The 1 % test of every step reads I at the state U is asked on (one envelope a call).
+ * A rung without tau: the window is open (every priced step with a gain counts).
+ */
+export function headroomWorks(cfg: SalvageConfig, g: SalvageGame): number {
+  const c = cfg.salvage;
+  const s = g.salvage;
+  const tau = worksTauH(c, s.ladder.rung);
+  const k = (iapDef(c) as { headroomTau?: number } | null)?.headroomTau ?? HEADROOM_TAU;
+  const win = tau === null ? Infinity : k * tau;
+  const pays = (price: number, gain: number) => gain > 1e-6 && price <= win * gain + 1e-9;
+  const I = ratedI(cfg, g);
+  let u = 0;
+  for (const it of shopItems(c)) {
+    if (it.kind === 'crew') continue;
+    const ch = it.kind === 'works' ? plateBuyCheck(cfg, g, it.key) : buyCheck(cfg, g, it.key);
+    if (!sells(ch.state, ch.price)) continue;
+    if (pays(ch.price, ratedGain(cfg, g, boughtFor(c, g, it.key)))) u += ch.price;
+  }
+  for (const role of ROLES) {
+    let h = g;
+    for (let n = 0; n < 16; n++) {
+      const ch = hireCheck(cfg, h, role);
+      if (!sells(ch.state, ch.price)) break;
+      const next = hiredState(h, role);
+      if (!pays(ch.price, ratedGain(cfg, h, next))) break;
+      u += ch.price;
+      h = next;
+    }
+  }
+  const targets: LevelTarget[] = [];
+  for (const m of s.crew) targets.push({ kind: 'crew', id: m.id });
+  for (const id of LEVEL_MACHINES) if (s.machines[id]?.owned) targets.push({ kind: 'machine', machine: id });
+  for (const [pid, p] of Object.entries(s.partners)) if (p.open) targets.push({ kind: 'partner', partner: pid });
+  for (const t of targets) {
+    let h = g;
+    for (let n = 0; n < 64; n++) {
+      const ch = levelCheckAt(cfg, h, t, I);
+      if (!sells(ch.state, ch.price)) break;
+      const q = levelQuote(cfg, h, t, I);
+      if (!q || !pays(ch.price, q.gain)) break;
+      u += ch.price;
+      h = levelled(h, t);
+    }
+  }
+  for (const [pid, w] of Object.entries(s.works)) {
+    if (w.phase !== 'running') continue;
+    const ch = plateLevelCheck(cfg, g, pid);
+    if (!sells(ch.state, ch.price)) continue;
+    const up = { ...g, salvage: { ...s, works: { ...s.works, [pid]: { ...w, level: (w.level || 1) + 1 } } } };
+    if (pays(ch.price, ratedGain(cfg, g, up))) u += ch.price;
   }
   return roundMoney(u);
 }

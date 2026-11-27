@@ -583,6 +583,10 @@ export const TEXT = {
   'card.rota.permitLead': 'Permit · lead smelting',
   'card.bay.route': 'Goes to: {to}', // to: { text: 'title.works.<id>' } or { text: 'card.bay.sellFromBay' }
   'card.bay.sellFromBay': 'Sell from the bay',
+  // s2e-levels (economy 2.11, RULING2 27.3 D5): a level's row from the works' opening; x: { money } = levelGain as applied, t: { secs } = price ÷ gain
+  'card.levelEarns': '+{x} an hour on your figures',
+  'card.levelPays': 'Pays for itself in about {t}', // t: { secs } = price ÷ gain, the yard's running hours
+  'refusal.notLimit': 'Not the limit now · +{x} an hour', // x: { money } = levelGain; no Buy
 
   // --- the bank (2.14, 4.5; RULING2 9.7, 11.4). {share}: { text: 'share.fifth' } while content bank.share is 0.2
   // (bank.shareWords "A fifth"), else { pct: share } ("20 %"); mid-line `share.fifthIn`. ---
@@ -647,7 +651,7 @@ export const TEXT = {
   'card.shop.noAdsLine': 'Get every ad reward without watching', // RULING2 9.14
   'card.shop.packs': '{currency|cap} packs',
   'card.shop.packName': '{x}', // the pack's S
-  'card.shop.packLine': 'about {n} hours of your yard’s earnings', // the lead's fixed words; n: H (2, 5, 10, 20)
+  'card.shop.packLine': 'about {n} h of the yard’s own earnings', // RULING2 28.2 (d) via the lead's fallback (fit: 285 pt, 38 characters); n: H (2, 5)
   'card.shop.noRoom': 'Nothing to spend it on yet',
   'card.shop.waiting': 'Waiting for approval', // pending (15.4); also the row for as long as it waits (15.11 c)
   'card.shop.unconfirmed': 'The store has not confirmed this purchase yet. If you were charged, your {currency} arrives when it does.', // 15.4, word for word
@@ -754,7 +758,7 @@ export const TEXT = {
   'help.yardSale': 'The Yard sale',
   'help.yardSaleBody': 'The public buys single things fit for reuse at the gate: baths, radiators, stoves, gates. Set a tagged thing on the Yard sale and a visitor pays more than its scrap value. Visitors keep to the railed bay by the gate.',
   'help.packs': '{currency|cap} packs',
-  'help.packsBody': 'Where the store allows it, the shop sells {currency} worth some hours of your own yard’s earnings. It lives in this device’s save, is not restored on another device, never repays a loan and adds no tonnes.',
+  'help.packsBody': 'Where the store allows it, the shop sells {currency} worth some hours of the yard’s own earnings, never while a Bank loan is open. It lives in this device’s save, is not restored on another device, never repays a loan and adds no tonnes.', // RULING2 28.2 (c)
   'help.code': 'The code',
   'help.codeBody': 'Whoever hides {currency} packs in Settings chooses a four-digit code; showing them again asks for it. A forgotten code clears only when the game is installed again, which starts a new yard.',
   'help.packLost': 'Bought {currency}, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.', // P16
@@ -788,6 +792,8 @@ export const TEXT = {
   'goal.buyPlasma': 'Buy the plasma cutter', // before "Cut an oversize piece" (the stainless and bronze kinds need it)
   'goal.startAnalyser': 'Start up the analyser', // the start-up the baler taught moves to the analyser; done commissioned:analyser
   'goal.pourInduction': 'Pour at the induction furnace', // done poured:induction
+  // s2e-advice (yard-stage2-economy.md 1.3): the repeating goal after the list when the advice line names nothing
+  'goal.rungToGo': 'Rung {n}: {t} to go', // n: the next rung; t: { tonnes_g } still to supply (adviceWait)
   'advice.loanHint': 'A loan suits a machine that earns.', // 2.13: the bank's one sentence, under its four conditions
   // s2-fix-small (R3, 21.5): what the yard waits for when nothing is left to buy (advice.ts AdviceWait). The line and,
   // under it, who brings the material: each one line of the opened goal card at font scale 1.3 (check.ts goalMore).
@@ -795,6 +801,12 @@ export const TEXT = {
   'advice.waitGrade': 'Rung {n} waits for {grade}', // grade: the material's first grade (its name, as the table's range chips print it)
   'advice.waitBrings': '{partner} brings it', // partner: { name: <partner id> } (the register)
   'advice.waitMakes': '{plate} makes it', // plate: { text: 'title.works.<id>' }
+  // s2e-advice (yard-stage2-economy.md 2.13; RULING2 27): the line from the works' opening (advice.ts AdviceWorks). Each one
+  // line of the opened goal card at font scale 1.3 (check.ts goalMore). The gain is the calculated one on the player's state.
+  'advice.gain': '+{x} an hour on your yard', // x: { money } = AdviceWorks.gain_h, the calculated gain on this yard (never a table's mean)
+  'advice.saveFor': 'Save up for {item}', // item: { text }: the target (AdviceWorks.saveUp_s set)
+  'advice.saveTime': 'Cash for it in about {t}', // t: { secs } = AdviceWorks.saveUp_s, the card's closed form (only the time is "about")
+  'advice.meanwhile': 'Meanwhile: {item}', // item: { text }: AdviceWorks.meanwhile, a purchase that leaves the target affordable on return
 
   // --- lessons (5.3, T14; ≤ 48) ---
   'lesson.ss': 'A magnet hardly holds 304 stainless.',

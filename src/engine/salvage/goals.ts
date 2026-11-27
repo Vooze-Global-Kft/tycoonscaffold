@@ -17,7 +17,7 @@ import { advice, adviceWait, cardForItem } from './advice';
 import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
 import { pointOf, siteRect, skipZone, stopOf } from './positions';
 import { owner1Rules } from './content';
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
 
@@ -286,6 +286,15 @@ function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpe
   return ordered(cfg, g, gs).find((d) => isOpen(gs, d)) ?? null;
 }
 
+/**
+ * s2e-advice (yard-stage2-economy.md 2.13 (b)): the shop key the CURRENT goal asks to buy (its `buy`), or null. Read by the
+ * advice line (the target to save for) without the goal card's own reading of the advice (no cycle: the order of the list
+ * reads no advice).
+ */
+export function goalBuyNow(cfg: SalvageConfig, g: SalvageGame): string | null {
+  return currentSpec(cfg, g, g.salvage.goals)?.buy ?? null;
+}
+
 // ============================================================================ what the card prints
 
 /** A goal's text with its arguments (Supply {t} ({r} metals), Pass {rival}, Buy next: {item}). */
@@ -304,12 +313,27 @@ export function goalText(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): Txt {
     const r = c.rivals.list[(Number(parts[1]) || 1) - 1];
     return { key: d.text as TextKey, args: { rival: { name: r ? `${r.id}.chip` : 'rival.1.chip' } } };
   }
+  if (d.repeat && worksOpened(g.salvage)) return repeatText(cfg, g) ?? { key: 'goal.widen' as TextKey, args: { item: { text: 'item.skip' } } };
   if (d.repeat) {
     const a = advice(cfg, g, 0);
     const level = a?.action.act === 'level';
     return { key: (level ? 'goal.widenLevel' : 'goal.widen') as TextKey, args: { item: a?.line.args?.item ?? { text: 'item.skip' } } };
   }
   return { key: d.text as TextKey };
+}
+
+/**
+ * THE REPEATING GOAL FROM THE WORKS' OPENING (s2e-advice; yard-stage2-economy.md 1.3: after the list): "Level up: {item}"
+ * naming the level the advice line names (goal.widenLevel), "Buy next: {item}" when it names a purchase (goal.widen, as
+ * built); when it names nothing, what the next rung still needs: "Rung {n}: {t} to go" (goal.rungToGo, the tonnes of
+ * adviceWait). Null when there is nothing to name (the stage's top, nothing to buy): the card then shows no goal.
+ */
+function repeatText(cfg: SalvageConfig, g: SalvageGame): Txt | null {
+  const a = advice(cfg, g, 0);
+  if (a) return { key: (a.action.act === 'level' ? 'goal.widenLevel' : 'goal.widen') as TextKey, args: { item: a.line.args?.item ?? { text: 'item.skip' } } };
+  const w = adviceWait(cfg, g);
+  if (w && w.missing_g > 0) return { key: 'goal.rungToGo' as TextKey, args: { n: { n: w.rung }, t: { tonnes_g: w.missing_g } } };
+  return null;
 }
 
 /** The goal's meter ("1.20 / 2.50 t" or "1 / 2") and its share, or null when it counts nothing. */
@@ -434,6 +458,8 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
     .filter(({ d }) => isOpen(gs, d));
   // The repeating goal with nothing to advise shows the goal after it (it stays open).
   if (list[0]?.d.repeat && list.length > 1 && !advice(cfg, g, 0)) list = list.slice(1);
+  // s2e-advice: from the works' opening a repeating goal with nothing to name (no purchase, no rung to go) is not shown.
+  if (list[0]?.d.repeat && list.length === 1 && worksOpened(g.salvage) && !repeatText(cfg, g)) list = [];
   const cur = list[0];
   if (!cur) return null;
   const nxt = list[1];

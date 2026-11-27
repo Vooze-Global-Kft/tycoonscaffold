@@ -11,7 +11,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { pointOf } from './positions';
-import { ratedCapacity, ratedIncome, replayIncome } from './rate';
+import { levelGain, ratedCapacity, ratedIncome, replayIncome } from './rate';
 import type { CrewRole, LevelTarget, MachineId, PartnerId, RefusalKey, RowState, SalvageConfig, SalvageGame, ShopItem, ShopKey, TextKey, Txt, TxtArgs } from './types';
 
 /** What a purchase check returns: the price it would charge (null: nothing to charge), the first refusal, the row's state. */
@@ -344,26 +344,99 @@ function roundPrice(v: number): number {
 /**
  * The price of the next level (E13a): max(tau(L) × the rated kg a minute it adds × the margin a kg,
  * floor × floorGrowth^(L−1)), L the level now; null when the target is unknown, not owned, not open,
- * or at its top level.
+ * or at its top level. FROM THE WORKS' OPENING (s2e-levels; yard-stage2-economy.md 2.6.4, 2.11; RULING2.md 27.2 c,
+ * 27.3 D5): the works' rule (`levelQuote`): roundPrice(max(levels.floor × floorGrowth^(L−1), tau_r × levelGain)), and
+ * null while the level is not sold ("Not the limit now": never sold at the floor).
  */
 export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number | null {
   // Stage 2: a works plate's level has its own rule (plateLevelPrice, the one function rules-works reads).
+  if (target.kind === 'plate') return plateLevelPrice(cfg, g, target.plate);
+  if (worksOpened(g.salvage)) {
+    const q = levelQuote(cfg, g, target);
+    return q && q.sold ? q.price : null;
+  }
+  return firstYardLevelPrice(cfg, g, target);
+}
+
+/**
+ * THE FIRST YARD'S LEVEL PRICE (E13a, as on the owner's phone; pinned): max(tau(L) × the rated kg a minute the level
+ * adds × the margin a kg, floor × floorGrowth^(L−1)); null when the target is unknown, not owned, not open, or at its
+ * top. Below the works' opening it is levelPrice; above it, it is only printed (the lead's comparison of D5).
+ */
+export function firstYardLevelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number | null {
   if (target.kind === 'plate') return plateLevelPrice(cfg, g, target.plate);
   // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
   const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target);
   if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
   const { floor, growth } = levelFloor(c);
-  // s2c-fix-money (E3, RULING2 22): FROM THE WORKS' OPENING a partner's level costs what it earns: levelTau x its rated gain
-  // (I with the level less I now), as a plate's level is priced (plateLevelPrice's tau); never the yard's mean margin a
-  // kilogram. The first yard (the works not opened) prices it as merged, as on the owner's phone.
-  if (target.kind === 'partner' && worksOpened(g.salvage)) {
-    const dI = Math.max(0, ratedGain(cfg, g, levelled(g, target)));
-    return roundPrice(Math.max((plateTauMin(c, L, g.salvage.ladder.rung) / 60) * dI, floor * growth ** (L - 1)));
-  }
   const v = Math.max(levelTau(c, L, g.salvage.ladder.rung) * levelAddsKgMin(cfg, g, target) * marginOf(c, target), floor * growth ** (L - 1));
   return roundPrice(v);
 }
+
+/** tau_r, hours (yard-stage2-economy.md 2.11; content `tau_h` at the yard's rung: 12 / 36 / 48), or null where the rung has none. */
+export function worksTauH(c: SalvageContent, rung: number): number | null {
+  const tau = c.tau_h?.[Math.floor(rung) - 1];
+  return typeof tau === 'number' && tau > 0 ? tau : null;
+}
+
+/**
+ * A LEVEL AS THE WORKS PRICE IT (s2e-levels; yard-stage2-economy.md 2.6.4 and 2.11; RULING2.md 27.2 a and c, 27.3 D5,
+ * 27.4), from the works' opening, for every level but a plate's (crew, first-yard machines, open partners, the driver):
+ * - gain = rate.ts `levelGain` (THE ONE MEASURE: the gain book where `levels.book` has the ladder, else the calculated
+ *   gain: the replay with the level one step up less now), § an hour on the player's own yard;
+ * - I = rated income now (rate.ts ratedIncome on the state's content), unless the caller passes it (the headroom's walk);
+ * - SOLD only while gain ≥ `levels.minShareI` × I and gain > 0 (absent minShareI: any gain above 0); otherwise "Not the
+ *   limit now" and NEVER sold at the floor;
+ * - price = roundPrice(max(levels.floor × floorGrowth^(L−1), tau_r × gain)), tau_r = `tau_h` at the yard's rung (a rung
+ *   without one: levels.tau.cap minutes);
+ * - payback_h = price ÷ gain: what the card prints ("pays for itself in about N hours of the yard's running").
+ * A price comes from what the level earns, never from the cash. Null below the works' opening (the first yard's rule,
+ * firstYardLevelPrice), for a plate's level, and where the target has no next level (not owned, not open, at its top).
+ */
+export interface LevelQuote {
+  /** The level now (the step bought takes it to L + 1). */
+  L: number;
+  /** § an hour the step adds (levelGain), exactly what the card prints and what the price is made of. */
+  gain: number;
+  /** Rated income now, § an hour (the 1 % test's I). */
+  I: number;
+  /** tau_r, hours. */
+  tauH: number;
+  /** levels.floor × floorGrowth^(L−1), §. */
+  floor: number;
+  /** The price charged when sold (also when not sold: what it would cost; never charged then). */
+  price: number;
+  /** price ÷ gain, hours (Infinity at a zero gain). */
+  paybackH: number;
+  /** Sold now: gain ≥ minShareI × I and gain > 0. */
+  sold: boolean;
+  /** The floor, not tau_r × gain, set the price. */
+  floorBound: boolean;
+}
+
+export function levelQuote(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, Inow?: number): LevelQuote | null {
+  if (target.kind === 'plate' || !worksOpened(g.salvage)) return null;
+  const c = contentAt(cfg.salvage, g.salvage);
+  const L = levelNow(g, target);
+  if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
+  const { floor: f0, growth } = levelFloor(c);
+  const floor = f0 * growth ** (L - 1);
+  const tauH = worksTauH(c, g.salvage.ladder.rung) ?? c.levels.tau.cap / 60;
+  const gain = levelGain(c, g.salvage, target);
+  const I = Inow ?? Math.max(0, ratedIncome(c, g.salvage));
+  const share = (c.levels as { minShareI?: number }).minShareI ?? 0;
+  const sold = gain > 1e-6 && gain >= share * I - 1e-9;
+  const price = roundPrice(Math.max(floor, tauH * gain));
+  return { L, gain, I, tauH, floor, price, paybackH: gain > 1e-6 ? price / gain : Infinity, sold, floorBound: floor >= tauH * gain };
+}
+
+/**
+ * s2e-levels: the refusal of a level that is not worth having now ("Not the limit now", with its gain). STAND-IN: refusals.ts
+ * (closed to this package) does not list the key yet; requests.md asks the join to add 'notLimit' to REFUSAL_KEYS_V3, and the
+ * cast then goes. Its words are `refusal.notLimit` (textKeys.ts, strings.ts).
+ */
+export const NOT_LIMIT = 'notLimit' as unknown as RefusalKey;
 
 /** tau(L) minutes of a level priced from its rated gain (a plate's, 2.6.4; a partner's from the works' opening): min(60 x tau_r, levels.tau.first x growth^(L-1)); a rung without a tau: levels.tau.cap. */
 function plateTauMin(c: SalvageContent, L: number, rung: number): number {
@@ -373,8 +446,17 @@ function plateTauMin(c: SalvageContent, L: number, rung: number): number {
   return Math.min(cap, t.first * t.growth ** (L - 1));
 }
 
-/** The level check (2.15): notOwned, the levels' gate (E25: levels open at rung 2), topLevel, earmark or cash, ceiling. */
+/**
+ * The level check (2.15): notOwned, the levels' gate (E25: levels open at rung 2), topLevel, earmark or cash, ceiling.
+ * FROM THE WORKS' OPENING (s2e-levels), after topLevel: `notLimit` (state 'locked', no price, no Buy) while the level is not
+ * worth having (levelQuote), then the ceiling and the money (the ceiling first: moneyAndCeiling), at levelQuote's price.
+ */
 export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): PurchaseCheck {
+  return levelCheckAt(cfg, g, target);
+}
+
+/** levelCheck with I given (the headroom's walk up a ladder reads I once, at the state it starts from). */
+export function levelCheckAt(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, Inow?: number): PurchaseCheck {
   // join2b: the content the state reads (layer.ts contentAt): the works layer's items, grades and materials once the works opened (the base content itself before).
   const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target);
@@ -382,6 +464,11 @@ export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   const gate = gateRefusal(c, g, c.levels.opens);
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   if (L >= maxLevelOf(c, g, target)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
+  if (target.kind !== 'plate' && worksOpened(g.salvage)) {
+    const q = levelQuote(cfg, g, target, Inow)!;
+    if (!q.sold) return { price: null, refusal: { key: NOT_LIMIT, args: { x: { money: q.gain } } }, state: 'locked' };
+    return moneyAndCeiling(cfg, g, q.price, levelled(g, target));
+  }
   const price = levelPrice(cfg, g, target)!;
   return moneyAndCeiling(cfg, g, price, levelled(g, target));
 }

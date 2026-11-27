@@ -24,7 +24,7 @@ import { begin, finish } from './clock';
 import { buy, hire, level } from './actions';
 import { contentAt, worksOpened } from './layer';
 import { buyCheck, hireCheck, hiredState, levelCheck, levelled, levelPrice, ratedGain, shopItems } from './ladder';
-import { own, ratedIncome, replayIncome } from './rate';
+import { levelGain, own, ratedIncome, replayIncome } from './rate';
 import { adAudience, headroomU, packsHelpShown } from './shop';
 import { restartKeeps } from './state2Money';
 import { newBot, playTo, startGame } from './bot';
@@ -258,26 +258,24 @@ describe('E3: a partner\'s level costs what it earns, from the works\' opening; 
     expect(levelPrice(c2, g, { kind: 'partner', partner: 'partnerFarm' })).toBe(2200);
     expect(levelPrice(c2, g, { kind: 'partner', partner: 'partnerDemolition' })).toBe(2400);
   });
-  it('the works open (r4): price = roundPrice(max(tau(L)/60 x the rated gain, levels.floor x floorGrowth^(L-1))); "not the bottleneck" only at a zero gain', () => {
+  it('the works open (r4): s2e-levels replaced this rule (RULING2 27.2 c, 27.3 D5): price = roundPrice(max(levels.floor x floorGrowth^(L-1), tau_r x levelGain)), sold only while levelGain >= levels.minShareI x I (else no price: "Not the limit now")', () => {
     const cfg = worksCfg();
     const g = r4Game();
     const c = contentAt(cfg.salvage, g.salvage);
     const rung = g.salvage.ladder.rung;
-    const tauR = c.tau_h?.[rung - 1];
-    const lv = c.levels as { floor?: number; floorGrowth?: number; tau: { first: number; growth: number; cap: number } };
+    const tauR = c.tau_h?.[rung - 1] as number;
+    const lv = c.levels as { floor?: number; floorGrowth?: number; minShareI?: number };
     const round = (v: number) => Math.max(50, v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 100) * 100);
+    const Inow = ratedIncome(c, g.salvage);
     let n = 0;
     for (const [pid, p] of Object.entries(g.salvage.partners)) {
       if (!p.open) continue;
       const t: LevelTarget = { kind: 'partner', partner: pid };
       const L = p.level;
-      const dI = Math.max(0, replayIncome(c, levelled(g, t).salvage) - replayIncome(c, g.salvage));
-      expect(ratedGain(cfg, g, levelled(g, t))).toBeCloseTo(replayIncome(c, levelled(g, t).salvage) - replayIncome(c, g.salvage), 6);
-      const cap = typeof tauR === 'number' && tauR > 0 ? 60 * tauR : lv.tau.cap;
-      const tauMin = Math.min(cap, lv.tau.first * lv.tau.growth ** (L - 1));
-      const want = round(Math.max((tauMin / 60) * dI, (lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (L - 1)));
+      const dI = levelGain(c, g.salvage, t);
+      const sold = dI > 1e-6 && dI >= (lv.minShareI ?? 0) * Inow - 1e-9;
+      const want = sold ? round(Math.max(tauR * dI, (lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (L - 1))) : null;
       expect({ pid, price: levelPrice(cfg, g, t) }).toEqual({ pid, price: want });
-      expect({ pid, binds: levelBinds(cfg, g, t) }).toEqual({ pid, binds: dI > 1e-6 });
       n++;
     }
     expect(n).toBeGreaterThan(0);

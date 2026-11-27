@@ -9,12 +9,15 @@
  * level is useful only when its target binds (E19: the advice line never names "not the bottleneck now").
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import { loanOffered, platePrice } from './bank';
+import { awayCapS } from './away';
+import { loanHintDue, loanOffered, platePrice, saveUpSeconds } from './bank';
+import { goalBuyNow, goalSpecs } from './goals';
 import { contentAt, worksOpened } from './layer';
-import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, levelled, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
+import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
 import { roundMoney } from './money';
+import { levelGain, levelGainCfg, ratedIncome } from './rate';
 import { incomeRate } from './tick';
-import type { Advice, AdviceWait, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt } from './types';
+import type { Advice, AdviceWait, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt, TxtArgs } from './types';
 
 // ============================================================================ the bottleneck (E13c)
 
@@ -158,7 +161,8 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
  * the stocks say. The first yard (the works not opened): the stocks' reading (binding), as merged.
  */
 export function levelBinds(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, b = binding(cfg, g)): boolean {
-  if (worksOpened(g.salvage)) return target.kind !== 'reuse' && ratedGain(cfg, g, levelled(g, target)) > 1e-6;
+  // s2e-advice (RULING2 27.2 d): the one measure, rate.ts levelGain (the gain book where it has the ladder).
+  if (worksOpened(g.salvage)) return target.kind !== 'reuse' && levelGainCfg(cfg, g, target) > 1e-6;
   if (target.kind === 'machine') return b.machines.includes(target.machine);
   if (target.kind === 'partner') return b.partners.includes(target.partner);
   if (target.kind === 'plate') return b.plates.includes(target.plate);
@@ -273,11 +277,14 @@ function candidates(cfg0: SalvageConfig, g: SalvageGame): Advice[] {
  * incomeRate, never leaving cash below E19's reserve; ties by the hour's goal order. `now` is unused
  * (prices do not move with the market day). Null when nothing qualifies.
  */
-export function advice(cfg: SalvageConfig, g: SalvageGame, now: number): Advice | null {
+export function advice(cfg: SalvageConfig, g: SalvageGame, now: number): AdviceW | null {
   void now;
   const budget = g.cash + cfg.salvage.advice.minutes * incomeRate(cfg, g) - reserve(cfg, g);
-  // s2c-fix-money (E7, RULING2 22): from the works' opening the line advises by payback (paybackAdvice); the first yard's line below is as merged.
-  const a = worksOpened(g.salvage) ? paybackAdvice(cfg, g, budget) : cheapestUseful(cfg, g, budget);
+  // s2e-advice (yard-stage2-economy.md 2.13; RULING2 27.2 d, 27.3 D11): from the works' opening the line reads ONE measure
+  // (worksAdvice: the best buy, the target to save for with its "Meanwhile", the bank's sentence by the bank's own
+  // predicate). The first yard's line below is as merged (the owner's phone: pinned).
+  if (worksOpened(g.salvage)) return worksAdvice(cfg, g, budget);
+  const a = cheapestUseful(cfg, g, budget);
   // 2.13, the bank's one sentence: the purchase is a financeable plate the finance card would offer (P > cash − reserve), the letter seen, no agreement open.
   if (a && a.action.act === 'buy' && a.open.kind === 'works' && !g.salvage.bank.agreement && loanOffered(cfg, g, a.action.item)) return { ...a, loanHint: true };
   return a;
@@ -311,37 +318,65 @@ function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGa
 }
 
 /**
- * THE ADVICE LINE BY PAYBACK (s2c-fix-money E7, RULING2 22; from the works' opening). Among everything the player can buy
- * now within the line's budget (2.10: cash + advice.minutes of income less E19's reserve): every plate for sale, every
- * shop item, the next hire of each role, the next level of every crew member, first-yard machine, open partner and
- * running plate, it names the one with the SHORTEST PAYBACK, price ÷ its rated gain an hour (rate.ts I with it less I
- * now), when that payback is within tau_r (content tau_h of the yard's rung; a rung without one: no limit). "What binds"
- * no longer decides. Equal paybacks: the cheaper first. Null when nothing pays back within tau_r: what the yard waits
- * for then (ruling 21.5, the next rung's missing tonnes and materials) is the rung tile's and the goal card's, and needs
- * a line of its own (a request to the words' owner and types.ts' Advice: requests.md, s2c-fix-money).
+ * s2e-advice (yard-stage2-economy.md 2.13; RULING2 27.2 d, 27.3 D11): the stage-2 fields of the advice line, present ONLY
+ * from the works' opening (a first-yard advice has no `works` field). STAND-IN for types.ts `Advice.works` (closed to this
+ * package: requests.md asks the join to ADD `works?: AdviceWorks` to Advice and `next?: Txt | null` to AdviceWait).
  */
-function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Advice | null {
-  const cm = contentAt(cfg0.salvage, g.salvage);
-  const cfg = cm === cfg0.salvage ? cfg0 : { ...cfg0, salvage: cm };
+export interface AdviceWorks {
+  /** The calculated gain an hour of the item named, on the player's own yard (levelGain for a level; rate.ts's replay with the item bought less now for a machine, vehicle, tool or hire): the one measure price and advice read. */
+  gain_h: number;
+  /** "+§x an hour on your yard" (advice.gain): x is gain_h as the formatter rounds it, never a table's mean. */
+  gain: Txt;
+  /** Payback, hours: price ÷ gain_h. */
+  payback_h: number;
+  /** (b) THE TARGET: the item costs more than the cash less the driver's reserve. `line` then reads "Save up for {item}" (advice.saveFor) and `save` "Cash for it in about {t}" (advice.saveTime) with this time (bank.ts saveUpSeconds, the card's closed form; while only the reserve stands in the way, the reserve's part). Null when the line names a purchase the cash pays now (a). */
+  saveUp_s: number | null;
+  /** The save-up time's line (advice.saveTime), or null when not saving. */
+  save: Txt | null;
+  /** (b) the second line "Meanwhile: {item}" (advice.meanwhile) and its purchase: the largest-gain item the cash can buy that still leaves the target affordable on return; null when none, or when not saving. */
+  meanwhile: { action: Advice['action']; open: CardRef; price: number; gain_h: number; line: Txt } | null;
+}
+
+/** The advice line from the works' opening: the first yard's Advice plus its stage-2 fields (`works`). */
+export type AdviceW = Advice & { works?: AdviceWorks };
+
+/** AdviceWait plus the next rung's main purchase (s2e-advice; STAND-IN for types.ts AdviceWait.next, requests.md). */
+export type AdviceWaitW = AdviceWait & { next?: Txt | null };
+
+/** One purchase the works' line may name: its card's action and price, its calculated gain and payback. */
+interface Cand {
+  a: Advice;
+  gain: number;
+  h: number;
+}
+
+/** Shorter payback first; equal paybacks: the larger gain (2.13 (a)). */
+const better = (x: Cand, y: Cand): boolean => x.h < y.h - 1e-9 || (Math.abs(x.h - y.h) <= 1e-9 && x.gain > y.gain + 1e-9);
+const bestOf = (list: Cand[]): Cand | null => list.reduce<Cand | null>((b, x) => (!b || better(x, b) ? x : b), null);
+
+/**
+ * EVERYTHING SOLD NOW with a calculated gain above 0 (no budget, no window): every plate for sale (bank.ts platePrice), every
+ * shop item its check prices (not owned, arriving, locked or info), the next hire of each role, the next level of every crew
+ * member, first-yard machine, open partner and running plate that its check sells (s2e-levels: a level not worth having is
+ * refused `notLimit`, state locked, so never named). Gains: a level's is rate.ts levelGain (the gain book where it has the
+ * ladder); a purchase's is the replay with it bought less now (ladder.ts ratedGain). A level whose gain is under
+ * `levels.minShareI` x I is not named either (27.2 c). Never a product of the store, a pack or the shop: those are not shop
+ * items (2.13 (f)).
+ */
+function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
   const c = cfg.salvage;
   const s = g.salvage;
-  const tau = c.tau_h?.[Math.floor(s.ladder.rung) - 1];
-  const limit = typeof tau === 'number' && tau > 0 ? tau : Infinity;
-  let best: { a: Advice; h: number } | null = null;
-  const offer = (a: Advice, after: SalvageGame) => {
-    if (!(a.price <= budget + 1e-9)) return;
-    const dI = ratedGain(cfg, g, after);
-    if (!(dI > 1e-6)) return;
-    const h = a.price / dI;
-    if (h > limit + 1e-9) return;
-    if (!best || h < best.h - 1e-9 || (Math.abs(h - best.h) <= 1e-9 && a.price < best.a.price)) best = { a, h };
+  const out: Cand[] = [];
+  const add = (a: Advice, gain: number) => {
+    if (!(gain > 1e-6) || !(a.price > 0)) return;
+    out.push({ a, gain, h: a.price / gain });
   };
   const seenRole = new Set<CrewRole>();
   for (const it of shopItems(c)) {
     if (it.kind === 'works') {
       const price = platePrice(cfg, g, it.key);
       if (price === null || cashRefusal(g, price)?.key === 'earmark') continue;
-      offer({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, boughtState(c, g, it.key));
+      add({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)));
       continue;
     }
     const role = roleOfKey(it.key);
@@ -351,13 +386,15 @@ function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Adv
       const ch = hireCheck(cfg, g, role);
       if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || !ch.key) continue;
       const item = shopItems(c).find((x) => x.key === ch.key)!;
-      offer({ action: { act: 'hire', role, price: ch.price }, open: cardForItem(item), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(item.key) }, x: { money: ch.price } } } }, hiredState(g, role));
+      add({ action: { act: 'hire', role, price: ch.price }, open: cardForItem(item), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(item.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, hiredState(g, role)));
       continue;
     }
     const ch = buyCheck(cfg, g, it.key);
     if (ch.price === null || ch.state === 'locked' || ch.state === 'owned' || ch.state === 'arriving' || ch.state === 'info') continue;
-    offer({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, boughtState(c, g, it.key));
+    add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)));
   }
+  const minShare = (c.levels as { minShareI?: number }).minShareI ?? 0;
+  const I = minShare > 0 ? Math.max(0, ratedIncome(c, s)) : 0;
   const targets: { t: LevelTarget; name: TextKey; open: CardRef; level: number }[] = [];
   for (const m of s.crew) targets.push({ t: { kind: 'crew', id: m.id }, name: `role.${m.role}` as TextKey, open: { kind: 'office', tab: 'rota' }, level: m.level });
   for (const id of ['stripper', 'bench', 'crucible'] as const) if (s.machines[id].owned) targets.push({ t: { kind: 'machine', machine: id }, name: itemName(id), open: { kind: 'office', tab: 'processBoard' }, level: s.machines[id].level });
@@ -366,9 +403,104 @@ function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Adv
   for (const x of targets) {
     const ch = levelCheck(cfg, g, x.t);
     if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || ch.state === 'info') continue;
-    offer({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, levelled(g, x.t));
+    const gain = levelGain(c, s, x.t);
+    if (minShare > 0 && gain < minShare * I - 1e-9) continue;
+    add({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, gain);
   }
-  return (best as { a: Advice; h: number } | null)?.a ?? null;
+  return out;
+}
+
+/** The item of an advice's line as a { text } argument. */
+const itemArg = (a: Advice): TxtArgs => ({ item: a.line.args?.item ?? { text: 'item.skip' } });
+
+/**
+ * THE ADVICE LINE FROM THE WORKS' OPENING (yard-stage2-economy.md 2.13; RULING2 27.2 d, 27.3 D11). Every gain is the one
+ * measure (worksCandidates); tau_r is content `tau_h` at the yard's rung (a rung without one: no limit). In order:
+ * (a) THE BEST BUY: of everything sold whose payback (price ÷ gain) is within 1.25 tau_r, the shortest payback, ties to the
+ *     larger gain. It is named with its card's line ("Next: {item} · {x}", as built) and `works.gain` "+§x an hour on your
+ *     yard's figures", the calculated number on this state.
+ * (b) THE TARGET, when it costs more than the cash less the driver's reserve (E19): the current goal's item when the goal
+ *     buys one (any payback: the goal list is the stage's order; this is what makes the card manager reach rungs 4 and 5);
+ *     else the best buy of (a) when the cash will reach it at the next return (cash less reserve plus I x the away cap), else
+ *     the best buy within the line's budget (cash + advice.minutes of income less the reserve), else the best buy however far
+ *     (the line is never null while something sold pays back within the window). The line reads "Save up for {item}" (advice.saveFor)
+ *     over "Cash for it in about {t}" (works.save, advice.saveTime); `loanHint` ("A loan suits a machine that earns.") ONLY where bank.ts loanHintDue holds for the
+ *     target with its own gain (the letter seen, the loan offered, no agreement open, gain x save-up time > the charge).
+ *     `works.meanwhile` ("Meanwhile: {item}", advice.meanwhile): of the items in the window the cash less the reserve pays
+ *     now, the largest gain (ties: the shorter payback) that still leaves the target affordable on return (cash - p + I x
+ *     the away cap >= the target's price) or that pays for itself before the target is reached (p ÷ its gain <= the
+ *     save-up time: it does not delay the target); null when none.
+ * (c) WAITING: null when nothing sold pays back within 1.25 tau_r (and no goal item is wanted): adviceLine then gives
+ *     adviceWait, whose `next` names the next rung's main purchase.
+ * The action is always the item named (the target's own Buy while saving); `price` its card's price.
+ */
+function worksAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): AdviceW | null {
+  const cm = contentAt(cfg0.salvage, g.salvage);
+  const cfg = cm === cfg0.salvage ? cfg0 : { ...cfg0, salvage: cm };
+  const c = cfg.salvage;
+  const s = g.salvage;
+  const tau = c.tau_h?.[Math.floor(s.ladder.rung) - 1];
+  const window = typeof tau === 'number' && tau > 0 ? ADVICE_WINDOW * tau : Infinity;
+  const all = worksCandidates(cfg, g);
+  if (!all.length) return null;
+  const inWin = all.filter((x) => x.h <= window + 1e-9);
+  const room = g.cash - reserve(cfg, g);
+  const I = Math.max(0, ratedIncome(c, s));
+  const capH = awayCapS(cfg, g) / 3600;
+  const reach = room + I * capH;
+  const goalKey = goalBuyNow(cfg0, g);
+  const goalC = goalKey ? all.find((x) => x.a.action.act === 'buy' && x.a.action.item === goalKey) ?? null : null;
+  const best = bestOf(inWin);
+  let target: Cand | null = null;
+  if (goalC && goalC.a.price > room + 1e-9) target = goalC;
+  else {
+    const near = best && best.a.price <= reach + 1e-9 ? best : null;
+    const pick = near ?? bestOf(inWin.filter((x) => x.a.price <= budget + 1e-9)) ?? best;
+    if (!pick) return null;
+    if (pick.a.price > room + 1e-9) target = pick;
+    else return { ...pick.a, works: worksOf(pick, null, null) };
+  }
+  // (b) saving for the target.
+  const P = target.a.price;
+  const save = saveUpSeconds(cfg, g, P) ?? saveUpSeconds(cfg, { ...g, cash: room }, P) ?? 0;
+  const saveH = save / 3600;
+  const mw = inWin.filter((x) => x !== target && x.a.price <= room + 1e-9 && (g.cash - x.a.price + I * capH >= P - 1e-9 || x.h <= saveH + 1e-9));
+  const m = mw.reduce<Cand | null>((b, x) => (!b || x.gain > b.gain + 1e-9 || (Math.abs(x.gain - b.gain) <= 1e-9 && x.h < b.h - 1e-9) ? x : b), null);
+  const line: Txt = { key: 'advice.saveFor' as TextKey, args: itemArg(target.a) };
+  const loan = target.a.action.act === 'buy' && loanHintDue(cfg, g, target.a.action.item, target.gain);
+  const out: AdviceW = { ...target.a, line, works: worksOf(target, save, m) };
+  return loan ? { ...out, loanHint: true } : out;
+}
+
+/** The advice line's window, in tau_r (RULING2 27.3 D11: the band's own error, so an item priced at exactly tau_r x its measured gain is always named). */
+export const ADVICE_WINDOW = 1.25;
+
+function worksOf(x: Cand, saveUp_s: number | null, m: Cand | null): AdviceWorks {
+  return {
+    gain_h: x.gain,
+    gain: { key: 'advice.gain' as TextKey, args: { x: { money: roundMoney(x.gain) } } },
+    payback_h: x.h,
+    saveUp_s,
+    save: saveUp_s === null ? null : { key: 'advice.saveTime' as TextKey, args: { t: { secs: saveUp_s } } },
+    meanwhile: m ? { action: m.a.action, open: m.a.open, price: m.a.price, gain_h: m.gain, line: { key: 'advice.meanwhile' as TextKey, args: itemArg(m.a) } } : null,
+  };
+}
+
+/**
+ * THE NEXT RUNG'S MAIN PURCHASE (2.13 (c), the waiting line's second line; s2e-advice): "Next: {item} · {x}" (advice.buy)
+ * for rung n: the first item of the stage's goal list whose gate is rung n and that the yard does not own yet, else the
+ * dearest shop item gated at rung n; its content price (what its plot shows, "Opens at rung {n} · {price}": a locked thing
+ * shows its gate and price, and promises nothing more). Null when rung n opens no purchase.
+ */
+function nextRungMain(c: SalvageContent, g: SalvageGame, n: number): Txt | null {
+  const items = shopItems(c).filter((it) => gateRung(it.gate) === n && !g.salvage.owned.includes(it.key) && !g.salvage.works[it.key]);
+  if (!items.length) return null;
+  const order = goalSpecs(c).stage2.map((d) => d.buy).filter((k): k is string => !!k);
+  const byGoal = order.map((k) => items.find((it) => it.key === k)).find((it) => !!it);
+  const it = byGoal ?? [...items].sort((a, b) => b.price - a.price)[0];
+  const price = roundMoney(it.price);
+  const name: TextKey = it.kind === 'works' ? (`title.works.${it.key}` as TextKey) : itemName(it.key);
+  return { key: 'advice.buy', args: { item: { text: name }, x: { money: price } } };
 }
 
 // ============================================================================ what the yard waits for (21.5)
@@ -378,7 +510,7 @@ function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Adv
  * one; from the works' opening, when nothing pays back within tau_r (advice null), what the yard waits for
  * (adviceWait). Below the works' opening this is `advice` exactly (the first yard on the phone: pinned).
  */
-export function adviceLine(cfg: SalvageConfig, g: SalvageGame, now: number): Advice | AdviceWait | null {
+export function adviceLine(cfg: SalvageConfig, g: SalvageGame, now: number): AdviceW | AdviceWaitW | null {
   const a = advice(cfg, g, now);
   if (a || !worksOpened(g.salvage)) return a;
   return adviceWait(cfg, g);
@@ -439,7 +571,7 @@ function sourceOf(c: SalvageContent, g: SalvageGame, material: string): AdviceWa
  * of the works that makes it: "Rung 5 waits for Light iron" over "Hob's Farm Clearance brings it". Else the tonnes still
  * to supply: "Rung 5: 1,240 t to go". Null when nothing is missing (the rung opens at the next check). Names nothing to buy.
  */
-export function adviceWait(cfg: SalvageConfig, g: SalvageGame): AdviceWait | null {
+export function adviceWait(cfg: SalvageConfig, g: SalvageGame): AdviceWaitW | null {
   const s = g.salvage;
   if (!worksOpened(s)) return null;
   const c = contentAt(cfg.salvage, s);
@@ -461,11 +593,11 @@ export function adviceWait(cfg: SalvageConfig, g: SalvageGame): AdviceWait | nul
       const from = pick.from;
       const source: Txt | null = !from ? null : 'partner' in from ? { key: 'advice.waitBrings', args: { partner: { name: from.partner } } } : { key: 'advice.waitMakes', args: { plate: { text: `title.works.${from.plate}` as TextKey } } };
       const open: CardRef | null = !from ? null : 'partner' in from ? { kind: 'office', tab: 'partners' } : { kind: 'works', plate: from.plate };
-      return { kind: 'waiting', rung: n, missing_g, material: pick.m, grade, from, line: grade ? { key: 'advice.waitGrade', args: { n: { n }, grade: { grade } } } : { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source, open };
+      return { kind: 'waiting', rung: n, missing_g, material: pick.m, grade, from, line: grade ? { key: 'advice.waitGrade', args: { n: { n }, grade: { grade } } } : { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source, open, next: nextRungMain(c, g, n) };
     }
   }
   if (missing_g <= 0) return null;
-  return { kind: 'waiting', rung: n, missing_g, material: null, grade: null, from: null, line: { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source: null, open: null };
+  return { kind: 'waiting', rung: n, missing_g, material: null, grade: null, from: null, line: { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source: null, open: null, next: nextRungMain(c, g, n) };
 }
 
 /** The item of an advice as a { text } argument (goal.widen's {item}). */

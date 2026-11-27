@@ -11,7 +11,7 @@
 import { begin, finish, spend } from './clock';
 import { plateDef } from './content';
 import { hallBusy } from './halls';
-import { cashRefusal, gateRefusal, plateLevelPrice, shopItem, type PurchaseCheck } from './ladder';
+import { cashRefusal, ceilingRefusal, gateRefusal, plateLevelPrice, shopItem, type PurchaseCheck } from './ladder';
 import { contentAt } from './layer';
 import { roundMoney } from './money';
 import { checks } from './rate';
@@ -47,6 +47,10 @@ export function plateBuyCheck(cfg: SalvageConfig, g: SalvageGame, plate: ShopKey
   const needs = d.needs ?? it.needsItem ?? null;
   if (needs && !g.salvage.works[needs]) return { price: null, refusal: { key: 'needsItem', args: plateName(needs) }, state: 'locked' };
   const price = roundMoney(it.price);
+  // s2e-levels (yard-stage2-economy.md 2.11; 22 M10): the ceiling BEFORE the money, so the headroom never depends on the cash.
+  const s = g.salvage;
+  const ceil = ceilingRefusal(cfg, g, { ...g, salvage: { ...s, works: { ...s.works, [plate]: { phase: 'running', level: 1 } as unknown as (typeof s.works)[string] } } });
+  if (ceil) return { price, refusal: ceil, state: 'locked' };
   const money = cashRefusal(g, price);
   if (money) return { price, refusal: money, state: 'cantAfford' };
   return { price, refusal: null, state: 'buy' };
@@ -80,6 +84,9 @@ export function plateLevelCheck(cfg: SalvageConfig, g: SalvageGame, plate: Plate
   const p = plateLevelPrice(cfg, g, plate);
   if (p === null) return { price: null, refusal: { key: 'nothing', args: {} }, state: 'info' };
   const price = roundMoney(p);
+  // s2e-levels: the ceiling before the money (as levelCheck's from the works' opening).
+  const ceil = ceilingRefusal(cfg, g, { ...g, salvage: { ...g.salvage, works: { ...g.salvage.works, [plate]: { ...w, level: w.level + 1 } } } });
+  if (ceil) return { price, refusal: ceil, state: 'locked' };
   const money = cashRefusal(g, price);
   if (money) return { price, refusal: money, state: 'cantAfford' };
   return { price, refusal: null, state: 'buy' };

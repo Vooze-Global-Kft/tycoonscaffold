@@ -2770,3 +2770,25 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         stores' own listings where the game hides them; the lawyer's first question also asks
         whether "No ad videos" (which grants the capped scrip rewards without the video) counts
         as selling the currency.
+
+28.3 THE DROP-OFF AT THE WORKS (found by rated income's engineer, `notes/s2e-rate.md`; checked by
+    the lead on a scratch copy, `dropx/`). The public drop-off refills the instant a thing is
+    taken from it when it is full (the first yard's rule: the first minutes never run dry). At the
+    works that makes it a free supply that grows with every hand's level: about 50 to 80 things an
+    hour up to rung 3 (close to its own period, one every 50 s), then 230, 350 and over 400 an
+    hour at rung 4 on the bots' yards. Whatever the yard hands are freed from, they spend on it,
+    so every other purchase is worth only what it adds over free washers: a faster truck adds
+    little, and on some states a hand's level makes the yard poorer. Held to its period on one
+    seed: tonnes and both rungs' sittings unchanged (1,923 against 1,930 t at sitting 7), income a
+    tenth to a sixth lower at rung 4, no failing step left at rung 3's first sitting (a hand's
+    level -6.6 % became -0.1 %), a cutter's level +10.7 % there (free: +4.3 %), a driver's level
+    +7.7 % at day 3 (free: +2.6 %). RULED:
+    (a) FROM THE WORKS' OPENING THE PUBLIC DROP-OFF KEEPS ITS OWN PACE: at most one arrival a
+        period, however fast the hands are (a key of the works, first value the first yard's own
+        50 s, tunable by rung). The yard's growth at the works comes from the works: the bridge,
+        the partners, the machines.
+    (b) Below the works' opening the first yard's rule is unchanged, bit for bit. At the works'
+        opening nothing falls: the first yard takes about one thing a period as it is.
+    (c) Rated income's replay reads the same bound (it was just taught the unbounded supply).
+    (d) The third measurement runs on this rule, with a pair of five seeds on the old one beside
+        it (as the crane's pair was), so that what the rule does is on the table.

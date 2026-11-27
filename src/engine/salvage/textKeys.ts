@@ -237,13 +237,17 @@ export const TEXT_KEYS = {
     'goal.buyPlasma',
     'goal.startAnalyser',
     'goal.pourInduction',
+    // s2e-advice (yard-stage2-economy.md 1.3): the repeating goal when the advice line names nothing
+    'goal.rungToGo',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
   /**
    * s2-fix-small (R3, RULING2 21.5 and 24): when nothing is left to buy, the advice line says what the yard waits for
    * (advice.ts adviceLine, AdviceWait): the next rung's tonnes, or the material it waits for and who brings it.
    */
-  advice: ['advice.buy', 'advice.level', 'advice.loanHint', 'advice.waitTonnes', 'advice.waitGrade', 'advice.waitBrings', 'advice.waitMakes'],
+  advice: ['advice.buy', 'advice.level', 'advice.loanHint', 'advice.waitTonnes', 'advice.waitGrade', 'advice.waitBrings', 'advice.waitMakes',
+    // s2e-advice (yard-stage2-economy.md 2.13): the line from the works' opening (advice.ts AdviceWorks)
+    'advice.gain', 'advice.saveFor', 'advice.saveTime', 'advice.meanwhile'],
   /** Package 8 and the tickets: lessons (5.5, ≤ 48 on the ticket). */
   lesson: ['lesson.li', 'lesson.drum', 'lesson.mot', 'lesson.cab', 'lesson.bb', 'lesson.no2', 'lesson.brs', 'lesson.alw', 'lesson.alcast', 'lesson.ci', 'lesson.hms', 'lesson.hmsu', 'lesson.cbody', 'lesson.bri', 'lesson.dross', 'lesson.ali', 'lesson.conv', 'lesson.ss', 'lesson.bzs', 'lesson.bzi', 'lesson.pb', 'lesson.zorba', 'lesson.lib'],
   /**
@@ -283,6 +287,12 @@ export const TEXT_KEYS = {
     'card.rota.permitLead',
     'card.bay.route',
     'card.bay.sellFromBay',
+    // s2e-levels (yard-stage2-economy.md 2.11; RULING2 27.2 c, 27.3 D5): a level's row from the works' opening (cards.ts
+    // levelWorksLine): what it earns and how soon it pays for itself; and the refusal of a level not worth having now.
+    // STAND-IN: 'refusal.notLimit' moves to the derived `refusal` group once refusals.ts lists 'notLimit' (requests.md).
+    'card.levelEarns',
+    'card.levelPays',
+    'refusal.notLimit',
   ],
   /** 2.14, 4.5: the lender's letter, the finance card, the Agreements page; the bank's share in words (`share.*`, see strings.ts). */
   bank: [
