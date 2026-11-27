@@ -45,6 +45,66 @@ interface Idx<T> {
   kept?: Map<string, { c: object; p: Idx<GroundPiece>; pv: number; tv: number; v: number }>;
   /** pileKs's per-pile counts of the pieces' k (pieces' index only, piles asked for only). */
   ks?: Map<string, PileKs>;
+  /**
+   * engine5: thingsAtWhere's sub-lists (things' index only): of one key's list, the items a FIXED test of the item's
+   * never-changing fields and the content passes, in the same order; kept by the writers (fileIn, fileOut) like the
+   * key's own list, built afresh for another content object.
+   */
+  sub?: Map<string, Sub<T>>;
+  /** The same sub-lists as an array (the writers walk it without an iterator). */
+  subs?: Sub<T>[];
+  /**
+   * engine5 (things' index only): the items fileOut took out of the index that still stand in a key's list, by key
+   * (each key's list, `by`, and each sub-list, `Sub.pend`, keeps its own). A list is read only through `ready`, which
+   * takes them out first, keeping the others' order: several removals between two reads of a list cost one pass over it
+   * instead of one splice each. (The uid map is kept at once.)
+   */
+  lazy?: boolean;
+  pend?: Map<string, T[]>;
+}
+
+/** engine5: list `l` with the items of `pend` taken out (the others in their order); `pend` emptied. */
+function ready<T>(l: T[], pend: T[]): T[] {
+  if (!pend.length) return l;
+  if (pend.length === 1) {
+    const j = l.indexOf(pend[0]);
+    if (j >= 0) l.splice(j, 1);
+  } else {
+    const gone = new Set(pend);
+    let w = 0;
+    for (let r = 0; r < l.length; r++) if (!gone.has(l[r])) l[w++] = l[r];
+    l.length = w;
+  }
+  pend.length = 0;
+  return l;
+}
+
+/** engine5: a key's list of the index, ready to read (its pending removals taken out); undefined: none. */
+function keyList<T>(i: Idx<T>, k: string): T[] | undefined {
+  const l = i.by.get(k);
+  if (!l || !i.pend) return l;
+  const p = i.pend.get(k);
+  return p && p.length ? ready(l, p) : l;
+}
+
+/** engine5: every list and sub-list of the index ready (verify mode's compare, a push of an item still pending). */
+function readyAll<T>(i: Idx<T>): void {
+  if (!i.pend) return;
+  for (const [k, p] of i.pend) {
+    const l = i.by.get(k);
+    if (l) ready(l, p);
+  }
+  if (i.subs) for (const e of i.subs) if (e.pend) ready(e.list, e.pend);
+}
+
+/** engine5: one kept sub-list (thingsAtWhere): its key, the content it was filtered on, the test, the items. */
+interface Sub<T> {
+  key: string;
+  c: object;
+  test: (q: T) => boolean;
+  list: T[];
+  /** engine5: items taken out of the index still standing in `list` (see Idx.pend). */
+  pend?: T[];
 }
 
 /** The k's in use on one pile: how many pieces hold each, and `low` (every k below it is in use). */
@@ -64,7 +124,7 @@ const THINGS = new WeakMap<readonly ThingState[], Idx<ThingState>>();
 /** The number of indexes built from scratch (a counter for the account's measures; read by nothing of the rules). */
 export const INDEX_STATS = { builds: 0, writes: 0 };
 
-function build<T extends { uid: string }>(arr: readonly T[], key: (q: T) => string): Idx<T> {
+function build<T extends { uid: string }>(arr: readonly T[], key: (q: T) => string, lazy = false): Idx<T> {
   INDEX_STATS.builds++;
   const by = new Map<string, T[]>();
   const uid = new Map<string, T>();
@@ -78,7 +138,7 @@ function build<T extends { uid: string }>(arr: readonly T[], key: (q: T) => stri
     if (uid.has(q.uid)) dup = true;
     else uid.set(q.uid, q);
   }
-  return { n: arr.length, last: arr[arr.length - 1], ver: 0, by, uid, dup };
+  return lazy ? { n: arr.length, last: arr[arr.length - 1], ver: 0, by, uid, dup, lazy, pend: new Map() } : { n: arr.length, last: arr[arr.length - 1], ver: 0, by, uid, dup };
 }
 
 function mismatch(what: string, detail: string): never {
@@ -113,7 +173,10 @@ const READS = new WeakMap<object, number>();
 function get<T extends { uid: string }>(map: WeakMap<readonly T[], Idx<T>>, arr: readonly T[], key: (q: T) => string, what: string): Idx<T> | null {
   const i = map.get(arr);
   if (i && fresh(i, arr)) {
-    if (MEMO_CHECK.verify) compare(what, i, build(arr, key));
+    if (MEMO_CHECK.verify) {
+      readyAll(i);
+      compare(what, i, build(arr, key));
+    }
     return i;
   }
   if (i && MEMO_CHECK.verify) mismatch(what, `the array changed without a writer (kept ${i.n} items at version ${i.ver}, now ${arr.length})`);
@@ -124,7 +187,7 @@ function get<T extends { uid: string }>(map: WeakMap<readonly T[], Idx<T>>, arr:
       return null;
     }
   }
-  const b = build(arr, key);
+  const b = build(arr, key, (map as unknown) === THINGS);
   map.set(arr, b);
   return b;
 }
@@ -140,6 +203,12 @@ function live<T>(map: WeakMap<readonly T[], Idx<T>>, arr: readonly T[], what: st
 }
 
 function fileIn<T extends { uid: string }>(i: Idx<T>, q: T, k: string): void {
+  // engine5: an item pushed again while it still stands pending in a list: that key's lists are made ready first.
+  if (i.pend) {
+    const p = i.pend.get(k);
+    if (p && p.includes(q)) readyAll(i);
+    else if (i.subs) for (const e of i.subs) if (e.pend && e.pend.includes(q)) readyAll(i);
+  }
   const ks = i.ks?.get(k);
   if (ks) {
     const kk = (q as unknown as GroundPiece).k;
@@ -151,17 +220,49 @@ function fileIn<T extends { uid: string }>(i: Idx<T>, q: T, k: string): void {
   else i.by.set(k, [q]);
   if (i.uid.has(q.uid)) i.dup = true;
   else i.uid.set(q.uid, q);
+  const subs = i.subs;
+  if (subs)
+    for (let n = 0; n < subs.length; n++) {
+      const e = subs[n];
+      if (e.key === k && e.test(q)) e.list.push(q);
+    }
 }
 
 /** Take q out of the index (false: the index cannot say and must be dropped). */
 function fileOut<T extends { uid: string }>(i: Idx<T>, q: T, k: string): boolean {
   if (i.dup) return false;
+  if (i.lazy) {
+    // engine5: with unique uids an item is in the index exactly when its uid maps to it; it is put on its key's pending
+    // list and on each sub-list's that holds it (taken out of each list at that list's next read) instead of spliced
+    // out of each list now.
+    if (i.uid.get(q.uid) !== q) return false;
+    i.uid.delete(q.uid);
+    let p = i.pend!.get(k);
+    if (!p) i.pend!.set(k, (p = []));
+    p.push(q);
+    const subs = i.subs;
+    if (subs)
+      for (let n = 0; n < subs.length; n++) {
+        const e = subs[n];
+        if (e.key === k && e.test(q)) (e.pend ??= []).push(q);
+      }
+    return true;
+  }
   const l = i.by.get(k);
   const j = l ? l.indexOf(q) : -1;
   if (!l || j < 0) return false;
   l.splice(j, 1);
   if (!l.length) i.by.delete(k);
   i.uid.delete(q.uid);
+  const subs = i.subs;
+  if (subs)
+    for (let n = 0; n < subs.length; n++) {
+      const e = subs[n];
+      if (e.key === k && e.test(q)) {
+        const h = e.list.indexOf(q);
+        if (h >= 0) e.list.splice(h, 1);
+      }
+    }
   const ks = i.ks?.get(k);
   if (ks) {
     const kk = (q as unknown as GroundPiece).k;
@@ -293,13 +394,42 @@ export function removePieces(arr: GroundPiece[], at: readonly number[]): void {
 /** The things whose place is of this kind (`at.at`: 'floor', 'dropoff', 'zone', ...), in the order of `s.things` (read only). */
 export function thingsAt(arr: readonly ThingState[], kind: string): readonly ThingState[] {
   const i = get(THINGS, arr, placeOf, 'things');
-  return i ? (i.by.get(kind) ?? EMPTY) : arr.filter((q) => q.at.at === kind);
+  return i ? (keyList(i, kind) ?? EMPTY) : arr.filter((q) => q.at.at === kind);
+}
+
+/**
+ * engine5: the things whose place is of this kind AND that pass `test`, in the order of `s.things`
+ * (`thingsAt(arr, kind).filter(test)`, read only). `test` must read only what never changes while a thing lies in the
+ * array (its `obj`, its `uid`) and the content `c`: the list is kept under `slot` by the writers and built afresh only
+ * for another content object (each slot names one test). Verify mode: the kept list against the filter, item by item.
+ */
+export function thingsAtWhere(arr: readonly ThingState[], kind: string, c: object, slot: string, test: (th: ThingState) => boolean): readonly ThingState[] {
+  const i = get(THINGS, arr, placeOf, 'things');
+  if (!i) return arr.filter((q) => q.at.at === kind && test(q));
+  const subs = (i.sub ??= new Map());
+  let e = subs.get(slot);
+  if (!e || e.c !== c || e.key !== kind) {
+    e = { key: kind, c, test, list: (keyList(i, kind) ?? EMPTY).filter(test) };
+    subs.set(slot, e);
+    i.subs = [...subs.values()];
+  } else if (MEMO_CHECK.verify) {
+    const f = (keyList(i, kind) ?? EMPTY).filter(test);
+    if (e.pend) ready(e.list, e.pend);
+    if (f.length !== e.list.length || f.some((q, j) => q !== e!.list[j])) mismatch('things', `sub-list ${slot}: kept ${e.list.length} items, recomputed ${f.length}`);
+  }
+  return e.pend && e.pend.length ? ready(e.list, e.pend) : e.list;
 }
 
 /** The first thing with this uid (`arr.find((t) => t.uid === uid)`). */
 export function thingById(arr: readonly ThingState[], uid: string): ThingState | undefined {
   const i = get(THINGS, arr, placeOf, 'things');
   return !i || i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
+}
+
+/** engine5: the array is indexed and no two of its things share a uid (thingsAt's lists then hold every thing once); false: use the whole array. */
+export function thingsUnique(arr: readonly ThingState[]): boolean {
+  const i = get(THINGS, arr, placeOf, 'things');
+  return !!i && !i.dup;
 }
 
 /** `arr.push(th)`, the index kept. */

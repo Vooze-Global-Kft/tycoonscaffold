@@ -67,7 +67,7 @@ import type { DatedAdd } from './works';
 import { boostFactor } from './clock';
 import { legM } from './content';
 import type { Spot } from './types';
-import { pushThing, spliceThing, thingsAt } from './lookup';
+import { pushThing, spliceThing, thingsAt, thingsAtWhere, thingsUnique } from './lookup';
 
 // A yard hand's leg and rest (works.ts handLeg / handIdle's rule, crew.ts's own: the same speed, handling and event),
 // written here so that reuse.ts does not import works.ts at run time (works.ts imports this file).
@@ -115,6 +115,14 @@ export function tagUid(c: Ctx['c'], uid: string, obj: ObjectId): boolean {
   const tags = c.objects[obj]?.tags;
   if (tags && tags.some((tg) => R.never.includes(tg))) return false;
   return hash01(c.worldSeed, H_REUSE, hashString(uid)) < R.share;
+}
+
+/** engine5: the fixed test of handRack's sub-lists (tagUid of the thing's uid and object), one function per content object. */
+const MAY_TAG = new WeakMap<object, (th: ThingState) => boolean>();
+function mayTag(c: Ctx['c']): (th: ThingState) => boolean {
+  let f = MAY_TAG.get(c);
+  if (!f) MAY_TAG.set(c, (f = (th: ThingState) => tagUid(c, th.uid, th.obj)));
+  return f;
 }
 
 /** Is this thing tagged for the Yard sale now (the works open; whole, uncut, not a lot, standing where things wait)? */
@@ -231,12 +239,22 @@ function nearestTagged(x: Ctx, px: number, py: number, room: number): ThingState
 /** A yard hand at his departure, first in his order: a tagged thing for the rack (drop-off first, then the floor; uid order). */
 function handRack(x: Ctx, m: CrewMember, t: number): boolean {
   if (freePlaces(x) <= 0) return false;
-  let best: ThingState | null = null;
-  for (const th of x.s.things) {
-    if (th.by || (th.at.at !== 'dropoff' && th.at.at !== 'floor') || !tagged(x, th) || th.uid === FIRST_UID) continue;
-    if (!handLifts(x, th) || bossSeesThing(x, th, t)) continue;
+  let best = null as ThingState | null;
+  // engine5: with unique uids the choice is the least of a total order (the drop-off before the floor, then the uid), so
+  // walking the drop-off's things and then the floor's (lookup.ts) finds the same thing as walking every thing; with a
+  // uid held twice, every thing as before.
+  const look = (th: ThingState): void => {
+    if (th.by || (th.at.at !== 'dropoff' && th.at.at !== 'floor') || !tagged(x, th) || th.uid === FIRST_UID) return;
+    if (!handLifts(x, th) || bossSeesThing(x, th, t)) return;
     if (!best || (th.at.at === 'dropoff' && best.at.at !== 'dropoff') || (th.at.at === best.at.at && th.uid < best.uid)) best = th;
-  }
+  };
+  // Of those, only a thing whose uid and object the content tags (tagUid: a fact of the thing and the content) can be
+  // tagged(): the kept sub-lists of such things at each place (lookup.ts thingsAtWhere), in the same order.
+  if (thingsUnique(x.s.things)) {
+    const may = mayTag(x.c);
+    for (const th of thingsAtWhere(x.s.things, 'dropoff', x.c, 'tag.dropoff', may)) look(th);
+    for (const th of thingsAtWhere(x.s.things, 'floor', x.c, 'tag.floor', may)) look(th);
+  } else for (const th of x.s.things) look(th);
   if (!best) return false;
   best.by = m.id;
   m.claims = [best.uid];
