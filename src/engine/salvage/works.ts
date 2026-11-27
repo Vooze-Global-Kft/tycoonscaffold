@@ -36,7 +36,7 @@ import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
 import { MEMO_CHECK, memoMismatch, ROUTES, routesChanged } from './memo';
 import { roundMoney } from './money';
-import { nearPlace, placeGap, spotPos } from './positions';
+import { carLanding, nearPlace, placeGap, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
 import { crateAct, crateActEnd, crateActHolds } from './crate';
 import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
@@ -235,6 +235,8 @@ export function commission(x: Ctx, id: string, by: 'boss' | 'self', t: number): 
   w.since = t;
   count(x, `commissioned:${id}`);
   x.ev.push({ type: 'commissioned', plate: id, by });
+  // s2e-line: a line starts up as one: the boss standing at either plot (or the date) starts every installed plate of it.
+  for (const q of lineOf(x.c, id)) if (q !== id && x.s.works[q]?.phase === 'installed') commission(x, q, by, t);
 }
 
 // ---------------------------------------------------------------------------------------- rate plates
@@ -693,6 +695,25 @@ export function orderPlate(x: Ctx, plate: string, t: number): void {
   routesChanged(x);
   x.dirty = true;
   if (heard(x)) x.ev.push({ type: 'plateState', plate, status: 'arriving' });
+  // s2e-line (yard-stage2-economy.md 2.6.4, 2.7 to 2.9; RULING2.md 27.2 b, 27.3 D1): A LINE IS ONE PURCHASE. The plates that
+  // come `with` this one (the shredder line's depollution bay) are ordered at the same instant, on the same flatbed: set down
+  // at the same date as the line's own plate, so they arrive, and start up by themselves, together.
+  for (const q of d.with ?? []) {
+    const qd = plateDef(x.c, q);
+    if (!qd || x.s.works[q]) continue;
+    const w = freshWorks(x, q, qd, t);
+    w.commissionAt = x.s.works[plate].commissionAt;
+    x.s.works[q] = w;
+    if (heard(x)) x.ev.push({ type: 'plateState', plate: q, status: 'arriving' });
+  }
+}
+
+/** s2e-line: the plates of a line (the line's own plate first, then its `with`), for any of them; a plate of no line: itself. */
+export function lineOf(c: Pick<Ctx, 'c'>['c'], plate: string): string[] {
+  const ps = c.works?.plates ?? {};
+  if (ps[plate]?.with?.length) return [plate, ...ps[plate].with!];
+  for (const id in ps) if (ps[id].with?.includes(plate)) return [id, ...ps[id].with!];
+  return [plate];
 }
 
 /**
@@ -1209,7 +1230,21 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
   if (!objs.length) return false;
   const by = (o: string): string => x.c.objects[o]?.arrives ?? 'tip';
   if (objs.every((o) => by(o) === 'pad')) {
-    // The flatrack (T1, ruling 13.4): the car is set down on the car pad, never tipped (one car at a time: the
+    // s2e-line (RULING2.md 27.3 D1): where the content sets cars down from the road (positions.ts carLanding), the hook-lift
+    // sets the car on the depollution bay's OWN APRON (no forklift, no car pad); the bay drains it there before anything comes
+    // off it. One car at a time: the partners' rotation sends a car only while none waits anywhere (partners.ts carWaiting).
+    const L = carLanding(x.c);
+    if (L) {
+      for (const [obj, n] of Object.entries(skip.contents))
+        for (let i = 0; i < n; i++) {
+          const k = (x.s.counts!.floorThings ?? 0) + 1;
+          x.s.counts!.floorThings = k;
+          pushThing(x.s.things, { uid: `f${k}`, obj, at: { at: 'apron', plate: L.plate }, cut: 0, progress: 0, by: null });
+        }
+      x.dirty = true;
+      return true;
+    }
+    // The flatrack (T1, ruling 13.4; the frozen content's rule): the car is set down on the car pad, never tipped (one car at a time: the
     // partners' rotation sends a car only while none waits, partners.ts grownContents).
     for (const [obj, n] of Object.entries(skip.contents))
       for (let i = 0; i < n; i++) {
@@ -1242,9 +1277,21 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
 
 /** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
 export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
-  const th = thingsAt(x.s.things, 'apron').find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
-  if (!th) return;
+  let th = thingsAt(x.s.things, 'apron').find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
   const d = plateDef(x.c, id)!;
+  if (!th && d.feedBy === 'truck') {
+    // s2e-line: a car a save left on the car pad (the pad is gone with the forklift) is set on this bay's apron when it is
+    // free, so no car waits for a forklift the stage does not sell (no dead end).
+    const pad = thingsAt(x.s.things, 'elvPad').find((q) => q.at.at === 'elvPad' && !q.by);
+    if (pad) {
+      // A thing's place is never written in place (lookup.ts: the index files it by `at`): taken off the pad, set on the apron.
+      spliceThing(x.s.things, x.s.things.indexOf(pad));
+      th = { ...pad, at: { at: 'apron', plate: id } };
+      pushThing(x.s.things, th);
+      x.dirty = true;
+    }
+  }
+  if (!th) return;
   const s = (x.c.depollution?.s ?? 0) / (1 + d.lev * Math.max(0, w.level - 1));
   th.by = id;
   w.car = { thing: th.uid, t0: t, end: t + Math.max(1e-3, s) };

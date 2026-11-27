@@ -2048,38 +2048,6 @@
       "works": {
         "x0": -56,
         "points": {
-          "granulator": [
-            26.95,
-            30.25
-          ],
-          "shear": [
-            32,
-            31
-          ],
-          "crane": [
-            39,
-            31.5
-          ],
-          "baler": [
-            31.5,
-            36.75
-          ],
-          "depollution": [
-            38.75,
-            37.75
-          ],
-          "depollution.apron": [
-            38.75,
-            34.75
-          ],
-          "elvPad": [
-            42.75,
-            34.7
-          ],
-          "forklift": [
-            43.75,
-            38.35
-          ],
           "oversize": [
             47,
             35
@@ -2112,13 +2080,17 @@
             -5,
             22.6
           ],
-          "eddy": [
-            -10,
-            17.6
+          "depollution": [
+            -10.75,
+            17.85
           ],
-          "sorter": [
-            -14.5,
-            17.6
+          "depollution.apron": [
+            -10.75,
+            21.85
+          ],
+          "batteryBox": [
+            -14.7,
+            16.3
           ],
           "rotary": [
             -22.75,
@@ -2144,26 +2116,6 @@
             -39.5,
             17.1
           ],
-          "breaker": [
-            -44.5,
-            17.6
-          ],
-          "batteryBox": [
-            -45.3,
-            20.3
-          ],
-          "smelter": [
-            -50,
-            18.6
-          ],
-          "smelter.apron": [
-            -50,
-            22.6
-          ],
-          "smelter.filter": [
-            -54.75,
-            17.1
-          ],
           "worksBays": [
             -18.5,
             30.6
@@ -2171,10 +2123,6 @@
           "worksStillages": [
             -39.2,
             30.6
-          ],
-          "leadArea": [
-            -49.6,
-            23.5
           ],
           "backfield.sign": [
             0.6,
@@ -2190,54 +2138,6 @@
           ]
         },
         "footprints": {
-          "granulator": {
-            "x": 26.95,
-            "y": 30.25,
-            "w": 2.5,
-            "d": 2.5
-          },
-          "shear": {
-            "x": 32,
-            "y": 31,
-            "w": 6,
-            "d": 4
-          },
-          "crane": {
-            "x": 39,
-            "y": 31.5,
-            "w": 4,
-            "d": 4
-          },
-          "baler": {
-            "x": 31.5,
-            "y": 36.75,
-            "w": 5,
-            "d": 3.5
-          },
-          "depollution": {
-            "x": 38.75,
-            "y": 37.75,
-            "w": 5.5,
-            "d": 4.5
-          },
-          "depollution.apron": {
-            "x": 38.75,
-            "y": 34.75,
-            "w": 5.5,
-            "d": 1.5
-          },
-          "elvPad": {
-            "x": 42.75,
-            "y": 34.7,
-            "w": 2.5,
-            "d": 4.2
-          },
-          "forklift": {
-            "x": 43.75,
-            "y": 38.35,
-            "w": 2.5,
-            "d": 3
-          },
           "oversize": {
             "x": 47,
             "y": 35,
@@ -2286,17 +2186,23 @@
             "w": 4,
             "d": 2
           },
-          "eddy": {
-            "x": -10,
-            "y": 17.6,
-            "w": 4,
-            "d": 4
+          "depollution": {
+            "x": -10.75,
+            "y": 17.85,
+            "w": 5.5,
+            "d": 4.5
           },
-          "sorter": {
-            "x": -14.5,
-            "y": 17.6,
-            "w": 5,
-            "d": 4
+          "depollution.apron": {
+            "x": -10.75,
+            "y": 21.85,
+            "w": 5.5,
+            "d": 3.5
+          },
+          "batteryBox": {
+            "x": -14.7,
+            "y": 16.3,
+            "w": 2.4,
+            "d": 1.4
           },
           "rotary": {
             "x": -22.75,
@@ -2334,36 +2240,6 @@
             "w": 3,
             "d": 3
           },
-          "breaker": {
-            "x": -44.5,
-            "y": 17.6,
-            "w": 4,
-            "d": 4
-          },
-          "batteryBox": {
-            "x": -45.3,
-            "y": 20.3,
-            "w": 2.4,
-            "d": 1.4
-          },
-          "smelter": {
-            "x": -50,
-            "y": 18.6,
-            "w": 7,
-            "d": 6
-          },
-          "smelter.apron": {
-            "x": -50,
-            "y": 22.6,
-            "w": 3,
-            "d": 2
-          },
-          "smelter.filter": {
-            "x": -54.75,
-            "y": 17.1,
-            "w": 2.5,
-            "d": 3
-          },
           "worksBays": {
             "x": -18.5,
             "y": 30.6,
@@ -2375,12 +2251,6 @@
             "y": 30.6,
             "w": 8.4,
             "d": 3
-          },
-          "leadArea": {
-            "x": -49.6,
-            "y": 23.5,
-            "w": 12.8,
-            "d": 0.1
           },
           "backfield.sign": {
             "x": 0.6,
@@ -2402,69 +2272,6 @@
           }
         },
         "places": {
-          "granulator": {
-            "w": 2.5,
-            "d": 2.5,
-            "h": 1.6,
-            "solid": false,
-            "card": "works",
-            "label": "place.granulator"
-          },
-          "shear": {
-            "w": 6,
-            "d": 4,
-            "h": 1.8,
-            "solid": false,
-            "card": "works",
-            "label": "place.shear"
-          },
-          "crane": {
-            "w": 4,
-            "d": 4,
-            "h": 6,
-            "solid": false,
-            "card": "works",
-            "label": "place.crane"
-          },
-          "baler": {
-            "w": 5,
-            "d": 3.5,
-            "h": 2,
-            "solid": false,
-            "card": "works",
-            "label": "place.baler"
-          },
-          "depollution": {
-            "w": 5.5,
-            "d": 4.5,
-            "h": 3.2,
-            "solid": true,
-            "card": "works",
-            "label": "place.depollution"
-          },
-          "depollution.apron": {
-            "w": 5.5,
-            "d": 1.5,
-            "h": 0.05,
-            "solid": false,
-            "card": false
-          },
-          "elvPad": {
-            "w": 2.5,
-            "d": 4.2,
-            "h": 0.05,
-            "solid": false,
-            "card": false,
-            "label": "place.carPad"
-          },
-          "forklift": {
-            "w": 2.5,
-            "d": 3,
-            "h": 0.05,
-            "solid": false,
-            "card": false,
-            "label": "place.forklift"
-          },
           "oversize": {
             "w": 6,
             "d": 3,
@@ -2525,19 +2332,27 @@
             "solid": false,
             "card": false
           },
-          "eddy": {
-            "w": 4,
-            "d": 4,
-            "h": 4,
+          "depollution": {
+            "w": 5.5,
+            "d": 4.5,
+            "h": 3.2,
             "solid": true,
-            "card": "works"
+            "card": "works",
+            "label": "place.depollution"
           },
-          "sorter": {
-            "w": 5,
-            "d": 4,
-            "h": 4,
+          "depollution.apron": {
+            "w": 5.5,
+            "d": 3.5,
+            "h": 0.05,
+            "solid": false,
+            "card": false
+          },
+          "batteryBox": {
+            "w": 2.4,
+            "d": 1.4,
+            "h": 1.2,
             "solid": true,
-            "card": "works"
+            "card": "board"
           },
           "rotary": {
             "w": 8.5,
@@ -2583,42 +2398,6 @@
             "solid": true,
             "card": false
           },
-          "breaker": {
-            "w": 4,
-            "d": 4,
-            "h": 4,
-            "solid": true,
-            "card": "works",
-            "label": "place.leadLine"
-          },
-          "batteryBox": {
-            "w": 2.4,
-            "d": 1.4,
-            "h": 1.2,
-            "solid": true,
-            "card": "board"
-          },
-          "smelter": {
-            "w": 7,
-            "d": 6,
-            "h": 6,
-            "solid": true,
-            "card": "works"
-          },
-          "smelter.apron": {
-            "w": 3,
-            "d": 2,
-            "h": 0.05,
-            "solid": false,
-            "card": false
-          },
-          "smelter.filter": {
-            "w": 2.5,
-            "d": 3,
-            "h": 5,
-            "solid": true,
-            "card": false
-          },
           "worksBays": {
             "w": 33,
             "d": 3,
@@ -2633,13 +2412,6 @@
             "h": 1.4,
             "solid": true,
             "card": "board"
-          },
-          "leadArea": {
-            "w": 12.8,
-            "d": 0.1,
-            "h": 0.01,
-            "solid": false,
-            "card": false
           },
           "backfield.sign": {
             "w": 1.6,
@@ -2724,6 +2496,10 @@
             ],
             "southYard": [
               33,
+              25.6
+            ],
+            "depollution.apron": [
+              -10.75,
               25.6
             ]
           }
@@ -2829,19 +2605,28 @@
           ]
         ],
         "publicGap_m": 3,
-        "forkliftZone": [
-          {
-            "x0": 42.5,
-            "y0": 36.85,
-            "w": 2.5,
-            "d": 3
-          },
-          {
-            "x0": 29,
-            "y0": 29,
-            "w": 16,
-            "d": 11
-          }
+        "forkliftZone": [],
+        "turnLoop": [
+          [
+            -50,
+            24.9
+          ],
+          [
+            -54.5,
+            24.9
+          ],
+          [
+            -54.5,
+            30.2
+          ],
+          [
+            -49.4,
+            30.2
+          ],
+          [
+            -49.4,
+            26.3
+          ]
         ],
         "lane": {
           "garage_m": 430,
@@ -2852,18 +2637,8 @@
           "scale-crate": 17.8,
           "dropoff-reuseRack": 21.3,
           "floor-reuseRack": 15.2,
-          "floor-crane": 9.3,
-          "crane-shear": 8.1,
-          "crane-baler": 10.5,
-          "forklift-elvPad": 4.4,
-          "elvPad-apron": 4.6,
-          "floor-shear": 17.3,
-          "floor-baler": 19.4,
-          "shear-scale": 27.1,
-          "baler-scale": 31.2,
           "scale-shredder": 66.5,
-          "scale-rotary": 86.9,
-          "scale-smelter": 118.2
+          "scale-rotary": 86.9
         },
         "heroWorks": {
           "x0": -31,
@@ -3800,18 +3575,18 @@
           "tray": 0
         },
         "depollution": {
-          "row": "yard",
-          "slot": 4,
+          "row": "shredder",
+          "slot": 0,
           "plot": "depollution",
           "gate": "rung99",
           "needs": null,
           "price": 3000,
-          "deliver_s": 30,
+          "deliver_s": 60,
           "kind": "station",
           "in": [
             "elv"
           ],
-          "feedBy": "forklift",
+          "feedBy": "truck",
           "out": {
             "elv": [
               [
@@ -3887,11 +3662,11 @@
         },
         "shredder": {
           "row": "shredder",
-          "slot": 0,
+          "slot": 1,
           "plot": "shredder",
           "gate": "rung4",
           "needs": null,
-          "price": 136000,
+          "price": 137000,
           "financeable": true,
           "deliver_s": 60,
           "kind": "rate",
@@ -3901,6 +3676,9 @@
             "li"
           ],
           "feedBy": "bays",
+          "with": [
+            "depollution"
+          ],
           "out": {
             "li": [
               [
@@ -3948,7 +3726,7 @@
         },
         "eddy": {
           "row": "shredder",
-          "slot": 1,
+          "slot": 2,
           "plot": "eddy",
           "gate": "rung99",
           "needs": "shredder",
@@ -3982,7 +3760,7 @@
         },
         "sorter": {
           "row": "shredder",
-          "slot": 2,
+          "slot": 3,
           "plot": "sorter",
           "gate": "rung99",
           "needs": "eddy",
@@ -5513,7 +5291,7 @@
           "skipAsFound": 459.4,
           "grows": [
             {
-              "needs": "depollution",
+              "needs": "shredder",
               "body": "flatrack",
               "contents": {
                 "elv": 1
@@ -5650,7 +5428,7 @@
           "place": "depollution",
           "price": 3000,
           "gate": "rung99",
-          "deliver_s": 30,
+          "deliver_s": 60,
           "arrive": "machineFlatbed"
         },
         {
@@ -5666,7 +5444,7 @@
           "key": "shredder",
           "kind": "works",
           "place": "shredder",
-          "price": 136000,
+          "price": 137000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"

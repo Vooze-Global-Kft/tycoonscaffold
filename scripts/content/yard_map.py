@@ -650,6 +650,10 @@ def check_works(s0, walks=True):
     # (5) the walks, the crane's reach, the car pad, the battery box
     fresh = works_routes(s) if walks else dict(WK.get('routes', {}))
     for k, lim in WORKS_LIMITS.items():
+        # s2e-line (D6): a walk whose end is not drawn at this stage (the crane's stand) has no limit to keep
+        a_, b_ = k.split('-')
+        if WALK_ALIAS.get(a_, a_) not in P or WALK_ALIAS.get(b_, b_) not in P:
+            continue
         v = fresh.get(k)
         if v is None or v > lim + 1e-6:
             bad('3.6 (5): the walk %s is %s m (at most %s)' % (k, v, lim))
@@ -657,6 +661,9 @@ def check_works(s0, walks=True):
         have = WK.get('routes', {}).get(k)
         if have is None or abs(have - v) > 0.05:
             bad('map.works.routes.%s is %s, the merged map gives %s (python3 -I scripts/content/yard_map.py --routes --works)' % (k, have, v))
+    for k in WK.get('routes', {}):
+        if k not in fresh and walks:
+            bad('map.works.routes.%s names a walk the merged map does not have (an end not drawn): drop it' % k)
     rep.append('walks of 3.4 (merged map): ' + ', '.join('%s %s m' % kv for kv in fresh.items()))
     first = routes(s) if walks else {}
     for k, v in first.items():
@@ -687,6 +694,10 @@ def check_works(s0, walks=True):
         for k in ('breaker', 'smelter'):
             if k in fps and gap(fps['batteryBox'], fps[k]) > 1e-6:
                 bad('3.6 (5): the battery box does not touch the %s' % k)
+    # (9) s2e-line: the hook-lift's swept path to a car's landing and away
+    sw_errs, sw_rep = swept_path(s)
+    errs += sw_errs
+    rep += sw_rep
     # (6) the public and the van
     pb = WK['publicBay']
     bay = _r(pb['rect'], 'publicBay')
@@ -770,6 +781,116 @@ def check_works(s0, walks=True):
     return errs, rep
 
 
+def car_path(s):
+    """s2e-line (yard-stage2-economy.md 3.1; positions.ts tripPhasePath with a car's landing): the hook-lift's path with a car
+    on the flatrack, inside the fence: the weighbridge's stop, the works road west to the turning loop (map.works.turnLoop),
+    round it, east to the landing's stop beside the apron (stop `<plate>.apron`), and on to the park. Each leg as the rules'
+    drivePath draws it inside the fence (along the first yard's polyline to its west end at the works road, then straight).
+    None when the content sets no car down from the road. Returns (plate, landing stop, [legs of points])."""
+    M = s['map']
+    WK = M.get('_works') or {}
+    plates = (s.get('works') or {}).get('plates', {})
+    st = M.get('driveLine', {}).get('stops', {})
+    for pid, p in plates.items():
+        if p.get('kind') != 'station' or p.get('feedBy') != 'truck':
+            continue
+        L = st.get('%s.apron' % pid)
+        if not L or 'weighbridge' not in st or 'park' not in st:
+            return pid, None, []
+        poly = [tuple(q) for q in M.get('driveLine', {}).get('points', [])]
+        west_end = min(poly, key=lambda q: q[0]) if poly else None
+
+        def drive(a, b):
+            # positions.ts yardPath: a point off the polyline's corridor is reached from the polyline's nearest point
+            pts = [a]
+            if west_end and (a[0] > west_end[0] + 1e-9) != (b[0] > west_end[0] + 1e-9):
+                pts.append(west_end)
+            if west_end and b[0] > west_end[0] + 1e-9 and abs(b[1] - west_end[1]) > 2 + 1e-9:
+                pts.append((b[0], west_end[1]))
+            pts.append(b)
+            return pts
+        way = [tuple(st['weighbridge'])] + [tuple(q) for q in WK.get('turnLoop', [])] + [tuple(L)]
+        legs = [drive(way[i - 1], way[i]) for i in range(1, len(way))]
+        legs.append(drive(tuple(L), tuple(st['park'])))
+        return pid, tuple(L), legs
+    return None, None, []
+
+
+def swept_path(s):
+    """s2e-line, 3.6's swept path (yard-stage2-economy.md 3.1; the owner's review: no truck through people or buildings): the
+    hook-lift with a flatrack (half-width truck.radius) on car_path: (a) every point of its swept band lies on the drive line
+    (map.driveLine.rects of both layers); (b) it touches no solid, no place's footprint (but the drive line's own: the gate,
+    the weighbridge, the merchant's stand, the park; and the landing's apron, which the car is set down on), no chalk circle
+    and no waiting place (a person's place); (c) the whole path is inside the fence (truck.yardV applies: the rules' speed
+    inside the fence); (d) no reversing: the path never turns back on itself (no two consecutive moves pointing against
+    each other), so the car is set down driving forward and the truck leaves forward. Errors and a report."""
+    errs, rep = [], []
+    pid, L, legs = car_path(s)
+    if pid is None:
+        return errs, rep
+    if L is None:
+        return ['3.6 (9): the station %s is fed by the truck but map.works.driveLine.stops has no "%s.apron" (or no weighbridge or park stop)' % (pid, pid)], rep
+    M = s['map']
+    r = (s.get('truck') or {}).get('radius', 1.3)
+    W = s['yard']['width']
+    R = [rect(q['x0'], q['y0'], q['x0'] + q['w'], q['y0'] + q['d'], 'drive line', 'line') for q in M['driveLine']['rects']]
+    inside = lambda x, y: any(q['x0'] - 1e-6 <= x <= q['x1'] + 1e-6 and q['y0'] - 1e-6 <= y <= q['y1'] + 1e-6 for q in R)
+    F = M['footprints']
+    allowed = {'gate', 'weighbridge', 'merchant', 'park', '%s.apron' % pid}
+    keep = [(k, fp_rect(f, k, 'fp')) for k, f in F.items() if k not in allowed]
+    keep += [(q['name'], q) for q in solids(s) if q['kind'] != 'fence']
+    keep += [('circle %d' % i, rect(c[0] - c[2], c[1] - c[2], c[0] + c[2], c[1] + c[2], 'c', 'c')) for i, c in enumerate(M.get('circles', []))]
+    keep += [('waiting place %s' % k, rect(x - 0.4, y - 0.4, x + 0.4, y + 0.4, k, 'wait')) for k, (x, y) in M['points'].items() if re.match(r'^wait\d+$', k)]
+    pts = [p for leg in legs for p in leg]
+    n_bad_band = 0
+    hit = set()
+    length = 0.0
+    for leg in legs:
+        for a, b in zip(leg, leg[1:]):
+            d = math.dist(a, b)
+            length += d
+            n = max(1, int(math.ceil(d / 0.25)))
+            for i in range(n + 1):
+                x, y = a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n
+                band = rect(x - r, y - r, x + r, y + r, 'band', 'band')
+                if not all(inside(cx, cy) for cx, cy in ((x - r, y - r), (x + r, y - r), (x - r, y + r), (x + r, y + r), (x, y))):
+                    n_bad_band += 1
+                    if n_bad_band <= 3:
+                        errs.append('3.6 (9): the hook-lift (half-width %.1f m) at (%.2f, %.2f) leaves the drive line' % (r, x, y))
+                for k, q in keep:
+                    if k not in hit and overlaps(band, q):
+                        hit.add(k)
+                        errs.append('3.6 (9): the hook-lift with a car at (%.2f, %.2f) touches %s' % (x, y, k))
+    if n_bad_band > 3:
+        errs.append('3.6 (9): ... %d more points of the swept path off the drive line' % (n_bad_band - 3))
+    out = [p for p in pts if p[0] > W + 1e-6]
+    if out:
+        errs.append('3.6 (9): the car\'s path leaves the fence at %s (truck.yardV applies inside the fence only)' % (out[0],))
+    if 'yardV' not in (s.get('truck') or {}):
+        errs.append('3.6 (9): truck.yardV is missing: the car\'s drive inside the fence has no yard speed')
+    moves = []
+    for leg in legs:
+        for a, b in zip(leg, leg[1:]):
+            if math.dist(a, b) > 1e-6:
+                moves.append(((b[0] - a[0]) / math.dist(a, b), (b[1] - a[1]) / math.dist(a, b), b))
+    for (ux, uy, _), (vx, vy, at) in zip(moves, moves[1:]):
+        if ux * vx + uy * vy < -1e-6:
+            errs.append('3.6 (9): the hook-lift turns back on itself at (%.2f, %.2f): reversing (a loop is needed)' % at)
+    land_in = [m for m in moves if abs(m[2][0] - L[0]) < 1e-6 and abs(m[2][1] - L[1]) < 1e-6]
+    rep.append('swept path of the hook-lift with a car (half-width %.1f m): %.1f m from the weighbridge round the turning loop to %s.apron (stop %s) and to the park; %s' % (r, length, pid, L, 'clear' if not errs else '%d finding(s)' % len(errs)))
+    if not land_in:
+        errs.append('3.6 (9): the car\'s path never reaches the landing stop %s' % (L,))
+    ap = F.get('%s.apron' % pid)
+    if ap:
+        a = fp_rect(ap, 'apron', 'fp')
+        g_ = math.hypot(max(0.0, a['x0'] - L[0], L[0] - a['x1']), max(0.0, a['y0'] - L[1], L[1] - a['y1']))
+        reach = (s.get('reach') or {}).get('place', 1.5) + r
+        rep.append('the landing stop is %.1f m from the apron (the boss sets the car down within %.1f m)' % (g_, reach))
+        if g_ > reach + 1e-6:
+            errs.append('3.6 (9): the landing stop %s is %.1f m from %s.apron (more than reach.place + truck.radius %.1f)' % (L, g_, pid, reach))
+    return errs, rep
+
+
 # --------------------------------------------------------------------------- the picture
 
 def picture(s, out):
@@ -840,6 +961,13 @@ def picture(s, out):
         for kk, r in WK.get('roofs', {}).items():
             g.rectangle(R(_r(r)), outline=(40, 120, 200), width=2)
             g.text((ox + r['x0'] * k + 2, oy + (r['y0'] + r['d'] - y_from) * k - 11), 'roof', fill=(40, 120, 200))
+        # s2e-line: the hook-lift's path with a car (3.6 (9)), and its swept band's edges
+        _, _, legs = car_path(s)
+        rr = (s.get('truck') or {}).get('radius', 1.3)
+        for leg in legs:
+            g.line([(ox + x * k, oy + (y - y_from) * k) for x, y in leg], fill=(230, 120, 0), width=2)
+            for a, b in zip(leg, leg[1:]):
+                g.rectangle([ox + (min(a[0], b[0]) - rr) * k, oy + (min(a[1], b[1]) - rr - y_from) * k, ox + (max(a[0], b[0]) + rr) * k, oy + (max(a[1], b[1]) + rr - y_from) * k], outline=(230, 160, 60), width=1)
         for name, path, colr in (('visitors', WK['visitorPath'], (0, 140, 0)), ('van', WK['vanPath'], (200, 0, 160))):
             g.line([(ox + x * k, oy + (y - y_from) * k) for x, y in path], fill=colr, width=3)
         vx, vy = WK.get('laneStops', {}).get('van', (W, D))
@@ -930,15 +1058,22 @@ def _selftest(s=None):
         pb['rail'][1]['x0'], pb['rail'][1]['w'] = 54.3, 9.7
 
     walked = {'floor-crane', 'stale walk'}
+    def stop(c, k, xy):
+        c['map']['works']['driveLine']['stops'][k] = xy
+
+    def loop(c, pts):
+        c['map']['works']['turnLoop'] = pts
     cases = [
-        ('the crane at 3.3\'s (38, 31.5): floor-crane 10.5 m', lambda c: place(c, 'crane', x=38), '3.6 (5): the walk floor-crane'),
         ('the staff gap 1.2 m (3.3)', staff12, 'staff gap is 1.2 m'),
         ('the rack back at x 56: 1.3 m to the west rail', lambda c: place(c, 'reuseRack', x=56), 'M6: 1.30 m between'),
-        ('the shear on the works road', lambda c: place(c, 'shear', y=25), 'M4: shear stands in the drive line'),
+        ('the depollution bay on the works road', lambda c: place(c, 'depollution', y=25), 'M4: depollution stands in the drive line'),
         ('the rotary filter a metre off its hall', lambda c: place(c, 'rotary.filter', x=-29.75), 'rotary does not touch its filter'),
-        ('the eddy current east of the shredder', lambda c: place(c, 'eddy', x=0.5), 'do not touch in the line'),
-        ('the battery box off the smelter', lambda c: place(c, 'batteryBox', x=-44.0), 'battery box does not touch the smelter'),
-        ('the car pad on the tipping floor', lambda c: place(c, 'elvPad', y=31.5), 'car pad lies on the tipping floor'),
+        # s2e-line: the hook-lift's swept path (3.6 (9))
+        ('the car landing\'s stop on the road\'s kerb (the truck brushes the apron\'s neighbour)', lambda c: stop(c, 'depollution.apron', [-10.75, 24.0]), 'leaves the drive line'),
+        ('the battery box on the works road', lambda c: place(c, 'batteryBox', y=24.5), 'touches batteryBox'),
+        ('no turning loop: the hook-lift turns back on itself', lambda c: loop(c, [[-50, 25.6], [-54, 25.6], [-50, 25.6]]), 'turns back on itself'),
+        ('a loop out of the turning place', lambda c: loop(c, [[-50, 24.9], [-54.5, 24.9], [-54.5, 30.2], [-45, 30.2], [-45, 26.3]]), 'leaves the drive line'),
+        ('the landing stop far from the apron', lambda c: stop(c, 'depollution.apron', [-30, 25.6]), 'from depollution.apron'),
         ('the visitors paying by the truck park', lambda c: c['map']['works'].__setitem__('visitorPath', [[64, 37.9], [61, 36.0], [64, 37.9]]), 'visitorPath segment 0 is'),
         ('the van walking through the yard', lambda c: c['map']['works'].__setitem__('vanPath', [[67.5, 28.6], [64, 30], [59.2, 39]]), 'vanPath segment'),
         ('bronze solids in an open bunker', lambda c: c['worksLayer']['grades']['bzs']['bay'].__setitem__('slot', 5), 'bay of bzs'),
@@ -946,7 +1081,7 @@ def _selftest(s=None):
         ('a hero frame of 20 m', lambda c: c['map']['works']['heroWorks'].__setitem__('w', 20), 'heroWorks is 20'),
         ('no opening for the works road in the field fence', lambda c: c['map']['works']['fence'].__setitem__('openings', [[34, 40]]), 'no opening the works road'),
         ('the rubble pile left on the works road', lambda c: c['map']['works']['drop'].__setitem__('props', ['wall-2', 'pile-1', 'pile-3']), 'prop pile-2 stands in the drive line'),
-        ('a plant north of the back wall', lambda c: place(c, 'smelter', y=15), 'smelter'),
+        ('a plant north of the back wall', lambda c: place(c, 'induction', y=15), 'induction'),
         ('a stale walk in map.works.routes', lambda c: c['map']['works']['routes'].__setitem__('scale-shredder', 50), 'map.works.routes.scale-shredder is 50'),
         ('the van stop inside the fence', lambda c: c['map']['works']['laneStops'].__setitem__('van', [62, 28.6]), 'stops.van must stand outside'),
     ]

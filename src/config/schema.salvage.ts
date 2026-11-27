@@ -1350,7 +1350,8 @@ export function lintStage2(s0: SalvageContent): string[] {
     for (const i of L.shop) {
       if (keys.has(i.key)) out.push(`worksLayer.shop "${i.key}" repeats a shop key`);
       keys.add(i.key);
-      if (!mapPlaces.has(i.place)) out.push(`worksLayer.shop.${i.key}.place "${i.place}" is not a map point of either layer`);
+      // s2e-line (RULING2.md 27.3 D6): an item the stage does not sell is not drawn, so its place need not be on the map.
+      if (!mapPlaces.has(i.place) && rungOf(i.gate) <= (s0.ladder.topRung ?? 3)) out.push(`worksLayer.shop.${i.key}.place "${i.place}" is not a map point of either layer`);
       if (i.needsItem && !keys.has(i.needsItem) && !plates[i.needsItem]) out.push(`worksLayer.shop.${i.key}.needsItem "${i.needsItem}" is neither a shop key nor a plate`);
       // s2e-content (2.14.2): only a vehicle or a machine that earns is financed; never a tool, a carrier or crew; never one not sold.
       if (i.financeable && i.kind !== 'vehicle' && i.kind !== 'works') out.push(`worksLayer.shop.${i.key} (${i.kind}) is marked financeable: only a vehicle or a machine may be (2.14.2)`);
@@ -1675,7 +1676,8 @@ export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] 
   // (e)
   for (const [pid, p] of Object.entries(plates)) {
     if (p.kind !== 'station') continue;
-    if (p.feedBy !== 'forklift') out.push(`works.plates.${pid} is a station: it is fed by the forklift only (feedBy "forklift", 2.7), not "${p.feedBy}"`);
+    // s2e-line: or by the hook-lift itself, setting each car on its own apron (feedBy "truck"; RULING2.md 27.3 D1)
+    if (p.feedBy !== 'forklift' && p.feedBy !== 'truck') out.push(`works.plates.${pid} is a station: it is fed by the forklift only (feedBy "forklift", 2.7) or by the hook-lift (feedBy "truck", s2e-line), not "${p.feedBy}"`);
     for (const i of p.in) {
       const o = O[i];
       if (!o) continue;

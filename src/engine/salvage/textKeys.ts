@@ -373,6 +373,9 @@ export const TEXT_KEYS = {
     // moves to the derived `refusal` group (and leaves this one) once refusals.ts lists 'packLoan' (requests.md).
     'card.shop.loanOpen',
     'refusal.packLoan',
+    // s2e-line (RULING2 27.3 D1): a weighed car at the floor, or the boss stepping out with one: it goes to the bay's apron.
+    // STAND-IN as packLoan: moves to the derived `refusal` group once refusals.ts lists 'toApron' (requests.md).
+    'refusal.toApron',
   ],
   /** 2.16, 4.9: rewarded ads. */
   ad: ['card.ad.spot', 'card.ad.bonus', 'card.ad.video', 'card.ad.take', 'card.ad.amount', 'card.ad.notReady'],

@@ -39,6 +39,9 @@ export function worksCardOf(cfg: SalvageConfig, g: SalvageGame, plate: string): 
   const d = c.works?.plates[plate];
   if (!d) return null;
   const w = g.salvage.works[plate];
+  // s2e-line (RULING2.md 27.3 D1: ONE purchase, one card, two plots): until the line is ordered, the plot of a plate that
+  // comes `with` another (the depollution bay) opens the line's card (its price, gate, Buy and finance are the line's).
+  if (!w) for (const [lead, ld] of Object.entries(c.works?.plates ?? {})) if (ld.with?.includes(plate)) return worksCardOf(cfg, g, lead);
   const it = c.shop.find((i) => i.key === plate);
   const buyCh = plateBuyCheck(cfg, g, plate);
   const locked = !w && buyCh.state === 'locked';

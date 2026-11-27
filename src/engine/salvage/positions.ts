@@ -704,6 +704,11 @@ function yardPath(c: SalvageContent, a: P, b: P): P[] {
   };
   const fa = foot(a);
   const fb = foot(b);
+  // s2e-line: two points both past the SAME END of the polyline, both off its corridor (the works road west of the first
+  // yard's line, from the works' opening: the hook-lift's turning loop and a car's landing) are driven straight, not by way
+  // of the line's end and back (that path doubled back on itself). No first-yard drive has both ends past an end of the line.
+  const endV = (q: P) => near(q, pts[0]) || near(q, pts[pts.length - 1]);
+  if (near(fa.q, fb.q) && endV(fa.q) && fa.d > dl.w / 2 + 1e-9 && fb.d > dl.w / 2 + 1e-9) return tidy([a, b]);
   const path: P[] = [a];
   if (fa.d > dl.w / 2 + 1e-9) path.push(fa.q);
   const between = pts.map((p, i) => ({ p, s: arc[i] })).filter((v) => v.s > Math.min(fa.s, fb.s) + 1e-9 && v.s < Math.max(fa.s, fb.s) - 1e-9);

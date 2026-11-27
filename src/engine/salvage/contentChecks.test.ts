@@ -78,7 +78,7 @@ describe('5.2: each check refuses a broken content', () => {
   refuses('(2) a plate input no source of its gate brings', (c) => plate(c, 'shear').in.push('plough') && (plate(c, 'shear').out.plough = [['hms', 1]]), 'which no source open by rung 3 brings', 'frozen'); // s2e-content: the shear is dark in the shipped stage
   refuses('(2) a feeds chain out of order', (c) => (plate(c, 'eddy').slot = 0), 'a feeds chain out of order');
   refuses('(2) a needs cycle', (c) => (plate(c, 'shredder').needs = 'sorter'), 'a needs cycle');
-  refuses('(2) a hands-fed plate in the back field', (c) => (plate(c, 'sorter').feedBy = 'hands'), 'fed by hands but its plot sorter');
+  refuses('(2) a hands-fed plate in the back field', (c) => (plate(c, 'sorter').feedBy = 'hands'), 'fed by hands but its plot sorter', 'frozen'); // s2e-line: the sorter's plot is not drawn in the shipped stage (D6)
   refuses('(2) a closed vessel into the shear without certifiedEmpty', (c) => (c.objects.tank.certifiedEmpty = false), 'a closed vessel without certifiedEmpty');
   refuses('(2) a plate that mints sellable tonnes', (c) => {
     plate(c, 'granulator').out.tcab = [['cug', 1.1]];

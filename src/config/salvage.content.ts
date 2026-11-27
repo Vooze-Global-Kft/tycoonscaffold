@@ -236,19 +236,9 @@ const MAP_WORKS: MapWorks = {
     "scale-crate": 17.8,
     "dropoff-reuseRack": 21.3,
     "floor-reuseRack": 15.2,
-    "floor-crane": 9.3,
-    "crane-shear": 8.1,
-    "crane-baler": 10.5,
-    "forklift-elvPad": 4.4,
-    "elvPad-apron": 4.6,
-    "floor-shear": 17.3,
-    "floor-baler": 19.4,
-    "shear-scale": 27.1,
-    // s2a-fix: reported beside 3.4's walks (3.4 names none; 3.4's shear-scale is 16): a bale and a sheared piece go to the scale by hand
-    "baler-scale": 31.2,
+    // s2e-line (D6): the walks to the south yard's plots, the car pad and the lead line go with their plots (not drawn at stage 2)
     "scale-shredder": 66.5,
     "scale-rotary": 86.9,
-    "scale-smelter": 118.2,
   },
   heroWorks: { x0: -31, y0: 15.2, w: 16.7, d: 9.7, places: ["rotary", "rotary.filter", "rotary.apron"] },
 };
