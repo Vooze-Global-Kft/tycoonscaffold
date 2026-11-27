@@ -47,7 +47,7 @@ const PLATES: Plates = {
   // ---- the yard's plates (south yard, rung 3; 2.7): fed by yard hands, the crane or the forklift
   crane: { row: "yard", slot: 0, plot: "crane", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
   shear: {
-    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate",
+    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 5180, deliver_s: 30, kind: "rate",
     // whole steel things of the torch's tier (tanks certified empty) and unprepared steel pieces; rate = shear.P / hardness
     // (the first yard's plough frame is steel too, but no source brings one: 5.2 (2) refuses it as an input)
     in: ["beam", "tank", "hmsu"], feedBy: "hands",
@@ -59,7 +59,7 @@ const PLATES: Plates = {
     // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
-  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 29100, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 32800, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   depollution: {
     row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
     // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
@@ -75,7 +75,7 @@ const PLATES: Plates = {
   },
   // ---- the shredder line (back field, rung 4; 2.8): from the bays by route, into the bays by its belt weigher
   shredder: {
-    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 419000, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
+    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 83200, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
@@ -92,14 +92,14 @@ const PLATES: Plates = {
   },
   // ---- the melt halls (back field, rung 4): each bought with its filter, charged from covered bays by "Take from bays"
   rotary: {
-    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 77600, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 65100, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 2000, s: 2400, start_share: 0.4, start_idle: 60 },
     // salt slag and the salt-flux filter's dust to a licensed waste carrier (T3); salt flux paid at the heat's start
     recipes: { alu: { in: ["alw", "alcast", "twitch"], out: [["ali", 0.88], ["ald", 0.055]], waste: [["carrier", 0.1], ["carrier", 0.015]], reagents: [["saltFlux", 0.05, 0.3]] } },
     lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   induction: {
-    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 171000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 207000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 500, s: 480, start_share: 0.4, start_idle: 60 },
     // its filter's zinc oxide dust is the one sellable dust (T3)
     recipes: {
@@ -110,13 +110,13 @@ const PLATES: Plates = {
   },
   // ---- the lead line (back field, rung 4; a separate area behind the painted line, masks on)
   breaker: {
-    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 38100, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
+    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 3000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
     // electrolyte 0.30 neutralised with soda ash (0.05 kg a kg at §0.40) leaves as a salt solution, 0.35, to a licensed waste carrier (T20)
     out: { pbb: [["pp", 0.06], ["pbp", 0.64]] }, waste: { pbb: [["carrier", 0.35]] }, reagents: [["sodaAsh", 0.05, 0.4]],
     rate_kg_s: 0.28, lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 0, permit: "card.rota.permitLead",
   },
   smelter: {
-    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 27500, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 17700, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 1000, s: 1800, start_share: 0.4, start_idle: 60 },
     // coke and iron 0.06 kg a kg; slag 0.12 to a licensed waste carrier; the filter's lead dust goes back into the next heat (no grade; T3, T20)
     recipes: { lead: { in: ["pbp"], out: [["pbi", 0.94]], waste: [["carrier", 0.12]], reagents: [["cokeIron", 0.06, 0.3]] } },
@@ -313,10 +313,10 @@ const WORKS_LAYER: WorksLayerInput = {
   },
   // 2.9 vehicles and tools, and the plates (2.6.2: a plate is a scrip shop item bought on its plot's card); prices first values (content2) until the payback rule's
   shop: [
-    { key: "truckBridge", kind: "vehicle", place: "park", price: 12000, gate: "rung3", deliver_s: 30, arrive: "truck" },
-    { key: "pallet", kind: "carry", place: "rack", price: 2500, gate: "rung3", deliver_s: 6, arrive: "van" },
-    { key: "forklift", kind: "vehicle", place: "forklift", price: 15000, gate: "rung3", deliver_s: 30, arrive: "machineFlatbed" },
-    { key: "plasma", kind: "tool", place: "rack", price: 8000, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "truckBridge", kind: "vehicle", place: "park", price: 154000, gate: "rung3", deliver_s: 30, arrive: "truck" },
+    { key: "pallet", kind: "carry", place: "rack", price: 3000, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "forklift", kind: "vehicle", place: "forklift", price: 3000, gate: "rung3", deliver_s: 30, arrive: "machineFlatbed" },
+    { key: "plasma", kind: "tool", place: "rack", price: 64900, gate: "rung3", deliver_s: 6, arrive: "van" },
     ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
   ],
   // the plasma cutter: tier 4, P 60, on every material (B4, T8)
@@ -345,6 +345,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "content2-bots (27 Nov, REPORT9 round 1, RULING2.md 21.1 and 19.1): the plates', vehicles' and tools' prices from the gain measured over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one capped absence, a rate an hour of yard time, mean of seeds 1 to 15, from each item's planned moment with the sitting's earlier purchases owned; price = max(works.floor, tau_r x dE) to three figures (scripts/content/bots/plates.json): shear 3,000 -> 5,180, analyser 29,100 -> 32,800, shredder 419,000 -> 83,200, rotary 77,600 -> 65,100, induction 171,000 -> 207,000, breaker 38,100 -> 3,000 (its measured gain is NEGATIVE: a finding, REPORT9), smelter 27,500 -> 17,700; truckBridge 12,000 -> 154,000, plasma 8,000 -> 64,900, pallet 2,500 -> 3,000, forklift 15,000 -> 3,000; crane, baler, depollution, granulator, eddy, sorter stay at the floor 3,000 (measured gain under the floor's worth)",
     "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
     "content2-bots (26 Nov, REPORT8 round 2, RULING2.md 19.1): works plate prices from the measured gain, price = max(works.floor, tau_r x dE), dE the mean over seeds 1 to 5 of what the yard keeps more an hour (G at usual prices, a capped absence) with the plate bought at its planned moment on the normal hand, every earlier plate of that sitting owned (scripts/content/bots/plates.json): crane 30,000 -> 3,000, shear 40,000 -> 3,000, baler 9,000 -> 3,000, analyser 6,000 -> 29,100, depollution 80,000 -> 3,000, granulator 24,000 -> 3,000, shredder 600,000 -> 419,000, eddy 250,000 -> 3,000, sorter 300,000 -> 3,000, rotary 450,000 -> 77,600, induction 350,000 -> 171,000, breaker 200,000 -> 38,100, smelter 400,000 -> 27,500",
     "content2-bots (26 Nov, stage 2's measurement, REPORT8 round 1): ladder.rungs n 5 10,000 -> 5,000 t (yard-stage2.md 2.22: rung 5 at day 4 to 6; at 10,000 t no bot reached it in eight days, about 700 t a sitting at rung 4; 5,000 t comes at sitting 10, day 5, on the normal hand; theta_5 follows by thetaShare: 120,000 -> 60,000 a material)",
