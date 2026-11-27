@@ -284,6 +284,23 @@ describe('s2e-bots: the new stage\'s habits', () => {
     expect(b.g.salvage.bank.agreement ?? null).toBe(null);
   });
 
+  it('s2e-measure (28.4 f): from the works\' opening the card manager answers a first-yard optional goal card (signs or puts it aside)', () => {
+    const wcfg = worksCfg();
+    const g = structuredClone(r3Works());
+    const ids = wcfg.salvage.goals.map((d) => d.id);
+    const k = ids.indexOf('signDeal');
+    expect(k).toBeGreaterThanOrEqual(0);
+    g.salvage.goals.done = g.salvage.goals.done.filter((id) => id !== 'signDeal');
+    g.salvage.goals.skipped = (g.salvage.goals.skipped ?? []).filter((id) => id !== 'signDeal');
+    for (const id of ids.slice(0, k)) if (!g.salvage.goals.done.includes(id)) g.salvage.goals.done.push(id);
+    const b = newBot(wcfg, g, g.salvage.clock.highMs, { ...opts, manager: true });
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 120);
+    const answered = b.g.salvage.goals.done.includes('signDeal') || (b.g.salvage.goals.skipped ?? []).includes('signDeal');
+    expect(answered).toBe(true);
+    expect(b.rec.broken).toEqual([]);
+  });
+
   it('every oversize piece his tool opens is cut, whatever the goal (the boss\'s own hand)', () => {
     const wcfg = worksCfg();
     const g = structuredClone(lots4());

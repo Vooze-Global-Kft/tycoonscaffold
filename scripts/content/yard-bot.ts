@@ -876,12 +876,14 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const returns: { g: R.SalvageGame; bought: string[] }[] = [];
   const walk2: ReturnType<typeof walk2Row>[] = [];
   let personSnap: BotSnap | null = null;
+  let bench8: { h: number; tripMs: number; plannedMs: number; ratio: number } | null = null;
   // s2e-measure (RULING2.md 28.5 (e)): each crew role's idle share by rung, away (5-minute samples of a probe absence from each
   // return, over the absence's own running hours) and played (a sample a minute of the sitting), with the reasons the rules
   // give (crew.ts idleWhyOf); the old stock standing in the first yard's zones at each return; the drop-off's arrivals.
   const idle: Record<string, Record<string, { n: number; idle: number; why: Record<string, number> }>> = {};
   const oldStock: { n: number; rung: number; things: number; byZone: Record<string, number>; objs: Record<string, number> }[] = [];
-  const idleOn = which === 'normal' || which === 'freeDrop';
+  // (not in the prices' runs: --plates measures from the returns and needs no probe)
+  const idleOn = (which === 'normal' || which === 'freeDrop') && !arg('plates');
   const zones1 = new Set(Object.keys(base0.salvage.zones ?? {}));
   const sampleCrew = (g: R.SalvageGame, mode: 'away' | 'play') => {
     const c = contentAt(cfg.salvage, g.salvage);
@@ -920,6 +922,17 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const gBack = b.g;
     // G15 (--person): the person-paced sitting is played from the normal hand's FIRST return at rung 4, as it stood.
     if (arg('person') && which === 'normal' && !personSnap && gBack.salvage.ladder.rung >= 4) personSnap = snapBot(b);
+    // s2e-measure (RULING2.md 28.1 b, gate G9): THE BENCH'S RATIO on a rung-4 state PLAYED ON THE NEW CONTENT: one 8-hour away
+    // pass from the normal hand's first rung-4 return, trip by trip (as shipped) against planned (group.aheadWorks true), the
+    // best of three each, the same state; the absolute figure is engine step 5's, not this tool's (28.1 c).
+    if (arg('bench') && which === 'normal' && !bench8 && gBack.salvage.ladder.rung >= 4) {
+      const g8 = { ...gBack, cash: Math.max(1e7, gBack.cash), lastSavedAt: gBack.salvage.clock.highMs, salvage: { ...gBack.salvage, away: null } } as R.SalvageGame;
+      const planned = variant(cfg, 'planned');
+      const time = (c: R.SalvageConfig) => Math.min(...[0, 1, 2].map(() => { const a = performance.now(); awayPass(c, g8, g8.salvage.clock.highMs + 8 * 3600_000); return performance.now() - a; }));
+      const tb = time(cfg);
+      const tp = time(planned);
+      bench8 = { h: +(gBack.salvage.t / 3600).toFixed(1), tripMs: Math.round(tb), plannedMs: Math.round(tp), ratio: +(tb / tp).toFixed(2) };
+    }
     const back = MEASURES_G.has(which) && worksOpened(gBack.salvage) ? returnLook(cfg, gBack) : null;
     if (idleOn && worksOpened(gBack.salvage)) {
       awayProbe(gBack, Math.min(card ? card.seconds / 3600 : 0, 12));
@@ -1101,7 +1114,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, bench8, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -1651,9 +1664,10 @@ function gatesTable(runs: Summary[], tauH: (number | null)[], platesLines: strin
   row('G8', 'Oversize pieces', '0 cut in every sitting of every run', `${g8.map((q) => `s${q.s}: a piece cut in ${q.ok} of ${q.n} sittings from sitting 2${q.bad.length ? `, MASS OUT OF RANGE ${q.bad.join(', ')}` : ', every mass in its range'}`).join('; ')}${few(ns, 15)}`, ns ? g8.every((q) => q.ok === q.n && !q.bad.length) : null);
   // G9
   const pl = by('planned').map((r) => { const o = nrm.find((q) => q.spec.seed === r.spec.seed); const a = SS(r)[5]; const b0 = o && SS(o)[5]; return a && b0 ? b0.Lend / a.Lend - 1 : NaN; }).filter(Number.isFinite);
+  const benches = nrm.map((r) => ({ s: r.spec.seed, ...((r.extra.bench8 as { h: number; tripMs: number; plannedMs: number; ratio: number } | null) ?? { h: 0, tripMs: 0, plannedMs: 0, ratio: NaN }) })).filter((q) => Number.isFinite(q.ratio));
   const tj = runs.filter((r) => r.spec.gate);
   const tjd = tj.reduce((a, r) => a + ((r.extra.s2 as Bot['rec']['s2']).gate ?? []).length, 0);
-  row('G9', 'Planning', 'trip by trip +9.9 % lifetime at day 3; a minute of ticks = a jump at 120 checks', `trip by trip against planned (day 3 lifetime): ${pl.length ? pl.map((v) => `${(100 * v).toFixed(1)} %`).join(' ') : 'no planned pair run'}; tick = jump: ${tjd} of ${tj.reduce((a, r) => a + SS(r).filter((x) => x.n <= 5 || [8, 12].includes(x.n)).length, 0)} checks differ; the bench (8-hour pass under 1,000 ms, at most 1.5 x planned): engine step 5 (ruling 28.1), not this tool`, tjd === 0 ? null : false);
+  row('G9', 'Planning', 'trip by trip +9.9 % lifetime at day 3; a minute of ticks = a jump at 120 checks', `trip by trip against planned (day 3 lifetime): ${pl.length ? pl.map((v) => `${(100 * v).toFixed(1)} %`).join(' ') : 'no planned pair run'}; tick = jump: ${tjd} of ${tj.reduce((a, r) => a + SS(r).filter((x) => x.n <= 5 || [8, 12].includes(x.n)).length, 0)} checks differ; the bench's ratio on a rung-4 state of the new content (28.1 b; at most 1.5): ${benches.length ? benches.map((q) => `s${q.s} h${q.h} trip by trip ${q.tripMs} ms / planned ${q.plannedMs} ms = ${q.ratio}`).join('; ') : 'not run (--bench)'}; the absolute figure (under 1,000 ms) is engine step 5's (28.1 c)`, tjd !== 0 ? false : benches.length ? benches.every((q) => q.ratio <= 1.5) : null);
   // G10
   const e19 = [3, 4].map((rung) => { const q = nrm.flatMap((r) => { const ss = SS(r); return ss.map((x, i) => ({ rung: x.rung, a: (x.Lback - (i ? ss[i - 1].Lend : x.Lback)) / Math.max(1e-9, x.ranH), p: (x.Lend - x.Lback) / 0.25 })).filter((q2, i) => i > 0 && q2.rung === rung && q2.p > 0).map((q2) => q2.a / q2.p); }); return { rung, m: q.length ? med(q) : NaN }; });
   row('G10', 'Time away', 'E19 0.70 (rung 3), 0.89 (rung 4)', `${e19.map((q) => `rung ${q.rung} ${f2(q.m)}`).join(', ')}${few(ns, 15)}`, ns ? e19.every((q) => q.m >= 0.3 && q.m <= 0.8) : null);
@@ -2019,7 +2033,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -2387,7 +2401,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
