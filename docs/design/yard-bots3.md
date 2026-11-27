@@ -193,7 +193,7 @@ ladders' book table and the plasma's third-moment rows. build-yard.py writes gai
 | G10 time away | 0.70 / 0.89 | 0.40 / 0.53 | met |
 | G11 Yard sale and van | 6.9 1.9 1.8 1.9 1.8 | 6.7 5.0 4.8 4.0 % (day 5 not reached in 12 sittings); 0 seed-days over 8 % | MISSED (day 1: the van) |
 | G12 hard promises | none on 198 | none broken on 71 runs; ads 2.0 % of day 1 (max 2.3) | met |
-| G13 first yard | 75 of 75; same.ts 4/4 | first-yard.sh --full: see "Gates at my end" | see below |
+| G13 first yard | 75 of 75; same.ts 4/4 | first-yard.sh --full: 75 of 75 identical; same.ts 4 of 4; 30 states 0 differences | met |
 | G14 candidates | - | the copper hall built and measured (section 2: entry missed); the trailer not built | - |
 | G15 a person's sitting | not measured | does NOT fit "buy the line and the halls" (the bill is 2.5 x the purse); the induction hall bought and started in under 5 min on 5/5; 0 centred cards twice | MISSED (see item 5) |
 | G16 store-review pass | - | done, ruled (28.2) | met |
@@ -330,4 +330,4 @@ reached on his card). Neither the bank's offer nor a pack is taken by the normal
 - `npx tsx scripts/content/yard/check.ts --all`: 1,011 texts, 0 findings.
 - `npx tsx scripts/validate.ts scrap-yard`: exit 0. game.json: release.stage 1, shared product list empty.
 - `bash scratchpad yard/s2e/first-yard.sh` (after the content change, alone): FIRST YARD: PASS (30 cases, 295 ops, 0 differences).
-- `bash scratchpad yard/s2e/first-yard.sh --full` (alone, at the end): FIRSTYARD_FULL_RESULT.
+- `bash scratchpad yard/s2e/first-yard.sh --full` (alone, at the end): content 4 PASS; engine 30 cases, 295 ops, 0 differences; same.ts 4 of 4 (same state, same record); the 75-run comparison 75 of 75 identical below rung 3; FIRST YARD: PASS (G13 met).
