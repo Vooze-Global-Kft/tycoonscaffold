@@ -365,7 +365,10 @@ describe('the switch (S1, S2): stage 2 stays dark at release.stage 1', () => {
     const g = startGame(cfg, NOW);
     const g2 = { ...g, salvage: { ...g.salvage, iap: { ...g.salvage.iap, sessions2At: NOW } } } as SalvageGame;
     expect(R.cardOf(cfg, g2, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(false);
-    expect(R.cardOf(cfg2, g2, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(true);
+    // s2e-fix1 (RULING2 28.2 a): at stage 2 the row waits for an age band (none kept: the age question is due first).
+    expect(R.cardOf(cfg2, g2, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(false);
+    const g2a = { ...g2, salvage: { ...g2.salvage, iap: { ...g2.salvage.iap, ageBand: 'a18' } } } as SalvageGame;
+    expect(R.cardOf(cfg2, g2a, { kind: 'office', tab: 'rota' }, NOW).rows.some((r) => r.id.includes('shop'))).toBe(true);
   });
 
   it('S2: the first half hour at stage 1 equals stage 2 bit for bit (below rung 3); three days at stage 1 touch no stage-2 state; that save opens the works at stage 2 live', () => {
