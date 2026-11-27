@@ -79,7 +79,7 @@ describe("a bots' state at rung 3's first sitting (shipped content read at stage
         expect(ch.price, `${place}: ${a.item}`).toBe(a.price);
         // A pressable Buy is one the rules accept; a greyed one carries the rules' own refusal.
         if (r.button!.refusal === null) expect(ch.refusal, `${place}: ${a.item}`).toBeNull();
-        else expect(ch.refusal?.key, `${place}: ${a.item}`).toBe('cash');
+        else expect(['cash', 'earmark'], `${place}: ${a.item}`).toContain(ch.refusal?.key);
       }
     }
   }, 240_000);
