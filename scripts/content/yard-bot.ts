@@ -515,9 +515,9 @@ function gAt(cfg: R.SalvageConfig, g0: R.SalvageGame): { G: number; h: number } 
 // s2e-bots: superseded by soldItems (the stage as built); kept for the record of REPORT9's measure.
 const MEASURED_ITEMS = ['truckBridge', 'pallet', 'forklift', 'plasma'];
 void MEASURED_ITEMS;
-type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[]; dT?: number; dP?: number; E0T?: number; tW_h?: number; worked?: boolean };
+type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[]; tL?: number; tT?: number; T0?: number; dT?: number; dP?: number; E0T?: number; tW_h?: number; worked?: boolean };
 /** s2e-measure (28.4 b): the plasma's lasting gain at one of its three moments. */
-type Plasma3 = { at: string; at_h: number; dL: number; dT: number; dP: number; E0: number; tW_h: number; lot4: number; lot3: number; lotA: { cut4: number; cut3: number }; lotB: { cut4: number; cut3: number } };
+type Plasma3 = { at: string; at_h: number; tL: number; dL: number; dT: number; dP: number; E0: number; tW_h: number; lot4: number; lot3: number; lotA: { cut4: number; cut3: number }; lotB: { cut4: number; cut3: number } };
 
 /**
  * RULING2.md 21.1: what the yard earns from g over AN HOUR OF PLAY by the reference bot (the normal hand, the goal habit,
@@ -546,7 +546,7 @@ function playedE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions): { 
  * back); tW: the seconds played; worked: the item worked before the absence began; cut4 / cut3: the worth (prepared value)
  * of the tier-4 and the tier-3 oversize pieces cut in the play.
  */
-type LastE = { Ep: number; hp: number; Ea: number; ha: number; tW: number; worked: boolean; cut4: number; cut3: number };
+type LastE = { Ep: number; hp: number; Ea: number; ha: number; tW: number; worked: boolean; cut4: number; cut3: number; Tp: number; Ta: number };
 function worksNow(cfg: R.SalvageConfig, g: R.SalvageGame, key: string, c0: Record<string, number>): boolean {
   const s = g.salvage;
   const W = contentAt(cfg.salvage, s).works;
@@ -589,6 +589,7 @@ function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, ke
   const c0 = { ...(g.salvage.counts ?? {}) } as Record<string, number>;
   const v0 = stockAt(cfg, g);
   const t0 = g.salvage.t;
+  const s0 = g.salvage.ladder.supplied_g;
   if (playS !== undefined) playTo(b, t0 + playS);
   else {
     playTo(b, t0 + 3600);
@@ -599,10 +600,11 @@ function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, ke
   const cash1 = b.g.cash;
   const v1 = stockAt(cfg, b.g);
   const lw = lotWorth(cfg, b.g, c0);
+  const s1 = b.g.salvage.ladder.supplied_g;
   away(b, S2_AWAY_S);
   const bank = b.g.salvage.away?.bank ?? 0;
   const ha = (b.g.salvage.away?.seconds ?? 0) / 3600;
-  return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw };
+  return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw, Tp: (s1 - s0) / 1e6, Ta: (b.g.salvage.ladder.supplied_g - s1) / 1e6 };
 }
 /** The lasting gain and its two companions from a branch with the item (A) and one without (B). */
 function lastingGain(A: LastE, B: LastE) {
@@ -615,6 +617,10 @@ function lastingGain(A: LastE, B: LastE) {
     dT: (A.Ep + A.Ea - B.Ep - B.Ea) / Math.max(1e-9, hT),
     // the played run-up alone
     dP: (A.Ep - B.Ep) / Math.max(1e-9, (A.hp + B.hp) / 2),
+    // the same in TONNES supplied an hour (28.7 d): over the absence (the lasting gain's measure) and over both
+    tL: (A.Ta - B.Ta) / Math.max(1e-9, ha),
+    tT: (A.Tp + A.Ta - B.Tp - B.Ta) / Math.max(1e-9, hT),
+    T0: B.Ta / Math.max(1e-9, B.ha),
     E0: B.Ea / Math.max(1e-9, B.ha),
     E0T: (B.Ep + B.Ea) / Math.max(1e-9, B.hp + B.ha),
     tW_h: A.tW / 3600,
@@ -771,6 +777,9 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
 ];
 /** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
 const BOOK_FAILING = ['driver'];
+/** RULING2.md 28.7 (the lead's line of 15:55): the items whose prices this price round writes. */
+const WRITE_ITEMS = ['truckBridge', 'analyser', 'induction', 'rotary'];
+const f2s = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
 type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; gainsT?: number[]; E0: number; calc: number; I: number; price: number | null };
 
 function ladderTarget(g: R.SalvageGame, L: (typeof LADDERS)[number]): LevelTarget | null {
@@ -883,7 +892,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const idle: Record<string, Record<string, { n: number; idle: number; why: Record<string, number> }>> = {};
   const oldStock: { n: number; rung: number; things: number; byZone: Record<string, number>; objs: Record<string, number> }[] = [];
   // (not in the prices' runs: --plates measures from the returns and needs no probe)
-  const idleOn = (which === 'normal' || which === 'freeDrop') && !arg('plates');
+  const idleOn = which === 'normal' || which === 'freeDrop';
   const zones1 = new Set(Object.keys(base0.salvage.zones ?? {}));
   const sampleCrew = (g: R.SalvageGame, mode: 'away' | 'play') => {
     const c = contentAt(cfg.salvage, g.salvage);
@@ -1059,7 +1068,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       // absence together: 21.1's measure where the run-up is the hour) and dP (the run-up alone) are printed beside it.
       void branch;
       const q = pair(`r${ri}`, returns[ri].g, pre, pid);
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked } : {}), pre };
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), tL: +q.tL.toFixed(3), tT: +q.tT.toFixed(3), T0: +q.T0.toFixed(2), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked } : {}), pre };
     }
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
@@ -1069,7 +1078,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const moments: [string, string[]][] = [['m1 first works return', []], ['m2 after the second cutter', ['hire:cutter']], ['m3 after the hook-lift', ['hire:cutter', 'truckBridge']]];
       for (const [name, pre] of moments) {
         const q = pair('p0', g0, pre, 'plasma');
-        if (q) plasma3.push({ at: name, at_h: +(g0.salvage.t / 3600).toFixed(1), dL: Math.round(q.dL), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), tW_h: +q.tW_h.toFixed(2), lot4: Math.round(q.lot4), lot3: Math.round(q.lot3), lotA: q.lotA, lotB: q.lotB });
+        if (q) plasma3.push({ at: name, at_h: +(g0.salvage.t / 3600).toFixed(1), tL: +q.tL.toFixed(3), dL: Math.round(q.dL), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), tW_h: +q.tW_h.toFixed(2), lot4: Math.round(q.lot4), lot3: Math.round(q.lot3), lotA: q.lotA, lotB: q.lotB });
       }
     }
   }
@@ -1746,7 +1755,9 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     // REPORTED and stays as it is (row and price) until the lead rules; so does the plasma (28.4 b)
     const lowE = Math.min(...dEs);
     const entryOk = !!E0 && dE >= 0.02 * E0 && lowE >= -0.01 * E0;
-    const keep = pid === 'plasma' || !entryOk;
+    // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
+    // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
+    const keep = !WRITE_ITEMS.includes(pid);
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
@@ -1754,8 +1765,9 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
     lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
-    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${pid === 'plasma' ? '  (THE PLASMA: printed only; its price and its row stand until the lead rules, 28.4 b)' : keep ? '  (FAILS THE ENTRY RULE: reported; its price and its row stand until the lead rules)' : ''}`);
+    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? '  (NOT WRITTEN: its price and its row stand until it is measured in its new form, RULING2.md 28.7)' : !entryOk ? '  (written by the lead\'s line of 15:55, RULING2.md 28.7; THE ENTRY RULE IS MISSED: for the lead)' : ''}`);
     lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
+    { const tl = xs.map((x) => x.tL ?? NaN).filter(Number.isFinite); const m = tl.reduce((q, v) => q + v, 0) / Math.max(1, tl.length); const se2 = tl.length > 1 ? Math.sqrt(tl.reduce((q, v) => q + (v - m) ** 2, 0) / (tl.length - 1) / tl.length) : NaN; const t0m = xs.reduce((q, x) => q + (x.T0 ?? 0), 0) / xs.length; Object.assign(row, { tL: +m.toFixed(3), seTL: +se2.toFixed(3), T0: +t0m.toFixed(2) }); lines.push(`                IN TONNES: the lasting gain ${m.toFixed(2)} t an hour (s.e. ${f2s(se2)}) of the yard's ${t0m.toFixed(1)} t an hour supplied over the absence (${(100 * m / Math.max(1e-9, t0m)).toFixed(1)} %); together ${(xs.reduce((q, x) => q + (x.tT ?? 0), 0) / xs.length).toFixed(2)} t an hour`); }
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
   // s2e-bots: --platesOut file writes there instead of the repository's table (a try on one or two seeds must not move the
@@ -1775,8 +1787,8 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const dl = xs.map((q) => q.dL);
     const m0 = dl.reduce((a, v) => a + v, 0) / dl.length;
     const se = dl.length > 1 ? Math.round(Math.sqrt(dl.reduce((a, v) => a + (v - m0) ** 2, 0) / (dl.length - 1) / dl.length)) : null;
-    plasmaB[at] = { dL: Math.round(m0), se, dT: mn((q) => q.dT), dP: mn((q) => q.dP), E0: mn((q) => q.E0), lot4_h: mn((q) => q.lot4), lot3_h: mn((q) => q.lot3), lot4With_h: mn((q) => q.lotA.cut4), lot3With_h: mn((q) => q.lotA.cut3), lot3Without_h: mn((q) => q.lotB.cut3), seeds: xs.length, perSeed: dl };
-    lines.push(`   PLASMA ${at.padEnd(28)} n ${pad(xs.length, 2)}  lasting §${Math.round(m0)} (s.e. ${se ?? '-'}) of E0 §${mn((q) => q.E0)} = ${(100 * m0 / Math.max(1, mn((q) => q.E0))).toFixed(1)} %  together §${mn((q) => q.dT)}  run-up §${mn((q) => q.dP)}  |  oversize pieces cut an hour of play: with it tier 4 §${mn((q) => q.lotA.cut4)} + tier 3 §${mn((q) => q.lotA.cut3)}; without it tier 3 §${mn((q) => q.lotB.cut3)}: what it opens §${mn((q) => q.lot4)} an hour (tier 3 moves §${mn((q) => q.lot3)})`);
+    plasmaB[at] = { dL: Math.round(m0), tL: +(xs.reduce((q, z) => q + (z.tL ?? 0), 0) / xs.length).toFixed(3), se, dT: mn((q) => q.dT), dP: mn((q) => q.dP), E0: mn((q) => q.E0), lot4_h: mn((q) => q.lot4), lot3_h: mn((q) => q.lot3), lot4With_h: mn((q) => q.lotA.cut4), lot3With_h: mn((q) => q.lotA.cut3), lot3Without_h: mn((q) => q.lotB.cut3), seeds: xs.length, perSeed: dl };
+    lines.push(`   PLASMA ${at.padEnd(28)} n ${pad(xs.length, 2)}  lasting ${(xs.reduce((q, z) => q + (z.tL ?? 0), 0) / xs.length).toFixed(2)} t an hour, §${Math.round(m0)} (s.e. ${se ?? '-'}) of E0 §${mn((q) => q.E0)} = ${(100 * m0 / Math.max(1, mn((q) => q.E0))).toFixed(1)} %  together §${mn((q) => q.dT)}  run-up §${mn((q) => q.dP)}  |  oversize pieces cut an hour of play: with it tier 4 §${mn((q) => q.lotA.cut4)} + tier 3 §${mn((q) => q.lotA.cut3)}; without it tier 3 §${mn((q) => q.lotB.cut3)}: what it opens §${mn((q) => q.lot4)} an hour (tier 3 moves §${mn((q) => q.lot3)})`);
   }
   const merged = { ...base, ...(p3.length ? { plasma284b: { $comment: 's2e-measure (RULING2.md 28.4 b): the plasma cutter\'s lasting gain at three moments from the first works return (m1 bare, m2 with the second cutter, m3 with the second cutter and the hook-lift), and the worth an hour of play of the oversize pieces cut (prepared value): for the lead; the plasma\'s price and its items row stand until he rules', ...plasmaB } } : {}), $s2eMeasure: 's2e-measure (27 Nov): the sold items measured at their planned moments in the NEW goal order by RULING2.md 28.4 (a): dE = THE LASTING GAIN, what the yard keeps an hour over one capped absence that begins once the item works (the run-up played by the reference bot buying nothing, at least an hour and until the item works; the branch without plays as long), nobody at the yard, with and without, the sitting\'s earlier purchases owned in both; dT (the run-up and the absence together, ruling 21.1\'s measure where the run-up is the hour) and dP (the run-up alone) beside it, pricing nothing; E0 the absence\'s income without the item; book: the steps measured the same way (an hour played, then the absence alone).', $s2eBots: 's2e-bots (27 Nov): the sold items measured at their planned moments in the NEW goal order (ruling 21.1\'s measure), with `se` (the standard error of the mean over seeds) and `E0` (the yard\'s income at that moment, the branch without the item); `book`: the level ladders\' three steps g1 and d (g(L) = g1 x d^(L-1)) at each ladder\'s planned moment.', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: { ...base.plates, ...rows }, items: { ...base.items, ...items }, ...(Object.keys(bookRows).length ? { book: bookRows } : {}) };
   fs.mkdirSync(path.dirname(out), { recursive: true });
