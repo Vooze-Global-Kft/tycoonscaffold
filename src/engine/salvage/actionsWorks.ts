@@ -139,6 +139,9 @@ export function setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to:
  * running `heatRunning`; a charge in and not confirmed `confirmHeel` (retry with it); a grade of the new recipe
  * routed by its bay card to another station `routed`. The charge goes back to its own bays (by grade); the hall
  * then charges from its bays under the new recipe.
+ * s2g-halls (RULING2.md 29.1): THE TAP PINS the recipe (`heat.pinned`): the hall stays on it, heat after heat, until
+ * the player hands the choice back (letHallChoose). Tapping the recipe the hall is already on pins it as it stands
+ * (nothing is handed back, whatever the heat's phase); tapping it again while pinned changes nothing.
  */
 export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, recipe: RecipeId, confirmHeel: boolean, clock: number, events?: SalvageEvent[]): SalvageGame {
   const c = contentAt(cfg.salvage, g.salvage);
@@ -146,7 +149,15 @@ export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateI
   const w = g.salvage.works[plate];
   const rec = d?.recipes?.[recipe];
   if (!d || !w || !w.heat || w.phase !== 'running' || !rec) return refuse(g, events, 'notOwned', plateName(plate));
-  if (w.heat.recipe === recipe) return g;
+  if (w.heat.recipe === recipe) {
+    if (w.heat.pinned) return g;
+    const x = begin(cfg, g, events, true);
+    x.s.works[plate].heat!.pinned = true;
+    routesChanged(x);
+    x.ev.push({ type: 'recipe', recipe, heelPoured: false, plate });
+    void clock;
+    return finish(g, x);
+  }
   if (hallBusy(w.heat.phase)) return refuse(g, events, 'heatRunning');
   if (w.heat.charge_g > 0 && !confirmHeel) return refuse(g, events, 'confirmHeel', {}, { act: 'setRecipe', recipe, confirmHeel: true, plate });
   for (const gr of rec.in) {
@@ -160,12 +171,31 @@ export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateI
   h.charge_g = 0;
   h.chargeBy = {};
   h.recipe = recipe;
+  h.pinned = true;
   routesChanged(x);
   h.phase = 'empty';
   h.phaseSince = t;
   h.endsAt = null;
   x.ev.push({ type: 'recipe', recipe, heelPoured: false, plate });
   void routeOf;
+  return finish(g, x);
+}
+
+/**
+ * s2g-halls (RULING2.md 29.1): "Let the hall choose": the hall's recipe is no longer pinned (`heat.pinned` removed); from
+ * its next heat's start it charges the recipe that adds the most worth (halls.ts hallPick). A charge in or a heat running
+ * stays as it is. Not a running hall with recipes `notOwned`; a hall that already chooses: `nothing` (the same state).
+ */
+export function letHallChoose(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, clock: number, events?: SalvageEvent[]): SalvageGame {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const d = plateDef(c, plate);
+  const w = g.salvage.works[plate];
+  if (!d?.recipes || !w || !w.heat || w.phase !== 'running') return refuse(g, events, 'notOwned', plateName(plate));
+  if (!w.heat.pinned) return refuse(g, events, 'nothing');
+  const x = begin(cfg, g, events, true);
+  delete x.s.works[plate].heat!.pinned;
+  routesChanged(x);
+  void clock;
   return finish(g, x);
 }
 

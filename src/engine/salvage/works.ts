@@ -446,17 +446,58 @@ export function reratePlate(x: Ctx, id: string, w: WorksState, t: number): void 
 
 // ---------------------------------------------------------------------------------------- routes (2.7.1)
 
-/** What a kilogram of `grade` gains at p̄ in a plate (its out at usual prices, the stream at the eddy current's while it runs, less reagents, less the input). */
-export function plateMargin(x: Ctx, id: string, grade: string): number {
+type HallRecipe = NonNullable<PlateDef['recipes']>[string];
+
+/** What a kilogram of `grade` gains at p̄ in a hall's recipe (its out at usual prices, less reagents, less the input). */
+function recipeMargin(x: Pick<Ctx, 'c'>, rec: HallRecipe, grade: string): number {
+  let out = 0;
+  let reag = 0;
+  for (const [g, sh] of rec.out) out += sh * (x.c.grades[g]?.pbar ?? 0);
+  for (const r of rec.reagents) reag += r[1] * r[2];
+  return out - reag - (x.c.grades[grade]?.pbar ?? 0);
+}
+
+/**
+ * s2g-halls (RULING2.md 29.1): the recipe under which a hall takes `grade` from its bays (routes and reserves), or null.
+ * `recipe`: the hall's recipe to read (its heat's; halls.ts hallPick reads each recipe in turn without changing the state).
+ * A hall takes the inputs of that recipe; a hall whose recipe was NOT pinned by a tap (`heat.pinned` absent: "the hall
+ * chooses") also keeps the input of each other recipe that gains more a kilogram than the best input of the recipe it is
+ * on, so that the richer input waits in its bay (one charge, as any routed bay) instead of going to the merchant's round
+ * while a poorer heat runs, and the hall can choose it at its next heat. A pinned hall takes its recipe's inputs only.
+ */
+export function hallRecipeFor(x: Pick<Ctx, 'c' | 's'>, id: string, grade: string, recipe?: string): HallRecipe | null {
+  const d = plateDef(x.c, id);
+  const h = x.s.works[id]?.heat;
+  if (!d || d.kind !== 'batch' || !d.recipes) return null;
+  const cur = d.recipes[recipe ?? h?.recipe ?? ''];
+  if (!cur) return null;
+  if (cur.in.includes(grade)) return cur;
+  if (!h || h.pinned) return null;
+  let curBest = -Infinity;
+  for (const g of cur.in) curBest = Math.max(curBest, recipeMargin(x, cur, g));
+  let best: HallRecipe | null = null;
+  let bm = curBest;
+  for (const rec of Object.values(d.recipes)) {
+    if (rec === cur || !rec.in.includes(grade)) continue;
+    const m = recipeMargin(x, rec, grade);
+    if (m > bm + 1e-12) {
+      bm = m;
+      best = rec;
+    }
+  }
+  return best;
+}
+
+/** What a kilogram of `grade` gains at p̄ in a plate (its out at usual prices, the stream at the eddy current's while it runs, less reagents, less the input). `hall`: a hall read on another recipe (halls.ts hallPick). */
+export function plateMargin(x: Ctx, id: string, grade: string, hall?: { id: string; recipe: string }): number {
   const d = plateDef(x.c, id);
   if (!d) return -Infinity;
   let out = 0;
   let reag = 0;
   if (d.kind === 'batch') {
-    const rec = d.recipes?.[x.s.works[id]?.heat?.recipe ?? ''];
-    if (!rec || !rec.in.includes(grade)) return -Infinity;
-    for (const [g, sh] of rec.out) out += sh * (x.c.grades[g]?.pbar ?? 0);
-    for (const r of rec.reagents) reag += r[1] * r[2];
+    const rec = hallRecipeFor(x, id, grade, hall?.id === id ? hall.recipe : undefined);
+    if (!rec) return -Infinity;
+    return recipeMargin(x, rec, grade);
   } else {
     if (!d.in.includes(grade)) return -Infinity;
     for (const [to, sh] of plateOut(x.c, id, grade)) {
@@ -472,14 +513,15 @@ export function plateMargin(x: Ctx, id: string, grade: string): number {
 }
 
 /** Does this station take this grade at all (its inputs; a hall's current recipe; the crucible's recipe)? */
-export function takesGrade(x: Ctx, id: string, grade: string): boolean {
+export function takesGrade(x: Ctx, id: string, grade: string, hall?: { id: string; recipe: string }): boolean {
   if (id === 'crucible') {
     const rec = x.c.machines.crucible.recipes[x.s.machines.crucible.recipe];
     return !!rec && (Array.isArray(rec[0]) ? (rec[0] as string[]).includes(grade) : rec[0] === grade);
   }
   const d = plateDef(x.c, id);
   if (!d) return false;
-  if (d.kind === 'batch') return !!d.recipes?.[x.s.works[id]?.heat?.recipe ?? '']?.in.includes(grade);
+  // s2g-halls: a hall's current recipe, and while it chooses (not pinned) the richer recipes' inputs too (hallRecipeFor).
+  if (d.kind === 'batch') return !!hallRecipeFor(x, id, grade, hall?.id === id ? hall.recipe : undefined);
   return (d.kind === 'rate' && d.feedBy !== 'stream') && d.in.includes(grade);
 }
 
@@ -509,7 +551,12 @@ export function routeOf(x: Ctx, grade: string): StationId | 'bay' | null {
 }
 
 
-function routeOfNow(x: Ctx, grade: string): StationId | 'bay' | null {
+/** s2g-halls: where a grade would go were hall `hall.id` on `hall.recipe` (halls.ts hallPick; the state unchanged, no memo read or kept). */
+export function routeUnder(x: Ctx, grade: string, hall: { id: string; recipe: string }): StationId | 'bay' | null {
+  return routeOfNow(x, grade, hall);
+}
+
+function routeOfNow(x: Ctx, grade: string, hall?: { id: string; recipe: string }): StationId | 'bay' | null {
   const set = x.s.routes[grade];
   if (set === 'bay') return 'bay';
   if (set !== undefined) {
@@ -520,9 +567,9 @@ function routeOfNow(x: Ctx, grade: string): StationId | 'bay' | null {
   const ws = x.s.works;
   for (const id of plateIds(x)) {
     const w = ws[id];
-    if (!running(w) || !takesGrade(x, id, grade)) continue;
+    if (!running(w) || !takesGrade(x, id, grade, hall)) continue;
     if (w.heat && !w.heat.fromBays) continue;
-    const m = plateMargin(x, id, grade);
+    const m = plateMargin(x, id, grade, hall);
     if (m > bm + 1e-12) {
       bm = m;
       best = id;

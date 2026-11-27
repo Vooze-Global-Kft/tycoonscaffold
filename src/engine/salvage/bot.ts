@@ -111,6 +111,11 @@ export interface BotOptions {
    * but buys, hires and levels nothing, so that two branches of one state differ by the one purchase measured.
    */
   noBuy?: boolean;
+  /**
+   * Tests only (s2g-halls, RULING2.md 29.1): the old recipe habit, which PINS a hall's recipe by a tap (recipeHabit). Off by
+   * default: the reference bots leave every hall to choose its own recipe (halls.ts hallPick), as a player who never taps.
+   */
+  pinRecipe?: boolean;
 }
 
 // ============================================================================================ the record
@@ -1887,12 +1892,15 @@ function crateHabit(b: Bot): boolean {
 }
 
 /**
- * s2e-bots: once a sitting, each running hall with more than one recipe is set on the recipe whose input grades the bays hold
+ * s2g-halls (RULING2.md 29.1): ONLY with the option pinRecipe (tests): a hall chooses its own recipe at each heat's start
+ * (halls.ts hallPick) and a tap pins it, so the reference bots never tap. As built by s2e-bots: once a sitting, each running
+ * hall with more than one recipe is set on the recipe whose input grades the bays hold
  * the most worth of at usual prices, when that is over twice the current recipe's (no switching back and forth on a small
  * difference); the boss walks to the hall's plot and presses the card's recipe (actionsWorks.ts setPlateRecipe, the charge
  * confirmed back to its bays). Refused presses are recorded.
  */
 function recipeHabit(b: Bot): boolean {
+  if (!b.opts.pinRecipe) return false;
   const s = b.g.salvage;
   const c = C(b);
   for (const [id, w] of Object.entries(s.works)) {

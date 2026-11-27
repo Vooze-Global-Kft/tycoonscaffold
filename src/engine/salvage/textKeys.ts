@@ -303,6 +303,10 @@ export const TEXT_KEYS = {
     'card.levelPays',
     // s2f-plasma-cars (RULING2.md 28.7 b): the truck-fed bay's card: what a car from the garage's recovery truck costs today
     'card.works.carPrice',
+    // s2g-halls (RULING2.md 29.1): a hall with several recipes: which one it is on and who chose it; the hand-back button
+    'card.works.recipeHall',
+    'card.works.recipeKept',
+    'card.works.letChoose',
   ],
   /** 2.14, 4.5: the lender's letter, the finance card, the Agreements page; the bank's share in words (`share.*`, see strings.ts). */
   bank: [

@@ -1038,7 +1038,7 @@ export type CardAction =
   | { act: 'setHold'; grade: GradeId; on: boolean }
   | { act: 'sell'; grade: GradeId; shown: SellShown }
   /** v3: `plate` names a hall (setPlateRecipe); absent = the first yard's crucible. */
-  | { act: 'setRecipe'; recipe: RecipeId; confirmHeel: boolean; plate?: PlateId }
+  | { act: 'setRecipe'; recipe: RecipeId; confirmHeel: boolean; plate?: PlateId; /** s2g-halls: a hall's "Let the hall choose" (actionsWorks.ts letHallChoose; `recipe` is the one it is on). */ choose?: true }
   /** v3: `plate` names a hall; absent = the crucible. */
   | { act: 'setFromBays'; on: boolean; plate?: PlateId }
   | { act: 'signDeal'; terms: DealTerms }
@@ -1887,6 +1887,13 @@ export interface HeatState {
   lastFeedAt: number;
   firstPoured: boolean;
   cooling: CrucibleState['cooling'];
+  /**
+   * s2g-halls (RULING2.md 29.1): true once the player TAPPED a recipe on the hall's card (actionsWorks.ts setPlateRecipe),
+   * until he hands the choice back (letHallChoose). Absent: "the hall chooses" (halls.ts hallPick at each heat's start),
+   * the default of every hall; a save without the field (every stage-2 save made before it, its recipe set by a tap or by
+   * default) reads so. Written only by those two actions.
+   */
+  pinned?: true;
 }
 
 /**
@@ -2170,6 +2177,8 @@ export interface WorksCard {
   level: { level: number; max: number; pct: number; button: CardButton | null; state: RowState } | null;
   /** Halls: their recipes ("Brass", "Bronze"), the one in use, and a button each. */
   recipes?: { recipe: RecipeId; in: GradeId[]; out: GradeId[]; selected: boolean; button: CardButton | null }[];
+  /** s2g-halls (RULING2.md 29.1): which recipe the hall is on and who chose it ("The hall chooses: Bronze" / "Kept on Bronze by you"), with "Let the hall choose" while a tap holds it. */
+  recipeBy?: { pinned: boolean; line: Txt; button: CardButton | null };
   /** Bay-fed plates: "Takes from: Light iron · Car body", each with its route now. */
   takesFrom?: { grade: GradeId; route: StationId | 'bay' }[];
   /** The depollution bay: its car on the apron ("End-of-life car · ref. {ref}") and the drain's end. */

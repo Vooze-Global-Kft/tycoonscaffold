@@ -593,6 +593,9 @@ export const TEXT = {
   'card.levelEarns': '+{x} an hour on your yard', // s2e-advice (the build's words): the same words as the advice line's gain (advice.gain)
   'card.levelPays': 'Pays for itself in about {t}', // t: { secs } = price ÷ gain, the yard's running hours
   'card.works.carPrice': 'A car from the garage · {x}', // s2f-plasma-cars (RULING2 28.7 b): x: { money } = the label price its landing pays today
+  'card.works.recipeHall': 'The hall chooses: {recipe}', // s2g-halls (RULING2 29.1): recipe: { text: recipe.<id> }; at each heat the recipe that adds the most worth
+  'card.works.recipeKept': 'Kept on {recipe} by you', // a tapped recipe holds until "Let the hall choose"
+  'card.works.letChoose': 'Let the hall choose',
   'refusal.notLimit': 'Not the limit now · +{x} an hour', // x: { money } = levelGain; no Buy
 
   // --- the bank (2.14, 4.5; RULING2 9.7, 11.4). {share}: { text: 'share.fifth' } while content bank.share is 0.2

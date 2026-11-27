@@ -480,7 +480,7 @@ function worksKey(c: Ctx['c'], s: Ctx['s']): string {
  * objects as inputs (the shear's beams and tanks, the depollution bay's cars: 0), the analyser and the magnet crane (0).
  * No plate lowers I: every term is ≥ 0 (a content check holds every plate's margin ≥ 1.05 × its input).
  */
-function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt?: Readonly<Record<string, { kg: number; gain: number }>>): number {
+function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt?: Readonly<Record<string, { kg: number; gain: number }>>, by?: Record<string, { kg: number; add: number }>): number {
   const plates = c.works?.plates;
   if (!plates || s.counts?.bathSet === undefined) return 0;
   const pbar = (g: string) => c.grades[g]?.pbar ?? 0;
@@ -533,7 +533,13 @@ function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt
       avail[wy.grade] -= x;
       cap.set(wy.id, (cap.get(wy.id) ?? 0) - x);
       // The stream's value is counted at the eddy current's term, not at the shredder's.
-      add += x * wy.margin - (wy.grade === 'stream' ? 0 : x * wy.out.reduce((a, [o, sh]) => a + (o === 'stream' ? sh * worth(o) : 0), 0));
+      const dx = x * wy.margin - (wy.grade === 'stream' ? 0 : x * wy.out.reduce((a, [o, sh]) => a + (o === 'stream' ? sh * worth(o) : 0), 0));
+      add += dx;
+      if (by) {
+        const r = (by[wy.id] ??= { kg: 0, add: 0 });
+        r.kg += x;
+        r.add += dx;
+      }
       for (const [o, sh] of wy.out) avail[o] = (avail[o] ?? 0) + x * sh;
       moved = true;
     }
@@ -1502,6 +1508,22 @@ export function replayIncome(c: Ctx['c'], s: Ctx['s']): number {
 /** The REPLAY's terms for the assets as they are (replayIncome's, before E6's envelope; a copy): the loads the shipped driver takes, what binds (s2e-rate). */
 export function replayTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   return copyTerms(rawTerms(c, s));
+}
+
+/**
+ * s2g-rate: each running plate's part of the plates' term on the state's own replay (before the envelope and kappa), kg an
+ * hour it takes and § an hour it adds; empty below the works' opening. For the measurement and the tests (what each hall is
+ * rated to gain against its measured lasting gain).
+ */
+export function plateGains(c: Ctx['c'], s: Ctx['s']): Record<string, { kg: number; add: number }> {
+  const by: Record<string, { kg: number; add: number }> = {};
+  if (!worksOn(c, s)) return by;
+  const t = rawTerms(c, s);
+  const car = carTerm(c, s, t.loads);
+  const kgAll: Record<string, number> = { ...(t.detail?.kgBy ?? {}) };
+  for (const [g, kg] of Object.entries(car.kg)) kgAll[g] = (kgAll[g] ?? 0) + kg;
+  plateTerms(c, s, kgAll, t.detail?.melt, by);
+  return by;
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */

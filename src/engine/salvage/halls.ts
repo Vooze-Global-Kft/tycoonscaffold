@@ -12,11 +12,12 @@
  * clamped to the save's clock (state2.ts repairStage2).
  */
 import { asideOf, bayOf, takeGrams } from './bays';
-import { bossFresh, count, numberBays, spend, type Ctx } from './clock';
+import { bossFresh, count, heard, numberBays, spend, type Ctx } from './clock';
 import { plateDef } from './content';
 import { pointOf } from './positions';
+import { routesChanged } from './memo';
 import type { HeatState, PlateId, WorksState } from './types';
-import { plateIds, reagentCostOf, routeOf, type DatedAdd } from './works';
+import { plateIds, reagentCostOf, routeOf, routeUnder, type DatedAdd } from './works';
 
 // THE RULE AS BUILT (rules-works, wave 1; 2.8 and S11 of the first yard, generalised from crucible.ts):
 // 1. A running hall with "Take from bays" (on by default) charges itself, whenever no heat runs, from the bays of
@@ -68,11 +69,86 @@ export function hallsDated(x: Ctx, add: DatedAdd<'hall'>): void {
   }
 }
 
+/** Grams takeGrams would give of a bay for `want` grams (whole units only for a grade counted in units), the bay unchanged. */
+function wouldTake(x: Ctx, grade: string, want: number): number {
+  const b = x.s.bays[grade];
+  if (!b || want <= 0) return 0;
+  if (x.c.wholeUnits_kg[grade] !== undefined && b.n > 0) {
+    const per = b.g / b.n;
+    const k = Math.min(b.n, Math.floor(want / per + 1e-9));
+    if (k <= 0) return 0;
+    return k === b.n ? b.g : Math.round(k * per);
+  }
+  return Math.max(0, Math.min(Math.floor(want), b.g));
+}
+
+/**
+ * s2g-halls (RULING2.md 29.1): the recipe an EMPTY hall that chooses charges next, or null to stay as it is. For each
+ * recipe in the content's order: the charge rule 1 would take under it now (its inputs whose route would name the hall,
+ * works.ts routeUnder; grams not set aside, the deal's, the crucible's or another station's), and the worth that heat
+ * adds: its outputs at usual prices (floor(share × charge), as the pour credits them) less what the charge would sell for
+ * as it is, less its reagents (the waste carrier costs nothing in the rules). A recipe whose charge reaches a heat's start
+ * (start_share × the charge) is chosen before one that does not; then the most worth; ties by the content's order. Null
+ * when no recipe can take a gram, or the hall has one recipe. Reads the state, changes nothing.
+ */
+export function hallPick(x: Ctx, id: PlateId, w: WorksState): string | null {
+  const d = plateDef(x.c, id);
+  const h = w.heat;
+  const recs = d?.recipes;
+  if (!d?.batch || !h || !recs) return null;
+  const keys = Object.keys(recs);
+  if (keys.length < 2) return null;
+  const pbar = (g: string) => x.c.grades[g]?.pbar ?? 0;
+  const cap = hallCap_g(x, id, w);
+  const need = d.batch.start_share * cap;
+  let best: string | null = null;
+  let bFill = false;
+  let bWorth = -Infinity;
+  for (const r of keys) {
+    const rec = recs[r] as Recipe;
+    const hall = { id, recipe: r };
+    let room = Math.max(0, cap - h.heel_g);
+    let charge = 0;
+    let worth = 0;
+    for (const g of rec.in) {
+      if (room <= 0) break;
+      const avail = bayAvailFor(x, g, id);
+      if (avail <= 0 || routeUnder(x, g, hall) !== id) continue;
+      const take = wouldTake(x, g, Math.min(avail, room));
+      if (take <= 0) continue;
+      charge += take;
+      room -= take;
+      worth -= (take / 1000) * pbar(g);
+    }
+    if (charge <= 0) continue;
+    for (const [o, sh] of rec.out) if (x.c.grades[o]) worth += (Math.floor(sh * charge + 1e-6) / 1000) * pbar(o);
+    worth -= reagentCostOf(rec.reagents, charge);
+    const fill = charge + h.heel_g >= need - 1e-6;
+    if (best === null || (fill && !bFill) || (fill === bFill && worth > bWorth + 1e-9)) {
+      best = r;
+      bFill = fill;
+      bWorth = worth;
+    }
+  }
+  return best;
+}
+
 /** Charge from the bays while no heat runs (rule 1), then start or date the heat (rule 2). */
 export function hallFromBays(x: Ctx, id: PlateId, t: number): void {
   const w = x.s.works[id];
   const h = w?.heat;
   if (!w || !h || w.phase !== 'running' || hallBusy(h.phase)) return;
+  // s2g-halls (RULING2.md 29.1): a hall that chooses (no tap pinned its recipe) takes, at each heat's start (its first
+  // gram of a new charge), the recipe that adds the most worth for that heat from what its bays hold (hallPick).
+  if (h.fromBays && !h.pinned && h.charge_g <= 0 && h.heel_g <= 0) {
+    const r = hallPick(x, id, w);
+    if (r !== null && r !== h.recipe) {
+      h.recipe = r;
+      h.chargeBy = {};
+      routesChanged(x);
+      if (heard(x)) x.ev.push({ type: 'recipe', recipe: r, heelPoured: false, plate: id });
+    }
+  }
   const rec = recipeOf(x, id, h);
   if (!rec) return;
   if (h.fromBays) {

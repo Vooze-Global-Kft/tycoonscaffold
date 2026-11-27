@@ -104,12 +104,38 @@ export function worksCardOf(cfg: SalvageConfig, g: SalvageGame, plate: string): 
     selfStartAt: w?.phase === 'installed' ? w.commissionAt : null,
     level,
     ...(d.recipes
-      ? { recipes: Object.entries(d.recipes).map(([r, rec]) => ({ recipe: r, in: [...rec.in], out: rec.out.map(([o]) => o).filter((o) => !!c.grades[o]), selected: (w?.heat?.recipe ?? '') === r, button: w?.phase === 'running' && w.heat?.recipe !== r ? { label: { key: 'card.recipe' as TextKey, args: { recipe: { text: `recipe.${r}` as TextKey } } }, action: { act: 'setRecipe', recipe: r, confirmHeel: false, plate }, refusal: w.heat && hallBusy(w.heat.phase) ? { key: 'refusal.heatRunning' as TextKey } : null } : null })) }
+      ? { recipes: Object.entries(d.recipes).map(([r, rec]) => ({ recipe: r, in: [...rec.in], out: rec.out.map(([o]) => o).filter((o) => !!c.grades[o]), selected: (w?.heat?.recipe ?? '') === r, button: recipeButton(w, plate, r) })) }
       : {}),
+    ...(d.recipes && Object.keys(d.recipes).length > 1 && w?.phase === 'running' && w.heat ? { recipeBy: recipeByOf(w, plate) } : {}),
     ...(d.feedBy === 'bays' && d.kind === 'rate' ? { takesFrom: d.in.filter((k) => !!c.grades[k]).map((k) => ({ grade: k, route: g.salvage.routes[k] ?? (plate as string) })) } : {}),
     permit: d.permit ? (d.permit.endsWith('Lead') ? 'lead' : 'elv') : null,
     foot: { buy, ...lf },
     bank: bankRow(g, plate),
+  };
+}
+
+/**
+ * A recipe row's button (2.8; s2g-halls, RULING2.md 29.1): a running hall's tap PINS that recipe (actionsWorks.ts
+ * setPlateRecipe: another recipe is refused `heatRunning` while a heat runs; the recipe it is on is pinned as it stands).
+ * The pinned recipe's own row has no button (its hand-back is recipeBy's).
+ */
+function recipeButton(w: SalvageGame['salvage']['works'][string] | undefined, plate: string, r: string): CardButton | null {
+  const h = w?.heat;
+  if (w?.phase !== 'running' || !h) return null;
+  if (h.recipe === r && h.pinned) return null;
+  const refusal = h.recipe !== r && hallBusy(h.phase) ? { key: 'refusal.heatRunning' as TextKey } : null;
+  return { label: { key: 'card.recipe' as TextKey, args: { recipe: { text: `recipe.${r}` as TextKey } } }, action: { act: 'setRecipe', recipe: r, confirmHeel: false, plate }, refusal };
+}
+
+/** s2g-halls: the hall's recipe and who chose it ("The hall chooses: {recipe}" / "Kept on {recipe} by you"), and "Let the hall choose" while a tap holds it (actionsWorks.ts letHallChoose). */
+function recipeByOf(w: SalvageGame['salvage']['works'][string], plate: string): NonNullable<WorksCard['recipeBy']> {
+  const h = w.heat!;
+  const recipe = { text: `recipe.${h.recipe}` as TextKey };
+  if (!h.pinned) return { pinned: false, line: { key: 'card.works.recipeHall' as TextKey, args: { recipe } }, button: null };
+  return {
+    pinned: true,
+    line: { key: 'card.works.recipeKept' as TextKey, args: { recipe } },
+    button: { label: { key: 'card.works.letChoose' as TextKey }, action: { act: 'setRecipe', recipe: h.recipe, confirmHeel: false, plate, choose: true }, refusal: null },
   };
 }
 
