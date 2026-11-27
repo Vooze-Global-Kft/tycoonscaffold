@@ -846,6 +846,21 @@ const BankSchema = z.object({
 });
 /** The mode's part of real money (2.15; the sixteen products are the shared list's, B5). */
 export const LOOK_SLOTS = ['colour', 'dressing', 'plaque', 'sign'] as const;
+/**
+ * s2-fix-content (M1; rulings 19.9, 21.8, 22 M1): one product of the mode's shop, DEFINED here in the mode's content
+ * (dark at release.stage 1 with the rest of `iap`). build-yard.py fills title and description from the names register
+ * and MIRRORS the list, entry for entry, into the shared `monetization.iap.products` only when release.stage is 2 or
+ * more: at stage 1 the shared list is empty (the store is asked for nothing). Tests and bots get a stage-2
+ * configuration through src/engine/fixtures/stage2.ts (the one helper).
+ */
+const IapProductItem = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9]*_[A-Za-z0-9]+$/),
+  kind: z.enum(['cosmetic', 'skipAds', 'hoursOfIncome']),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  fallbackPrice: z.string(),
+  value: z.number().positive().optional(),
+});
 const IapSchema = z.object({
   packsFromRung: z.literal(4),
   /** RULING2.md 15.12 (b), 15.13 (c): how many quotes of one product may stand at once: fixed at 3. */
@@ -855,6 +870,8 @@ const IapSchema = z.object({
   /** Product id -> the look slot it fills and the look's register id. */
   lookOf: z.record(id, z.object({ slot: z.enum(LOOK_SLOTS), value: z.string() })),
   looks: z.array(z.enum(LOOK_SLOTS)),
+  /** The shop's products (2.15.1; s2-fix-content M1): the mode's own list, mirrored into the shared list at stage 2 only. */
+  products: z.array(IapProductItem).optional(),
 });
 /** Rewarded ads (2.16). `dayHours_h`: "a day's income" in production hours of the twice-a-day habit, by rung (ruling 10.6; null below rung 3). */
 const AdsSchema = z.object({
@@ -867,6 +884,8 @@ const AdsSchema = z.object({
   spotPerDay: z.number().int().nonnegative(),
   maxDayShare: z.number().min(0).max(1),
   dayHours_h: z.array(z.number().positive().nullable()),
+  /** s2c-fix-money (M8): the spot buyer offers a video only for a reward of at least this many minutes of I (ruling 22 M8: 2). Absent: no minimum. */
+  minOffer_min: z.number().nonnegative().optional(),
 });
 
 /**
@@ -1548,6 +1567,13 @@ export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] 
     const a = [...s.iap.packsOff].sort().join(',');
     const b = [...PACKS_OFF_FIXED].sort().join(',');
     if (a !== b) out.push(`iap.packsOff is not the fixed list (the EEA and Switzerland): ${a} against ${b}`);
+    // s2-fix-content (M1): the mode's own product list: ids unique under one prefix, every look a cosmetic of the list, a pack's hours given
+    const prods = s.iap.products ?? [];
+    const ids = new Set(prods.map((p) => p.id));
+    if (ids.size !== prods.length) out.push('iap.products: two products share an id');
+    if (new Set(prods.map((p) => p.id.split('_')[0])).size > 1) out.push('iap.products: the ids do not share one prefix (the fingerprint\'s rule)');
+    for (const p of prods) if (p.kind === 'hoursOfIncome' && !p.value) out.push(`iap.products ${p.id}: a pack without its hours (value)`);
+    if (prods.length) for (const id of Object.keys(s.iap.lookOf)) if (!prods.some((p) => p.id === id && p.kind === 'cosmetic')) out.push(`iap.lookOf ${id} is not a cosmetic product of iap.products`);
   }
   // (g)
   for (const [pid, p] of Object.entries(L?.partners ?? {})) if (plates[p.opens]) out.push(`worksLayer.partners.${pid}.opens "${p.opens}" is a plate: the bridge partners open with a vehicle (2.9: the three-axle hook-lift)`);

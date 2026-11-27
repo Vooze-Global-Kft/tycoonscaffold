@@ -1618,9 +1618,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
   bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
   // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
-  // The sixteen products themselves are the shared list's (monetization.iap.products, B5): build-yard.py writes them from the
-  // names register with the game's prefix `yard_` (the fingerprint's rule: every product id starts with one prefix); lookOf
-  // names them by those ids (content2-bots).
+  // The sixteen products are `products` below (the game's prefix `yard_`: the fingerprint's rule, every product id starts
+  // with one prefix); lookOf names them by those ids (content2-bots). The shared list holds them at stage 2 only (M1).
   iap: {
     packsFromRung: 4,
     // RULING2.md 15.12 (b): quotes of one product that may stand at once (the lead, 08:05)
@@ -1640,6 +1639,20 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       yard_plaque: { slot: "plaque", value: "look.plaque" },
     },
     looks: ["colour", "dressing", "plaque", "sign"],
+    // s2-fix-content (M1; rulings 19.9, 21.8, 22 M1): the sixteen products of 2.15.1 are DEFINED here (kinds and H by
+    // ruling 9.1; fallbackPrice only shows before the store answers). build-yard.py fills title and description from
+    // the names register (product.<id without the prefix>) and mirrors this list into the shared
+    // monetization.iap.products ONLY at release.stage 2 or more: a stage-1 build asks the store for nothing.
+    products: [
+      ...[1, 2, 3, 4, 5, 6].map((i) => ({ id: `yard_colour${i}`, kind: "cosmetic" as const, fallbackPrice: "$1.99" })),
+      ...[1, 2, 3, 4].map((i) => ({ id: `yard_dressing${i}`, kind: "cosmetic" as const, fallbackPrice: "$2.99" })),
+      { id: "yard_plaque", kind: "cosmetic", fallbackPrice: "$2.99" },
+      { id: "yard_skipAds", kind: "skipAds", fallbackPrice: "$4.99" },
+      { id: "yard_pack2", kind: "hoursOfIncome", fallbackPrice: "$1.99", value: 2 },
+      { id: "yard_pack5", kind: "hoursOfIncome", fallbackPrice: "$4.99", value: 5 },
+      { id: "yard_pack10", kind: "hoursOfIncome", fallbackPrice: "$9.99", value: 10 },
+      { id: "yard_pack20", kind: "hoursOfIncome", fallbackPrice: "$19.99", value: 20 },
+    ],
   },
   // Rewarded ads (2.16; L3): 15 + 3 x 4 = 27 minutes of I a day at most against 0.04 x a day's income; dayHours_h the habit's
   // production hours by rung (ruling 10.6: 2 x (away cap + Night watch) + 0.3 h played).

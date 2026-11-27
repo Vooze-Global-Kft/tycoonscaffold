@@ -6,7 +6,7 @@
  * refusal a card shows are the ones the action applies (shown equals applied); the action adds only
  * `priceUpdated` (shown ≠ the check's price) and the change itself.
  */
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
@@ -142,12 +142,8 @@ export function buyCheck(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): Pur
   const gate = gateRefusal(c, g, it.gate);
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   const price = roundMoney(it.price);
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford' };
   const after = { ...g, salvage: { ...g.salvage, owned: [...g.salvage.owned, item] } };
-  const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'locked' };
-  return { price, refusal: null, state: 'buy' };
+  return moneyAndCeiling(cfg, g, price, after);
 }
 
 /** The next unbought crew key of a role (shop order), or null. */
@@ -165,14 +161,31 @@ export function hireCheck(cfg: SalvageConfig, g: SalvageGame, role: CrewRole): P
   const gate = gateRefusal(cfg.salvage, g, it.gate);
   if (gate) return { price: null, refusal: gate, state: 'locked', key };
   const price = roundMoney(it.price);
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford', key };
   const slot = g.salvage.crew.filter((m) => m.role === role).length;
   const member = { id: `${role}.${slot}`, role, slot, name: 0, level: 1, job: 'idle' as const, phase: 'wait' as const, from: { place: 'office' }, to: { place: 'office' }, t0: g.salvage.t, t1: g.salvage.t, carries: null, load: [], claims: [], cut: null };
   const after = { ...g, salvage: { ...g.salvage, crew: [...g.salvage.crew, member] } };
-  const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'locked', key };
-  return { price, refusal: null, state: 'buy', key };
+  return { ...moneyAndCeiling(cfg, g, price, after), key };
+}
+
+/**
+ * The last two refusals of a purchase check: the money (cash, earmark) and the ceiling. THE FIRST YARD (the works
+ * not opened): the money first, as merged and as on the owner's phone. FROM THE WORKS' OPENING (s2c-fix-money M10,
+ * E10): the ceiling first, so an item the ceiling forbids reads its ceiling refusal whatever the cash, and the
+ * headroom U (shop.ts) never depends on the cash in hand. The price is the same either way.
+ */
+function moneyAndCeiling(cfg: SalvageConfig, g: SalvageGame, price: number, after: SalvageGame): PurchaseCheck {
+  const ceilFirst = worksOpened(g.salvage);
+  if (ceilFirst) {
+    const ceil = ceilingRefusal(cfg, g, after);
+    if (ceil) return { price, refusal: ceil, state: 'locked' };
+  }
+  const money = cashRefusal(g, price);
+  if (money) return { price, refusal: money, state: 'cantAfford' };
+  if (!ceilFirst) {
+    const ceil = ceilingRefusal(cfg, g, after);
+    if (ceil) return { price, refusal: ceil, state: 'locked' };
+  }
+  return { price, refusal: null, state: 'buy' };
 }
 
 // ============================================================================ levels (E13a, E25)
@@ -340,11 +353,7 @@ export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   if (L >= maxLevelOf(c, g, target)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
   const price = levelPrice(cfg, g, target)!;
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford' };
-  const ceil = ceilingRefusal(cfg, g, levelled(g, target));
-  if (ceil) return { price, refusal: ceil, state: 'locked' };
-  return { price, refusal: null, state: 'buy' };
+  return moneyAndCeiling(cfg, g, price, levelled(g, target));
 }
 
 /** The state with one more level of the target (for the ceiling's "R after"). */

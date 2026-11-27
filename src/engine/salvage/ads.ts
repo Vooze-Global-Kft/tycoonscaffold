@@ -102,11 +102,17 @@ export function sellNow(cfg: SalvageConfig, g: SalvageGame, grade: GradeId): Sel
   return { day, price: priceOf(cfg.salvage, grade, day), grams };
 }
 
-/** The spot buyer's bonus on a Sell as shown: min(spotShare × the Sell's amount, spotCap_min of I), or 0. */
+/**
+ * The spot buyer's bonus on a Sell as shown: min(spotShare × the Sell's amount, spotCap_min of I), or 0. AN OFFER
+ * TOO SMALL TO MATTER IS NOT MADE (s2c-fix-money M8): a bonus under `ads.minOffer_min` minutes of I is 0 (no
+ * button, and adPaid refuses it).
+ */
 export function spotBonusOf(cfg: SalvageConfig, g: SalvageGame, shown: SellShown, I = ratedI(cfg, g)): number {
   const d = adsDef(cfg.salvage);
   if (!d) return 0;
-  return Math.max(0, Math.min(roundMoney(d.spotShare * sellAmount(shown)), minutesOfI(d.spotCap_min, I)));
+  const x = Math.max(0, Math.min(roundMoney(d.spotShare * sellAmount(shown)), minutesOfI(d.spotCap_min, I)));
+  const min = d.minOffer_min ?? 0;
+  return min > 0 && x < minutesOfI(min, I) - 1e-9 ? 0 : x;
 }
 
 /**

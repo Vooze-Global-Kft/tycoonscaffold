@@ -48,6 +48,7 @@ import { awayPass } from '../../src/engine/salvage/away';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
 import { own } from '../../src/engine/salvage/rate';
+import { shipped2Config } from '../../src/engine/fixtures/shipped2';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -75,8 +76,11 @@ function arg(name: string, dflt: string | null = null): string | null {
 function loadCfg(file: string): R.SalvageConfig {
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
   // --stage 2 (content2-bots): the real content read with release.stage 2, as a stage-2 copy of game.json would be; the
-  // real content's key stays 1 (ruling 18.1 S1). The shared product list rides along (the shop reads cfg.monetization).
+  // real content's key stays 1 (ruling 18.1 S1). The shared product list rides along (the shop reads cfg.monetization):
+  // since M1 (s2-fix-content) it is empty at release.stage 1, so a stage-2 run reads the game through the one helper
+  // (src/engine/fixtures/shipped2.ts: release.stage 2 and the shared list mirrored from salvage.iap.products).
   const stage = Number(arg('stage', '0'));
+  if (stage >= 2) return shipped2Config(raw);
   const salvage = SalvageSchema.parse(stage ? { ...raw.salvage, release: { ...(raw.salvage.release ?? {}), stage } } : raw.salvage);
   return { mode: 'salvage', salvage, ...(stage ? { monetization: raw.monetization } : {}) } as unknown as R.SalvageConfig;
 }

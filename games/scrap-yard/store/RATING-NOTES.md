@@ -10,7 +10,7 @@ and see docs/design/research/policy.md for the rules behind them. Not legal advi
 |---|---|
 | Mode | salvage |
 | Ads | Yes: Google AdMob, rewarded (opt-in). Highest ad content rating: PG (parental guidance) (monetization.ads.maxAdContentRating) |
-| In-app purchases | Yes: 16 products (cosmetic, skipAds, hoursOfIncome) |
+| In-app purchases | No |
 | Premium currency | Not sold |
 | Random items (chests) | None: no chests, boxes or random rewards of any kind |
 | Random items SOLD (money or any currency) | No |
@@ -65,7 +65,7 @@ never Families. The store step writes the decided answers here, for the build it
 
 - Category: Game. Violence, fear, sexuality, language, controlled substances, crude humour: No.
 - Simulated gambling: No. Users can interact or exchange content: No. Shares location: No.
-- Digital purchases: Yes.
+- Digital purchases: No.
 - In-game purchases of random items (loot boxes): **No**.
 - App content page, Ads: **Contains ads: Yes**.
 
@@ -80,7 +80,7 @@ disclosure page before you submit; they change.
 | Approximate location (from the IP address) | AdMob | Advertising, fraud prevention | Yes (AdMob) | Not linked |
 | App interactions (screens, purchases made, ad views) | Firebase Analytics | Analytics | No | Not linked |
 | Crash logs and diagnostics | Firebase Crashlytics | App performance | No | Not linked |
-| Purchase history | RevenueCat | App functionality | No | Linked (anonymous app user id) |
+| Purchase history | RevenueCat (no products configured yet) | App functionality | No | Linked (anonymous app user id) |
 
 - Data encrypted in transit: Yes (all SDKs use HTTPS).
 - Players can ask for deletion: say how in the privacy policy (an email address is enough).

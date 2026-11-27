@@ -123,9 +123,9 @@ export function setPacksHidden(cfg: SalvageConfig, g: SalvageGame, on: boolean, 
  * (the question is asked once a save). Event `ageAsked`.
  */
 export function setAgeBand(cfg: SalvageConfig, g: SalvageGame, year: number, now: number, clock: number, events?: SalvageEvent[]): SalvageGame {
-  void cfg;
   void clock;
-  if (g.salvage.iap.ageBand !== null) return nothing(g, events);
+  // s2c-fix-money (M2): a content without a shop (release.stage 1: stageView drops `iap`) keeps no age band: nothing is saved.
+  if (!iapDef(cfg.salvage) || g.salvage.iap.ageBand !== null) return nothing(g, events);
   const band = ageBandOf(year, now);
   if (!band) {
     events?.push({ type: 'refused', key: 'badYear', args: {}, retry: null });

@@ -20,7 +20,7 @@ script reads it through tsx and lays over it, in this order:
      (keys beginning with $ dropped; the ORDER is the content pass's and lives in that file);
   4. the keys the contract has no field for yet (SALVAGE_PENDING: levels.floor, levels.floorGrowth);
   5. the wiring engineer's top-level block (scripts/content/yard_top.py: app, soundPack, theme, strings,
-     store; monetization.iap.products).
+     store), then the shop's products (salvage.iap.products, mirrored into monetization.iap.products at stage 2 only).
 Every other top-level key of the existing game.json (economy, businesses, characters, story,
 monetization, schemaVersion, id, mode) is kept as it is. game.json is never edited by hand.
 
@@ -47,7 +47,7 @@ the map's (9: 3.6, the merged map) are yard_map.py's check_works; the build itse
 WARNINGS here, listed for Phase B (they never refuse until their inputs exist):
   (3)  a plate's price against max(works.floor, tau_r x ΔI) from bots/plates.json (the payback rule's table);
   (4)  a theta_r beyond a metal's sources at a person's pace (the bots);
-  (7)  a pack's H against tau_4 from the shared products' list (monetization.iap.products, Phase B);
+  (7)  a pack's H against tau_4 from the mode's product list (salvage.iap.products; the shared list holds it at stage 2 only);
   (10) a text key the content names (a place's label, a plate's permit) missing from textKeys.ts, and a
        works-layer grade or thing without its words in text.json (strings2's, Phase B);
   (11) a plate's ΔI at its planned moment (the bots).
@@ -157,33 +157,41 @@ def build():
     return game, manifest_ids()
 
 
-# STAGE 2 (2.15.1, B5, P9; content2-bots): the sixteen products in the shared list, their titles and descriptions from the
-# names register (product.<id>), kinds and H fixed by ruling 9.1, prices the owner's (the store's; fallbackPrice is only
-# what shows before the store answers); monetization.ads.initOn 'firstOffer' (ruling 13.7). Everything else of
-# monetization (ad unit ids, banner switches) is kept as it is.
-PRODUCTS = [('colour%d' % i, 'cosmetic', None, '$1.99') for i in range(1, 7)] + \
-    [('dressing%d' % i, 'cosmetic', None, '$2.99') for i in range(1, 5)] + \
-    [('plaque', 'cosmetic', None, '$2.99'), ('skipAds', 'skipAds', None, '$4.99'),
-     ('pack2', 'hoursOfIncome', 2, '$1.99'), ('pack5', 'hoursOfIncome', 5, '$4.99'),
-     ('pack10', 'hoursOfIncome', 10, '$9.99'), ('pack20', 'hoursOfIncome', 20, '$19.99')]
-
-
+# STAGE 2 (2.15.1, B5, P9; content2-bots; s2-fix-content M1, rulings 19.9, 21.8 and 22 M1): the sixteen products are
+# DEFINED in the mode's own content (salvage.iap.products in salvage.content.ts: ids, kinds, H by ruling 9.1, the owner's
+# fallback prices); their titles and descriptions come from the names register (product.<id without the prefix>). The
+# list is MIRRORED, entry for entry, into the shared monetization.iap.products ONLY when the content's release.stage is
+# 2 or more: at release.stage 1 the shared list is EMPTY, so a stage-1 build asks the store for nothing, reads no
+# listing and subscribes no purchase listener (grantsHoursOfIncome is false). monetization.ads.initOn is 'firstOffer'
+# at both stages (ruling 13.7; the first yard makes no offer, so the ad SDK never starts). Everything else of
+# monetization (ad unit ids, banner switches) is kept as it is. Tests and bots that need stage 2 build their
+# configuration with src/engine/fixtures/stage2.ts, which mirrors the same block the same way.
 def with_products(game):
     reg = load(os.path.join(ROOT, 'scripts', 'content', 'yard', 'names.json'))
     by = {e.get('productId'): e for e in reg.get('names', []) if isinstance(e, dict) and str(e.get('id', '')).startswith('product.')}
+    s = game['salvage']
+    iap = s.get('iap') or {}
+    items = iap.get('products') or []
+    if len(items) != 16:
+        raise SystemExit('salvage.iap.products holds %d products, 2.15.1 has sixteen' % len(items))
     out = []
-    for pid, kind, h, price in PRODUCTS:
+    for it in items:
+        pid = it['id'].split('_', 1)[1]
         e = by.get(pid)
         if not e:
             raise SystemExit('names.json has no product.%s (2.15.1\'s sixteen products)' % pid)
-        p = {'id': 'yard_' + pid, 'kind': kind, 'title': e['title'], 'description': e.get('descriptionApple') or e['title'], 'fallbackPrice': price}
-        if h is not None:
-            p['value'] = h
+        p = {'id': it['id'], 'kind': it['kind'], 'title': e['title'], 'description': e.get('descriptionApple') or e['title'], 'fallbackPrice': it['fallbackPrice']}
+        if it.get('value') is not None:
+            p['value'] = it['value']
         out.append(p)
-    mon = dict(game.get('monetization') or {})
-    mon['iap'] = {**(mon.get('iap') or {}), 'products': out}
-    mon['ads'] = {**(mon.get('ads') or {}), 'initOn': 'firstOffer'}
+    s = dict(s)
+    s['iap'] = {**iap, 'products': out}
     game = dict(game)
+    game['salvage'] = s
+    stage = (s.get('release') or {}).get('stage', 2)
+    mon = dict(game.get('monetization') or {})
+    mon['iap'] = {**(mon.get('iap') or {}), 'products': [dict(p) for p in out] if stage >= 2 else []}
+    mon['ads'] = {**(mon.get('ads') or {}), 'initOn': 'firstOffer'}
     game['monetization'] = mon
     return game
 
@@ -450,11 +458,11 @@ def warnings(s, game):
     # (4) and (11): what the bots measure
     out.append('(4) theta_r against each metal\'s sources at a person\'s pace: not measured (the bots, Phase B); the tool part of B4 is lintStage2\'s')
     out.append('(11) each plate\'s ΔI at its planned moment above 0: not measured (the bots, Phase B); the +5 % at p̄ is lintStage2\'s')
-    # (7) the shared products' H
-    prods = ((game.get('monetization') or {}).get('iap') or {}).get('products') or []
+    # (7) the packs' H (M1: the mode's own list, salvage.iap.products; the shared list holds it at stage 2 only)
+    prods = (s.get('iap') or {}).get('products') or []
     packs = [p for p in prods if p.get('kind') == 'hoursOfIncome']
     if not packs:
-        out.append('(7) no hoursOfIncome product in monetization.iap.products yet (Phase B, the shared schema): checked against ruling 9.1\'s fixed 2, 5, 10, 20 h')
+        out.append('(7) no hoursOfIncome product in salvage.iap.products: checked against ruling 9.1\'s fixed 2, 5, 10, 20 h')
     elif len(tau) >= 4 and tau[3]:
         for p in packs:
             if (p.get('value') or 0) >= tau[3]:
@@ -511,9 +519,21 @@ def selftest():
     c = copy.deepcopy(s)
     c['worksLayer']['grades']['zzz'] = dict(c['worksLayer']['grades']['ss'])
     expect('(10) warns on a works-layer grade without words', any('zzz' in w for w in warnings(c, game)))
-    g2 = copy.deepcopy(game)
-    g2.setdefault('monetization', {}).setdefault('iap', {})['products'] = [{'id': 'pack30', 'kind': 'hoursOfIncome', 'value': 30}]
-    expect('(7) warns on a pack of 30 h against tau_4 22 h', any('pack30' in w for w in warnings(s, g2)))
+    c = copy.deepcopy(s)
+    c['iap']['products'] = [{'id': 'yard_pack30', 'kind': 'hoursOfIncome', 'value': 30, 'fallbackPrice': '$9.99'}]
+    expect('(7) warns on a pack of 30 h against tau_4 22 h', any('pack30' in w for w in warnings(c, game)))
+    # M1 (rulings 19.9, 21.8, 22 M1): the shared list is empty at release.stage 1 and mirrors the mode's block at stage 2
+    mon = (game.get('monetization') or {}).get('iap') or {}
+    stage = (s.get('release') or {}).get('stage', 2)
+    expect('M1: the shared product list is empty at release.stage 1 (it holds the mode\'s %d at stage 2)' % len(s['iap']['products']),
+           (mon.get('products') == []) if stage < 2 else (mon.get('products') == s['iap']['products']))
+    g1 = copy.deepcopy(game)
+    g1['salvage']['release'] = {'stage': 2}
+    g1['monetization']['iap']['products'] = []
+    expect('M1: at release.stage 2 the build mirrors the sixteen products', with_products(g1)['monetization']['iap']['products'] == s['iap']['products'])
+    g1['salvage']['release'] = {'stage': 1}
+    expect('M1: at release.stage 1 the build mirrors none; ads.initOn stays firstOffer',
+           with_products(g1)['monetization']['iap']['products'] == [] and with_products(g1)['monetization']['ads']['initOn'] == 'firstOffer')
     print('selftest: %d failed' % fails)
     return 1 if fails else 0
 
