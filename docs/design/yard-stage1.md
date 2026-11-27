@@ -744,5 +744,21 @@ this section and an earlier one differ, this one is right. Merged to main on 26 
    of them opens, shows or is saved until its screens exist (`yard-stage2.md`). A first-yard save
    (layout 2) loads as layout 3 with everything kept (checked with saves made by the merged first
    yard at minutes 4 to 70).
-8. **Next (not in this merge).** The one button gets in ("Get in" within reach of the free truck);
-   a "counting" card before the away pass on returning; fewer presence samples while he stands.
+8. **The second update (26 November, evening; `yard-decisions.md` part 6, 18.5).** THE ONE BUTTON
+   GETS IN: on foot within `truck.enter + truck.rearm` of the free truck, and nearer it than the
+   point of the place whose card would open, the frame's `boss.button` is 'getIn' and the disc reads
+   "Get in" (order: Step out, Get in, Open); a press seats him. RETURNING: an absence long enough
+   for the away card first shows a counting card in the away card's frame; the pass runs once, two
+   frames later (the mode hands the store its engine wrapped: `src/modes/salvage/returning.ts`);
+   ticks, the presence and every action are held meanwhile; an absence that waited when the app was
+   killed is paid at the next start, once (`salvage.clock.highMs` is the device time up to which the
+   yard has been computed, and an absence is always counted from it). A LATE PHONE IS NOT AN ABSENT
+   BOSS: a standing boss's sample every 0.3 s (0.1 s while he steers; at once when steering starts
+   or stops, when he gets in or out, when his standing time reaches the work delay), and
+   `feel.staleS` 1.5 s (it was 0.6). ON SCREEN: the boss slides along a standing vehicle's body,
+   crew are drawn stepped out of its outline, a vehicle or a container that covers him turns
+   see-through; the camera eases onto the truck; "No room: weigh your load at the scale" is shown
+   once per load.
+9. **Next.** The away pass itself made cheaper (it is behind the counting card, not faster); the
+   safety net's clock started when the loading curtain parts; a worker's next leg handed ahead so
+   that a late table never makes him stand.

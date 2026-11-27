@@ -422,6 +422,13 @@ export const TruckSchema = z.object({
    */
   pickFromRung: z.number().int().optional(),
   /**
+   * RULING2.md 22 E4 (a) (the key asked of the content's owner; s2-fix-content): from the works' opening, no open
+   * partner's full skip waits longer than this many of the hired driver's trips (the driver keeps every open partner
+   * served; the loop's truck.ts reads it). Also the fair share of build-yard.py's supply check (L2, E4 (c)). Absent:
+   * no such rule (the first yard's driver at release.stage 1).
+   */
+  fairAfter_trips: z.number().int().positive().optional(),
+  /**
    * owner1 (RULING-owner1 V3): no vehicle moves faster than this inside the fence, metres a second (the hired driver's
    * truck, the arrivals, the merchant's flatbed); beyond the gate the lane's speed is raised so that a trip's total is
    * what it was (truck.ts tripSpeeds). Absent: no yard limit (the first yard's speeds).
@@ -627,6 +634,15 @@ export const LadderSchema = z.object({
   thetaShare: z.number().nonnegative().optional(),
   /** STAGE 2 (2.11; asked by rules-money, 26 Nov): the § a tonne in theta_r = max(theta, thetaShare x T_r x thetaPerT). */
   thetaPerT: z.number().positive().optional(),
+  /**
+   * RULING2.md 21.6 and 22 L2, E4 (c) (s2-fix-content): the inputs of build-yard.py's supply check, which refuses a
+   * content in which a rung asks for more materials than the plates and partners open below it can supply, or at a
+   * rate that cannot reach the rung's theta within its band. `trips_h`: the hired driver's trips an hour assumed for
+   * the fair share (each open partner gets at least trips_h / (truck.fairAfter_trips + 1) of its skips an hour, at
+   * most its own fill rate); `hours_h[r-1]`: the yard hours a yard spends below rung r by the end of rung r's band at
+   * the twice-a-day habit (null: the rate is not checked for that rung, only the count). Read by no rule.
+   */
+  supply: z.object({ trips_h: z.number().positive(), hours_h: z.array(z.number().positive().nullable()) }).optional(),
 });
 export type LadderDef = z.infer<typeof LadderSchema>;
 
@@ -802,6 +818,12 @@ const LotKindSchema = z.object({
   from: z.string(),
   /** A kind comes only while the player owns one of these (a machine of the first yard or a plate; the analyser counts as stainless's line, decision 9). Empty: always ("an intermediate sold whole"). */
   line: z.array(id).default([]),
+  /**
+   * X3 (b), RULING2 22 (real physics, L2): the mass range [min, max] in kilograms a real object of this kind has. A
+   * lot's mass is drawn inside it and its worth follows from mass and grades; μ × I chooses WHICH kind comes (the
+   * heaviest whose worth is at most μ × I), never a multiplier on its mass. Absent: the object's own gross mass.
+   */
+  mass_kg: z.tuple([z.number().positive(), z.number().positive()]).optional(),
 });
 const LotsSchema = z.object({
   period_s: z.number().positive(),
@@ -846,6 +868,21 @@ const BankSchema = z.object({
 });
 /** The mode's part of real money (2.15; the sixteen products are the shared list's, B5). */
 export const LOOK_SLOTS = ['colour', 'dressing', 'plaque', 'sign'] as const;
+/**
+ * s2-fix-content (M1; rulings 19.9, 21.8, 22 M1): one product of the mode's shop, DEFINED here in the mode's content
+ * (dark at release.stage 1 with the rest of `iap`). build-yard.py fills title and description from the names register
+ * and MIRRORS the list, entry for entry, into the shared `monetization.iap.products` only when release.stage is 2 or
+ * more: at stage 1 the shared list is empty (the store is asked for nothing). Tests and bots get a stage-2
+ * configuration through src/engine/fixtures/shipped2.ts (the one helper).
+ */
+const IapProductItem = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9]*_[A-Za-z0-9]+$/),
+  kind: z.enum(['cosmetic', 'skipAds', 'hoursOfIncome']),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  fallbackPrice: z.string(),
+  value: z.number().positive().optional(),
+});
 const IapSchema = z.object({
   packsFromRung: z.literal(4),
   /** RULING2.md 15.12 (b), 15.13 (c): how many quotes of one product may stand at once: fixed at 3. */
@@ -855,8 +892,10 @@ const IapSchema = z.object({
   /** Product id -> the look slot it fills and the look's register id. */
   lookOf: z.record(id, z.object({ slot: z.enum(LOOK_SLOTS), value: z.string() })),
   looks: z.array(z.enum(LOOK_SLOTS)),
+  /** The shop's products (2.15.1; s2-fix-content M1): the mode's own list, mirrored into the shared list at stage 2 only. */
+  products: z.array(IapProductItem).optional(),
 });
-/** Rewarded ads (2.16). `dayHours_h`: "a day's income" in production hours of the twice-a-day habit, by rung (ruling 10.6; null below rung 3). */
+/** Rewarded ads (2.16). `dayHours_h`: "a day's income" in production hours of the twice-a-day habit, by rung (ruling 10.6; real at every rung since ruling 22 M8, so that the day's ceiling holds wherever the second session begins; null: no day named). */
 const AdsSchema = z.object({
   awayPerDay: z.number().int().nonnegative(),
   awayMinAbsence_min: z.number().positive(),
@@ -867,6 +906,8 @@ const AdsSchema = z.object({
   spotPerDay: z.number().int().nonnegative(),
   maxDayShare: z.number().min(0).max(1),
   dayHours_h: z.array(z.number().positive().nullable()),
+  /** s2c-fix-money (M8): the spot buyer offers a video only for a reward of at least this many minutes of I (ruling 22 M8: 2). Absent: no minimum. */
+  minOffer_min: z.number().nonnegative().optional(),
 });
 
 /**
@@ -1368,6 +1409,14 @@ export function lintStage2(s0: SalvageContent): string[] {
   const top = s.ladder.topRung ?? 3;
   if (s.ads) {
     const a = s.ads;
+    // ruling 22 M8 (s2-fix-content): rungs 1 and 2 carry real values by the same habit (2 x (away cap + Night watch) + the hour played); the day's
+    // ceiling there is the rule's (ads.ts adDayLimitMinutes), not this fit, which the first two rungs' short days cannot meet.
+    for (let r = 1; r < 3 && r <= s.awayCapByRung_h.length; r++) {
+      const h = a.dayHours_h[r - 1];
+      if (h === null || h === undefined) continue;
+      const want = Math.round((2 * (s.awayCapByRung_h[r - 1] + s.nightWatch_h) + HABIT_PLAY_H) * 100) / 100;
+      if (!near(h, want)) out.push(`ads.dayHours_h[${r - 1}] (rung ${r}) is ${h} h; the habit gives 2 x (${s.awayCapByRung_h[r - 1]} + ${s.nightWatch_h}) + ${HABIT_PLAY_H} = ${want} h (ruling 10.6, 22 M8)`);
+    }
     for (let r = 3; r <= top; r++) {
       const h = a.dayHours_h[r - 1];
       if (h === null || h === undefined) {
@@ -1548,6 +1597,13 @@ export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] 
     const a = [...s.iap.packsOff].sort().join(',');
     const b = [...PACKS_OFF_FIXED].sort().join(',');
     if (a !== b) out.push(`iap.packsOff is not the fixed list (the EEA and Switzerland): ${a} against ${b}`);
+    // s2-fix-content (M1): the mode's own product list: ids unique under one prefix, every look a cosmetic of the list, a pack's hours given
+    const prods = s.iap.products ?? [];
+    const ids = new Set(prods.map((p) => p.id));
+    if (ids.size !== prods.length) out.push('iap.products: two products share an id');
+    if (new Set(prods.map((p) => p.id.split('_')[0])).size > 1) out.push('iap.products: the ids do not share one prefix (the fingerprint\'s rule)');
+    for (const p of prods) if (p.kind === 'hoursOfIncome' && !p.value) out.push(`iap.products ${p.id}: a pack without its hours (value)`);
+    if (prods.length) for (const id of Object.keys(s.iap.lookOf)) if (!prods.some((p) => p.id === id && p.kind === 'cosmetic')) out.push(`iap.lookOf ${id} is not a cosmetic product of iap.products`);
   }
   // (g)
   for (const [pid, p] of Object.entries(L?.partners ?? {})) if (plates[p.opens]) out.push(`worksLayer.partners.${pid}.opens "${p.opens}" is a plate: the bridge partners open with a vehicle (2.9: the three-axle hook-lift)`);

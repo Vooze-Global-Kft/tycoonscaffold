@@ -1,175 +1,348 @@
 {
- "$comment": "yard-stage2.md 2.6.4: the payback rule's table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dI: § an hour of rated income the plate adds at its planned moment on the normal bots' yards (median of seeds); price: max(works.floor, tau_r x dI).",
+ "$comment": "yard-stage2.md 2.6.4: the payback rule's table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dE (RULING2.md 19.1): § an hour the yard earns more at usual prices with the plate (bought, set down, started up, a heat poured) than without, at its planned moment on the normal bots' yards, mean of seeds; price: max(works.floor, tau_r x dE) to three figures; dI beside (rated income, not read).",
  "seeds": [
-  1
+  1,
+  2,
+  3,
+  4,
+  5
  ],
  "plates": {
   "crane": {
+   "dE": -23010,
    "dI": 0,
-   "I": 45934,
+   "I": 70752,
+   "G": 82014,
    "at_h": 15.5,
    "gate": 3,
    "tau_h": 9,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    -26499,
+    -20666,
+    -20032,
+    -20849,
+    -27003
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "shear": {
+   "dE": 0,
    "dI": 0,
-   "I": 27690,
+   "I": 28672,
+   "G": 34349,
    "at_h": 5,
    "gate": 3,
    "tau_h": 9,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "baler": {
-   "dI": 0,
-   "I": 27690,
+   "dE": -553,
+   "dI": 740,
+   "I": 27932,
+   "G": 32083,
    "at_h": 5,
    "gate": 3,
    "tau_h": 9,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
-    0
+    -114,
+    -1019,
+    -646,
+    -758,
+    -226
+   ],
+   "perSeedI": [
+    734,
+    740,
+    841,
+    835,
+    734
    ]
   },
   "analyser": {
+   "dE": 3236,
    "dI": 0,
-   "I": 27690,
+   "I": 28672,
+   "G": 31309,
    "at_h": 5,
    "gate": 3,
    "tau_h": 9,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 29100,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    2993,
+    3294,
+    3638,
+    3105,
+    3148
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "depollution": {
+   "dE": 141,
    "dI": 0,
-   "I": 27932,
+   "I": 48730,
+   "G": 57440,
    "at_h": 9.3,
    "gate": 3,
    "tau_h": 9,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    559,
+    311,
+    0,
+    164,
+    -328
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "granulator": {
-   "dI": 0,
-   "I": 45934,
+   "dE": 183,
+   "dI": 157,
+   "I": 70595,
+   "G": 80764,
    "at_h": 15.5,
    "gate": 3,
    "tau_h": 9,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
-    0
+    17,
+    -295,
+    230,
+    -192,
+    1156
+   ],
+   "perSeedI": [
+    157,
+    157,
+    150,
+    153,
+    157
    ]
   },
   "shredder": {
-   "dI": 0,
-   "I": 45688,
+   "dE": 19027,
+   "dI": 5605,
+   "I": 78132,
+   "G": 70837,
    "at_h": 30,
    "gate": 4,
    "tau_h": 22,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 419000,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
-    0
+    17168,
+    21630,
+    20624,
+    17352,
+    18363
+   ],
+   "perSeedI": [
+    5517,
+    5605,
+    5342,
+    5605,
+    5605
    ]
   },
   "eddy": {
+   "dE": 0,
    "dI": 0,
-   "I": 45688,
+   "I": 91184,
+   "G": 107168,
    "at_h": 54.8,
    "gate": 4,
    "tau_h": 22,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "sorter": {
+   "dE": 0,
    "dI": 0,
-   "I": 45688,
+   "I": 91184,
+   "G": 107168,
    "at_h": 54.8,
    "gate": 4,
    "tau_h": 22,
    "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "rotary": {
+   "dE": 3526,
    "dI": 0,
-   "I": 45688,
+   "I": 83738,
+   "G": 89313,
    "at_h": 30,
    "gate": 4,
    "tau_h": 22,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 77600,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    3635,
+    3203,
+    3733,
+    3273,
+    3785
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "induction": {
-   "dI": 0,
-   "I": 45688,
+   "dE": 7794,
+   "dI": 1091,
+   "I": 86720,
+   "G": 92600,
    "at_h": 38.3,
    "gate": 4,
    "tau_h": 22,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 171000,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
-    0
+    9254,
+    6263,
+    7670,
+    8234,
+    7550
+   ],
+   "perSeedI": [
+    1070,
+    1091,
+    942,
+    1091,
+    1091
    ]
   },
   "breaker": {
+   "dE": 1730,
    "dI": 0,
-   "I": 45688,
+   "I": 87811,
+   "G": 99749,
    "at_h": 38.3,
    "gate": 4,
    "tau_h": 22,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 38100,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    1679,
+    395,
+    2813,
+    2530,
+    1234
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   },
   "smelter": {
+   "dE": 1252,
    "dI": 0,
-   "I": 45688,
+   "I": 87811,
+   "G": 101478,
    "at_h": 46.5,
    "gate": 4,
    "tau_h": 22,
-   "price": 3000,
-   "seeds": 1,
-   "bought": 1,
+   "price": 27500,
+   "seeds": 5,
+   "bought": 5,
    "perSeed": [
+    1253,
+    1005,
+    1496,
+    1253,
+    1253
+   ],
+   "perSeedI": [
+    0,
+    0,
+    0,
+    0,
     0
    ]
   }

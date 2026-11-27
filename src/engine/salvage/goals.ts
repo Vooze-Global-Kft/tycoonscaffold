@@ -13,7 +13,7 @@
  * shows the goal after it.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
-import { advice, cardForItem } from './advice';
+import { advice, adviceWait, cardForItem } from './advice';
 import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
 import { pointOf, siteRect, skipZone, stopOf } from './positions';
 import { owner1Rules } from './content';
@@ -435,8 +435,10 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
   const nxt = list[1];
   const m = meterOf(cfg, g, cur.d);
   const step = loadStep(cfg, g, cur.d.done);
+  const waits = rungWaits(cfg, g, cur.d);
   return {
     ...(step ? { step: step.text } : {}),
+    ...(waits ? { waits } : {}),
     n: cur.n,
     id: cur.d.id,
     text: goalText(cfg, g, cur.d),
@@ -447,6 +449,18 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
     next: nxt ? goalText(cfg, g, nxt.d) : null,
     optional: !!cur.d.optional,
   };
+}
+
+/**
+ * s2-fix-small (R3, RULING2 24): a rung goal (`rung:<n>`) carries what that rung waits for (advice.ts adviceWait: the
+ * tonnes still to supply, or the material its range lacks and who brings it), from the works' opening only (adviceWait
+ * is null before: the first yard's goal card is as merged). Absent for every other goal.
+ */
+function rungWaits(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): Goal['waits'] {
+  const parts = d.done.split(':');
+  if (parts[0] !== 'rung') return undefined;
+  const w = adviceWait(cfg, g);
+  return w && w.rung === (Number(parts[1]) || 2) ? w : undefined;
 }
 
 /** The clipboard's goal list: every goal offered so far with its state (done ticked). */

@@ -22,7 +22,7 @@ export { boardX, hash01, marketTime, priceBoard, marketDayCfg as marketDay, pric
 export { ceilingFor, levelPrice, shopPrice } from './salvage/ladder';
 export { industryTable, rivalGrams } from './salvage/rivals';
 export { goalList, nextGoal } from './salvage/goals';
-export { advice, reserve } from './salvage/advice';
+export { advice, adviceLine, adviceWait, reserve } from './salvage/advice';
 export { awayCard, cardOfCfg as cardOf, processBoard, skipLabel, skipLabels, topBar } from './salvage/cards';
 export { frameCfg as frame, loadFamily, pieceAt, specIndex, toolFor } from './salvage/frame';
 export { tickets } from './salvage/tickets';

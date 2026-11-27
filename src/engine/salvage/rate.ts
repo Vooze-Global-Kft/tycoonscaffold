@@ -16,8 +16,10 @@ import { openPartners, pickFromRung, ratedLoadNet } from './partners';
 import { FLOOR_CLEAR_SHARE, orderFromRung } from './crew';
 import { holdRelease } from './bays';
 import { roundTry } from './round';
+import { routesChanged } from './memo';
 import { worksOpen, worksOwn } from './works';
 import { floorSlots, pointOf, thingPos } from './positions';
+import { contentAt } from './layer';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
 /**
@@ -133,6 +135,8 @@ export function own(x: Ctx, item: string, t: number): void {
     void defOf;
   }
   if (item === 'truck') s.truck.owned = true;
+  // engine3: what is owned is read by the kept routes (the crucible's owned flag): works.ts routeOf.
+  routesChanged(x);
   // Stage 2's purchases (a plate never comes here: works.ts orderPlate; the three-axle truck, the forklift, the
   // pallet truck, the plasma cutter's own parts): the feature's file (s2a-fix; a stub: nothing).
   worksOwn(x, item, t);
@@ -574,6 +578,27 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   if (!byKey) rateCache.set(c, (byKey = new Map()));
   const hit = byKey.get(key);
   if (hit) return copyTerms(hit);
+  const raw = rawTerms(c, s, key);
+  // s2c-fix-money (E6): from the works' opening, I never falls when the yard gains (the envelope below); the first yard reads the replay as merged.
+  const t = c.works && s.counts?.bathSet !== undefined ? envelope(c, s, raw) : raw;
+  if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
+  byKey.set(key, t);
+  return copyTerms(t);
+}
+
+/**
+ * The replay's terms for the state's assets as they are (the first yard's replay, then the plates' terms and the Yard
+ * sale's premium once the works are open: join2b), cached by asset key apart from the envelope's cache (RAW_CACHE_MAX
+ * keys a content), so that the envelope's sub-states and the driver's ranks (loadRanks) are computed once. Read-only:
+ * callers copy.
+ */
+const RAW_CACHE_MAX = 512;
+const rawCache = new WeakMap<object, Map<string, RatedTerms>>();
+function rawTerms(c: Ctx['c'], s: Ctx['s'], key = assetKey(c, s)): RatedTerms {
+  let byKey = rawCache.get(c);
+  if (!byKey) rawCache.set(c, (byKey = new Map()));
+  const hit = byKey.get(key);
+  if (hit) return hit;
   const t = ratedCompute(c, s);
   // join2b: the plates' terms and the Yard sale's premium on top of the first yard's replay (nothing in the first yard).
   if (c.works && s.counts?.bathSet !== undefined) {
@@ -584,9 +609,87 @@ export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
     // the same terms are gross sales too (G_r, the bank's "Save up" with an agreement open, E9)
     t.sales = roundMoney(t.sales + (t.I - I1));
   }
-  if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
+  if (byKey.size >= RAW_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
   byKey.set(key, t);
-  return copyTerms(t);
+  return t;
+}
+
+/**
+ * RATED INCOME NEVER FALLS WHEN THE YARD GAINS (s2c-fix-money E6, RULING2 22; from the works' opening only). The
+ * replay plays the driver's own rule (full first, truck.ts), under which more skips of one partner can crowd another's
+ * heavier loads off the tipping floor, and a faster driver or cutter can change which loads fit, so one level more could
+ * LOWER the replay's I (the economy attacker: partnerFarm L2 -> L3 at rung 3, 61,911 -> 60,545). Packs, ads, the bank
+ * and the lots read I, so I takes new capacity only where it adds: the yard may leave any capacity unused, so I is the
+ * best replay over EFFECTIVE assets at most the state's own: each open partner's level, the driver's and each cutter's
+ * level, and the tool tier, each between 1 and its own value ("at least what it was without the new capacity"). The
+ * best is sought by coordinate ascent from the state's own assets (each dimension in turn at its best value with the
+ * others held, until a round changes nothing, at most ENVELOPE_ROUNDS rounds); every replay is cached (rawTerms). The
+ * terms returned are those of the replay that gives that I; the driver's ranks (`rank`) stay the state's own. A search,
+ * not the full box (exponential): measured on the frozen stage-2 states and the bots' states (fixMoney.test.ts E6).
+ */
+const ENVELOPE_ROUNDS = 2;
+/** The effective levels a dimension of the envelope tries: top, top − 1, top − 2, top − 4, ... and 1 (a few, not every level: its cost). */
+function envelopeLevels(top: number): number[] {
+  const out: number[] = [top];
+  for (let k = 1; top - k > 1; k *= 2) out.push(top - k);
+  if (top > 1) out.push(1);
+  return out;
+}
+function envelope(c: Ctx['c'], s: Ctx['s'], raw: RatedTerms): RatedTerms {
+  type Dim = { top: number; at: (st: Ctx['s'], e: number) => Ctx['s'] };
+  const dims: Dim[] = [];
+  for (const [id, p] of Object.entries(c.partners)) {
+    const ps = s.partners[id];
+    if (!ps || !(ps.open || s.owned.includes(p.opens)) || ps.level <= 1) continue;
+    dims.push({ top: ps.level, at: (st, e) => ({ ...st, partners: { ...st.partners, [id]: { ...st.partners[id], level: e } } }) });
+  }
+  for (const m of s.crew) {
+    if (m.level <= 1) continue;
+    dims.push({ top: m.level, at: (st, e) => ({ ...st, crew: st.crew.map((x) => (x.id === m.id ? { ...x, level: e } : x)) }) });
+  }
+  if (s.tier > 1) dims.push({ top: s.tier, at: (st, e) => ({ ...st, tier: e }) });
+  if (!dims.length) return copyTerms(raw);
+  let best = raw;
+  // Two ascents: from the state's own assets, and from the LEAN start (every dimension at 1), so that the dimension a
+  // purchase adds (a cutter's first level, a better tool) cannot keep the search from what the yard had before it.
+  for (const lean of [false, true]) {
+    let cur = s;
+    const now = dims.map((d) => d.top);
+    if (lean) {
+      dims.forEach((d, k) => {
+        cur = d.at(cur, 1);
+        now[k] = 1;
+      });
+      const t = rawTerms(c, cur);
+      if (t.I > best.I + 1e-9) best = t;
+    }
+    for (let round = 0; round < ENVELOPE_ROUNDS; round++) {
+      let moved = false;
+      dims.forEach((d, k) => {
+        let bestE = now[k];
+        let here = rawTerms(c, cur).I;
+        for (const e of envelopeLevels(d.top)) {
+          if (e === now[k]) continue;
+          const t = rawTerms(c, d.at(cur, e));
+          if (t.I > best.I + 1e-9) best = t;
+          if (t.I > here + 1e-9) {
+            here = t.I;
+            bestE = e;
+          }
+        }
+        if (bestE !== now[k]) {
+          now[k] = bestE;
+          cur = d.at(cur, bestE);
+          moved = true;
+        }
+      });
+      if (!moved) break;
+    }
+  }
+  if (best === raw) return copyTerms(raw);
+  const out = copyTerms(best);
+  out.rank = raw.rank ? { ...raw.rank } : undefined;
+  return out;
 }
 
 /** The walks of the yard's map that I reads (content only; memoised per content object). */
@@ -790,7 +893,11 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const fCut = rules ? Math.min(1, share(drop.cut, cutHave)) : 1;
   const cutForLoads = rules ? Math.max(0, cutHave - fCut * drop.cut) : cutHave;
   const play = (): { q: QueueResult; f: number } => {
-    const q = rateQueue(c, parts, cutForLoads, carryHave, s.ladder.rung >= pickFromRung(c));
+    // s2c-fix-money (E6, RULING2 22): from the works' opening the VALUATION ranks the partners' loads by net per truck-second
+    // (the driver's own rule is the loop's, truck.ts; its ranks, `rank`, are unchanged), so a skip of lesser worth for the
+    // truck's time never crowds a better load off the floor.
+    const valueRank = c.works && s.counts?.bathSet !== undefined;
+    const q = rateQueue(c, parts, cutForLoads, carryHave, valueRank || s.ladder.rung >= pickFromRung(c), valueRank ? (p) => p.net / Math.max(1e-9, p.trip) : undefined);
     const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
     const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
     return { q, f: rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
@@ -853,7 +960,7 @@ interface QueueResult {
  * income2: at the steps' WHOLE hour: while the floor is busy the hands serve it before the drop-off).
  * Counted: the loads hooked in the second and third hours (the first fills the floor), halved.
  */
-function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false): QueueResult {
+function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false, rankOf: (p: QueuePart) => number = (p) => p.rank): QueueResult {
   const room = c.floorRoom_kg;
   const cutRate = cutHave / 3600;
   const carryRate = carryHave / 3600;
@@ -918,7 +1025,9 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
         }
         const a = parts[sk.k];
         const b = parts[skips[pick].k];
-        if (a.rank > b.rank || (a.rank === b.rank && (sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && a.id < b.id)))) pick = i;
+        const ra = rankOf(a);
+        const rb = rankOf(b);
+        if (ra > rb || (ra === rb && (sk.fullAt < skips[pick].fullAt - 1e-9 || (Math.abs(sk.fullAt - skips[pick].fullAt) <= 1e-9 && a.id < b.id)))) pick = i;
       }
       if (pick >= 0 && m + parts[skips[pick].k].mass > room + 1e-9) {
         wantMass = parts[skips[pick].k].mass;
@@ -1042,13 +1151,19 @@ export function loadRanks(c: Ctx['c'], s: Ctx['s']): Readonly<Record<string, num
   const key = assetKey(c, s);
   let byKey = rateCache.get(c);
   if (!byKey) rateCache.set(c, (byKey = new Map()));
-  let t = byKey.get(key);
-  if (!t) {
-    t = ratedCompute(c, s);
-    if (byKey.size >= RATE_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
-    byKey.set(key, t);
-  }
+  // s2c-fix-money (E6): the ranks are the state's own replay's (rawTerms), never the envelope's; the same values as before.
+  const t = byKey.get(key) ?? rawTerms(c, s, key);
   return t.rank && Object.keys(t.rank).length ? t.rank : null;
+}
+
+/**
+ * The REPLAY's income for the assets as they are (s2c-fix-money): rated income before the envelope of E6 (the yard's
+ * capacity all in use). What a purchase's rated gain is read from (the advice line's payback, a partner level's price,
+ * the card's "not the bottleneck now": ladder.ts ratedGain), at one replay a state; I itself (packs, ads, the bank, the
+ * lots) is ratedIncome. The same as ratedIncome in the first yard.
+ */
+export function replayIncome(c: Ctx['c'], s: Ctx['s']): number {
+  return rawTerms(c, s).I;
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */
@@ -1064,15 +1179,16 @@ export function ratedIncome0(c: Ctx['c'], s: Ctx['s']): number {
 
 /** Facade `ratedIncome(cfg, g)`: I, § an hour, net (2.3). */
 export function ratedIncomeCfg(cfg: SalvageConfig, g: SalvageGame): number {
-  return ratedIncome(cfg.salvage, g.salvage);
+  // s2c-fix-money (19.2, E6): the content at the state (layer.ts contentAt; the base content itself in the first yard).
+  return ratedIncome(contentAt(cfg.salvage, g.salvage), g.salvage);
 }
 
 /** Facade `ratedTerms(cfg, g)`: I and its terms (feed taken, what binds, each step's seconds). */
 export function ratedTermsCfg(cfg: SalvageConfig, g: SalvageGame): RatedTerms {
-  return ratedTerms(cfg.salvage, g.salvage);
+  return ratedTerms(contentAt(cfg.salvage, g.salvage), g.salvage);
 }
 
 /** Facade `stockValue(cfg, g)`: unsold stock at usual prices, § (the gate's G, 2.3.3). */
 export function stockValueCfg(cfg: SalvageConfig, g: SalvageGame): number {
-  return stockValue(cfg.salvage, g.salvage);
+  return stockValue(contentAt(cfg.salvage, g.salvage), g.salvage);
 }

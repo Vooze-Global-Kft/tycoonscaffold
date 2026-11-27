@@ -83,11 +83,15 @@
     "version": "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
     "units": "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
     "$changes": [
+      "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
+      "content2-bots (26 Nov, REPORT8 round 2, RULING2.md 19.1): works plate prices from the measured gain, price = max(works.floor, tau_r x dE), dE the mean over seeds 1 to 5 of what the yard keeps more an hour (G at usual prices, a capped absence) with the plate bought at its planned moment on the normal hand, every earlier plate of that sitting owned (scripts/content/bots/plates.json): crane 30,000 -> 3,000, shear 40,000 -> 3,000, baler 9,000 -> 3,000, analyser 6,000 -> 29,100, depollution 80,000 -> 3,000, granulator 24,000 -> 3,000, shredder 600,000 -> 419,000, eddy 250,000 -> 3,000, sorter 300,000 -> 3,000, rotary 450,000 -> 77,600, induction 350,000 -> 171,000, breaker 200,000 -> 38,100, smelter 400,000 -> 27,500",
+      "content2-bots (26 Nov, stage 2's measurement, REPORT8 round 1): ladder.rungs n 5 10,000 -> 5,000 t (yard-stage2.md 2.22: rung 5 at day 4 to 6; at 10,000 t no bot reached it in eight days, about 700 t a sitting at rung 4; 5,000 t comes at sitting 10, day 5, on the normal hand; theta_5 follows by thetaShare: 120,000 -> 60,000 a material)",
       "owner1-rules (26 Nov, RULING-owner1.md H7): ladder rung 2 2.4 -> 2.8 t and rung 3 28.5 -> 31.5 t (both `rung2`/`rung3` and `rungs`): H1 to H4 brought rung 2 two minutes and rung 3 four and a half minutes earlier on the bots (15 seeds, 2 routes; 3.6 t was tried and put rung 2 at 15.8 min and the torch out of its band; notes/owner1-rules.md)",
       "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
       "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
       "owner1-fix-rules (26 Nov, finding 5's first hour): ladder rung 2 2.8 -> 3.0 t and rung 3 31.5 -> 32.2 t (both `rung2`/`rung3` and `rungs`): the helper's new rule brought rung 2 about 40 s and rung 3 about 30 s to 80 s earlier on the bots (15 seeds, 2 routes; notes/owner1-fix-rules.md)",
       "the lead (26 Nov, the second update for the phone): feel.staleS 0.6 -> 1.5 s: a late phone is not an absent boss. The screen now sends a standing boss's sample every 0.3 s (it was 0.1 s), and a tick that runs before a late sample must not find him stale and cancel his act: the rules forgive 1.2 s of stall (they forgave 0.5 s). The bots stand at min(0.3, staleS/2) = 0.3 s as before: no measured table moves",
+      "the lead (27 Nov, ruling 23.1): truck.fairAfter_trips 4 -> 12: the fair driver of ruling 22 E4 (a) as first set cost the normal hand 25 to 28 % of lifetime earnings by day 6 (trips spent on poorer loads); at 12 the normal hand is unchanged, the bridge-partner strategy reaches rung 5 at 6 % less, and the build's supply check still passes (rung 5: light iron within 29.4 h of 49)",
       "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
       "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
       "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -111,7 +115,8 @@
       "shop.*.price: goal k = 1.6 minutes of the normal player's net income (sales less loads bought, last two minutes) when goal k-1 is bought, and at least 1.12 x the price before it (monotone, E25/E28)",
       "shopRules: no one-at-a-time, no card delay (R13 refused, E25); the reserve is a load full now or within 60 s (E29)",
       "levels.opens torch -> rung 2 (E25); levels.floor added: no level costs less than §1,800 (a little above the last goal, the driver at §1,500), rising x1.25 a level, so that buying levels first delays the list instead of starving it",
-      "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)"
+      "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)",
+      "s2-fix-works2 (27 Nov, RULING2 24 R2): lots.kinds[].mass_kg set for the four kinds whose object fits (casing [80, 300], bushingCrate [200, 1000], cateringTable [60, 120], propeller [400, 3000] kg); build-yard.py refuses a range with min > max or min under a tenth of the object's own mass (and max over lots.lorry_kg once the content has it)"
     ],
     "$keys": [
       "grades: id -> name, p̄ §/kg (whole-game 4.2), family for the board, material for range, kind",
@@ -2906,7 +2911,8 @@
       "yardV": 4,
       "bossYardV": 4.5,
       "bossHandle_s": 4,
-      "laneMaxF": 20
+      "laneMaxF": 20,
+      "fairAfter_trips": 12
     },
     "machines": {
       "hand_stripper": {
@@ -3371,7 +3377,7 @@
         },
         {
           "n": 5,
-          "t": 10000,
+          "t": 3600,
           "range": 9
         },
         {
@@ -3397,7 +3403,17 @@
       ],
       "topRung": 5,
       "thetaShare": 0.01,
-      "thetaPerT": 1200
+      "thetaPerT": 1200,
+      "supply": {
+        "trips_h": 40,
+        "hours_h": [
+          null,
+          null,
+          null,
+          37,
+          49
+        ]
+      }
     },
     "ceilings_t_h": [
       6,
@@ -3684,7 +3700,7 @@
           "plot": "crane",
           "gate": "rung3",
           "needs": null,
-          "price": 30000,
+          "price": 3000,
           "deliver_s": 30,
           "kind": "handling",
           "in": [],
@@ -3701,7 +3717,7 @@
           "plot": "shear",
           "gate": "rung3",
           "needs": null,
-          "price": 40000,
+          "price": 3000,
           "deliver_s": 30,
           "kind": "rate",
           "in": [
@@ -3742,7 +3758,7 @@
           "plot": "baler",
           "gate": "rung3",
           "needs": null,
-          "price": 9000,
+          "price": 3000,
           "deliver_s": 30,
           "kind": "rate",
           "in": [
@@ -3770,7 +3786,7 @@
           "plot": "scalehouse",
           "gate": "rung3",
           "needs": null,
-          "price": 6000,
+          "price": 29100,
           "deliver_s": 6,
           "kind": "assay",
           "in": [],
@@ -3787,7 +3803,7 @@
           "plot": "depollution",
           "gate": "rung3",
           "needs": null,
-          "price": 80000,
+          "price": 3000,
           "deliver_s": 30,
           "kind": "station",
           "in": [
@@ -3839,7 +3855,7 @@
           "plot": "granulator",
           "gate": "rung3",
           "needs": null,
-          "price": 24000,
+          "price": 3000,
           "deliver_s": 30,
           "kind": "rate",
           "in": [
@@ -3875,7 +3891,7 @@
           "plot": "shredder",
           "gate": "rung4",
           "needs": null,
-          "price": 600000,
+          "price": 419000,
           "deliver_s": 60,
           "kind": "rate",
           "in": [
@@ -3936,7 +3952,7 @@
           "plot": "eddy",
           "gate": "rung4",
           "needs": "shredder",
-          "price": 250000,
+          "price": 3000,
           "deliver_s": 60,
           "kind": "rate",
           "in": [
@@ -3971,7 +3987,7 @@
           "plot": "sorter",
           "gate": "rung4",
           "needs": "eddy",
-          "price": 300000,
+          "price": 3000,
           "deliver_s": 60,
           "kind": "rate",
           "in": [
@@ -4023,7 +4039,7 @@
           "plot": "rotary",
           "gate": "rung4",
           "needs": null,
-          "price": 450000,
+          "price": 77600,
           "deliver_s": 60,
           "kind": "batch",
           "in": [],
@@ -4082,7 +4098,7 @@
           "plot": "induction",
           "gate": "rung4",
           "needs": null,
-          "price": 350000,
+          "price": 171000,
           "deliver_s": 60,
           "kind": "batch",
           "in": [],
@@ -4145,7 +4161,7 @@
           "plot": "breaker",
           "gate": "rung4",
           "needs": null,
-          "price": 200000,
+          "price": 38100,
           "deliver_s": 60,
           "kind": "rate",
           "in": [
@@ -4193,7 +4209,7 @@
           "plot": "smelter",
           "gate": "rung4",
           "needs": "breaker",
-          "price": 400000,
+          "price": 27500,
           "deliver_s": 60,
           "kind": "batch",
           "in": [],
@@ -4287,7 +4303,11 @@
             "crucible",
             "rotary"
           ],
-          "cut_s": 7
+          "cut_s": 7,
+          "mass_kg": [
+            80,
+            300
+          ]
         },
         {
           "obj": "bushingCrate",
@@ -4295,7 +4315,11 @@
           "line": [
             "induction"
           ],
-          "cut_s": 7
+          "cut_s": 7,
+          "mass_kg": [
+            200,
+            1000
+          ]
         },
         {
           "obj": "cateringTable",
@@ -4303,7 +4327,11 @@
           "line": [
             "analyser"
           ],
-          "cut_s": 4
+          "cut_s": 4,
+          "mass_kg": [
+            60,
+            120
+          ]
         },
         {
           "obj": "propeller",
@@ -4311,7 +4339,11 @@
           "line": [
             "induction"
           ],
-          "cut_s": 10
+          "cut_s": 10,
+          "mass_kg": [
+            400,
+            3000
+          ]
         }
       ]
     },
@@ -4362,7 +4394,7 @@
       "floorI": 2000,
       "period_s": 240,
       "firstVisitor_s": 30,
-      "batchFactor": 1.5,
+      "batchFactor": 1.25,
       "vanPeriod_s": 1800,
       "firstThing": "bath"
     },
@@ -4463,6 +4495,124 @@
         "dressing",
         "plaque",
         "sign"
+      ],
+      "products": [
+        {
+          "id": "yard_colour1",
+          "kind": "cosmetic",
+          "title": "Yard colours: Cherry red",
+          "description": "Trucks, vests and skips in cherry red.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour2",
+          "kind": "cosmetic",
+          "title": "Yard colours: Indigo",
+          "description": "Trucks, vests and skips in indigo.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour3",
+          "kind": "cosmetic",
+          "title": "Yard colours: Teal",
+          "description": "Trucks, vests and skips in teal.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour4",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mint",
+          "description": "Trucks, vests and skips in mint.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour5",
+          "kind": "cosmetic",
+          "title": "Yard colours: Mustard",
+          "description": "Trucks, vests and skips in mustard.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_colour6",
+          "kind": "cosmetic",
+          "title": "Yard colours: Lavender",
+          "description": "Trucks, vests and skips in lavender.",
+          "fallbackPrice": "$1.99"
+        },
+        {
+          "id": "yard_dressing1",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tub garden",
+          "description": "Planters in old tubs around your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing2",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Open day",
+          "description": "Flags and bunting for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing3",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Bench corner",
+          "description": "Benches and a table for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_dressing4",
+          "kind": "cosmetic",
+          "title": "Yard decorations: Tidy lines",
+          "description": "Painted kerbs and lines for your yard.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_plaque",
+          "kind": "cosmetic",
+          "title": "Founder's plaque",
+          "description": "A bronze plaque for your yard's gate.",
+          "fallbackPrice": "$2.99"
+        },
+        {
+          "id": "yard_skipAds",
+          "kind": "skipAds",
+          "title": "No ad videos",
+          "description": "Get every ad reward without watching.",
+          "fallbackPrice": "$4.99"
+        },
+        {
+          "id": "yard_pack2",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 2 hours' earnings",
+          "description": "Scrip: about 2 hours of your yard's earnings",
+          "fallbackPrice": "$1.99",
+          "value": 2
+        },
+        {
+          "id": "yard_pack5",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 5 hours' earnings",
+          "description": "Scrip: about 5 hours of your yard's earnings",
+          "fallbackPrice": "$4.99",
+          "value": 5
+        },
+        {
+          "id": "yard_pack10",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 10 hours' earnings",
+          "description": "Scrip: about 10 hours of your yard's earnings",
+          "fallbackPrice": "$9.99",
+          "value": 10
+        },
+        {
+          "id": "yard_pack20",
+          "kind": "hoursOfIncome",
+          "title": "Scrip: 20 hours' earnings",
+          "description": "Scrip: about 20 hours of your yard's earnings",
+          "fallbackPrice": "$19.99",
+          "value": 20
+        }
       ]
     },
     "ads": {
@@ -4475,12 +4625,13 @@
       "spotPerDay": 3,
       "maxDayShare": 0.04,
       "dayHours_h": [
-        null,
-        null,
+        5.3,
+        8.3,
         12.3,
         16.3,
         20.3
-      ]
+      ],
+      "minOffer_min": 2
     },
     "worksLayer": {
       "grades": {
@@ -5344,7 +5495,7 @@
           "key": "crane",
           "kind": "works",
           "place": "crane",
-          "price": 30000,
+          "price": 3000,
           "gate": "rung3",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
@@ -5353,7 +5504,7 @@
           "key": "shear",
           "kind": "works",
           "place": "shear",
-          "price": 40000,
+          "price": 3000,
           "gate": "rung3",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
@@ -5362,7 +5513,7 @@
           "key": "baler",
           "kind": "works",
           "place": "baler",
-          "price": 9000,
+          "price": 3000,
           "gate": "rung3",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
@@ -5371,7 +5522,7 @@
           "key": "analyser",
           "kind": "works",
           "place": "scalehouse",
-          "price": 6000,
+          "price": 29100,
           "gate": "rung3",
           "deliver_s": 6,
           "arrive": "machineFlatbed"
@@ -5380,7 +5531,7 @@
           "key": "depollution",
           "kind": "works",
           "place": "depollution",
-          "price": 80000,
+          "price": 3000,
           "gate": "rung3",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
@@ -5389,7 +5540,7 @@
           "key": "granulator",
           "kind": "works",
           "place": "granulator",
-          "price": 24000,
+          "price": 3000,
           "gate": "rung3",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
@@ -5398,7 +5549,7 @@
           "key": "shredder",
           "kind": "works",
           "place": "shredder",
-          "price": 600000,
+          "price": 419000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5407,7 +5558,7 @@
           "key": "eddy",
           "kind": "works",
           "place": "eddy",
-          "price": 250000,
+          "price": 3000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
@@ -5417,7 +5568,7 @@
           "key": "sorter",
           "kind": "works",
           "place": "sorter",
-          "price": 300000,
+          "price": 3000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
@@ -5427,7 +5578,7 @@
           "key": "rotary",
           "kind": "works",
           "place": "rotary",
-          "price": 450000,
+          "price": 77600,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5436,7 +5587,7 @@
           "key": "induction",
           "kind": "works",
           "place": "induction",
-          "price": 350000,
+          "price": 171000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5445,7 +5596,7 @@
           "key": "breaker",
           "kind": "works",
           "place": "breaker",
-          "price": 200000,
+          "price": 38100,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5454,7 +5605,7 @@
           "key": "smelter",
           "kind": "works",
           "place": "smelter",
-          "price": 400000,
+          "price": 27500,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
@@ -6647,124 +6798,7 @@
       "initOn": "firstOffer"
     },
     "iap": {
-      "products": [
-        {
-          "id": "yard_colour1",
-          "kind": "cosmetic",
-          "title": "Yard colours: Cherry red",
-          "description": "Trucks, vests and skips in cherry red.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_colour2",
-          "kind": "cosmetic",
-          "title": "Yard colours: Indigo",
-          "description": "Trucks, vests and skips in indigo.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_colour3",
-          "kind": "cosmetic",
-          "title": "Yard colours: Teal",
-          "description": "Trucks, vests and skips in teal.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_colour4",
-          "kind": "cosmetic",
-          "title": "Yard colours: Mint",
-          "description": "Trucks, vests and skips in mint.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_colour5",
-          "kind": "cosmetic",
-          "title": "Yard colours: Mustard",
-          "description": "Trucks, vests and skips in mustard.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_colour6",
-          "kind": "cosmetic",
-          "title": "Yard colours: Lavender",
-          "description": "Trucks, vests and skips in lavender.",
-          "fallbackPrice": "$1.99"
-        },
-        {
-          "id": "yard_dressing1",
-          "kind": "cosmetic",
-          "title": "Yard decorations: Tub garden",
-          "description": "Planters in old tubs around your yard.",
-          "fallbackPrice": "$2.99"
-        },
-        {
-          "id": "yard_dressing2",
-          "kind": "cosmetic",
-          "title": "Yard decorations: Open day",
-          "description": "Flags and bunting for your yard.",
-          "fallbackPrice": "$2.99"
-        },
-        {
-          "id": "yard_dressing3",
-          "kind": "cosmetic",
-          "title": "Yard decorations: Bench corner",
-          "description": "Benches and a table for your yard.",
-          "fallbackPrice": "$2.99"
-        },
-        {
-          "id": "yard_dressing4",
-          "kind": "cosmetic",
-          "title": "Yard decorations: Tidy lines",
-          "description": "Painted kerbs and lines for your yard.",
-          "fallbackPrice": "$2.99"
-        },
-        {
-          "id": "yard_plaque",
-          "kind": "cosmetic",
-          "title": "Founder's plaque",
-          "description": "A bronze plaque for your yard's gate.",
-          "fallbackPrice": "$2.99"
-        },
-        {
-          "id": "yard_skipAds",
-          "kind": "skipAds",
-          "title": "No ad videos",
-          "description": "Get every ad reward without watching.",
-          "fallbackPrice": "$4.99"
-        },
-        {
-          "id": "yard_pack2",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 2 hours' earnings",
-          "description": "Scrip: about 2 hours of your yard's earnings",
-          "fallbackPrice": "$1.99",
-          "value": 2
-        },
-        {
-          "id": "yard_pack5",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 5 hours' earnings",
-          "description": "Scrip: about 5 hours of your yard's earnings",
-          "fallbackPrice": "$4.99",
-          "value": 5
-        },
-        {
-          "id": "yard_pack10",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 10 hours' earnings",
-          "description": "Scrip: about 10 hours of your yard's earnings",
-          "fallbackPrice": "$9.99",
-          "value": 10
-        },
-        {
-          "id": "yard_pack20",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 20 hours' earnings",
-          "description": "Scrip: about 20 hours of your yard's earnings",
-          "fallbackPrice": "$19.99",
-          "value": 20
-        }
-      ]
+      "products": []
     }
   },
   "store": {

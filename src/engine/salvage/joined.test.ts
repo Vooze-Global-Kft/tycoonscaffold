@@ -154,9 +154,10 @@ describe('an absence at the rung\'s cap pays what its away card prints, once (2.
       expect(card, 'an away card').toBeTruthy();
       expect(card.seconds).toBeCloseTo(cap, 6);
       expect(r.earnings).toBe(0);
-      // The card's money is gross of the bank's share and its net is money − spent (2.14.4): the cash moved by net − bank.
-      expect(roundMoney(r.game.cash - n.g.cash)).toBe(roundMoney((card.net ?? 0) - (card.bank ?? 0)));
-      expect(roundMoney(card.net ?? NaN)).toBe(roundMoney(card.money - (card.spent ?? 0)));
+      // The lead's ruling 23.2 (27 November): NET is what the cash moved. The card's money (sold) is gross of the
+      // bank's share, which stands on its own line: net = money − spent − bank.
+      expect(roundMoney(r.game.cash - n.g.cash)).toBe(roundMoney(card.net ?? NaN));
+      expect(roundMoney(card.net ?? NaN)).toBe(roundMoney(card.money - (card.spent ?? 0) - (card.bank ?? 0)));
       expect(roundMoney((r.game.lifetimeEarnings ?? 0) - (n.g.lifetimeEarnings ?? 0))).toBe(roundMoney(card.money - (card.bank ?? 0)));
       if (n.g.salvage.bank.agreement) expect(roundMoney(r.game.salvage.bank.agreement ? r.game.salvage.bank.agreement.taken - n.g.salvage.bank.agreement.taken : n.g.salvage.bank.agreement.T - n.g.salvage.bank.agreement.taken)).toBe(card.bank ?? 0);
       // Once: the same device time again pays nothing and changes nothing.
@@ -240,7 +241,12 @@ describe('mass over a day of every plate working (2.5.3: Σ out + Σ waste = the
     const did = (key: string) => (c[key] ?? 0) - (worked0[key] ?? 0);
     for (const plate of ['shredder', 'sorter', 'breaker', 'rotary', 'induction', 'smelter']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(300);
     for (const hall of ['rotary', 'induction', 'smelter']) expect(did(`poured:${hall}`), hall).toBeGreaterThan(300);
-    for (const plate of ['baler', 'shear', 'granulator']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(10);
+    // s2-fix-works2 (RULING2 24.1): the yard plates weigh at the plate, so the yard hands carry no trays and clear the floor
+    // within minutes; the cable the granulator's hopper (inbuf) has no room for goes to the scale as the first yard's feed
+    // does. The baler and the shear (fed by the crane too) still work many pieces; the granulator works what fits.
+    for (const plate of ['baler', 'shear']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(10);
+    expect(did('worked:granulator'), 'granulator').toBeGreaterThan(0);
+    expect(h.salvage.pieces.filter((p) => p.uid.startsWith('j.')).length, 'the floor\'s test pieces all taken').toBe(0);
   });
 });
 
@@ -262,6 +268,15 @@ describe('a save in the middle of everything at once reloads and goes on as the 
     // a quote waiting for approval
     const S = 1_000;
     g = { ...g, salvage: { ...g.salvage, iap: { ...g.salvage.iap, pending: [{ id: `pack2:${SHOP_NOW}`, product: 'pack2', S, I: 2_000, atMs: SHOP_NOW, askedMs: SHOP_NOW, known: [], state: 'waiting', wait: 'pending' }] } } };
+    // s2-fix-works (E5, RULING2 22): the crane moves only what is worth a yard hand's carrying from its plate (works.ts
+    // craneWorth); on the test map it moves nothing, so the move this case saves is set as a departure sets one: a
+    // floor piece of light iron claimed by it, landing in the baler.
+    if (g.salvage.works.crane && !g.salvage.works.crane.move) {
+      const s2 = structuredClone(g.salvage) as SalvageState;
+      s2.pieces.push({ uid: 'jt.li', grade: 'li', g: 20_000, from: null, spec: -1, pile: 'floor', k: 9_901, claim: 'crane.crane' });
+      s2.works.crane.move = { items: ['jt.li'], g: 20_000, from: 'floor', to: 'baler', t0: t, end: t + 0.4 };
+      g = { ...g, salvage: s2 };
+    }
     const w = g.salvage.works;
     expect(w.depollution?.phase).toBe('arriving');
     expect(Object.values(w).some((x) => x.heat?.phase === 'heating')).toBe(true);

@@ -25,8 +25,10 @@ export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem'
  * - noRoute: the route names a station that does not take the grade, or is not owned.
  * - routed: the grams are reserved for a station ("This feeds the {plate}. Choose Sell from the bay first.").
  * - adCap: the day's count of that ad is used up (the button is hidden; the action refuses all the same).
+ * - inForklift: the boss sits in the forklift and tries an act of his own (cut, sort, weigh, carry): "Step out of the forklift
+ *   first" (s2-fix-small, RULING2 24 R4; frameWorks.ts holds it on the frame while he stays where the act would be).
  * Gates reuse `rung` and `needsItem`; money reuses `cash` and `ceiling`; "nothing offered" reuses `nothing`.
  */
-export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap'] as const;
+export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap', 'inForklift'] as const;
 /** Every refusal key of version 3 (stage 1 and stage 2). */
 export type RefusalKey = (typeof REFUSAL_KEYS)[number] | (typeof REFUSAL_KEYS_V3)[number];

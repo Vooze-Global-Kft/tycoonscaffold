@@ -12,14 +12,16 @@ import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './cont
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
-import { drivePath, pathSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
+import { driveSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
 import { landBody } from './works';
 import { loadRanks } from './rate';
+import { worksOpened } from './layer';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
+import { floorKept, piecesOn, pushThing, spliceThing, thingsAt } from './lookup';
 
 /**
  * Grams still in a thing of `obj` with `cut` pieces off (waste and the pieces left), memoised per content
@@ -49,17 +51,21 @@ function remainingRow(c: SalvageContent, byObj: Map<string, number[]>, obj: stri
 
 /** Grams on the tipping floor: things.ts floorMass_g exactly, with the per-thing sum memoised (R3). */
 export function floorGrams(x: Ctx): number {
+  // engine4: kept until the floor changes (lookup.ts floorKept).
+  return floorKept(x, 'grams', () => floorGramsNow(x));
+}
+function floorGramsNow(x: Ctx): number {
   const byObj = remainingRows(x.c);
   let g = 0;
-  const things = x.s.things;
+  // engine4: the floor's things and pieces by the index (the same items in the same order: the same sum).
+  const things = thingsAt(x.s.things, 'floor');
   for (let i = 0; i < things.length; i++) {
     const th = things[i];
-    if (th.at.at !== 'floor') continue;
     const row = remainingRow(x.c, byObj, th.obj);
     if (row.length) g += row[th.cut < 0 ? 0 : th.cut >= row.length ? row.length - 1 : th.cut];
   }
-  const pieces = x.s.pieces;
-  for (let i = 0; i < pieces.length; i++) if (pieces[i].pile === 'floor') g += pieces[i].g;
+  const pieces = piecesOn(x.s.pieces, 'floor');
+  for (let i = 0; i < pieces.length; i++) g += pieces[i].g;
   return g;
 }
 void floorMass_g;
@@ -153,7 +159,7 @@ function tipNow(x: Ctx, t: number): void {
   let things = 0;
   // floorSlot's first free slot for each thing in turn, from one look at the floor.
   const used = new Set<number>();
-  for (const q of x.s.things) if (q.at.at === 'floor') used.add((q.at as { slot: number }).slot);
+  for (const q of thingsAt(x.s.things, 'floor')) used.add((q.at as { slot: number }).slot);
   let slot = 0;
   for (const [obj, n] of Object.entries(sk.contents)) {
     for (let i = 0; i < n; i++) {
@@ -163,13 +169,13 @@ function tipNow(x: Ctx, t: number): void {
       // the stub never diverts). A diverted thing takes no floor slot.
       const divert = tipDivert(x, { uid: `f${k}`, obj }, sk.partner, t);
       if (divert) {
-        x.s.things.push({ uid: `f${k}`, obj, at: divert, cut: 0, progress: 0, by: null } as unknown as ThingState);
+        pushThing(x.s.things, { uid: `f${k}`, obj, at: divert, cut: 0, progress: 0, by: null } as unknown as ThingState);
         things++;
         continue;
       }
       while (used.has(slot)) slot++;
       used.add(slot);
-      x.s.things.push({ uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });
+      pushThing(x.s.things, { uid: `f${k}`, obj, at: { at: 'floor', slot }, cut: 0, progress: 0, by: null });
       things++;
     }
   }
@@ -291,8 +297,9 @@ const pt = (x: Ctx, id: string) => pointOf(x.c, id);
 const yardLimit = (x: Ctx): boolean => x.c.truck.yardV !== undefined;
 
 /** The drive of a path at the trip's speeds, seconds (V3: each segment at its side of the fence's speed). */
-function driveS(x: Ctx, path: { x: number; y: number }[], sp: { vy: number; vl: number }): number {
-  const L = pathSplit(x.c, path);
+function driveS(x: Ctx, from: { x: number; y: number }, to: { x: number; y: number }, sp: { vy: number; vl: number }): number {
+  // engine3: the drive's split kept per content by its two points (positions.ts driveSplit: pathSplit of drivePath).
+  const L = driveSplit(x.c, from, to);
   return L.yard / sp.vy + L.lane / sp.vl;
 }
 
@@ -313,7 +320,7 @@ function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slo
   let at = from;
   for (const ph of ['out', 'back', 'tip', 'park']) {
     const end = tripPhaseEnd(c, ph, partner, slot, at);
-    const L = pathSplit(c, drivePath(c, at, end));
+    const L = driveSplit(c, at, end);
     yard += L.yard;
     lane += L.lane;
     at = end;
@@ -337,7 +344,7 @@ function phaseDrive(x: Ctx, phase: string, from: { x: number; y: number }): numb
   const trip = x.s.truck.trip!;
   const end = tripPhaseEnd(x.c, phase, trip.partner, trip.slot, from);
   if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
-  return driveS(x, drivePath(x.c, from, end), speedsOf(x));
+  return driveS(x, from, end, speedsOf(x));
 }
 
 /** May the idle driver depart now (2.12)? The partner whose skip has been full longest, cash and room allowing; earmarked at departure. */
@@ -359,7 +366,15 @@ export function driverDepart(x: Ctx, t: number): boolean {
       if (!sk || hookRefusal(x, id, false, floor)) continue;
       if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
     }
+  // RULING2.md 22 E4 (a): from the works' opening the rule's choice stands only while every other waiting partner can still be served within truck.fairAfter_trips.
+  const fair = fairAfterTrips(x);
+  if (fair !== null) {
+    const f = fairChoice(x, fair, floor, best);
+    if (f === 'wait') return false;
+    best = f;
+  }
   if (!best) return false;
+  if (fair !== null) fairCount(x, best.partner, floor);
   const sk = fullestSkip(x, best.partner)!;
   tr.earmark = { money: best.price, floor_g: best.mass };
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
@@ -379,6 +394,69 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const z = skipZone(x.c, best.partner, sk.slot);
   if (planAhead(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
+}
+
+/**
+ * RULING2.md 22 E4 (a) (s2-fix-loop): THE DRIVER KEEPS EVERY OPEN PARTNER SERVED. Content `truck.fairAfter_trips` N,
+ * from the works' opening only (the first yard's driver at release.stage 1 is unchanged: null there).
+ */
+function fairAfterTrips(x: Ctx): number | null {
+  const n = (x.c.truck as { fairAfter_trips?: unknown }).fairAfter_trips;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) return null;
+  return worksOpened(x.s) ? Math.floor(n) : null;
+}
+
+/**
+ * Is this partner's full skip WAITING for the hired driver: open, a full skip, the yard can pay for it, and it fits the
+ * tipping floor now or will once there is room (not heavier than the whole floor)? A skip the yard cannot pay for waits
+ * for nobody and is not counted (16.1 e).
+ */
+function waitingFor(x: Ctx, id: string, floor: { g: number | null }): { fits: boolean } | null {
+  const sk = fullestSkip(x, id);
+  if (!sk) return null;
+  const why = hookRefusal(x, id, false, floor);
+  if (!why) return { fits: true };
+  return why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000 ? { fits: false } : null;
+}
+
+/**
+ * The fair rule's choice (earliest deadline first). Each waiting partner (waitingFor) may wait r = N - fairWait more of
+ * the driver's trips. The rule's own choice `best` stands when, after it, the others can still all be served in time
+ * (sorted by r - 1, the j-th has at least j trips left); else the driver takes the most urgent (the least r, then the
+ * skip full longest, then the partner's id); if that one waits only for the floor's room he takes nothing and waits
+ * ('wait': the room is kept for it, as 16.1 c keeps it for a better load). With nobody waiting long the rule decides.
+ */
+function fairChoice(x: Ctx, n: number, floor: { g: number | null }, best: { partner: string; fullAt: number; price: number; mass: number } | null): { partner: string; fullAt: number; price: number; mass: number } | null | 'wait' {
+  const s = x.s;
+  const waiting: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const q = waitingFor(x, id, floor);
+    if (q) waiting.push({ id, r: n - (s.partners[id].fairWait ?? 0), fullAt: fullestSkip(x, id)!.fullAt, fits: q.fits });
+  }
+  const inTime = (taken: string | null): boolean => {
+    const left = waiting.filter((w) => w.id !== taken).map((w) => w.r - (taken === null ? 0 : 1)).sort((a, b) => a - b);
+    return left.every((r, j) => r >= j);
+  };
+  if (best ? inTime(best.partner) : inTime(null)) return best;
+  let top: (typeof waiting)[number] | null = null;
+  for (const w of waiting) if (!top || w.r < top.r || (w.r === top.r && (w.fullAt < top.fullAt || (w.fullAt === top.fullAt && w.id < top.id)))) top = w;
+  if (!top) return best;
+  if (!top.fits) return 'wait';
+  const sk = fullestSkip(x, top.id)!;
+  return { partner: top.id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+}
+
+/** At a departure for `taken`: every other partner whose full skip waited for the driver counts one more trip; the taken one and those with nothing waiting start again from 0. */
+function fairCount(x: Ctx, taken: string, floor: { g: number | null }): void {
+  const s = x.s;
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const ps = s.partners[id];
+    const w = id !== taken && waitingFor(x, id, floor) ? (ps.fairWait ?? 0) + 1 : 0;
+    if (w > 0) ps.fairWait = w;
+    else if (ps.fairWait !== undefined) delete ps.fairWait;
+  }
 }
 
 /**
@@ -543,7 +621,7 @@ function driverFinishes(x: Ctx, d: CrewMember, t: number): boolean {
   let drive = legM(x.c, { x: tr.x, y: tr.y }, pt(x, 'weighbridge')) / driverV(x);
   // V1, V3: along the drive line to the weighbridge's stop, at the yard's speed (no lane: this trip may last longer).
   const sp = yardLimit(x) ? { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) } : null;
-  if (sp) drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+  if (sp) drive = driveS(x, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge'), sp);
   tr.trip = { partner: sk.partner, slot: sk.slot, phase: sk.weighed ? 'weigh' : 'back', t0: t, endsAt: t + walk + drive, ...(sp ? { speeds: sp } : {}) };
   tr.earmark = null;
   d.job = 'drive';
@@ -672,7 +750,7 @@ export function driverTakesOver(x: Ctx, t: number): void {
   }
   if (yardLimit(x)) {
     const sp = { vy: Math.min(x.c.truck.yardV!, driverV(x)), vl: driverV(x) };
-    const drive = driveS(x, drivePath(x.c, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge')), sp);
+    const drive = driveS(x, { x: tr.x, y: tr.y }, stopOf(x.c, 'weighbridge'), sp);
     tr.trip = { partner: tr.skip.partner, slot: tr.skip.slot, phase: tr.skip.weighed ? 'weigh' : 'back', t0: t, endsAt: t + drive, speeds: sp };
     return;
   }

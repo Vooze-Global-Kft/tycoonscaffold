@@ -19,6 +19,7 @@ import { weighIn } from './scales';
 import { cutOff, dropOnPile, nextPiece, takeFromPile, thingOf } from './things';
 import { openTripInSight, truckBossStep, truckBossActEnd } from './truck';
 import type { MachineId, Piece, ThingState } from './types';
+import { pieceById, thingById } from './lookup';
 
 const load_g = (x: Ctx): number => x.s.load.reduce((a, p) => a + p.g, 0);
 const room_g = (x: Ctx): number => carrierCap_g(x.c, x.s) - load_g(x);
@@ -52,7 +53,7 @@ export function cancelAct(x: Ctx, t: number): void {
 function pickables(x: Ctx, px: number, py: number): { uid: string; grade: string; g: number; thing: ThingState | null }[] {
   const c = x.c;
   const reach = c.reach.pickup;
-  const at = (uid: string) => x.s.things.find((t) => t.uid === uid)?.at ?? null;
+  const at = (uid: string) => thingById(x.s.things, uid)?.at ?? null;
   const out: { uid: string; grade: string; g: number; thing: ThingState | null }[] = [];
   for (const q of x.s.pieces) {
     if (q.claim) continue;
@@ -333,7 +334,7 @@ export function bossActEnd(x: Ctx, t: number): void {
       const uid = swap ? a.target.slice(5) : a.target;
       // Finding R8: a yard hand may have claimed the piece (or the loose thing) while the pickup was under
       // way (crewDepart runs after bossStep in the tail): a claimed one is not taken and the act ends empty.
-      const claimed = s.pieces.find((q) => q.uid === uid)?.claim ?? thingOf(x, uid.replace(/\.p\d+$/, ''))?.by ?? null;
+      const claimed = pieceById(s.pieces, uid)?.claim ?? thingOf(x, uid.replace(/\.p\d+$/, ''))?.by ?? null;
       if (claimed) {
         s.act = { kind: 'none', target: null, since: t, endsAt: null };
         count(x, 'bossActs');
@@ -344,15 +345,15 @@ export function bossActEnd(x: Ctx, t: number): void {
         const worst = [...s.load].sort(byValue(c)).pop();
         if (worst) {
           s.load.splice(s.load.indexOf(worst), 1);
-          const at = (u: string) => s.things.find((q) => q.uid === u)?.at ?? null;
-          const near = s.pieces.find((q) => q.uid === uid);
+          const at = (u: string) => thingById(s.things, u)?.at ?? null;
+          const near = pieceById(s.pieces, uid);
           const pile = near?.pile ?? 'dropoff';
           dropOnPile(x, worst, pile);
           void at;
           x.ev.push({ type: 'swap', down: worst.uid, up: uid });
         }
       }
-      const gp = s.pieces.find((q) => q.uid === uid);
+      const gp = pieceById(s.pieces, uid);
       let piece: Piece | null = null;
       if (gp) piece = takeFromPile(x, uid);
       else {

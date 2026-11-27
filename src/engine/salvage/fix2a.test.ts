@@ -213,7 +213,10 @@ describe('the save and the state (save.ts, state2.ts; the critic\'s findings 12 
     } as unknown as Partial<SalvageState>;
     const r = repairStage2(raw, fresh, t);
     expect(r.lots.nextAt).toBe(t);
-    expect(r.reuse.nextAt).toBe(t);
+    // X5 (RULING2 22, rules-works): the visitor's date is clamped only while the rack holds a thing (m30's rack is empty).
+    expect(r.reuse.nextAt).toBe(t - 900);
+    const racked = { ...raw, things: [...(raw.things ?? []), { uid: 'r1', obj: 'radiator', at: { at: 'rack', slot: 0, since: t - 1000 }, cut: 0, progress: 0, by: null }] } as unknown as Partial<SalvageState>;
+    expect(repairStage2(racked, fresh, t).reuse.nextAt).toBe(t);
     expect(r.reuse.vanAt).toBe(t);
     expect(r.works.baler.commissionAt).toBe(t);
     expect(r.works.baler.heat?.endsAt).toBe(t);

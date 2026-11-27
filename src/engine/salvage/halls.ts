@@ -12,7 +12,7 @@
  * clamped to the save's clock (state2.ts repairStage2).
  */
 import { asideOf, bayOf, takeGrams } from './bays';
-import { bossFresh, count, spend, type Ctx } from './clock';
+import { bossFresh, count, numberBays, spend, type Ctx } from './clock';
 import { plateDef } from './content';
 import { pointOf } from './positions';
 import type { HeatState, PlateId, WorksState } from './types';
@@ -209,6 +209,10 @@ export function pour(x: Ctx, id: PlateId, t: number, by: string): void {
     } else if (i === 1) second = n;
   });
   x.s.waste_g += h.charge_g - outSum;
+  // A bay's first stock is numbered at the instant it gets it (as a weigh-in and a bay-fed plate's piece do), never at
+  // a transition's end: a bay poured into and emptied inside one jump was numbered by a tick only (s2-fix-works:
+  // joined.test.ts r4 and u13, 'bay#: 25 vs 23', once the crane no longer moved there).
+  numberBays(x);
   const first = !h.firstPoured;
   h.firstPoured = true;
   h.charge_g = 0;

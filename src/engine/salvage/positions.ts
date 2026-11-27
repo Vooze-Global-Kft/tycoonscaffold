@@ -576,11 +576,11 @@ export function southOfWall(c: SalvageContent, p: { x: number; y: number }): { x
 function spotRaw(c: SalvageContent, spot: Spot, things: readonly ThingState[], truck: { x: number; y: number }): { x: number; y: number } {
   if ('place' in spot) return pointOf(c, spot.place);
   if ('pile' in spot) {
-    const at = (uid: string) => things.find((t) => t.uid === uid)?.at ?? null;
+    const at = (uid: string) => thingById(things, uid)?.at ?? null;
     return piecePos(c, spot.pile, spot.k ?? 0, at);
   }
   if ('thing' in spot) {
-    const th = things.find((t) => t.uid === spot.thing);
+    const th = thingById(things, spot.thing);
     return th ? thingPos(c, th.at) : pointOf(c, 'start');
   }
   if ('truck' in spot) return { x: truck.x, y: truck.y };
@@ -623,6 +623,7 @@ export function pileNear(c: SalvageContent, pieces: readonly GroundPiece[], thin
 // ============================================================================ the facade's entries (cfg-level; the seam, 16:20)
 
 import type { SalvageConfig, SalvageGame } from './types';
+import { thingById } from './lookup';
 
 export const thingPosCfg = (cfg: SalvageConfig, at: ThingAt) => thingPos(cfg.salvage, at);
 export const piecePosCfg = (cfg: SalvageConfig, pile: PileKey, k: number, thingAt?: (uid: string) => ThingAt | null) => piecePos(cfg.salvage, pile, k, thingAt);
@@ -762,6 +763,25 @@ export function pathSplit(c: SalvageContent, path: readonly P[]): { yard: number
   }
   return { yard, lane };
 }
+
+/**
+ * engine3: pathSplit(c, drivePath(c, a, b)), kept per content object by the two points' exact coordinates (both are
+ * pure functions of the content and the points; -0 is told from 0 in the key). The kept value is frozen: callers read it.
+ */
+export function driveSplit(c: SalvageContent, a: P, b: P): { readonly yard: number; readonly lane: number } {
+  let m = SPLITS.get(c);
+  if (!m) SPLITS.set(c, (m = new Map()));
+  const key = `${numKey(a.x)},${numKey(a.y)},${numKey(b.x)},${numKey(b.y)}`;
+  let v = m.get(key);
+  if (!v) {
+    // Bounded: a truck left anywhere by the boss adds a point; the cache starts again past 4,096 (a cache, never a result).
+    if (m.size >= 4096) m.clear();
+    m.set(key, (v = Object.freeze(pathSplit(c, drivePath(c, a, b)))));
+  }
+  return v;
+}
+const SPLITS = new WeakMap<object, Map<string, { readonly yard: number; readonly lane: number }>>();
+const numKey = (v: number): string => (Object.is(v, -0) ? '-0' : String(v));
 
 /** The yard second the vehicle passes each point of a path that starts at t0, at `vy` inside the fence and `vl` beyond. */
 export function pathTimes(c: SalvageContent, path: readonly P[], t0: number, vy: number, vl: number): number[] {

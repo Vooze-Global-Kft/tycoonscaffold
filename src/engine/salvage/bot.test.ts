@@ -5,8 +5,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { SALVAGE_TEST } from '../fixtures/salvage';
-import { away, graphOf, newBot, newSitting, pathLen, pathOf, playTo, resumeBot, snapBot, startGame, tickJumpGate } from './bot';
-import { r3Works, r4Game, worksCfg } from '../fixtures/salvage2works';
+import { away, closeLeg, graphOf, GUARD_BLOCK_S, isBlocked, newBot, newSitting, pathLen, pathOf, playTo, press, resumeBot, snapBot, startGame, tickJumpGate } from './bot';
+import { lots4, r3Works, r4Game, worksCfg } from '../fixtures/salvage2works';
+import { thingPos } from './positions';
 import type { SalvageConfig } from './types';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
@@ -128,5 +129,58 @@ describe('salvage bots at stage 2 (the works frozen content)', () => {
     playTo(a, a.g.salvage.t + 90);
     playTo(r, r.g.salvage.t + 90);
     expect(JSON.stringify(r.g)).toBe(JSON.stringify(a.g));
+  });
+});
+
+describe('R4 (RULING2 24): the boss in the forklift, and the guard against a refused act', () => {
+  const wcfg = worksCfg();
+  const opts = { hand: 'normal' as const, habit: 'goal' as const, route: 'A' as const, seed: 2 };
+
+  it('a bot seated in the forklift beside an oversize piece steps out and works it (the 284 "cut lot17" of seed 201)', () => {
+    const g0 = structuredClone(lots4());
+    const s = g0.salvage;
+    const lot = s.things.find((th) => th.at.at === 'lot')!;
+    const q = thingPos(wcfg.salvage, lot.at);
+    s.presence = { ...s.presence, x: q.x + 1.5, y: q.y, moving: false, driving: false, standingFor: 0 };
+    s.forklift = { x: q.x + 1.5, y: q.y, heading: 0 as never, by: 'boss', load: [] };
+    const b = newBot(wcfg, g0, s.clock.highMs, opts);
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 5);
+    expect(b.g.salvage.forklift?.by).toBe(null);
+    playTo(b, b.g.salvage.t + 300);
+    // Nothing of his came to nothing twice in a row on one lot, and the boss's own work ran.
+    expect(b.rec.refused.filter((r) => r.key === 'guard' && r.what.startsWith('cut lot'))).toEqual([]);
+    expect(b.g.salvage.counts?.lotOpened ?? 0).toBeGreaterThan(s.counts?.lotOpened ?? 0);
+    expect(b.rec.broken).toEqual([]);
+  });
+
+  it('a card press refused twice in a row is not pressed a third time; the bot chooses something else', () => {
+    const b = newBot(wcfg, { ...structuredClone(r3Works()), cash: 0 }, r3Works().salvage.clock.highMs, opts);
+    const a = { act: 'buy' as const, item: 'crane', price: 1000 };
+    expect(press(b, a, false)).toBe(false);
+    expect(press(b, a, false)).toBe(false);
+    expect(isBlocked(b, `press ${JSON.stringify(a)}`)).toBe(true);
+    const n = b.rec.refused.filter((r) => r.key !== 'guard').length;
+    expect(press(b, a, false)).toBe(false);
+    expect(b.rec.refused.filter((r) => r.key !== 'guard').length).toBe(n);
+    expect(b.rec.refused.filter((r) => r.key === 'guard').length).toBe(1);
+  });
+
+  it('a leg of one label that comes to nothing twice in a row is set aside; one that works in between is not', () => {
+    const b = newBot(wcfg, structuredClone(r3Works()), r3Works().salvage.clock.highMs, opts);
+    const nothing = () => ({ what: 'cut x1', acted: false, load0: b.g.salvage.load.reduce((a, p) => a + p.g, 0) });
+    b.leg = nothing();
+    closeLeg(b);
+    b.leg = { ...nothing(), acted: true };
+    closeLeg(b);
+    b.leg = nothing();
+    closeLeg(b);
+    expect(isBlocked(b, 'cut x1')).toBe(false);
+    b.leg = nothing();
+    closeLeg(b);
+    expect(isBlocked(b, 'cut x1')).toBe(true);
+    // Set aside for a while, then offered again.
+    playTo(b, b.g.salvage.t + GUARD_BLOCK_S + 1);
+    expect(isBlocked(b, 'cut x1')).toBe(false);
   });
 });

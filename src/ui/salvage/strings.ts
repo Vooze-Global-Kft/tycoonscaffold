@@ -781,6 +781,12 @@ export const TEXT = {
   'goal.pourLead': 'Pour a lead ingot', // done poured:smelter
   'goal.supplyRung5': 'Supply {t} ({r} metals)',
   'advice.loanHint': 'A loan suits a machine that earns.', // 2.13: the bank's one sentence, under its four conditions
+  // s2-fix-small (R3, 21.5): what the yard waits for when nothing is left to buy (advice.ts AdviceWait). The line and,
+  // under it, who brings the material: each one line of the opened goal card at font scale 1.3 (check.ts goalMore).
+  'advice.waitTonnes': 'Rung {n}: {t} to go', // n: the next rung; t: { tonnes_g } still to supply
+  'advice.waitGrade': 'Rung {n} waits for {grade}', // grade: the material's first grade (its name, as the table's range chips print it)
+  'advice.waitBrings': '{partner} brings it', // partner: { name: <partner id> } (the register)
+  'advice.waitMakes': '{plate} makes it', // plate: { text: 'title.works.<id>' }
 
   // --- lessons (5.3, T14; ≤ 48) ---
   'lesson.ss': 'A magnet hardly holds 304 stainless.',
@@ -807,6 +813,7 @@ export const TEXT = {
   'refusal.noRoute': 'That machine does not take this',
   'refusal.routed': 'This feeds the {plate}. Choose Sell from the bay first.', // T17: a toast of two lines
   'refusal.adCap': 'No more this market day',
+  'refusal.inForklift': 'Step out of the forklift first', // R4: an act of his own tried from the forklift
 } as const satisfies Record<R.TextKey, string>;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).

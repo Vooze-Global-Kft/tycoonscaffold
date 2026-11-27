@@ -131,9 +131,14 @@ export function packsSwitchShown(cfg: SalvageConfig, g: SalvageGame, ctx?: CardC
   return !!iapDef(cfg.salvage) && secondSession(g) && countryOn(cfg.salvage, ctx?.country) && band !== 'u13' && band !== 't13';
 }
 
-/** Help's pages on packs and on the code (P13): only where the country's switch is on (and never for 'u13', who has no shop). */
+/**
+ * Help's pages on packs and on the code (P13; s2c-fix-money M6, ruling 13.2 "nothing of money before the second
+ * session, the help included"): only where the pack rows and their switch could be: the second session begun, the
+ * country's switch on, and an age band that allows packs (not 'u13' nor 't13'; no band kept yet is the age
+ * question's moment, which comes before any pack row).
+ */
 export function packsHelpShown(cfg: SalvageConfig, g: SalvageGame, ctx?: CardContext): boolean {
-  return !!iapDef(cfg.salvage) && countryOn(cfg.salvage, ctx?.country) && g.salvage.iap.ageBand !== 'u13';
+  return packsSwitchShown(cfg, g, ctx);
 }
 
 // ============================================================================ the quote (2.15.4)

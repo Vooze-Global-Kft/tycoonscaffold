@@ -6,12 +6,12 @@
  * refusal a card shows are the ones the action applies (shown equals applied); the action adds only
  * `priceUpdated` (shown ≠ the check's price) and the change itself.
  */
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { pointOf } from './positions';
-import { ratedCapacity, ratedIncome } from './rate';
+import { ratedCapacity, ratedIncome, replayIncome } from './rate';
 import type { CrewRole, LevelTarget, MachineId, PartnerId, RefusalKey, RowState, SalvageConfig, SalvageGame, ShopItem, ShopKey, TextKey, Txt, TxtArgs } from './types';
 
 /** What a purchase check returns: the price it would charge (null: nothing to charge), the first refusal, the row's state. */
@@ -142,12 +142,8 @@ export function buyCheck(cfg: SalvageConfig, g: SalvageGame, item: ShopKey): Pur
   const gate = gateRefusal(c, g, it.gate);
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   const price = roundMoney(it.price);
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford' };
   const after = { ...g, salvage: { ...g.salvage, owned: [...g.salvage.owned, item] } };
-  const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'locked' };
-  return { price, refusal: null, state: 'buy' };
+  return moneyAndCeiling(cfg, g, price, after);
 }
 
 /** The next unbought crew key of a role (shop order), or null. */
@@ -165,14 +161,46 @@ export function hireCheck(cfg: SalvageConfig, g: SalvageGame, role: CrewRole): P
   const gate = gateRefusal(cfg.salvage, g, it.gate);
   if (gate) return { price: null, refusal: gate, state: 'locked', key };
   const price = roundMoney(it.price);
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford', key };
+  return { ...moneyAndCeiling(cfg, g, price, hiredState(g, role)), key };
+}
+
+/** The state with one more crew member of a role (for the ceiling's "R after" and the advice's rated gain): a new member at level 1, idle at the office. */
+export function hiredState(g: SalvageGame, role: CrewRole): SalvageGame {
   const slot = g.salvage.crew.filter((m) => m.role === role).length;
   const member = { id: `${role}.${slot}`, role, slot, name: 0, level: 1, job: 'idle' as const, phase: 'wait' as const, from: { place: 'office' }, to: { place: 'office' }, t0: g.salvage.t, t1: g.salvage.t, carries: null, load: [], claims: [], cut: null };
-  const after = { ...g, salvage: { ...g.salvage, crew: [...g.salvage.crew, member] } };
-  const ceil = ceilingRefusal(cfg, g, after);
-  if (ceil) return { price, refusal: ceil, state: 'locked', key };
-  return { price, refusal: null, state: 'buy', key };
+  return { ...g, salvage: { ...g.salvage, crew: [...g.salvage.crew, member] } };
+}
+
+/**
+ * THE RATED GAIN of a change of assets (s2c-fix-money E3, E7): the rated replay's income (rate.ts replayIncome, on the
+ * content at the state: the yard's assets all in use, before E6's envelope) of `after` less now, § an hour. What a level
+ * of a partner is priced from, what the advice line's payback reads and what the card's "not the bottleneck now" asks.
+ * One replay a state (the envelope costs ten or more: a card or the line reads many states after every purchase).
+ */
+export function ratedGain(cfg: SalvageConfig, g: SalvageGame, after: SalvageGame): number {
+  const c = contentAt(cfg.salvage, g.salvage);
+  return replayIncome(c, after.salvage) - replayIncome(c, g.salvage);
+}
+
+/**
+ * The last two refusals of a purchase check: the money (cash, earmark) and the ceiling. THE FIRST YARD (the works
+ * not opened): the money first, as merged and as on the owner's phone. FROM THE WORKS' OPENING (s2c-fix-money M10,
+ * E10): the ceiling first, so an item the ceiling forbids reads its ceiling refusal whatever the cash, and the
+ * headroom U (shop.ts) never depends on the cash in hand. The price is the same either way.
+ */
+function moneyAndCeiling(cfg: SalvageConfig, g: SalvageGame, price: number, after: SalvageGame): PurchaseCheck {
+  const ceilFirst = worksOpened(g.salvage);
+  if (ceilFirst) {
+    const ceil = ceilingRefusal(cfg, g, after);
+    if (ceil) return { price, refusal: ceil, state: 'locked' };
+  }
+  const money = cashRefusal(g, price);
+  if (money) return { price, refusal: money, state: 'cantAfford' };
+  if (!ceilFirst) {
+    const ceil = ceilingRefusal(cfg, g, after);
+    if (ceil) return { price, refusal: ceil, state: 'locked' };
+  }
+  return { price, refusal: null, state: 'buy' };
 }
 
 // ============================================================================ levels (E13a, E25)
@@ -326,8 +354,23 @@ export function levelPrice(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   const L = levelNow(g, target);
   if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
   const { floor, growth } = levelFloor(c);
+  // s2c-fix-money (E3, RULING2 22): FROM THE WORKS' OPENING a partner's level costs what it earns: levelTau x its rated gain
+  // (I with the level less I now), as a plate's level is priced (plateLevelPrice's tau); never the yard's mean margin a
+  // kilogram. The first yard (the works not opened) prices it as merged, as on the owner's phone.
+  if (target.kind === 'partner' && worksOpened(g.salvage)) {
+    const dI = Math.max(0, ratedGain(cfg, g, levelled(g, target)));
+    return roundPrice(Math.max((plateTauMin(c, L, g.salvage.ladder.rung) / 60) * dI, floor * growth ** (L - 1)));
+  }
   const v = Math.max(levelTau(c, L, g.salvage.ladder.rung) * levelAddsKgMin(cfg, g, target) * marginOf(c, target), floor * growth ** (L - 1));
   return roundPrice(v);
+}
+
+/** tau(L) minutes of a level priced from its rated gain (a plate's, 2.6.4; a partner's from the works' opening): min(60 x tau_r, levels.tau.first x growth^(L-1)); a rung without a tau: levels.tau.cap. */
+function plateTauMin(c: SalvageContent, L: number, rung: number): number {
+  const t = c.levels.tau;
+  const tauR = c.tau_h?.[Math.floor(rung) - 1];
+  const cap = typeof tauR === 'number' && tauR > 0 ? 60 * tauR : t.cap;
+  return Math.min(cap, t.first * t.growth ** (L - 1));
 }
 
 /** The level check (2.15): notOwned, the levels' gate (E25: levels open at rung 2), topLevel, earmark or cash, ceiling. */
@@ -340,15 +383,11 @@ export function levelCheck(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   if (gate) return { price: null, refusal: gate, state: 'locked' };
   if (L >= maxLevelOf(c, g, target)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
   const price = levelPrice(cfg, g, target)!;
-  const money = cashRefusal(g, price);
-  if (money) return { price, refusal: money, state: 'cantAfford' };
-  const ceil = ceilingRefusal(cfg, g, levelled(g, target));
-  if (ceil) return { price, refusal: ceil, state: 'locked' };
-  return { price, refusal: null, state: 'buy' };
+  return moneyAndCeiling(cfg, g, price, levelled(g, target));
 }
 
-/** The state with one more level of the target (for the ceiling's "R after"). */
-function levelled(g: SalvageGame, target: LevelTarget): SalvageGame {
+/** The state with one more level of the target (for the ceiling's "R after", a partner's rated gain and the advice's). */
+export function levelled(g: SalvageGame, target: LevelTarget): SalvageGame {
   const s = g.salvage;
   if (target.kind === 'crew') return { ...g, salvage: { ...s, crew: s.crew.map((m) => (m.id === target.id ? { ...m, level: m.level + 1 } : m)) } };
   if (target.kind === 'machine') {
@@ -384,11 +423,9 @@ export function plateLevelPrice(cfg: SalvageConfig, g: SalvageGame, plate: strin
   const top = Math.min(def.maxLevel, c.works?.maxLevel ?? def.maxLevel);
   if (L >= top) return null;
   const up = { ...s, works: { ...s.works, [plate]: { ...w, level: L + 1 } } };
-  const dI = Math.max(0, ratedIncome(c, up) - ratedIncome(c, s));
-  const t = c.levels.tau;
-  const tauR = c.tau_h?.[Math.floor(s.ladder.rung) - 1];
-  const cap = typeof tauR === 'number' && tauR > 0 ? 60 * tauR : t.cap;
-  const tauMin = Math.min(cap, t.first * t.growth ** (L - 1));
+  // s2c-fix-money: the rated gain of the replay (ratedGain's measure, one replay a state), as a partner's level.
+  const dI = Math.max(0, replayIncome(c, up) - replayIncome(c, s));
+  const tauMin = plateTauMin(c, L, s.ladder.rung);
   const { floor, growth } = levelFloor(c);
   return roundPrice(Math.max((tauMin / 60) * dI, floor * growth ** (L - 1)));
 }

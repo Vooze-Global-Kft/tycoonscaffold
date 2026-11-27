@@ -182,7 +182,12 @@ export function machineShares(c: SalvageContent, id: MachineId, input: string): 
 }
 
 /** Grams of a stock record. */
-export const sumStock = (st: Record<string, number>): number => Object.values(st).reduce((a, x) => a + x, 0);
+// engine3: the same sum in the same order (for..in on a plain record visits its own keys in Object.values' order), without the copied array.
+export const sumStock = (st: Record<string, number>): number => {
+  let a = 0;
+  for (const k in st) a += st[k];
+  return a;
+};
 
 /** A machine's place on the map (both strippers share the stripper pad). */
 export function machinePlace(id: MachineId): string {

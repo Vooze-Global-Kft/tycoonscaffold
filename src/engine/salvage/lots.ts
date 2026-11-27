@@ -24,8 +24,9 @@
  *   max(nextAt, t) + period, or null when it makes four.
  * - Only the boss cuts one (act `lot`): standing still within reach.work of it with a tool of its tier, for the kind's
  *   `cut_s` whatever its mass. Its pieces (each spec's share of the mass in pieces of at most the spec's grams, the
- *   rest waste) fall on the tipping floor's pile, where the crews take them as any other. While nextAt is null the
- *   cut sets nextAt = t (one comes at once; the next a period later).
+ *   rest waste) fall on the tipping floor's pile, where the crews take them as any other. While nextAt is null (four
+ *   were waiting) the cut sets nextAt = t + period (X1/E1, RULING2 22: a new piece comes one period after the cut that
+ *   freed the pad, never at once).
  *
  * EVERY DATE a body writes for the queue is at least the yard second t it is written at (s2a-fix): the loop never
  * applies a date before s.t (tick.ts drops it), so a date in the past stops the feature for ever; a saved one is
@@ -35,18 +36,19 @@ import type { Ctx } from './clock';
 import { count, heard } from './clock';
 import { hash01 } from './board';
 import { specsOf } from './content';
-import { nearPlace, thingPos } from './positions';
+import { thingPos } from './positions';
 import { ratedIncome } from './rate';
-import { dropOnPile } from './things';
+import { weighIn } from './scales';
 import { hashString } from '../rng';
 import type { Piece, ThingState } from './types';
+import { pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
 const H_LOT = hashString('lot');
 
 /** Oversize pieces waiting on the pad. */
 export function lotsWaiting(x: Pick<Ctx, 's'>): number {
   let n = 0;
-  for (const th of x.s.things) if (th.at.at === 'lot') n++;
+  n += thingsAt(x.s.things, 'lot').length;
   return n;
 }
 
@@ -62,13 +64,18 @@ function muAt(x: Ctx): number {
   return 0;
 }
 
-/** The value at p̄ of a whole object's pieces (its shell too), §. */
-function wholeValue(x: Pick<Ctx, 'c'>, obj: string): number {
-  let v = 0;
-  for (const sp of specsOf(x.c, obj)) v += ((sp[1] * sp[2]) / 1000) * (x.c.grades[sp[0]]?.pbar ?? 0);
-  const sh = x.c.objects[obj]?.shell;
-  if (sh) v += (sh.g / 1000) * (x.c.grades[sh.grade]?.pbar ?? 0);
-  return v;
+/**
+ * A lot kind's mass range in grams (X3 (b), RULING2 22: what such a real object weighs): `lots.kinds[].mass_kg`,
+ * else the object's own gross mass (a content without the key: the object as it is, never scaled).
+ */
+export function lotMassRange(x: Pick<Ctx, 'c'>, kind: { obj: string; mass_kg?: readonly [number, number] }): [number, number] {
+  if (kind.mass_kg) {
+    const a = Math.round(kind.mass_kg[0] * 1000);
+    const b = Math.round(kind.mass_kg[1] * 1000);
+    return [Math.max(1, Math.min(a, b)), Math.max(1, a, b)];
+  }
+  const g = Math.max(1, x.c.objects[kind.obj]?.gross_g ?? 1);
+  return [g, g];
 }
 
 /** A lot's grams by spec (each spec's share of its mass, rounded) and its waste (the rest): the one split, at its plate and at its cut. */
@@ -116,17 +123,27 @@ export function lotArrive(x: Ctx, t: number): void {
     return;
   }
   const n = st.n;
-  const kind = kinds[Math.min(kinds.length - 1, Math.floor(hash01(x.c.worldSeed, H_LOT, n) * kinds.length))];
-  const o = x.c.objects[kind.obj];
+  // X3 (b), RULING2 22: μ × I chooses WHICH object comes, not a multiplier on its mass. One draw u = hash01(worldSeed,
+  // 'lot', n) places every eligible kind's mass inside its own range; the heaviest whose worth at p̄ is at most μ × I
+  // comes (ties: content order); when none is, the one of least worth.
   const want = (muAt(x) / 60) * ratedIncome(x.c, x.s);
-  const wv = wholeValue(x, kind.obj);
-  const g = want > 0 && wv > 0 ? Math.max(1, Math.round((o.gross_g * want) / wv)) : o.gross_g;
+  const u = hash01(x.c.worldSeed, H_LOT, n);
+  let pick: { kind: (typeof kinds)[number]; g: number } | null = null;
+  let least: { kind: (typeof kinds)[number]; g: number; w: number } | null = null;
+  for (const k of kinds) {
+    const [lo, hi] = lotMassRange(x, k);
+    const gk = Math.round(lo + u * (hi - lo));
+    const w = lotValue(x, { obj: k.obj, g: gk });
+    if (w <= want && (!pick || gk > pick.g)) pick = { kind: k, g: gk };
+    if (!least || w < least.w) least = { kind: k, g: gk, w };
+  }
+  const { kind, g } = pick ?? least!;
   const used = new Set<number>();
-  for (const th of x.s.things) if (th.at.at === 'lot') used.add(th.at.k);
+  for (const th of thingsAt(x.s.things, 'lot')) if (th.at.at === 'lot') used.add(th.at.k);
   let k = 0;
   while (used.has(k)) k++;
   const uid = `lot${n}`;
-  x.s.things.push({ uid, obj: kind.obj, at: { at: 'lot', k }, cut: 0, progress: 0, by: null, g, sender: kind.from });
+  pushThing(x.s.things, { uid, obj: kind.obj, at: { at: 'lot', k }, cut: 0, progress: 0, by: null, g, sender: kind.from });
   st.n = n + 1;
   st.nextAt = waiting + 1 >= L.max ? null : Math.max(st.nextAt, t) + L.period_s;
   if (x.away) x.away.lotsWaiting = waiting + 1;
@@ -139,7 +156,7 @@ function lotInReach(x: Ctx): ThingState | null {
   const p = x.s.presence;
   let best: ThingState | null = null;
   let bestD = Infinity;
-  for (const th of x.s.things) {
+  for (const th of thingsAt(x.s.things, 'lot')) {
     if (th.at.at !== 'lot' || th.by) continue;
     const o = x.c.objects[th.obj];
     if (!o || o.tier > x.s.tier) continue;
@@ -172,7 +189,7 @@ export function lotAct(x: Ctx, t: number): boolean {
 export function lotActHolds(x: Ctx, t: number): boolean {
   void t;
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   const p = x.s.presence;
   let ok = !!th && !p.moving;
   if (ok) {
@@ -183,29 +200,43 @@ export function lotActHolds(x: Ctx, t: number): boolean {
   return ok;
 }
 
-/** The act `lot` ends: the oversize piece comes apart onto the floor's pile; a lot is dated at once if four were waiting. */
+/**
+ * The act `lot` ends: the oversize piece is WEIGHED WHERE IT IS CUT (X3 (a), RULING2 22, as things.ts shellWeighIn
+ * weighs a car's shell): its grades go straight into their bays on one weigh-in ticket with a line a grade (scales.ts
+ * weighIn: the analyser, the platform's rounding, the bays' reserves and the crucible's draw as at any weigh-in); no
+ * piece is put on the ground. A grade counted in whole units (`wholeUnits_kg`) comes as its spec's pieces so that the
+ * bay counts its units; any other as one batch a spec. The rest is waste. The next lot is dated a period later if four
+ * were waiting.
+ */
 export function lotActEnd(x: Ctx, t: number): void {
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   if (!th || th.at.at !== 'lot') return;
   const { specs, waste } = lotSplit(x, th);
-  x.s.things.splice(x.s.things.indexOf(th), 1);
+  spliceThing(x.s.things, x.s.things.indexOf(th));
+  const ps: Piece[] = [];
   let i = 0;
   for (const sp of specs) {
-    let left = sp.g;
-    while (left > 0) {
+    if (sp.g <= 0) continue;
+    if (x.c.wholeUnits_kg[sp.grade] === undefined) {
+      ps.push({ uid: `${th.uid}.p${i++}`, grade: sp.grade, g: sp.g, from: th.uid, spec: sp.spec });
+      continue;
+    }
+    for (let left = sp.g; left > 0; ) {
       const g = Math.min(left, sp.piece);
-      const p: Piece = { uid: `${th.uid}.p${i++}`, grade: sp.grade, g, from: th.uid, spec: sp.spec };
-      dropOnPile(x, p, 'floor');
-      if (heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: p.uid, grade: p.grade, g, to: 'ground', by: 'boss' });
+      ps.push({ uid: `${th.uid}.p${i++}`, grade: sp.grade, g, from: th.uid, spec: sp.spec });
       left -= g;
     }
   }
   x.s.waste_g += waste;
+  if (waste > 0 && heard(x)) x.ev.push({ type: 'pieceOff', thing: th.uid, piece: `${th.uid}.waste`, grade: 'waste', g: waste, to: 'waste', by: 'boss' });
+  weighIn(x, ps, 'boss', t);
   count(x, 'lotOpened');
   count(x, `cut:${th.obj}`);
   x.ev.push({ type: 'lotOpened', thing: th.uid });
-  if (x.s.lots && x.s.lots.nextAt === null && x.c.lots) x.s.lots.nextAt = t;
+  // X1/E1 (RULING2 22): a cut that frees the pad from full dates the next arrival one period later, never at once
+  // (at once, the arrival at the same t made four again and the next cut repeated it: an endless supply).
+  if (x.s.lots && x.s.lots.nextAt === null && x.c.lots) x.s.lots.nextAt = t + x.c.lots.period_s;
 }
 
 /**

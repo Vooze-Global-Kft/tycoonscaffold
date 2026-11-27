@@ -2233,3 +2233,312 @@ THE RULE OF THE YARD'S CLOCK, written down because the attacker's hole came from
 always counted from it. The store's stamps (`lastSavedAt`, `stats.clockHigh`) only guard against a
 device clock set back. Whoever computes time away (a tick's gap, a resume, a start, the deferred
 pass) moves highMs to the end of what it computed, so no interval is paid twice and none is lost.
+
+THE CONFIRM OF THE SECOND UPDATE (about 20:20): one who built none of it: READY to merge. The return
+held against four more attack tests through the real store (a pause while it counts and two resumes:
+the whole absence paid once; a cold start whose counting card never shows: the safety net runs one
+pass and the away card waits; a 40 s trip leaves nothing pending); nothing calls the rules' own
+`offline` or `tick` past the wrapper except the deferred pass itself. Findings, all minor, and the
+rulings: (1) his four tests stay in the repository (`src/modes/salvage/owner2c.attack.test.ts`).
+(2) The safety net counts its 8 seconds from the start of the wait, so on a cold start whose
+loading curtain lasts longer it runs the pass under the curtain (the curtain's animation stands
+still for the length of the pass; one pass, nothing lost): NEXT: start the net's clock when the
+curtain parts. (3) Not looked at by anyone with their own thumb: walking against a standing truck
+from every side at the gate and the farm, a truck parked across the gateway, a vehicle coming to a
+stand on the boss, crew stepped aside into a machine or the fence: the lead walked away from and
+back into the parked truck from its side in the preview (free to leave; seated on walking in), the
+rest rests on the fixer's tests (standing.test.ts) until the owner or the next review looks.
+
+THE LEAD'S CALL ON THE ENTRY'S PIN: the fixer had put the deferral on the rules' engine object in
+place, because `src/modes/entries.test.ts` pinned that the salvage entry hands over that very
+object. The pin is the lead's to keep in step: the entry now hands over a plain wrapper
+(`salvageReturningEngine`), the pin says so (its three time-away seams are the wrapper's, everything
+else the rules' own), and whoever imports `salvageEngineMode` gets the rules as they are.
+
+### 19. The bots' first play of stage 2 (26 November, about 21:45): rulings before the numbers are set
+
+The bots now play stage 2 (`notes/` of content2-bots; `yard-bot.ts --stage 2`): every bot of 8.2's
+table but one reaches rung 4 on three seeds, none reaches rung 5 within eight days, no hard promise
+broke (three apparent breaks were the bots' own measuring). What they showed, and what holds from
+now on:
+
+19.1 THE PAYBACK RULE READS WHAT THE YARD EARNS, MEASURED (it replaces "the ΔI it adds" of 2.6.4).
+    Rated income I carries terms for four plates only (baler, granulator, shredder, induction); for
+    the crane, the shear, the analyser, the depollution bay, the eddy current, the sorter, the
+    rotary furnace, the breaker and the smelter its ΔI is zero, so τ_r × ΔI prices nothing. A
+    plate's price is set from the bots' own play instead: on the reference yard (the normal hand,
+    the goal habit), from the state at the plate's planned moment with every earlier plate of the
+    goal order owned, play two branches (bought now, not bought) for the walk's horizon of ruling
+    17.1 (the same walk, the same seeds, the same absence at the cap): ΔE is the difference in what
+    the yard earned (sales less loads, reagents and every other cost; the plate's own price left
+    out) as a rate per hour of yard time, on means over the seeds. PRICE = max(`works.floor`,
+    τ_r × ΔE), rounded as the content rounds prices, written by the script into
+    `bots/plates.json` as before. A plate that only makes a later plate possible (its own ΔE at
+    or below the floor's worth) costs the floor, and the plate that completes the chain carries the
+    chain's gain: the sum is right, and no purchase is a trap. The vehicles and tools of the stage
+    (payback-priced, 2.9) by the same measure. The gate of 17.1 then holds by construction; print
+    its table all the same.
+19.2 RATED INCOME MUST STILL BE RIGHT, because packs, ad rewards and the bank read it and what a
+    pack says ("hours of your yard's income") must be true: I may never be read from trailing sales
+    (a player could hold and then sell to inflate it). Its missing plate terms (every plate, the
+    hands' carrying to the yard plates, whole things as inputs, the van) are the FIX PASS's work in
+    rate.ts, calibrated to 19.1's measured gains, to the band of 14.10 (medians 0.95 to 1.05 at
+    rungs 3, 4 and 5); and the facade's ratedIncome, ratedTerms and stockValue read the content at
+    the state (they read the base content today and leave out every plate: a fault). UNTIL THEN the
+    bots measure I through their own wrappers and report it against earnings; nothing is priced
+    from I.
+19.3 RUNG 5 COMES ON DAY 4 TO 6 (8.2), by its tonnage alone: the yard supplies about 700 t a
+    sitting at rung 4, so 10,000 t arrives about day 8.5 to 9, and from sitting 8 on nothing useful
+    is left to buy while cash grows to §8M to §21M. Bring rung 5 into its band with
+    `ladder.rungs` (rung 5's tonnes) and nothing else; the aim that goes with it: the last goal
+    purchase of the stage and rung 5 lie within about two sittings of each other on the normal
+    hand. If the tonnage alone cannot do it (the range of materials binds first), say which
+    material binds and leave it.
+19.4 STEEL-MAX STALLS AT RUNG 3, and that is the design: rung 4 asks for eight materials and the
+    ferrous plates give six ("the largest FULL metal recycler"). 8.2's row changes to say so. What
+    the rung's tile shows such a player (which materials are missing) is the screens' work.
+19.5 THE CUTTER'S HABIT is measured as the rules allow it: a tagged thing is racked before it can be
+    cut while the rack has a free place. No rule changes.
+19.6 L1 (the first Bank loan within two sittings of rung 3) is a measure, not a gate: a yard that
+    pays its rung-3 plates in cash is doing well.
+19.7 THE CARD MANAGER at stage 2 (its advice presses refused while the driver's load holds money):
+    find out in the measure whether that is the bot or a rule that keeps a player who only uses
+    cards from buying a plate; if a rule, it is a finding of severity blocking for the fix pass.
+19.8 THE FULL TABLE (15 seeds, 5 of them unseen, 13 of 15 in band) waits for engine step 3 (time
+    away at stage 2 costs 3 s for six hours today): until it lands, three to five seeds, shards and
+    caches; the table is printed again after it.
+19.9 The shop's sixteen products now stand in the shared `monetization.iap.products` (prefix
+    `yard_`) and `monetization.ads.initOn` is 'firstOffer'. Before anything of this is merged for
+    the phone, a test shows that at `release.stage` 1 none of it shows or runs (no product asked of
+    the store, no row, no ad start that differs from the first yard's); else the build script
+    writes both only at stage 2.
+
+### 20. Engine step 3 (26 November, late evening): time away cheaper, not one result changed; what it did not reach
+
+Built under one rule (no state, event or away card differs, bit for bit) with a recorded baseline of
+results as its gate, then checked by an engineer who wrote none of it, on states the builder did not
+pick (the old engine, commit aeda1dd, beside the new, each in its own process).
+- RESULTS: the builder's checker: 0 differences over 135 cases and 1,566 computations; the
+  checker's own: 0 differences over 137 cases, 1,684 computations, 144,324 comparison points
+  (other seeds and hands, the instants around rungs, purchases and pours, awkward absences, an
+  absence cut in two by a save, three in a row against one, every frozen state of both stages, an
+  hour of live play); no cache could be made stale; no test or number was touched.
+- COST (node CPU; builder / checker): stage 2, six hours at rung 4 with seven plates: 2,719 to
+  1,180 ms / 2,933 to 1,455 ms (2.0 to 2.3 times cheaper); the rung-3 entry 588 to 422 ms; the
+  first yard's six hours 282 to 377 ms before, 250 to 277 ms after; a tick unchanged.
+- WHAT WAS SAVED: the magnet crane's departure skipped while it provably would again move nothing;
+  a route's answer kept for one transition; smaller exact savings in the crew, the things, the
+  partners, the positions, the truck and the board.
+20.1 THE AIMS STAND AS AIMS (150 ms for the first yard's six hours, 400 ms for stage 2's heaviest
+    rung) and were not reached: the first yard's profile is flat (each of a dozen functions scans
+    things and pieces at every departure and landing, 2 to 5 % each).
+20.2 THE BENCH'S LIMITS stay as they are (BENCH_STRICT 250 ms on the first yard's minute 60, the
+    suite's alarm at 700 ms: an alarm under load, not a measure). Stage 2 gets its own strict limit
+    when step 4 lands, set from its measured table.
+20.3 STAGE 2 DOES NOT GO TO A PHONE WITH A PASS THAT COSTS OVER A SECOND IN NODE. ENGINE STEP 4, THE
+    INDEX, is built before stage 2's screens are merged: things by place and pieces by pile kept
+    beside the state for one transition (about twenty places move a thing or a piece: a version
+    counter bumped at each, checked by the memo's verify mode), a thing by its id through the same
+    index, the idle driver's ranking kept as the crane's no-move is; under the same rule and the
+    same gate (the recorded baseline, then an independent check against the old engine). It is
+    built in its own working copy so that the bots' measurements never run on a half-built engine.
+20.4 The first yard on the owner's phone: the counting card covers today's quarter of a second in
+    node (half a second to a second and a half on a phone). Steps 3 and 4 reach the phone with the
+    next update that is merged, after ruling 19.9's test.
+
+### 21. The bots' first measured table of stage 2 (27 November, about 01:00; `docs/design/yard-bots2.md`)
+
+Measured on five seeds (three for the habits, five unseen for the normal hand): rung 4 on day 2.0,
+rung 5 on day 4.0 after its tonnage went from 10,000 t to 3,600 t (19.3); no hard promise broke on
+65 runs; a minute of ticks equals a jump at all 30 checks; the first yard plays bit for bit as
+before. What holds from here:
+
+21.1 THE MEASURED GAIN IS MEASURED WITH THE BOSS IN THE YARD TOO (19.1 as it was meant). The first
+    prices were set from the gain over one capped absence alone, and six plates that are fed only
+    while the boss plays (the crane, the shear, the depollution bay, the granulator, the eddy
+    current, the sorter: oversize pieces, cars by the forklift, car bodies and appliances in the
+    shredder's stream) showed a gain of exactly nothing and were priced at the floor (§3,000). The
+    walk's horizon is an hour of play by the reference bot (the normal hand, the goal habit) and
+    then one absence at the cap; the gain is taken over both, as a rate per hour of yard time. A
+    plate that still shows no gain for a yard whose boss plays is a finding about the plate, not a
+    price. The six prices, and the vehicles' and tools', are set again by this in the fix pass's
+    measurement; L1 and L5 (the first loan near rung 3, repaid before rung 4) are read again after
+    it (they cannot hold while every rung-3 plate costs the floor).
+21.2 THE MAGNET CRANE MAKES THE YARD POORER (what the yard keeps over a capped absence falls by 14
+    to 29 % at its planned moment). BLOCKING, by ruling 17 (no purchase makes the yard poorer). The
+    fix pass finds why with the smallest example (what it moves, where to, at what loss: whole
+    things into the shear that a cutter would have cut into dearer grades; hoppers kept full so
+    that hands stand; the floor's rule of 17.2) and changes the crane's rule so that it only ever
+    does what leaves the yard at least as rich. The walk of 17.1 is its gate.
+21.3 The walk's other failing steps (the baler; the driver's level and the farm's level at rung 3;
+    the demolition's level on day 3): each with its smallest example in the fix pass. Where the
+    cause is the driver's choice of load, the rank of ruling 16.5 is measured again at stage 2 (it
+    stays unshipped at stage 1).
+21.4 RATED INCOME as 19.2: its terms completed in rate.ts and calibrated against the bots' measured
+    earnings to the band of 14.10 at the six named moments on both boards (medians 0.88 to 1.33
+    today).
+21.5 WHEN NOTHING IS LEFT TO BUY, THE YARD SAYS WHAT IT IS WAITING FOR. Between the last goal
+    purchase and the next rung the advice line and the goal card name the rung's missing tonnes and
+    materials; a level is named only when it pays back within τ_r by the rules' own measure. No
+    rule invents a purchase.
+21.6 THE LEAD CUT (a yard without the battery breaker and the lead smelter has eight materials and
+    rung 5 asks for nine: a dead end no tonnage can fix): the build refuses a content whose rung
+    asks for more materials than its plates and partners can supply at that rung (a check in
+    build-yard.py). The shipped content keeps the lead line.
+21.7 ACCEPTED AS MEASURED until the fifteen-seed table (after engine step 4): rung 5 at 3,600 t; the
+    van's batch factor 1.25 (the Yard sale and the van at 5.2, 4.7 and 4.5 % of days 1 to 3); an
+    hour away at 0.46 of an hour played at stage 2; ads at most 1.6 % of a day; the hand at twice
+    the card manager; the shredder's and the breaker's payback short of τ (0.65 to 0.87 and 0.57
+    to 0.83): looked at again with 21.1's prices. The first yard's own open rows (the farm level at
+    minute 90, the slow hand's rung 3, an hour away at 0.81 of an hour played) stay as they are on
+    the owner's phone until the owner has played more.
+21.8 19.9's test is the lead's, before any store build: the sixteen products and
+    `ads.initOn` 'firstOffer' are already in the build on the owner's phone and inactive there
+    (Expo Go has no store; the first yard has no shop and makes no offer, so the ad SDK is never
+    started).
+
+### 22. Stage 2's rules after three attacks (27 November, about 02:20): the findings and the rulings
+
+Three engineers who wrote none of it attacked the stage as joined and measured. EXACTNESS: the stage
+is exact where it promises (a tick equals a jump on 40 states with the boss stale and walking; an
+absence in 2 and 11 passes equals one; mass to the gram over 15 days; every card button pressed at
+random instants: no fault; saves load; stage 1 stays dark), with two real faults. MONEY: the bank
+takes exactly its share to the cent, cash never goes below zero, the shop's shared attack cases hold
+on the real mode inside the real store; one fault that blocks any store build, four important.
+THE ECONOMY: not ready for real scrip: an endless supply of oversize pieces, partner levels priced
+at the floor while the advice line sells the worst buys, a dead end reached by the best money play,
+and the crane's loss confirmed at more than a fifth of lifetime earnings.
+
+- M1 (blocking; owner content; money attacker): At release.stage 1 the build still runs stage 2's purchase plumbing. iap.init asks the store for all 16 yard_ products. Because grantsHoursOfIncome reads the shared product list and not the mode's content, the check at start reads the customer listing twice and subscribes the transaction listener. A store build at stage 1 would therefore fetch 16 products the app never shows (A
+  RULING: STAGE 2'S PRODUCTS ARE NOT IN THE FIRST YARD'S BUILD (rulings 19.9 and 21.8; BLOCKING for any store build; FIRST of your items). The sixteen products are DEFINED in the mode's own content (a block under salvage, dark at release.stage 1 through stageView) and build-yard.py MIRRORS them into the shared monetization.iap.products only when the content's release.stage is 2 or more; at stage 1 the shared list is empty, so a stage-1 build asks the store for nothing, reads no listing, subscribes no purchase listener. monetization.ads.initOn stays 'firstOffer' at both stages (the first yard makes no offer, so the ad SDK is never started: that is right). Tests and bots that need stage 2 get the game configuration through ONE helper (parse with release.stage 2 AND the shared product list filled from the mode's block: put it beside the fixtures and use it in yard-bot.ts --stage 2 and in every stage-2 test that reads products): nothing else changes for them. A test on the real game.json: at release.stage 1 the shared product list is empty, grantsHoursOfIncome is false for every id, and the store's boot makes no listing call (the money attacker's test in attack/s2/ shows how he observed the calls: move it into the repository). npm run sync and validate stay green (RATING-NOTES and the fingerprint follow).
+- M2 (important; owner money; money attacker): setAgeBand has no guard for a content without iap. At release.stage 1 it keeps an age band in the save. adAudience then returns 'child' or 'teen', and the shared store's followAudience hands that to the ad service. It is the only money action that saves stage-2 state at stage 1. No stage-1 screen calls it today, so it is latent, but it falls under the highest-severity class the
+  RULING: setAgeBand does nothing and saves nothing where the content has no shop (release.stage 1): a refusal 'nothing', the state untouched; adAudience at stage 1 is as the first yard's. Test at stage 1. (Latent today: no first-yard screen calls it.)
+- M3 (important; owner money; money attacker): 'Start the yard again' builds a completely fresh state. (a) Bought looks and No ad videos disappear from the entitlements until the next app start, when owned() restores them: paid content goes missing in the same session. (b) The age band and the packs-hidden lock are cleared. A 13 to 17 year old (or a child) can press Start again and answer the age question again, and the par
+  RULING: WHAT WAS PAID FOR AND WHAT A PARENT ANSWERED SURVIVE 'START THE YARD AGAIN'. A restart keeps: every owned look and No ad videos (in the same session, not only after the next start), the age band, the packs-hidden lock, the country read; it loses, as the card says, bought scrip and a purchase still waiting. Build it in the mode's own create/restart path if the shared store hands the previous game to it; if the shared store's reset() gives the mode no way to see the previous state, do NOT edit src/state: write the smallest seam you need for the lead in requests.md (an optional EngineMode function the store calls on reset with the previous game), build your side against it, and test your side. Tests: restart at rung 4 with two looks, No ad videos, a teen's band, the lock on.
+- M4 (important; owner money; money attacker): Opening a card reports noteSeen({ card: data.kind, place? }) without the plate. actionsMoney.ts onSeen sets the lender's letter only for { card: 'works', plate }, so from the screens the letter can never fall due, letterSeen stays false, and the Bank loan is never offered to a real player. The bots call noteSeen with the plate directly, so their L1 and offer counts do not show 
+  RULING: The works card's opening reports its plate: in src/modes/salvage/actions.ts (the 'open' case) noteSeen carries { card: 'works', plate } for a works card, so the lender's letter can fall due from a real screen (the bots called onSeen directly). A test through the mode's action, not through the rules' function.
+- M5 (important; owner money; money attacker): On the real played yard, headroom almost never admits the two larger packs. pack20 (§1.58M at I §79,044) never fits. pack10 fits only with cash 0 in the first rung-4 sitting, and never with the bot's own cash. From sitting 6 to rung 5, U is about 0.5 h of I and no pack fits at all (21.5's 'nothing left to buy'). The $9.99 and $19.99 products are listed but cannot be bought. Rul
+  RULING: A PRODUCT THAT CAN NEVER BE BOUGHT IS NOT LISTED. First fix E3 (partner levels priced from their own gain): headroom U will be far larger. Then measure with the bots' owner (a line in requests.md): on the normal hand, at which ordinary moments of rungs 4 and 5 does each pack fit U. Report the table. If the 20-hour pack still never fits, say so for the lead (the list of ruling 9.1 changes only by the lead's word). Fix M10 with it.
+- M6 (minor; owner money; money attacker): Help's three pack pages ('Scrip packs', 'The code', 'Bought scrip … lost if it starts again') show from the first minute, before the second session and at every rung, wherever the country is on. Ruling 13.2 says nothing of money appears before the second session. They also show to t13, who can never buy a pack.
+  RULING: Nothing of money before the second session, the help included: Help's three pack pages show only where the pack rows themselves would (the second session reached, the country on, the age band allowing packs). Test from firstHour2min and for a child's band.
+- M7 (minor; owner money; money attacker): On the shipped content no plate can be financed at rung 3. Every rung-3 plate costs the floor §3,000, below 0.5 h × I (§16,023 at the rung-3 entry, §39,275 by sitting 3). The analyser (§29,100) is flagged not financeable. The bank first appears at rung 4 (shredder, rotary, induction). The specification's fallback (the floor falls) is not built. This is known in part through rul
+  RULING: not now: it follows from the first prices (six rung-3 plates at the floor); read again after the bots' second measurement (ruling 21.1).
+- M8 (minor; owner money; money attacker): The spot buyer offers a video for trivial amounts: 'Video · +§0.20' at I §15,494. Ads run from the second session at any rung, but dayHours_h is null at rungs 1 and 2. So the 4 % daily ceiling is unchecked exactly where the second session usually begins.
+  RULING: AN OFFER TOO SMALL TO MATTER IS NOT MADE, AND THE DAY'S CEILING HOLDS AT EVERY RUNG: the spot buyer offers a video only when its reward is at least content ads.minOffer_min minutes of I (a new key, 2); ads.dayHours_h gets real values for rungs 1 and 2 (the same ceiling rule as rung 3: at most maxDayShare of a day's income), so the 4 % ceiling is checked wherever the second session begins. Keys through the content's owner (a line in requests.md; the schema's key is yours to add).
+- M9 (minor; owner screens; money attacker): The restart confirmation does not show 'Bought scrip, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.' (card.restart.packLost, P16), although R.restartPackLost(g) exists. A waiting pack really is lost at reset.
+  RULING: not now (the stage's screens, Phase C): recorded for it.
+- M10 (minor; owner money; money attacker): Latent. buyCheck and levelCheck test the money refusal before the ceiling, so an item the ceiling forbids reads 'cantAfford' with its price when cash is short, and headroomU counts it. U then depends on the cash in hand, against E10 ('what the cash can pay does not decide it'). No ceiling binds on the frozen r3 or r4 states, so the numbers do not differ today.
+  RULING: The ceiling is tested before the money in buyCheck and levelCheck (an item the ceiling forbids reads its ceiling refusal whatever the cash), so headroom U never depends on the cash in hand (E10). Test with cash 0 and cash 10^9 on a ceiling-bound state: the same U.
+- X1 (blocking; owner works; exactness attacker): Oversize pieces never stop coming while the boss cuts them. With four waiting, nextAt is null. A cut sets nextAt = t, the arrival at that same t makes four again and sets nextAt back to null, and the next cut repeats it. The spec contradicts itself: 'when the arrival makes four, nextAt = null' against 'the next is dated t + period'.
+  RULING: BLOCKING. A NEW OVERSIZE PIECE COMES ONE PERIOD AFTER A CUT, NEVER AT ONCE: in lotActEnd the next arrival is dated t + lots.period_s whenever a cut frees the pad from full (and an arrival that makes four leaves nextAt null as now). The specification's sentence is corrected to this (a line for the lead: 2.10.1). Test: four waiting, cut in a row: at most one new piece per period; ten minutes at the pad cut at most the pieces that were there plus what the periods bring. Both attackers' tests move into the repository.
+- X2 (important; owner loop; exactness attacker): An absence longer than away.gapS (10 s) and shorter than cardS (60 s), while an away card is still open, runs a full pass that pays and buys loads, but its money is not added to the open card. The card then disagrees with the cash, in either direction.
+  RULING: AN OPEN AWAY CARD TAKES EVERY PASS: showCard = (raw > cardS && played) || an away card is still open: a pass made while the card waits is added to it (its sold rows, its loads, its net, its time away), so the card always equals what the cash moved. This is the first yard too (the owner's phone): tests at stage 1 on the shipped content (two hours away, then 30 s more with the card open: the card's net equals the cash's change to the cent) and at stage 2. The mode's deferral (src/modes/salvage/returning.ts: a counting card only for an absence over cardS) needs no change: say so in your account after reading it.
+- X3 (important; owner works; exactness attacker): A cut oversize piece is split into pieces of the object's own piece size, not into the few 'batch' pieces the spec describes. Its mass grows with rated income: a 60 kg catering table arrives as 4.4 t, an engine casing as 5.9 t, which breaks L2 (real physics) on the plate that prints the mass. Thousands of pieces then land on a floor that holds about 4 t.
+  RULING: A CUT OVERSIZE PIECE IS WEIGHED WHERE IT IS CUT, AND IT WEIGHS WHAT SUCH A THING WEIGHS. (a) At the cut its grades go straight into their bays on one ticket with a line a grade (as things.ts shellWeighIn does for a car's shell): no thousands of pieces on the floor (a tick at rung 5 costs 2.3 ms because of them). If a grade's bay is held or its route says a plate, the ticket follows the same rule as any weigh-in. (b) Real physics (L2): a lot's printed object and its printed mass agree: each lot object of the content carries a mass range a real one has (a line to the content's owner with your proposal: objects heavy enough for the works' rungs: a ship's propeller, a transformer core, a press frame, a boiler drum: names through the register), the lot's mass is drawn inside its object's range, and its worth follows from mass and grades, not from scaling a 60 kg table to 4.4 t. The rule mu x I for a lot's worth becomes the choice of WHICH object comes (the heaviest whose worth is at most mu x I), not a multiplier on its mass. Tests: every lot's mass within its object's range on 5 seeds at rungs 3, 4, 5; no ground piece created by a cut.
+- X4 (minor; owner works; exactness attacker): A corrupt works.<plate>.work in a save is not repaired, and the yard throws at its first jump.
+  RULING: A corrupt works.<plate>.work in a save is repaired as the first yard's machine work is (kept only when its piece's grams are finite and its grade and times valid, else null); goals.done is an array after any load. The attacker's two corruptions become tests.
+- X5 (minor; owner works; exactness attacker): A save and reload does not continue bit for bit when reuse.nextAt (the next visitor's date) is in the past with the rack empty: the live yard keeps the old date, the load moves it up to the save's clock. Nothing is paid differently.
+  RULING: A save and reload goes on bit for bit also when the next visitor's date lies in the past with the rack empty: do not clamp reuse.nextAt on load while the rack is empty (or null it in the live yard when the rack empties: choose the one that keeps tick = jump and save = unsaved, and test both).
+- X6 (minor; owner loop; exactness attacker): A stage-2 save loaded by a stage-1 build does not throw, but stage 2 keeps going: the yard stays at rung 5 with 13 works, the works keep running and the cash keeps rising.
+  RULING: A SAVE THAT HAS SEEN STAGE 2, LOADED BY A BUILD AT release.stage 1, IS KEPT AND FROZEN: nothing of stage 2 advances, pays or shows (the works, the bank, the shop, the lots, the rack: no event, no money, no card), the first yard's rules run on what the first yard owns, the ladder shows at most rung 3, and every stage-2 field is kept as saved for the day a build at stage 2 loads it again (then it goes on from where it was). A test with the attacker's save (rung 5, 13 works) at stage 1 for a day of play and an absence: cash moves only by the first yard's earnings; then loaded at stage 2: the works as saved.
+- E1 (blocking; owner works; economy attacker): Cutting a lot while four are waiting dates the next lot at once (if nextAt === null then nextAt = t), so a full pad is refilled after every cut. The period never applies. Each lot is worth mu (18 min) x I, and a cut takes 4 to 10 s. A boss standing at the pad turns about 7 s into 18 minutes of income: on seed 202 that was 29 hours of I in one 15-minute sitting. This is a domina
+  RULING: The same fault as X1 (the economy attacker measured it at 29 hours of income in one 15-minute sitting): fixed there. Add his rules test.
+- E2 (important; owner works; economy attacker): PLAUSIBLE (the bot's fault or the rules'): on seed 201 at rung 5 the boss takes 'cut lot17' 284 times in 15 minutes and the cut never finishes (lots.n stays at 19). The yard then supplies fewer tonnes than with an idle boss.
+  RULING: Find out with the bots' owner (requests.md) why 'cut lot17' is taken 284 times in 15 minutes and never finishes (seed 201, rung 5): whether the act's hold fails where the bot stands (reach.work against the thing's size) or the bot walks off at every decision. Whichever side: an act that is refused or broken says why (a refusal the screen can show, lesson 12); and a test that a boss standing where the frame's own stand point for the lot is finishes the cut.
+- E3 (blocking; owner money; economy attacker): Bridge partner levels: (a) they are priced with the yard's mean margin of §0.641 a kg, when a plumbing load nets about §2.2 a kg plus the works' grades; (b) each level adds a full skip flow (20 loads an hour) and nothing downstream binds, so the gain does not diminish; (c) binding() lists partners only when no crew binds, and at stage 2 the hands always 'bind'. So the card says
+  RULING: BLOCKING. A PARTNER'S LEVEL COSTS WHAT IT EARNS, AND THE ADVICE NAMES THE BEST BUY. (a) levelPrice for a partner = levelTau x the rated gain of that level (rated income with the level less without: rate.ts carries the partner terms), as a plate's level is priced; never the yard's mean margin a kilogram. The first yard's prices (rungs 1 to 3 at release.stage 1) must come out AS THEY ARE on the owner's phone: this is a stage-2 rule (from the works' opening); a test pins the first yard's partner level prices at stage 1 to today's. (b) The card's 'not the bottleneck now' is said only when the level's rated gain is zero. (c) See E7 for the advice.
+- E4 (blocking; owner loop; economy attacker): A dead end reached by the stage's best money play. A player who levels the two bridge partners (they reach level 20 by sitting 4, §918.6k in all) makes +52 % lifetime earnings by day 3 and +55 % by day 6. But the driver then always fetches the better-paying bridge skips, so the farm and demolition loads that bring light iron stop. Light iron stays at about §25k worth against th
+  RULING: BLOCKING. NO WAY OF PLAYING WELL ENDS IN A DEAD END. A player who levels the bridge partners must still reach rung 5. (a) THE DRIVER KEEPS EVERY OPEN PARTNER SERVED: among full skips he takes the best by his rule, but no open partner's full skip waits longer than content truck.fairAfter_trips (a new key, 4) of his trips; from the works' opening only (the first yard's driver is unchanged at stage 1: test). (b) The rung's tile and the advice line name the material that is missing and who supplies it (with the words' owner: a line in requests.md; 19.4 asks the same). (c) A check for the content's owner (requests.md): every material a rung asks for can be supplied by the partners open at that rung at a rate that reaches the rung's worth within the rung's band. Test (a) with the attacker's strategy as a bot pair: bridge partners levelled to 20 by sitting 4 reaches rung 5 within the band.
+- E5 (blocking; owner works; economy attacker): Confirmation in play of 21.2, at a much larger size than the walk's -5.6 %. A player who never buys the crane (a goal purchase) beats the goal-card player by more than a fifth, so the strategy the game teaches loses by more than a fifth.
+  RULING: BLOCKING (ruling 21.2). THE CRANE NEVER LEAVES THE YARD POORER. Find the cause with the smallest example (the economy attacker: a player who never buys it earns 51 to 55 % more by day 3 and has 29 to 30 % more tonnes): what it lifts, where to, and what that costs (whole things into the shear that a cutter would have cut into dearer grades; hoppers kept full so that yard hands stand; the floor emptied so that the rule of 17.2 stops). Change its rule so that it only does what leaves the yard at least as rich (it lifts a thing only when the plate it feeds will make of it at least what the yard would have made without the crane, and never takes work a waiting cutter or hand would do at a better worth). GATE: the bot pair 'never buys the crane' against the normal hand: within 2 % of lifetime earnings at day 3 on five seeds (the crane may win, never lose by more), and the walk's crane step at or above -1 %.
+- E6 (important; owner money; economy attacker): Rated income I is not monotone through levels. partnerFarm and driver levels LOWER I, while G rises or stays flat (sitting 6: farm L+1 is +1.31 % G and -§2,089 I). Packs (S = H x I), the ads' caps, the bank's F and the lots' mass all read I. A purchase can therefore shrink the next pack or ad offer.
+  RULING: RATED INCOME NEVER FALLS WHEN THE YARD GAINS (important; packs, ads, the bank and the lots read it): no purchase, hire or level lowers I. In the partner queue's valuation, rank by net per truck-second and take I as at least what it was without the new capacity. A rules test over every purchase step on the frozen stage-2 states and on the bots' states: I(after) >= I(before). With it, rulings 19.2 and 21.4: I's terms for every plate, the hands' carrying to the yard plates, whole things as inputs and the van, calibrated to the bots' measured earnings to the band of 14.10 (medians 0.95 to 1.05) at the six named moments on both boards; and the facade's ratedIncome, ratedTerms and stockValue read the content at the state.
+- E7 (important; owner money; economy attacker): E13 table of what binds (seed 201, unseen). r3 entry (sitting 1): binding says hand and driver; the real best buys are the bridge truck (+60.7 %, §12k) and the plasma (+28 %, §8k), and the hand levels it names are +0.35 to 0.44 %. r3 last purchase (sitting 3): hand; real: plumbing +27.8 %, garage +7.7 %, hand +1.2 to 1.4 %. r4 entry (sitting 4): hand; real: shredder +30 %, plum
+  RULING: THE ADVICE LINE ADVISES BY PAYBACK, at stage 2 (from the works' opening; the first yard's advice at release.stage 1 is unchanged: test): among everything the player can buy now (plates, levels of plates, crew, machines and partners, vehicles, tools), it names the one with the shortest payback (price over rated gain an hour) when that payback is within tau_r; 'what binds' no longer decides. When nothing pays back within tau_r it says what the yard is waiting for (ruling 21.5: the next rung's missing tonnes and materials). Test with the attacker's table (seed 201): at each of his five moments the line names his 'real best buy' or one within a tenth of its payback.
+- E8 (minor; owner content; economy attacker): Claims my runs do not reproduce, or that the report states without its own evidence. (a) 'sittings 7-8 offer nothing useful' and 'the advice line names only binding levels': the report's own walk shows level partner.plumbing +12.97 % (day 3) and +20 % (r4 entry), but only losses are flagged. (b) 'the hand's worth 2.0x the manager': lifetime earnings on runs where the lot loop f
+  RULING: The bots' report says what it measured: add to yard-bot.ts's walk a 'hidden best buy' flag (any step whose gain is over 5 % at a payback under tau_r that neither the advice line nor the goal names) and a line of lots cut per sitting; correct the three claims the economy attacker could not reproduce in docs/design/yard-bots2.md (mark them 'before the lot fix'). The full re-measurement is the confirm step's, after the rules are fixed.
+- E9 (minor; owner money; economy attacker): Finance is neutral, so the 'better on a quarter to a half of offers' aim fails. With F at most 2 h of I on a §419k plate repaid within one absence, signing changes lifetime earnings by +0.7 % and cash by -§31k by day 3. The player's choice carries no weight.
+  RULING: not now: a measure, as 19.6 (the bank changes lifetime earnings by under 1 %; it is a convenience, not a strategy).
+- L1 (important; owner loop; the lead (ruling 21.3)): Five of 64 steps of the walk fail: the crane (E5), the baler (-3.4 %), the driver's level and the farm's level at rung 3, the demolition's level on day 3.
+  RULING: Each failing step but the crane's with its smallest example: why does the yard keep less after it. Where the cause is the driver's choice of load, measure the rank of ruling 16.5 at stage 2 with the bots' owner (it stays unshipped at stage 1) and say whether it ships from the works' opening; the baler's step is the works' owner's if the cause is in the baler's feed (a line in requests.md).
+- L2 (minor; owner content; the lead (ruling 21.6)): A content variant without the lead line has eight materials while rung 5 asks for nine: a dead end the build accepts.
+  RULING: The build refuses a content in which a rung asks for more materials than its plates and partners can supply at that rung (with E4 (c): and at a rate that reaches the rung's worth). A selftest case for the refusal.
+
+ORDER OF WORK: engine step 4 is merged first (its gate is the recorded results of the old engine,
+which the rule changes below would break); then one pass of fixes by four owners (money and content
+may start at once: their files are not the engine step's); then the bots measure the stage again
+(prices with a played hour, 21.1; the crane pair; fifteen seeds), a confirmation by engineers who
+wrote none of it, and the specification is brought into step.
+
+20.5 ENGINE STEP 4 (27 November, about 02:40): built in its own working copy, checked by an engineer
+    who wrote none of it against the engine before steps 3 and 4 (137 cases, 1,684 computations,
+    144,324 comparison points: 0 differences; no writer goes past the index; no cache could be made
+    stale), merged into the working line (1bfb34a). Six hours away in node, before steps 3 and 4 /
+    after step 3 / after step 4: the first yard at minute 120 with the Night watch 331 / 290 /
+    267 ms; stage 2 at rung 4 with seven plates 2,806 / 1,204 / 966 ms. The aims of 20.1 are still
+    not met and the profile is flat (departures that set out and plan a run, and their landings).
+    From now on every change of the things or the pieces goes through lookup.ts's writers. What is
+    left for a later step: planning a run more cheaply, and the oversize pieces weighed where they
+    are cut (finding X3: thousands of fragments on the floor cost a tick 2.3 ms at rung 5).
+
+### 23. The one pass of fixes on stage 2 (27 November, from 02:30): what the owners handed back for a ruling
+
+23.1 THE FAIR DRIVER AT TWELVE TRIPS (E4 (a)). Built as ruled (from the works' opening no open
+    partner's full skip waits more than N trips; a count a partner; tick, jump and time away agree;
+    the first yard plays byte for byte the same), it reached rung 5 with the bridge partners
+    levelled, but at N = 4 it cost the normal hand 25 to 28 % of lifetime earnings by day 6 (trips
+    spent on poorer loads). `truck.fairAfter_trips` is 12: the normal hand is unchanged, the
+    bridge-partner play reaches rung 5 at 6 % less, and the build's supply check still passes
+    (rung 5: light iron within 29.4 h of 49). The attacker's dead end did not reproduce on the tree
+    as it stood when the rule was built, with the rule off; the confirm step looks for it again.
+23.2 NET IS WHAT THE CASH MOVED. The away card's net is sold less loads less the bank's share (it
+    was sold less loads, with the bank's share on its own line: a card that prints NET alone
+    overstated the cash while an agreement was open). The sold total stays gross and the bank's
+    line stays beside it. It replaces the sentence of 2.14.4 and 2.17. The first yard has no bank:
+    its card is unchanged.
+23.3 WHAT WAS PAID FOR SURVIVES A RESTART (M3): the shared store's reset hands the game the player
+    had to the mode (`EngineMode.onReset`, optional: the four other games are unchanged); the yard
+    keeps the entitlements, the age band, the packs-hidden lock and a chosen look that is an owned
+    product, and loses the cash, the yard and a purchase still waiting, as its card says. Tested
+    through the real store at both stages.
+23.4 RATED INCOME (E6, E7, 19.2, 21.4). From the works' opening rated income is the best replay over
+    the yard's effective assets and partner loads are ranked by net per truck-second; over the
+    attacker's 597 purchase steps it now falls on 6 (it fell on 38): not yet "never". The advice
+    line names the shortest payback within τ_r and matches the attacker's best buy at 3 of his 5
+    moments (at two it names the garage, which rated income overrates). Both wait for ONE more
+    step, the calibration of rated income against the bots' measured gains (every plate's term,
+    the hands' carrying, whole things, the van; the band of 14.10; no fall at any purchase step of
+    the bots' runs), which follows the bots' second measurement. Until then nothing is priced
+    from a term that is known to be wrong: a partner's level is priced from its own rated gain
+    (E3), which the attacker measured at a tenth to a quarter of what the yard keeps.
+23.5 PACKS AGAINST HEADROOM (M5): on states played under the old prices the 20-hour pack never
+    fits and the 10-hour pack only at rung 4's entry with no cash. Read again on the bots' second
+    measurement (partner levels now cost what they earn, so headroom is larger); a pack that still
+    never fits at an ordinary moment is taken off the list of ruling 9.1.
+23.6 A SAVE THAT HAS SEEN STAGE 2, IN A BUILD AT STAGE 1 (X6), as built: the stage's dates are
+    moved on by the time the first yard ran (a thawed save goes on from where it froze); a crew
+    member caught on stage-2 work is made idle and his load put on the tipping floor; a first-yard
+    partner's waiting skip keeps its works-layer things aside. Accepted.
+
+### 24. Stage 2, the second and last round of fixes (27 November, about 03:20)
+
+The first pass closed the oversize-piece loop (a new piece comes one period after a cut), weighs a
+cut piece where it is cut (no fragments on the floor), found the crane's loss (it fed light iron
+into the baler, whose tray the yard hands then carried 31 m to the scale instead of 13 m from the
+floor) and gave it a rule under which it never loses; found and fixed a tick against jump fault in
+the halls' pours; and brought four things to light that need one more round:
+
+- R1 (blocking; owner works2): With the rule that the magnet crane only does what leaves the yard at least as rich, the crane does NOTHING on the shipped map: the baler's and the shear's plots are 26 to 31 m from the platform scale and the tipping floor 12 to 13 m, so baling (+24 %) or shearing never pays a yard hand's longer walk with the tray. 'Buy the magn
+  RULING: THE YARD'S PLATES WEIGH WHAT THEY MAKE (ruling 24.1). From the works' opening, the stage's YARD plates that make a grade (the baler, the shear, the granulator) weigh their output at the plate, on a platform under the tray, and it is credited to its grade's bay there, exactly as the back field's plates do through their belt weigher (2.8.1 'Out': no tray trip, no ticket, the chip 'Weighed at the works' while the boss can see it). Yard hands and the crane only FEED these plates; nobody carries their trays. The first yard's own machines (the strippers, the motor bench, the crucible) stay exactly as they are (their trays go to the platform scale by hand: that is the first yard, and it is on the phone: pin it with a test at release.stage 1 and at stage 2 below the works' opening). The depollution bay's whole things and everything else of 2.7 stay as built. Then look at the crane again under its worth rule (craneWorth: the hand's saved feeding trip now counts for it): GATES: (a) the bot pair 'never buys the crane' against the normal hand at day 3 on five seeds: the crane does not lose by more than 2 % and the pair's mean is ABOVE zero (a goal purchase must gain); (b) the walk's crane step and baler step at or above -1 % on means; (c) a tick, a jump and time away agree (tickjump, joined) and mass balances with the plates weighing in place; (d) the memo's verify mode once on your cases. If the crane is still inert after this, say exactly what it would need, with numbers (reach, its stand's place, what it may feed).
+- R2 (important; owner works2): The shipped content's oversize pieces have no real mass ranges yet, so after X3 a lot weighs only what its object weighs (60 to 100 kg, worth §288 to §2,900): far under mu x I at rungs 3 to 5.
+  RULING: REAL MASSES ONLY (L2: the printed object can really weigh what the plate prints). Set mass_kg for the kinds whose object fits: the bronze propeller [400, 3000] (a workboat's to a coaster's); the pallet crate of bronze bushings [200, 1000]; the catering table stays a catering table [60, 120]; the aluminium engine casing [80, 300]. Do NOT stretch an object beyond what it is and do NOT add new kinds now: the three heavy kinds of the proposal (a transformer core, a press frame, a boiler drum) need drawn objects and registered names and come with the stage's screens (a line for Phase C in your account, with their grades, tiers and ranges). Add the content check the proposal names (min <= max, min at least a tenth of the object's own mass, max at most what its partner could bring: the build refuses otherwise). Rebuild game.json (the real file keeps release.stage 1 and an empty shared product list) and say what a lot is now worth at rungs 3, 4 and 5 against mu x I.
+- R3 (important; owner small): When no purchase pays back within tau_r the advice line is null: the yard says nothing between the last useful purchase and the next rung; and a rung that waits for one material (light iron at rung 5 for a player who levels the bridge partners; non-ferrous for steel-max at rung 4) does not say which, or who supplies it.
+  RULING: WHEN NOTHING IS LEFT TO BUY, THE YARD SAYS WHAT IT IS WAITING FOR (21.5), from the works' opening (the first yard's advice at release.stage 1 is unchanged: pinned). The advice gains a kind 'waiting' with the next rung's missing tonnes and, when a material is short of its worth, that material and the open partner (or plate) that supplies most of it: 'Rung 5: 1,240 t to go' / 'Rung 5 waits for light iron: Hob's Farm Clearance brings it' (names by id from the register; words at most the advice line's box at font scale 1.3; the three text files; the words' check at 0 findings). The rung's tile carries the same missing material. Tests on the frozen stage-2 states and on a state made short of one material.
+- R4 (important; owner small): A boss sitting in the forklift (he gets in by walking near it) cannot cut, weigh or carry, and nothing says why: the bot took 'cut lot17' 284 times in 15 minutes. frameWorks.ts already sets the one button to Step out in the forklift and will show the refusal once its key exists.
+  RULING: A refusal 'inForklift' with its words ('Step out of the forklift first': fits the refusal tag's box), shown as the held refusal while he tries an act of his own from the forklift; the bot steps out of the forklift before any act that is not the forklift's (bot.ts) and never again loops on a refused act (a refused act twice in a row makes it choose something else: a general guard, with a test). For Phase C (a line in your account): the forklift follows the truck's cab rules of ruling 18.3 (the screen's flag seats him at its door, the disc's Get in, Step out answered).
+- R5 (minor; owner small): A corrupt save whose goals.done or goals.skipped is not an array makes the yard throw later.
+  RULING: On any load goals.done and goals.skipped are arrays of known goal ids (anything else is dropped). The first yard too (it only matters for a corrupt save). The attacker's cases as tests.
+
+After this round: the bots' second measurement (prices with a played hour, 21.1; the crane pair;
+packs against headroom; fifteen seeds), then the calibration of rated income (23.4), then a
+confirmation by engineers who wrote none of it, and the specification brought into step.

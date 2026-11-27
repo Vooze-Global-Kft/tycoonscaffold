@@ -16,6 +16,7 @@ import { contentAt } from './layer';
 import { roundMoney } from './money';
 import { checks } from './rate';
 import { bayOf } from './bays';
+import { routesChanged } from './memo';
 import { orderPlate, reratePlate, routeOf, takesGrade } from './works';
 import { forkliftOut } from './forklift';
 import type { CardAction, GradeId, LevelTarget, PlateId, RecipeId, RefusalKey, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, StationId, TxtArgs } from './types';
@@ -120,6 +121,7 @@ export function setRoute(cfg: SalvageConfig, g: SalvageGame, grade: GradeId, to:
   const x = begin(cfg, g, events, true);
   if (to !== 'bay' && !takesGrade(x, to, grade)) return refuse(g, events, 'noRoute');
   x.s.routes[grade] = to;
+  routesChanged(x);
   x.ev.push({ type: 'routeSet', grade, to });
   void clock;
   return finish(g, x);
@@ -151,6 +153,7 @@ export function setPlateRecipe(cfg: SalvageConfig, g: SalvageGame, plate: PlateI
   h.charge_g = 0;
   h.chargeBy = {};
   h.recipe = recipe;
+  routesChanged(x);
   h.phase = 'empty';
   h.phaseSince = t;
   h.endsAt = null;

@@ -109,7 +109,7 @@ export const salvageActions = {
    * The screen saw a place's label (first sight) or opened a card: every "first time" text reads it.
    * The overlay host calls it when a card opens (press({act:'open'}) does it too).
    */
-  noteSeen: (seen: { place?: R.PlaceId; card?: R.CardKind }) => act('noteSeen', (cfg, g, clock) => R.noteSeen(cfg, g, seen, clock)),
+  noteSeen: (seen: { place?: R.PlaceId; card?: R.CardKind; plate?: R.PlateId }) => act('noteSeen', (cfg, g, clock, ev) => R.noteSeen(cfg, g, seen, clock, ev)),
   /** 2.15 ackAway(): the away card's OK. */
   ackAway: () => act('ackAway', (cfg, g) => R.ackAway(cfg, g)),
   /** A card's button: the action it names (types.ts CardAction), with its exact arguments. */
@@ -142,7 +142,8 @@ export const salvageActions = {
         const now = salvageNow();
         if (!now) return null;
         const data = R.cardOf(now.cfg, now.g, a.card, Date.now());
-        return salvageActions.noteSeen({ card: data.kind, ...(a.card.kind === 'place' ? { place: a.card.place } : {}) });
+        // s2c-fix-money (M4): a works card reports its plate, so the lender's letter can fall due from a real screen.
+        return salvageActions.noteSeen({ card: data.kind, ...(a.card.kind === 'place' ? { place: a.card.place } : {}), ...(a.card.kind === 'works' ? { plate: a.card.plate } : {}) });
       }
       // Stage 2's buttons (types.ts CardAction v3; s2a-fix widened the union): the rules' actions are Phase B's
       // (actionsWorks.ts, actionsMoney.ts) and the store's purchases Phase C's; until then nothing happens.

@@ -34,6 +34,7 @@ import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock'
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
+import { MEMO_CHECK, memoMismatch, ROUTES, routesChanged } from './memo';
 import { roundMoney } from './money';
 import { nearPlace, placeGap, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
@@ -43,6 +44,7 @@ import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
+import { pieceClaimed, pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
 // ============================================================================================ rules-works (Phase B, wave 1)
 //
@@ -55,9 +57,9 @@ import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, Stat
 //   grams = floor(share × processed) per output of the piece's input key (2.5.3, out per input), the piece's end
 //   giving the exact remainder; the rest is waste. Rate = rate_kg_s (the shear: shear.P / the whole thing's
 //   hardness `h`, 1 for a loose piece) × (1 + lev × (L − 1)), fixed at the piece's start; a level re-rates at once.
-//   A hands-fed plate's outputs go to its TRAY as they are credited (a full tray stops it before its next piece,
-//   nothing lost; yard hands carry the tray to the platform scale); a bay-fed plate's outputs are credited on its
-//   belt and land in their grades' BAYS when the piece is done (its belt weigher), and its `stream` share becomes
+//   EVERY rate plate's outputs (a hands-fed yard plate's too: RULING2 24.1, s2-fix-works2) are credited on its
+//   belt and land in their grades' BAYS when the piece is done (its belt weigher; no tray, no ticket; a tray's grams
+//   kept by an older save are still carried to the platform scale by hand), and a bay-fed plate's `stream` share becomes
 //   the eddy current's outputs while the eddy current runs (else waste). Reagents are paid when a piece (a bay-fed plate's draw) or a heat starts, never by the clock; a
 //   start the cash cannot pay waits.
 // - A BAY-FED plate draws, when idle, ONE piece of at most `inbuf` kg from the first bay of its `in` list whose
@@ -217,6 +219,7 @@ function plateArrive(x: Ctx, id: string, w: WorksState, t: number): void {
   w.since = t;
   w.status = 'idle';
   w.commissionAt = t + (x.c.works?.selfCommission_s ?? 0);
+  routesChanged(x);
   x.ev.push({ type: 'plateArrived', plate: id });
   x.dirty = true;
 }
@@ -226,6 +229,7 @@ export function commission(x: Ctx, id: string, by: 'boss' | 'self', t: number): 
   const w = x.s.works[id];
   if (!w || w.phase !== 'installed') return;
   w.phase = 'running';
+  routesChanged(x);
   w.commissionAt = null;
   w.commissionedBy = by;
   w.since = t;
@@ -331,7 +335,7 @@ function processedG(w: WorksState, t: number): number {
   return Math.min(k.piece.g, (k.base_g ?? 0) + Math.max(0, t - k.startAt) * k.rate_kg_s * 1000);
 }
 
-/** Where a credited output goes: a hands-fed plate's tray; a bay-fed plate's bays (its belt weigher); the stream to the eddy current's outputs (while it runs). */
+/** Where a credited output goes: the plate's belt (its bays at the piece's end: RULING2 24.1, the yard's plates too); the stream to the eddy current's outputs (while it runs). */
 function deliver(x: Ctx, id: string, w: WorksState, to: string, add: number): void {
   const d = plateDef(x.c, id)!;
   if (to === 'stream') {
@@ -350,10 +354,13 @@ function deliver(x: Ctx, id: string, w: WorksState, to: string, add: number): vo
     void add;
     return;
   }
-  // A bay-fed plate's credited grams stay on its belt (work.credited) and land in their bays when the piece is
+  // Every rate plate's credited grams stay on its belt (work.credited) and land in their bays when the piece is
   // done (finishPlatePiece): a bay changes only at an instant of the queue, so a tick equals a jump (the bays'
-  // first-stock numbering, the round's lots) however the clock is cut.
-  if (d.feedBy === 'hands') w.tray_g[to] = (w.tray_g[to] ?? 0) + add;
+  // first-stock numbering, the round's lots) however the clock is cut. RULING2 24.1 (s2-fix-works2): the yard's
+  // hands-fed plates (the shear, the baler, the granulator) WEIGH WHAT THEY MAKE at the plate, as the back field's
+  // belt weighers do: nothing goes to a tray any more (a tray's grams from an older save are still carried off).
+  void w;
+  void add;
 }
 
 /** Credit a plate's piece to yard second t by the cumulative rule (nothing at a rate of 0). */
@@ -382,7 +389,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
   const key = plateKey(d, k.piece) ?? k.piece.grade;
   creditPlate(x, id, w, t);
   let outSum = 0;
-  const toBays = d.feedBy !== 'hands';
+  // RULING2 24.1: every rate plate's outputs land in their grades' bays at the piece's end (no tray, no ticket).
   for (const [to, share] of plateOut(x.c, id, key)) {
     const total = Math.floor(share * k.piece.g + 1e-6);
     const add = total - (k.credited[to] ?? 0);
@@ -392,7 +399,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
     }
     if (to !== 'stream') {
       outSum += total;
-      if (toBays && total > 0) bayOf(x, to).g += total;
+      if (total > 0) bayOf(x, to).g += total;
       if (total > 0) {
         count(x, `made:${to}`);
         if (heard(x)) x.ev.push({ type: 'plateOut', plate: id, grade: to, g: total });
@@ -410,7 +417,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
   x.s.waste_g += k.piece.g - outSum;
   w.work = null;
   count(x, `worked:${id}`);
-  if (d.feedBy !== 'hands') numberBays(x);
+  numberBays(x);
   startPlate(x, id, w, t);
 }
 
@@ -470,6 +477,27 @@ export function takesGrade(x: Ctx, id: string, grade: string): boolean {
  * with Take from bays on); else null (no plate takes it: the first yard's own, the crucible's Take from bays).
  */
 export function routeOf(x: Ctx, grade: string): StationId | 'bay' | null {
+  // engine3: routeOf's answers are kept per transition (ROUTES, keyed by the Ctx and its content object) and dropped by
+  // routesChanged(x) at every place that changes what routeOf, takesGrade and plateMargin read of the state: a plate
+  // ordered, set down or started up (its phase; a hall's heat created), a purchase owned (the crucible's owned flag), a
+  // route or a hall's recipe set (actions, each its own Ctx anyway). Nothing else of the state is read here.
+  let memo = ROUTES.get(x);
+  if (!memo || memo.c !== x.c) ROUTES.set(x, (memo = { c: x.c, at: new Map() }));
+  const kept = memo.at.get(grade);
+  if (kept !== undefined) {
+    if (MEMO_CHECK.verify) {
+      const fresh = routeOfNow(x, grade);
+      if (fresh !== kept) memoMismatch(`routeOf(${grade})`, kept, fresh);
+    }
+    return kept;
+  }
+  const r = routeOfNow(x, grade);
+  memo.at.set(grade, r);
+  return r;
+}
+
+
+function routeOfNow(x: Ctx, grade: string): StationId | 'bay' | null {
   const set = x.s.routes[grade];
   if (set === 'bay') return 'bay';
   if (set !== undefined) {
@@ -573,17 +601,24 @@ export function plateFeed(x: Ctx, m: CrewMember, t: number, keep: ((id: string) 
     if (keep && !keep(id)) continue;
     const room = plateRoom(x, id, w);
     if (room <= 0) continue;
+    // engine3: for this plate (running, rate, hands-fed: the guard above) and nothing changing inside the look,
+    // plateAccepts(x, id, p) is its key and route (keyRoute) and room >= p.g, which every piece looked at here already has
+    // (p.g > room is skipped first; the second look filters by it below, as plateAccepts did).
+    const keyRoute = (p: GroundPiece): boolean => {
+      const key = p.whole && d.in.includes(p.whole) ? p.whole : d.in.includes(p.grade) ? p.grade : null;
+      return key !== null && (key !== p.grade || routeOf(x, p.grade) === id);
+    };
     let pile: string | null = null;
     let order = Infinity;
     for (const p of pool) {
       if (p.claim || p.g > room) continue;
       const o = waitsFor(x, p);
-      if (o < 0 || o >= order || !plateAccepts(x, id, p)) continue;
+      if (o < 0 || o >= order || !keyRoute(p)) continue;
       order = o;
       pile = p.pile;
     }
     if (pile === null) continue;
-    const src = pool.filter((p) => p.pile === pile && !p.claim && plateAccepts(x, id, p));
+    const src = pool.filter((p) => p.pile === pile && !p.claim && p.g <= room && keyRoute(p));
     const pick = chooseFit(x, src, Math.min(cap, room));
     if (!pick.length) continue;
     for (const p of pick) p.claim = m.id;
@@ -655,6 +690,7 @@ export function orderPlate(x: Ctx, plate: string, t: number): void {
   const d = plateDef(x.c, plate);
   if (!d || x.s.works[plate]) return;
   x.s.works[plate] = freshWorks(x, plate, d, t);
+  routesChanged(x);
   x.dirty = true;
   if (heard(x)) x.ev.push({ type: 'plateState', plate, status: 'arriving' });
 }
@@ -791,7 +827,7 @@ function pickPlateClaims(x: Ctx, m: CrewMember, t: number): Piece[] {
       if (w.status === 'trayFull') startPlate(x, id, w, t);
       continue;
     }
-    const gp = s.pieces.find((q) => q.uid === c && q.claim === m.id);
+    const gp = pieceClaimed(s.pieces, c, m.id);
     if (!gp) continue;
     const p = takeFromPile(x, gp.uid);
     if (p) load.push(p);
@@ -845,48 +881,285 @@ export function worksTrayTrip(x: Ctx, m: CrewMember, t: number, plate: StationId
 
 // ---------------------------------------------------------------------------------------- the magnet crane (2.7)
 
-/** May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? */
+/** engine3: positions.ts placeGap memoised per content object (a pure function of the content's map and the two ids). */
+const GAPS = new WeakMap<object, Map<string, number>>();
+function gapOf(c: SalvageContent, a: string, b: string): number {
+  let m = GAPS.get(c);
+  if (!m) GAPS.set(c, (m = new Map()));
+  const key = `${a}|${b}`;
+  let v = m.get(key);
+  if (v === undefined) m.set(key, (v = placeGap(c, a, b)));
+  return v;
+}
+
+/**
+ * E5 (RULING2 21.2 and 22: THE CRANE NEVER LEAVES THE YARD POORER). The smallest example (the economy attacker's
+ * normal-201-3, rung 3, four hours away at usual prices): with the crane the yard keeps §53,898 an hour, without it
+ * §81,912 (-34 %). The crane lifted the floor's light iron into the baler (baler 1,161 pieces against 90), and the yard
+ * hands, who bind there, then carried the baler's tray from its plot 26 m from the scale instead of the same iron from
+ * the floor 12 m from it (their time: 122 samples of 240 on tray trips against 11); the floor filled with the things
+ * only they carry, the hook waited for room, the cutters stood with nothing to cut (161 against 84) and every cut
+ * count halved. The baler adds §0.12 a kg (+24 %), the walk costs more than twice the hands' time.
+ * THE RULE AS BUILT (s2-fix-works2, RULING2 24.1): the yard's plates weigh what they make at the plate (finishPlatePiece:
+ * into the bays, no tray), so what the crane lifts from the floor into a plate costs NO yard hand's time at all, where
+ * without the crane a hand would carry the same kilogram from the floor to the platform scale (or a cutter cut it
+ * first). The crane takes an input key into a plate only when what the plate makes of a kilogram is worth at least what
+ * the yard would make of it without the crane (a loose piece at its own grade's p̄; a whole thing as a cutter would cut
+ * it: its prepared value a kilogram): out(key) ≥ in(key). The hand's saved trip is then pure gain, never a loss of worth.
+ * (The first pass's rule out / T(plot) ≥ in / T(floor) priced the tray's walk to the scale, which no longer exists.)
+ * A pure function of the content (memoised per content), so the crane does the same work present and away and a tick
+ * equals a jump.
+ */
+const CRANE_WORTH = new WeakMap<object, Map<string, boolean>>();
+function craneWorth(c: SalvageContent, to: string, key: string): boolean {
+  let m = CRANE_WORTH.get(c);
+  if (!m) CRANE_WORTH.set(c, (m = new Map()));
+  const k = `${to}|${key}`;
+  let v = m.get(k);
+  if (v === undefined) m.set(k, (v = craneWorthNow(c, to, key)));
+  return v;
+}
+function craneWorthNow(c: SalvageContent, to: string, key: string): boolean {
+  const d = plateDef(c, to);
+  if (!d) return false;
+  const pbar = (g: string) => c.grades[g]?.pbar ?? 0;
+  let out = 0;
+  for (const [g, sh] of plateOut(c, to, key)) if (g !== 'stream') out += sh * pbar(g);
+  const o = c.objects[key];
+  const vin = o ? (o.gross_g > 0 ? ((o.preparedValue ?? 0) * 1000) / o.gross_g : 0) : pbar(key);
+  return out > 0 && out >= vin;
+}
+
+/**
+ * May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? A MAGNET lifts only
+ * what is ferrous (2.7: "whole ferrous things and ferrous pieces"; L2): a grade of family `fe`. s2-fix-works2: the thin
+ * cable (`tcab`, material null) passed crane.never, so once the crane's worth rule let it work it would have carried
+ * copper cable into the granulator (8.8 m from its stand, inside reach_m 9).
+ */
 function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
   const k = x.c.crane;
   if (!k) return false;
   if (obj && k.neverObjects.includes(obj)) return false;
+  if (x.c.grades[grade]?.family !== 'fe') return false;
   const mat = x.c.grades[grade]?.material;
   return !(mat && k.never.includes(mat));
 }
 
 /** The crane's next move (one dated move at a time): the first served plate in content order with room, from the tipping floor, best value first within crane.load_kg and the hopper's room. */
 function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
+  // engine3: a departure that made no move is not made again while it would again make none (craneStill).
+  const memos = CRANE_IDLE.get(x);
+  const memo = memos?.get(id);
+  if (memo && craneStill(x, memo)) {
+    if (MEMO_CHECK.verify && craneDepartNow(x, id, w, t)) memoMismatch(`crane ${id} idle`, 'no move', w.move);
+    return;
+  }
+  if (craneDepartNow(x, id, w, t)) {
+    memos?.delete(id);
+    return;
+  }
+  let m = memos;
+  if (!m) CRANE_IDLE.set(x, (m = new Map()));
+  m.set(id, craneSnap(x, id));
+}
+
+/**
+ * engine3: why a crane departure made no move, kept to tell when it would again make none. craneDepartNow takes an item
+ * for a target exactly when the item is free on the floor (a thing: unclaimed, no shell, uncut; a piece: unclaimed,
+ * on the floor or beside a thing on the floor), the crane may lift it, its key is the target's input (routed there
+ * when the key is its grade) and its grams are at most min(crane.load_kg, the target's room); it changes nothing when
+ * it takes nothing. So with the same items, routes and plates, it makes no move again while every target's room
+ * (min(load, room)) is below the smallest grams of the items it would accept (`gmin`, Infinity: none) or not above 0.
+ * Kept: the content; the transition's kept routes when a route was read (works.ts routeOf: the same memo object means
+ * the same answers); every RELEVANT thing on the floor (its object or whole grade is some hands-fed plate's input:
+ * no other can ever be taken) with its claim, shell and cut (a uid and an object never change); every relevant piece
+ * on the floor or beside a thing with its claim, pile and grams, and beside a thing whether that thing is on the floor;
+ * each plate with its phase; each target's gmin. Room is read again at each look.
+ */
+interface CraneIdle {
+  c: SalvageContent;
+  routes: object | undefined | null;
+  things: ThingState[];
+  thingV: unknown[];
+  pieces: GroundPiece[];
+  pieceV: unknown[];
+  plates: unknown[];
+  targets: { to: string; gmin: number }[];
+}
+const CRANE_IDLE = new WeakMap<Ctx, Map<string, CraneIdle>>();
+
+/** The inputs of the content's hands-fed rate plates (objects and grades), and the objects whose own id or whole grade is one: kept per content. */
+const CRANE_KEYS = new WeakMap<object, { keys: Set<string>; objs: Set<string> }>();
+function craneKeys(c: SalvageContent): { keys: Set<string>; objs: Set<string> } {
+  let v = CRANE_KEYS.get(c);
+  if (!v) {
+    const keys = new Set<string>();
+    for (const d of Object.values(c.works?.plates ?? {})) if (d.kind === 'rate' && d.feedBy === 'hands') for (const k of d.in) keys.add(k);
+    const objs = new Set<string>();
+    for (const [obj, o] of Object.entries(c.objects)) if (keys.has(obj) || (o.whole && keys.has(o.whole))) objs.add(obj);
+    CRANE_KEYS.set(c, (v = { keys, objs }));
+  }
+  return v;
+}
+
+const craneRelevantPiece = (keys: Set<string>, p: GroundPiece): boolean => (p.pile === 'floor' || p.pile.startsWith('beside.')) && (keys.has(p.grade) || (!!p.whole && keys.has(p.whole)));
+
+function cranePlates(x: Ctx, out: unknown[] | null, cmp: unknown[] | null): boolean {
+  let i = 0;
+  for (const id of plateIds(x)) {
+    const w = x.s.works[id];
+    if (out) out.push(w, w?.phase);
+    else if (cmp![i] !== w || cmp![i + 1] !== w?.phase) return false;
+    i += 2;
+  }
+  return true;
+}
+
+/** The targets of a crane (craneDepartNow's guard, without the room) and, for each, the smallest grams it would accept. */
+function craneTargets(x: Ctx, id: string): { targets: { to: string; gmin: number }[]; routed: boolean } {
   const k = x.c.crane;
   const d = plateDef(x.c, id)!;
-  if (!k || placeGap(x.c, d.plot, 'floor') > k.reach_m) return;
-  // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
-  let floorThings: { th: ThingState; o: SalvageContent['objects'][string] }[] | null = null;
-  let floorPieces: GroundPiece[] | null = null;
+  const targets: { to: string; gmin: number }[] = [];
+  let routed = false;
+  if (!k || gapOf(x.c, d.plot, 'floor') > k.reach_m) return { targets, routed };
   for (const to of plateIds(x)) {
     const tw = x.s.works[to];
     const td = plateDef(x.c, to)!;
-    if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || placeGap(x.c, d.plot, td.plot) > k.reach_m) continue;
-    let room = Math.min(k.load_kg * 1000, plateRoom(x, to, tw));
+    if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || gapOf(x.c, d.plot, td.plot) > k.reach_m) continue;
+    const keyRoute = (grade: string, whole: string | undefined): boolean => {
+      const key = whole && td.in.includes(whole) ? whole : td.in.includes(grade) ? grade : null;
+      if (key === null || !craneWorth(x.c, to, key)) return false;
+      if (key !== grade) return true;
+      routed = true;
+      return routeOf(x, grade) === to;
+    };
+    let gmin = Infinity;
+    for (const th of thingsAt(x.s.things, 'floor')) {
+      if (th.at.at !== 'floor' || th.by || th.shell || th.cut !== 0) continue;
+      const o = x.c.objects[th.obj];
+      if (o?.whole && craneMayLift(x, o.whole, th.obj) && o.gross_g < gmin && keyRoute(o.whole, th.obj)) gmin = o.gross_g;
+    }
+    for (const p of x.s.pieces) if (!p.claim && p.g < gmin && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole) && keyRoute(p.grade, p.whole)) gmin = p.g;
+    targets.push({ to, gmin });
+  }
+  return { targets, routed };
+}
+
+function craneSnap(x: Ctx, id: string): CraneIdle {
+  const { keys, objs } = craneKeys(x.c);
+  const things: ThingState[] = [];
+  const thingV: unknown[] = [];
+  for (const th of thingsAt(x.s.things, 'floor')) if (objs.has(th.obj)) {
+    things.push(th);
+    thingV.push(th.by, th.shell, th.cut);
+  }
+  const pieces: GroundPiece[] = [];
+  const pieceV: unknown[] = [];
+  for (const p of x.s.pieces) if (craneRelevantPiece(keys, p)) {
+    pieces.push(p);
+    pieceV.push(p.claim, p.pile, p.g, p.pile === 'floor' || thingOf(x, p.pile.slice(7))?.at.at === 'floor');
+  }
+  const plates: unknown[] = [];
+  cranePlates(x, plates, null);
+  const { targets, routed } = craneTargets(x, id);
+  return { c: x.c, routes: routed ? ROUTES.get(x) : null, things, thingV, pieces, pieceV, plates, targets };
+}
+
+function craneStill(x: Ctx, m: CraneIdle): boolean {
+  if (m.c !== x.c) return false;
+  if (m.routes !== null && (m.routes === undefined || m.routes !== ROUTES.get(x))) return false;
+  const k = x.c.crane!;
+  // The rooms first (the cheapest look): a target whose room now admits its smallest acceptable item may move.
+  for (const q of m.targets) {
+    if (q.gmin === Infinity) continue;
+    const tw = x.s.works[q.to];
+    if (!tw) return false;
+    const room = Math.min(k.load_kg * 1000, plateRoom(x, q.to, tw));
+    if (room > 0 && q.gmin <= room) return false;
+  }
+  if (!cranePlates(x, null, m.plates)) return false;
+  const { keys, objs } = craneKeys(x.c);
+  let i = 0;
+  for (const th of thingsAt(x.s.things, 'floor')) if (objs.has(th.obj)) {
+    if (m.things[i] !== th || m.thingV[3 * i] !== th.by || m.thingV[3 * i + 1] !== th.shell || m.thingV[3 * i + 2] !== th.cut) return false;
+    i++;
+  }
+  if (i !== m.things.length) return false;
+  i = 0;
+  for (const p of x.s.pieces) if (craneRelevantPiece(keys, p)) {
+    if (m.pieces[i] !== p || m.pieceV[4 * i] !== p.claim || m.pieceV[4 * i + 1] !== p.pile || m.pieceV[4 * i + 2] !== p.g) return false;
+    if (p.pile !== 'floor' && m.pieceV[4 * i + 3] !== (thingOf(x, p.pile.slice(7))?.at.at === 'floor')) return false;
+    i++;
+  }
+  return i === m.pieces.length;
+}
+
+/** The crane's departure itself (true when it made a move). */
+function craneDepartNow(x: Ctx, id: string, w: WorksState, t: number): boolean {
+  const k = x.c.crane;
+  const d = plateDef(x.c, id)!;
+  if (!k || gapOf(x.c, d.plot, 'floor') > k.reach_m) return false;
+  // join2b (the stage's away bench): what the crane may lift from the floor is read once a departure, not once a target plate (the same lists, in the same order).
+  // engine3 (time away made cheaper, results unchanged bit for bit; notes/engine3.md): the same choice in plain loops. Inside
+  // one departure nothing that plateAccepts reads changes (a claim is set only on the target the move is made for, and the
+  // move is then made), so for a target `to` that passed the guard below plateAccepts(x, to, p) is exactly: its input key
+  // (plateKey), routeOf(grade) === to when the key is the grade, and plateRoom(to) >= p.g: the route is read once a grade a
+  // departure (craneRoute) and the room once a target. The things are filtered for the target BEFORE they are sorted: the
+  // sort's order is total (gross, then the unique uid), so filtering and sorting commute.
+  let floorThings: ThingState[] | null = null;
+  let floorPieces: GroundPiece[] | null = null;
+  let routes: Map<string, StationId | 'bay' | null> | null = null;
+  const routeTo = (grade: string): StationId | 'bay' | null => {
+    routes ??= new Map();
+    let r = routes.get(grade);
+    if (r === undefined) routes.set(grade, (r = routeOf(x, grade)));
+    return r;
+  };
+  for (const to of plateIds(x)) {
+    const tw = x.s.works[to];
+    const td = plateDef(x.c, to)!;
+    if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || gapOf(x.c, d.plot, td.plot) > k.reach_m) continue;
+    const roomTo = plateRoom(x, to, tw);
+    let room = Math.min(k.load_kg * 1000, roomTo);
     if (room <= 0) continue;
+    const accepts = (grade: string, whole: string | undefined, g0: number): boolean => {
+      const key = whole && td.in.includes(whole) ? whole : td.in.includes(grade) ? grade : null;
+      if (key === null || !craneWorth(x.c, to, key)) return false;
+      if (key === grade && routeTo(grade) !== to) return false;
+      return roomTo >= g0;
+    };
     const items: string[] = [];
     let g = 0;
     // Whole things on the floor first (the shear's beams and tanks), then loose pieces on the floor.
-    floorThings ??= x.s.things
-      .filter((th) => th.at.at === 'floor' && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole)
-      .map((th) => ({ th, o: x.c.objects[th.obj] }))
-      .filter(({ th, o }) => craneMayLift(x, o.whole!, th.obj))
-      .sort((a, b) => b.o.gross_g - a.o.gross_g || (a.th.uid < b.th.uid ? -1 : 1));
-    const things = floorThings.filter(({ th, o }) => !th.by && plateAccepts(x, to, { grade: o.whole!, whole: th.obj, g: o.gross_g }));
-    for (const { th, o } of things) {
+    if (!floorThings) {
+      floorThings = [];
+      for (const th of thingsAt(x.s.things, 'floor')) {
+        if (th.at.at !== 'floor' || th.by || th.shell || th.cut !== 0) continue;
+        const o = x.c.objects[th.obj];
+        if (o?.whole && craneMayLift(x, o.whole, th.obj)) floorThings.push(th);
+      }
+    }
+    const things: ThingState[] = [];
+    for (const th of floorThings) {
+      const o = x.c.objects[th.obj];
+      if (!th.by && accepts(o.whole!, th.obj, o.gross_g)) things.push(th);
+    }
+    if (things.length > 1) things.sort((a, b) => x.c.objects[b.obj].gross_g - x.c.objects[a.obj].gross_g || (a.uid < b.uid ? -1 : 1));
+    for (const th of things) {
+      const o = x.c.objects[th.obj];
       if (o.gross_g > room) continue;
       th.by = `crane.${id}`;
       items.push(th.uid);
       g += o.gross_g;
       room -= o.gross_g;
     }
-    floorPieces ??= x.s.pieces.filter((p) => !p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole));
-    const ps = floorPieces.filter((p) => !p.claim && plateAccepts(x, to, p));
-    for (const p of chooseFit(x, ps, room)) {
+    if (!floorPieces) {
+      floorPieces = [];
+      for (const p of x.s.pieces) if (!p.claim && waitsFor(x, p) === 2 && craneMayLift(x, p.grade, p.whole)) floorPieces.push(p);
+    }
+    const ps: GroundPiece[] = [];
+    for (const p of floorPieces) if (!p.claim && accepts(p.grade, p.whole, p.g)) ps.push(p);
+    for (const p of ps.length ? chooseFit(x, ps, room) : ps) {
       p.claim = `crane.${id}`;
       items.push(p.uid);
       g += p.g;
@@ -895,8 +1168,9 @@ function craneDepart(x: Ctx, id: string, w: WorksState, t: number): void {
     if (!items.length) continue;
     const rate = k.rate * (1 + d.lev * Math.max(0, w.level - 1));
     w.move = { items, g, from: 'floor', to, t0: t, end: t + Math.max(1e-3, g / 1000 / rate) };
-    return;
+    return true;
   }
+  return false;
 }
 
 /** The crane's move lands at t: what it holds goes into the hopper; what no longer fits is set down on the floor again (nothing lost). */
@@ -907,7 +1181,7 @@ function craneLand(x: Ctx, id: string, w: WorksState, t: number): void {
   const by = `crane.${id}`;
   for (const uid of mv.items) {
     let p: Piece | null = null;
-    const gp = x.s.pieces.find((q) => q.uid === uid && q.claim === by);
+    const gp = pieceClaimed(x.s.pieces, uid, by);
     if (gp) p = takeFromPile(x, uid);
     else {
       const th = thingOf(x, uid);
@@ -941,7 +1215,7 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
       for (let i = 0; i < n; i++) {
         const k = (x.s.counts!.floorThings ?? 0) + 1;
         x.s.counts!.floorThings = k;
-        x.s.things.push({ uid: `f${k}`, obj, at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
+        pushThing(x.s.things, { uid: `f${k}`, obj, at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
       }
     x.dirty = true;
     return true;
@@ -968,7 +1242,7 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
 
 /** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
 export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
-  const th = x.s.things.find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
+  const th = thingsAt(x.s.things, 'apron').find((q) => q.at.at === 'apron' && q.at.plate === id && !q.by);
   if (!th) return;
   const d = plateDef(x.c, id)!;
   const s = (x.c.depollution?.s ?? 0) / (1 + d.lev * Math.max(0, w.level - 1));
@@ -985,10 +1259,10 @@ export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {
 function carDrained(x: Ctx, id: string, w: WorksState, t: number): void {
   const car = w.car!;
   w.car = null;
-  const th = x.s.things.find((q) => q.uid === car.thing);
+  const th = thingById(x.s.things, car.thing);
   if (th) {
     const o = x.c.objects[th.obj];
-    x.s.things.splice(x.s.things.indexOf(th), 1);
+    spliceThing(x.s.things, x.s.things.indexOf(th));
     if (o) {
       for (const sp of o.pieces) {
         const b = bayOf(x, sp[0]);

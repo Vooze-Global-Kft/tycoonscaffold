@@ -13,6 +13,7 @@ import { rackChoice } from './reuse';
 import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
+import { pieceById, pieceClaimed, piecesOn, piecesUnique, removePieces, thingsAt } from './lookup';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
@@ -80,19 +81,35 @@ const pileOrder = (p: GroundPiece) => (p.pile.startsWith('circle.') ? 0 : p.pile
  * still fits is the same as taking, again and again, the best remaining piece that fits (a piece too heavy
  * for the room left stays too heavy: the room only shrinks), so the result and its order are the same.
  */
-function choose(x: Ctx, pieces: GroundPiece[], room: number): GroundPiece[] {
+/** engine4: vpk kept per content object (a pure function of the content and the grade). */
+const VPK = new WeakMap<object, Map<string, number>>();
+let VPK_C: object | null = null;
+let VPK_M: Map<string, number> | null = null;
+function vpkKept(c: Ctx['c'], grade: string): number {
+  let m = c === VPK_C ? VPK_M : VPK.get(c);
+  if (!m) VPK.set(c, (m = new Map()));
+  VPK_C = c;
+  VPK_M = m;
+  let q = m.get(grade);
+  if (q === undefined) m.set(grade, (q = vpk(c, grade)));
+  return q;
+}
+
+/**
+ * engine4: `unclaimed` true is choose over the pieces that have no claim (as choose(x, pieces.filter((p) => !p.claim),
+ * room)): a claimed piece is set aside before the first look, so the others are compared in the same order.
+ */
+function choose(x: Ctx, pieces: readonly GroundPiece[], room: number, unclaimed = false, vals: readonly number[] | null = null): GroundPiece[] {
   const out: GroundPiece[] = [];
   const n = pieces.length;
   if (!n) return out;
-  const val = new Array<number>(n);
-  const v = new Map<string, number>();
-  for (let i = 0; i < n; i++) {
-    const g = pieces[i].grade;
-    let q = v.get(g);
-    if (q === undefined) v.set(g, (q = vpk(x.c, g)));
-    val[i] = q;
-  }
+  // engine4: `vals` (a run's plan: groupHand) are these pieces' values already looked up, in their order.
+  const val = vals ?? new Array<number>(n);
   const taken = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (unclaimed && pieces[i].claim) taken[i] = 1;
+    if (!vals) (val as number[])[i] = vpkKept(x.c, pieces[i].grade);
+  }
   for (;;) {
     let best = -1;
     for (let i = 0; i < n; i++) {
@@ -207,12 +224,12 @@ function stripperTakes(x: Ctx): boolean {
 function looseAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, inYard: boolean, cableOk = false): ThingState | null {
   // H3 (`cableOk`: a trip chosen by the order, not a run's next trip): a cable bundle goes to the powered stripper.
   const looseCable = (th: ThingState) => inYard && !(cableOk && stripperTakes(x)) && (pieceSpec(x.c, th.obj, th.cut) ? isCable(x, pieceSpec(x.c, th.obj, th.cut)!.grade) : false);
-  return x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th) && !rackChoice(x, m, t, th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
+  return thingsAt(x.s.things, where).filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && !looseCable(th) && !rackChoice(x, m, t, th)).sort((a, b) => (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
 /** A whole workable thing at a place carried at its whole grade (E4), best whole grade first; a thing the Yard sale takes kept off (rackChoice, s2a-fix). */
 function wholeAt(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', cap: number, ok?: (th: ThingState) => boolean): ThingState | null {
-  const cands = x.s.things.filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0 && (!ok || ok(th)) && !rackChoice(x, m, t, th));
+  const cands = thingsAt(x.s.things, where).filter((th) => th.at.at === where && !th.by && !th.shell && th.cut === 0 && x.c.objects[th.obj]?.whole && (x.c.objects[th.obj]?.gross_g ?? Infinity) <= cap && (x.c.objects[th.obj]?.tier ?? 0) > 0 && (!ok || ok(th)) && !rackChoice(x, m, t, th));
   return cands.sort((a, b) => (x.c.grades[x.c.objects[b.obj].whole!]?.pbar ?? 0) - (x.c.grades[x.c.objects[a.obj].whole!]?.pbar ?? 0) || (a.uid < b.uid ? -1 : 1))[0] ?? null;
 }
 
@@ -644,15 +661,30 @@ function thingLeft_g(x: Ctx, th: ThingState): number {
 function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
   const cands: ThingState[] = [];
   // A thing the Yard sale takes is kept off (reuse.ts rackChoice, s2a-fix; the stub never keeps one off).
-  for (const th of x.s.things) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap && !rackChoice(x, m, t, th)) cands.push(th);
+  for (const th of thingsAt(x.s.things, 'floor')) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap && !rackChoice(x, m, t, th)) cands.push(th);
   if (!cands.length) return null;
-  cands.sort((a, b) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0));
-  const dest = floorWholeDest(x, cands[0]);
+  // engine4: the sort skipped when the things already stand in its order (the usual case: tipped things are pushed in
+  // the order of their f-numbers); sorting a sorted list by a consistent comparison leaves it as it is.
+  const byUid = (a: ThingState, b: ThingState) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
+  let sorted = true;
+  for (let i = 1; i < cands.length && sorted; i++) if (byUid(cands[i - 1], cands[i]) > 0) sorted = false;
+  if (!sorted) cands.sort(byUid);
+  // engine3: nothing changes inside this function, so a thing's destination is a function of its next piece's grade
+  // alone here (floorWholeDest reads the machines as they stand): asked once a grade.
+  const dests = new Map<string, MachineId | 'scale'>();
+  // engine4: the next piece's grade by things.ts specAt (pieceSpec's own answers, kept per content object).
+  const destOf = (th: ThingState): MachineId | 'scale' => {
+    const grade = specAt(x.c, th.obj, th.cut)?.grade ?? '';
+    let d = dests.get(grade);
+    if (d === undefined) dests.set(grade, (d = floorWholeDest(x, th)));
+    return d;
+  };
+  const dest = destOf(cands[0]);
   let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), thingLeft_g(x, cands[0])));
   const things: ThingState[] = [];
   let g = 0;
   for (const th of cands) {
-    if (floorWholeDest(x, th) !== dest) continue;
+    if (destOf(th) !== dest) continue;
     const w = thingLeft_g(x, th);
     if (w > room) continue;
     things.push(th);
@@ -672,12 +704,23 @@ function pickClaims(x: Ctx, m: CrewMember, claims: readonly string[], t: number)
   const want = new Set<string>();
   for (const c of claims) if (!c.startsWith('tray.') && !c.startsWith('loose:')) want.add(c);
   const found = new Map<string, number>();
-  if (want.size) for (let i = 0; i < s.pieces.length; i++) if (s.pieces[i].claim === m.id && want.has(s.pieces[i].uid)) found.set(s.pieces[i].uid, i);
+  if (want.size) {
+    // engine4: with unique uids the claimed pieces are found by the index (each uid's only piece, if he claimed it) and
+    // their places in the array by indexOf; the same uid -> place pairs as the scan below (which stays for a yard
+    // that should ever hold one uid twice: there the scan keeps the last such place).
+    if (piecesUnique(s.pieces)) {
+      for (const u of want) {
+        const q = pieceById(s.pieces, u);
+        if (q !== undefined && q.claim === m.id) found.set(u, s.pieces.indexOf(q));
+      }
+    } else for (let i = 0; i < s.pieces.length; i++) if (s.pieces[i].claim === m.id && want.has(s.pieces[i].uid)) found.set(s.pieces[i].uid, i);
+  }
   if (found.size) {
     const byUid = new Map<string, GroundPiece>();
     for (const [uid, i] of found) byUid.set(uid, s.pieces[i]);
-    const idx = [...found.values()].sort((p, q) => q - p);
-    for (const i of idx) s.pieces.splice(i, 1);
+    // engine3: the claimed pieces taken off in one pass (the others keep their order, as the splices left them);
+    // engine4: from the first of them on, the index kept (lookup.ts removePieces).
+    removePieces(s.pieces, [...found.values()].sort((a, b) => a - b));
     for (const c of claims) {
       const q = byUid.get(c);
       if (!q) continue;
@@ -744,7 +787,7 @@ export function releaseClaims(x: Ctx, id: string, claims: readonly string[]): vo
       continue;
     }
     const uid = c.startsWith('loose:') ? c.slice(6) : c;
-    const gp = s.pieces.find((p) => p.uid === uid && p.claim === id);
+    const gp = pieceClaimed(s.pieces, uid, id);
     if (gp) {
       gp.claim = null;
       continue;
@@ -809,7 +852,7 @@ function claimGrams(x: Ctx, claims: readonly string[]): number {
     if (c.startsWith('tray.')) g += Number(c.split('.')[3]) || 0;
     else {
       const uid = c.startsWith('loose:') ? c.slice(6) : c;
-      const p = x.s.pieces.find((q) => q.uid === uid);
+      const p = pieceById(x.s.pieces, uid);
       if (p) g += p.g;
       else {
         const th = thingOf(x, uid);
@@ -825,7 +868,7 @@ function claimGrade(x: Ctx, claims: readonly string[]): string | null {
   if (!c) return null;
   if (c.startsWith('tray.')) return c.split('.')[2] ?? null;
   const uid = c.startsWith('loose:') ? c.slice(6) : c;
-  const p = x.s.pieces.find((q) => q.uid === uid);
+  const p = pieceById(x.s.pieces, uid);
   if (p) return p.grade;
   const th = thingOf(x, uid);
   if (!th) return null;
@@ -848,21 +891,17 @@ function piecesCand(m: CrewMember, pick: GroundPiece[], pile: string): Cand | nu
 }
 
 /** The next trip of the same kind from the same place (the in-place choice of 2.1.2), or null. Claims nothing until `take`. */
-function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number): Cand | null {
+function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number, inYard: boolean, feedRoom: number, pool: GroundPiece[] | null = null, vals: readonly number[] | null = null): Cand | null {
   const s = x.s;
   switch (kind.k) {
     case 'feed': {
       if (feedRoom <= 0) return null;
-      const inputs = machineInputs(x.c, s, kind.dest);
       const inbuf = (x.c.machines as unknown as Record<string, { inbuf: number }>)[kind.dest].inbuf * 1000;
-      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && inputs.includes(p.grade));
-      return piecesCand(m, choose(x, src, Math.min(cap, inbuf, feedRoom)), kind.pile);
+      // engine4: choose skips the claimed pieces itself (the same choice as over the filtered list).
+      return piecesCand(m, choose(x, pool ?? sameAgainPool(x, kind, inYard), Math.min(cap, inbuf, feedRoom), true, pool ? vals : null), kind.pile);
     }
     case 'pile': {
-      const heapPile = kind.pile.startsWith('zone.') || kind.pile.startsWith('beside.');
-      const at = (uid: string) => thingOf(x, uid)?.at ?? null;
-      const src = s.pieces.filter((p) => !p.claim && p.pile === kind.pile && !(inYard && isCable(x, p.grade)) && (!heapPile || waitsAt(x, p) !== null || heapFree(x, p, inYard, at)));
-      return piecesCand(m, choose(x, src, cap), kind.pile);
+      return piecesCand(m, choose(x, pool ?? sameAgainPool(x, kind, inYard), cap, true, pool ? vals : null), kind.pile);
     }
     case 'tray': {
       const mach = s.machines[kind.id];
@@ -917,7 +956,7 @@ function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number
       if (!noCutter) {
         if (kind.where !== 'dropoff') return null;
         let free = 0;
-        for (const th of s.things) if (th.at.at === 'dropoff' && !th.by) free++;
+        for (const th of thingsAt(s.things, 'dropoff')) if (!th.by) free++;
         if (free < x.c.dropoff.places) return null;
       }
       const th = wholeAt(x, m, t, kind.where, cap);
@@ -925,6 +964,25 @@ function sameAgain(x: Ctx, m: CrewMember, t: number, kind: HandKind, cap: number
       return { spot: { thing: th.uid }, grade: x.c.objects[th.obj]?.whole ?? null, g: x.c.objects[th.obj]?.gross_g ?? 0, take: () => ((th.by = m.id), [th.uid]) };
     }
   }
+}
+
+/**
+ * engine3: the pieces a run of kind 'feed' or 'pile' may take next, before the claim test, in the pieces' order: for a
+ * feed those of its pile that are the machine's inputs, for a pile those of the pile that are not cable while the boss
+ * is in the yard and, in a heap's bed, that wait at a place or that he leaves (heapFree). Nothing of it reads a claim:
+ * inside one plan (groupHand) only claims change (each trip's take), so the plan computes it once and each trip takes
+ * the unclaimed ones of it, the same list as the full filter gives (sameAgain's own filter, in the same order).
+ */
+function sameAgainPool(x: Ctx, kind: HandKind, inYard: boolean): GroundPiece[] {
+  const s = x.s;
+  if (kind.k === 'feed') {
+    const inputs = machineInputs(x.c, s, kind.dest);
+    return piecesOn(s.pieces, kind.pile).filter((p) => inputs.includes(p.grade));
+  }
+  if (kind.k !== 'pile') return [];
+  const heapPile = kind.pile.startsWith('zone.') || kind.pile.startsWith('beside.');
+  const at = (uid: string) => thingOf(x, uid)?.at ?? null;
+  return piecesOn(s.pieces, kind.pile).filter((p) => !(inYard && isCable(x, p.grade)) && (!heapPile || waitsAt(x, p) !== null || heapFree(x, p, inYard, at)));
 }
 
 /**
@@ -947,8 +1005,12 @@ function groupHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numb
   const loads: RunLoad[] = [{ claims: m.claims, spot: m.to, grade: claimGrade(x, m.claims), pickAt: m.t1, dropAt: m.t1 + dur(src, dpos) }];
   let feedRoom = dest !== 'scale' ? hopperRoom(x, dest as MachineId) - claimGrams(x, m.claims) : 0;
   const maxRun = groupCfg(x.c).handRun_s;
+  // engine3: the run's candidate pieces once (sameAgainPool); each trip takes the unclaimed ones of them.
+  const pool = kind.k === 'pile' || kind.k === 'feed' ? sameAgainPool(x, kind, inYard) : null;
+  // engine4: and their values once (vpk is a function of the content and the grade).
+  const vals = pool ? pool.map((p) => vpkKept(x.c, p.grade)) : null;
   while (loads.length < RUN_MAX) {
-    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom);
+    const c = sameAgain(x, m, t, kind, cap, inYard, feedRoom, pool, vals);
     if (!c) break;
     const last = loads[loads.length - 1];
     const sp = posOf(x, c.spot);
@@ -1235,7 +1297,7 @@ function cutLeft(x: Ctx, th: ThingState, P: number): number {
  */
 function cutCands(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P: number): ThingState[] {
   const s = x.s;
-  const cands = s.things.filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier && !rackChoice(x, m, t, th));
+  const cands = thingsAt(s.things, where).filter((th) => th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier && !rackChoice(x, m, t, th));
   if (cands.length < 2) return cands;
   // The score is a pure function of the thing (memoised for the sort; the order is the same).
   const scores = new Map<ThingState, number>();

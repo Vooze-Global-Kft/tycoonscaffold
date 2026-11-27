@@ -45,9 +45,9 @@ type Plates = WorksInput['plates'];
 /** The works plates (2.5.3, 2.7, 2.8): level-1 numbers (tune). */
 const PLATES: Plates = {
   // ---- the yard's plates (south yard, rung 3; 2.7): fed by yard hands, the crane or the forklift
-  crane: { row: "yard", slot: 0, plot: "crane", gate: "rung3", needs: null, price: 30000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
+  crane: { row: "yard", slot: 0, plot: "crane", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "handling", in: [], feedBy: null, lev: 0.15, maxLevel: 10, inbuf: 0, tray: 0 },
   shear: {
-    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 40000, deliver_s: 30, kind: "rate",
+    row: "yard", slot: 1, plot: "shear", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate",
     // whole steel things of the torch's tier (tanks certified empty) and unprepared steel pieces; rate = shear.P / hardness
     // (the first yard's plough frame is steel too, but no source brings one: 5.2 (2) refuses it as an input)
     in: ["beam", "tank", "hmsu"], feedBy: "hands",
@@ -55,13 +55,13 @@ const PLATES: Plates = {
     lev: 0.15, maxLevel: 10, inbuf: 1500, tray: 2000,
   },
   baler: {
-    row: "yard", slot: 2, plot: "baler", gate: "rung3", needs: null, price: 9000, deliver_s: 30, kind: "rate", in: ["li"], feedBy: "hands",
+    row: "yard", slot: 2, plot: "baler", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["li"], feedBy: "hands",
     // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
-  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 6000, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 29100, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   depollution: {
-    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 80000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
+    row: "yard", slot: 4, plot: "depollution", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
     // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
     // out whole: the battery, four wheels, the loom, the converter, the drained shell: the elv object's pieces, shell and waste by mass
     // (lintStage2More (e) holds the two equal: one definition of a car's yield)
@@ -70,36 +70,36 @@ const PLATES: Plates = {
     lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 2000, permit: "card.rota.permitElv",
   },
   granulator: {
-    row: "yard", slot: 5, plot: "granulator", gate: "rung3", needs: null, price: 24000, deliver_s: 30, kind: "rate", in: ["tcab"], feedBy: "hands",
+    row: "yard", slot: 5, plot: "granulator", gate: "rung3", needs: null, price: 3000, deliver_s: 30, kind: "rate", in: ["tcab"], feedBy: "hands",
     out: { tcab: [["cug", 0.35]] }, waste: { tcab: [["carrier", 0.65]] }, rate_kg_s: 0.14, lev: 0.15, maxLevel: 10, inbuf: 200, tray: 500,
   },
   // ---- the shredder line (back field, rung 4; 2.8): from the bays by route, into the bays by its belt weigher
   shredder: {
-    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 600000, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
+    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 419000, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   eddy: {
-    row: "shredder", slot: 1, plot: "eddy", gate: "rung4", needs: "shredder", price: 250000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
+    row: "shredder", slot: 1, plot: "eddy", gate: "rung4", needs: "shredder", price: 3000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
     // no hopper and no level of its own: it runs at the shredder's stream (B16)
     out: { stream: [["zorba", 0.286]] }, waste: { stream: [["carrier", 0.714]] }, lev: 0, maxLevel: 1, inbuf: 0, tray: 0,
   },
   sorter: {
-    row: "shredder", slot: 2, plot: "sorter", gate: "rung4", needs: "eddy", price: 300000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
+    row: "shredder", slot: 2, plot: "sorter", gate: "rung4", needs: "eddy", price: 3000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
     out: { zorba: [["twitch", 0.7], ["no2", 0.03], ["brs", 0.04], ["znh", 0.08], ["ss", 0.05]] }, waste: { zorba: [["carrier", 0.1]] },
     rate_kg_s: 1, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
   },
   // ---- the melt halls (back field, rung 4): each bought with its filter, charged from covered bays by "Take from bays"
   rotary: {
-    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 450000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 0, plot: "rotary", gate: "rung4", needs: null, price: 77600, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 2000, s: 2400, start_share: 0.4, start_idle: 60 },
     // salt slag and the salt-flux filter's dust to a licensed waste carrier (T3); salt flux paid at the heat's start
     recipes: { alu: { in: ["alw", "alcast", "twitch"], out: [["ali", 0.88], ["ald", 0.055]], waste: [["carrier", 0.1], ["carrier", 0.015]], reagents: [["saltFlux", 0.05, 0.3]] } },
     lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   induction: {
-    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 350000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 171000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 500, s: 480, start_share: 0.4, start_idle: 60 },
     // its filter's zinc oxide dust is the one sellable dust (T3)
     recipes: {
@@ -110,13 +110,13 @@ const PLATES: Plates = {
   },
   // ---- the lead line (back field, rung 4; a separate area behind the painted line, masks on)
   breaker: {
-    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 200000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
+    row: "lead", slot: 0, plot: "breaker", gate: "rung4", needs: null, price: 38100, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
     // electrolyte 0.30 neutralised with soda ash (0.05 kg a kg at §0.40) leaves as a salt solution, 0.35, to a licensed waste carrier (T20)
     out: { pbb: [["pp", 0.06], ["pbp", 0.64]] }, waste: { pbb: [["carrier", 0.35]] }, reagents: [["sodaAsh", 0.05, 0.4]],
     rate_kg_s: 0.28, lev: 0.15, maxLevel: 10, inbuf: 1000, tray: 0, permit: "card.rota.permitLead",
   },
   smelter: {
-    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 400000, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "lead", slot: 1, plot: "smelter", gate: "rung4", needs: "breaker", price: 27500, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 1000, s: 1800, start_share: 0.4, start_idle: 60 },
     // coke and iron 0.06 kg a kg; slag 0.12 to a licensed waste carrier; the filter's lead dust goes back into the next heat (no grade; T3, T20)
     recipes: { lead: { in: ["pbp"], out: [["pbi", 0.94]], waste: [["carrier", 0.12]], reagents: [["cokeIron", 0.06, 0.3]] } },
@@ -345,11 +345,15 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
+    "content2-bots (26 Nov, REPORT8 round 2, RULING2.md 19.1): works plate prices from the measured gain, price = max(works.floor, tau_r x dE), dE the mean over seeds 1 to 5 of what the yard keeps more an hour (G at usual prices, a capped absence) with the plate bought at its planned moment on the normal hand, every earlier plate of that sitting owned (scripts/content/bots/plates.json): crane 30,000 -> 3,000, shear 40,000 -> 3,000, baler 9,000 -> 3,000, analyser 6,000 -> 29,100, depollution 80,000 -> 3,000, granulator 24,000 -> 3,000, shredder 600,000 -> 419,000, eddy 250,000 -> 3,000, sorter 300,000 -> 3,000, rotary 450,000 -> 77,600, induction 350,000 -> 171,000, breaker 200,000 -> 38,100, smelter 400,000 -> 27,500",
+    "content2-bots (26 Nov, stage 2's measurement, REPORT8 round 1): ladder.rungs n 5 10,000 -> 5,000 t (yard-stage2.md 2.22: rung 5 at day 4 to 6; at 10,000 t no bot reached it in eight days, about 700 t a sitting at rung 4; 5,000 t comes at sitting 10, day 5, on the normal hand; theta_5 follows by thetaShare: 120,000 -> 60,000 a material)",
     "owner1-rules (26 Nov, RULING-owner1.md H7): ladder rung 2 2.4 -> 2.8 t and rung 3 28.5 -> 31.5 t (both `rung2`/`rung3` and `rungs`): H1 to H4 brought rung 2 two minutes and rung 3 four and a half minutes earlier on the bots (15 seeds, 2 routes; 3.6 t was tried and put rung 2 at 15.8 min and the torch out of its band; notes/owner1-rules.md)",
     "owner1-rules (26 Nov, RULING-owner1.md): truck.bossV 9 -> 11 with bossYardV 4.5 inside the fence, truck.yardV 4 (the lane pays for it: trip totals unchanged), truck.bossHandle_s 4 (the driver's handle_s stays 10), partnerFarm.trialPrice 150 -> 0, crew.hand.leaveM 3, map.points wait1-wait4, release.stage 1 (stage 2 dark on the owner's phone)",
     "owner1-fix-rules (26 Nov, the player's findings 3, 5, 10): map.sites (sign places) with map.siteStop_m 6 and siteNear_m 15 (the whole site is the boss's stop); crew.hand.leaveS 5 (what lies within leaveM of the boss stays his only while he is active and has room); map.points wait1-wait4 to the scale house's south wall",
     "owner1-fix-rules (26 Nov, finding 5's first hour): ladder rung 2 2.8 -> 3.0 t and rung 3 31.5 -> 32.2 t (both `rung2`/`rung3` and `rungs`): the helper's new rule brought rung 2 about 40 s and rung 3 about 30 s to 80 s earlier on the bots (15 seeds, 2 routes; notes/owner1-fix-rules.md)",
     "the lead (26 Nov, the second update for the phone): feel.staleS 0.6 -> 1.5 s: a late phone is not an absent boss. The screen now sends a standing boss's sample every 0.3 s (it was 0.1 s), and a tick that runs before a late sample must not find him stale and cancel his act: the rules forgive 1.2 s of stall (they forgave 0.5 s). The bots stand at min(0.3, staleS/2) = 0.3 s as before: no measured table moves",
+    "the lead (27 Nov, ruling 23.1): truck.fairAfter_trips 4 -> 12: the fair driver of ruling 22 E4 (a) as first set cost the normal hand 25 to 28 % of lifetime earnings by day 6 (trips spent on poorer loads); at 12 the normal hand is unchanged, the bridge-partner strategy reaches rung 5 at 6 % less, and the build's supply check still passes (rung 5: light iron within 29.4 h of 49)",
     "engine2-dispatch, after the check (26 Nov, RULING2.md 16.8): truck.pickFromRung 1 -> 99 (beyond the ladder: the hands' rule alone ships, crew.orderFromRung stays 1). 16.5's rank was built and kept the same-state yard within noise of the hands' rule alone, but over the bots' days it kept 3.4 % less on means (three seeds -14 to -21 %), which 16.8 (2) does not allow; notes/dispatch-engine2.md 'After the check'",
     "engine2-dispatch (26 Nov, RULING2.md 16 and 17.5): truck.pickFromRung 1 and crew.orderFromRung 1 (the driver fetches what pays best, the yard hands clear a floor over half full first, both from the first trip: on the bots' hour, 15 seeds, every beat to the first pour is unchanged to the second); ladder rung 3 27.5 -> 28.5 t (rung 3 came about a minute earlier with both rules: normal goal A 12/15 in 55-65 at 27.5 t, 14/15 at 28.5 t as merged; slow 13/15, brisk 3/15, buy-all 15/15; notes/dispatch-engine2.md section 6)",
     "content2 (26 Nov, stage 2 Phase A, yard-stage2.md 5.1): stage 2's keys with their first values (works and its thirteen plates, crane, shear, forklift, depollution, lots, crate, reuse, bank, iap, ads, advice.shearKg, tau_h, ladder.topRung 5 and thetaShare, ceilings and away caps to rung 5) and the works layer of the families (worksLayer: sixteen grades, the new things, the bridge partners, the stage's shop items, the plasma cutter, the pallet truck, the new bays) and of the map (map.works, fitted with yard_map.py); first-yard values untouched except ladder.rungs n 4 to 9 (padlocked, shown only: 1,000 t · 8 and 10,000 t · 9 by 2.11, then rising); additions to first-yard entries are read by no first-yard rule (tags, the washer drum's assay, reuseBatch)",
@@ -374,6 +378,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     "shopRules: no one-at-a-time, no card delay (R13 refused, E25); the reserve is a load full now or within 60 s (E29)",
     "levels.opens torch -> rung 2 (E25); levels.floor added: no level costs less than §1,800 (a little above the last goal, the driver at §1,500), rising x1.25 a level, so that buying levels first delays the list instead of starving it",
     "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)",
+    "s2-fix-works2 (27 Nov, RULING2 24 R2): lots.kinds[].mass_kg set for the four kinds whose object fits (casing [80, 300], bushingCrate [200, 1000], cateringTable [60, 120], propeller [400, 3000] kg); build-yard.py refuses a range with min > max or min under a tenth of the object's own mass (and max over lots.lorry_kg once the content has it)",
   ],
   "$keys": [
     "grades: id -> name, p̄ §/kg (whole-game 4.2), family for the board, material for range, kind",
@@ -1153,7 +1158,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // load nets a second of the yard's slowest step. 99: beyond the ladder, the first yard's rule (the skip full longest that
   // fits) everywhere: 16.8 (2) not met over the bots' days (notes/dispatch-engine2.md "After the check"); 1 switches it on.
   // owner1 (RULING-owner1 V3, T3): yardV / bossYardV inside the fence, the lane pays for it (bossV 9 -> 11 on the lane); the boss hooks in 4 s.
-  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 20 },
+  // fairAfter_trips 12 (RULING2.md 22 E4 (a) and 23.1): from the works' opening no open partner's full skip waits more than 12 trips of the driver (the loop's rule). 4 cost the normal hand a quarter of its lifetime earnings by day 6; 12 costs it nothing and still brings the bridge-partner strategy to rung 5.
+  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 20, fairAfter_trips: 12 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
@@ -1439,7 +1445,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       // STAGE 2 (2.11, L7): rungs 4 and 5 replace the placeholders 150 t · 6 and 800 t · 7; rungs 6 to 9 show a padlock and their
       // tonnage only, kept rising past rung 5's 10,000 t (first values, content2; they were 4,000 to 500,000 t, range 8 to 11)
       { n: 4, t: 1000, range: 8 },
-      { n: 5, t: 10000, range: 9 },
+      // content2-bots (REPORT8): round 1 10,000 -> 5,000 t (10,000 t came after day 8 on every seed); round 3 5,000 -> 3,600 t
+      // (RULING2.md 19.3: rung 5 within about two sittings of the stage's last goal purchase, which came at sitting 5 or 6)
+      { n: 5, t: 3600, range: 9 },
       { n: 6, t: 50000, range: 10 },
       { n: 7, t: 200000, range: 11 },
       { n: 8, t: 600000, range: 12 },
@@ -1449,6 +1457,11 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     topRung: 5,
     thetaShare: 0.01,
     thetaPerT: 1200,
+    // s2-fix-content (RULING2.md 21.6, 22 L2 and E4 (c)): build-yard.py's supply check. trips_h 40: the hired driver's trips an
+    // hour at rung 3's entry before any level (the economy attacker's seed 201: 43 an hour over the first five hours; 89 to
+    // 187 at rung 4 with levels); hours_h: the yard hours below rung r by the end of rung r's band (8.2: rung 4 by day 3, from
+    // rung 3 at hour 1: 3 days x 12.3 h = 37; rung 5 by day 6, from rung 4 at day 3 at the latest: 3 x 16.3 h = 49).
+    supply: { trips_h: 40, hours_h: [null, null, null, 37, 49] },
   },
   // rungs 1 to 3 as measured (REPORT6); STAGE 2 rungs 4 and 5 (2.11; E30's guard)
   ceilings_t_h: [6, 110, 400, 800, 3500],
@@ -1570,10 +1583,13 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     kinds: [
       // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
       // cut_s: the boss's seconds for each kind within [4, 10] (the lead's ruling 6: per kind; first values, s2a-fix: the heavier piece the longer)
-      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7 },
-      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7 },
-      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4 },
-      { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10 },
+      // mass_kg (RULING2 24 R2, s2-fix-works2; L2): what such a real object weighs, in kg: an aluminium engine casing 80 to 300,
+      // a pallet crate of bronze bushings 200 to 1,000, a catering table 60 to 120 (it stays a table), a bronze propeller 400
+      // to 3,000 (a workboat's to a coaster's). The heavier kinds for rungs 4 and 5 come with the stage's screens (Phase C).
+      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7, mass_kg: [80, 300] },
+      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7, mass_kg: [200, 1000] },
+      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4, mass_kg: [60, 120] },
+      { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10, mass_kg: [400, 3000] },
     ],
     // The lead's ruling 6 (26 Nov 09:50): no fallback thing ("else an intermediate sold whole" is withdrawn): while no kind
     // can be drawn (every kind is tier 4: before the plasma cutter) the lots WAIT for one the yard can open.
@@ -1605,16 +1621,16 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     floorI: 2000,
     period_s: 240,
     firstVisitor_s: 30,
-    batchFactor: 1.5,
+    // content2-bots round 3 (REPORT8): 1.5 -> 1.25 (the Yard sale and the van 5.9 % of day 1, 5.3 % of days 2 and 3: aim 2 to 5 %)
+    batchFactor: 1.25,
     vanPeriod_s: 1800,
     firstThing: "bath",
   },
   // Plant finance (2.14; ruling 11): a fifth of every lot payment until repaid; one agreement at a time (fixed in stage 2).
   bank: { share: 0.2, shareWords: "A fifth", charge: 0.08, maxShare: 0.8, maxF_h: 2, maxF_tau: 0.15, minPrice_h: 0.5, maxAgreements: 1 },
   // The mode's part of real money (2.15): packs from rung 4 (fixed), off in the EEA and Switzerland (fixed at launch); the looks' slots.
-  // The sixteen products themselves are the shared list's (monetization.iap.products, B5): build-yard.py writes them from the
-  // names register with the game's prefix `yard_` (the fingerprint's rule: every product id starts with one prefix); lookOf
-  // names them by those ids (content2-bots).
+  // The sixteen products are `products` below (the game's prefix `yard_`: the fingerprint's rule, every product id starts
+  // with one prefix); lookOf names them by those ids (content2-bots). The shared list holds them at stage 2 only (M1).
   iap: {
     packsFromRung: 4,
     // RULING2.md 15.12 (b): quotes of one product that may stand at once (the lead, 08:05)
@@ -1634,10 +1650,27 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       yard_plaque: { slot: "plaque", value: "look.plaque" },
     },
     looks: ["colour", "dressing", "plaque", "sign"],
+    // s2-fix-content (M1; rulings 19.9, 21.8, 22 M1): the sixteen products of 2.15.1 are DEFINED here (kinds and H by
+    // ruling 9.1; fallbackPrice only shows before the store answers). build-yard.py fills title and description from
+    // the names register (product.<id without the prefix>) and mirrors this list into the shared
+    // monetization.iap.products ONLY at release.stage 2 or more: a stage-1 build asks the store for nothing.
+    products: [
+      ...[1, 2, 3, 4, 5, 6].map((i) => ({ id: `yard_colour${i}`, kind: "cosmetic" as const, fallbackPrice: "$1.99" })),
+      ...[1, 2, 3, 4].map((i) => ({ id: `yard_dressing${i}`, kind: "cosmetic" as const, fallbackPrice: "$2.99" })),
+      { id: "yard_plaque", kind: "cosmetic", fallbackPrice: "$2.99" },
+      { id: "yard_skipAds", kind: "skipAds", fallbackPrice: "$4.99" },
+      { id: "yard_pack2", kind: "hoursOfIncome", fallbackPrice: "$1.99", value: 2 },
+      { id: "yard_pack5", kind: "hoursOfIncome", fallbackPrice: "$4.99", value: 5 },
+      { id: "yard_pack10", kind: "hoursOfIncome", fallbackPrice: "$9.99", value: 10 },
+      { id: "yard_pack20", kind: "hoursOfIncome", fallbackPrice: "$19.99", value: 20 },
+    ],
   },
   // Rewarded ads (2.16; L3): 15 + 3 x 4 = 27 minutes of I a day at most against 0.04 x a day's income; dayHours_h the habit's
   // production hours by rung (ruling 10.6: 2 x (away cap + Night watch) + 0.3 h played).
-  ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [null, null, 12.3, 16.3, 20.3] },
+  // s2-fix-content (ruling 22 M8): rungs 1 and 2 by the same habit (2 x (0.5 + 2) + 0.3 = 5.3, 2 x (2 + 2) + 0.3 = 8.3), so the day's
+  // ceiling (maxDayShare of a day's income) holds wherever the second session begins; minOffer_min 2: the spot buyer offers a
+  // video only for at least two minutes of I.
+  ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [5.3, 8.3, 12.3, 16.3, 20.3], minOffer_min: 2 },
   // The entries stage 2 adds to the families above, joined from rung 3 (schema.salvage.ts withWorksLayer).
   worksLayer: WORKS_LAYER,
 };

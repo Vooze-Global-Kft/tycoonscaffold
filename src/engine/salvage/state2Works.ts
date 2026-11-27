@@ -5,9 +5,9 @@
  * `repairStage2` dispatches here and to state2Money.ts (s2a-fix, the lead's ruling of 26 Nov 09:50).
  * Every dated field is clamped to the save's clock t (dueOrNull): the loop never applies a date before it.
  */
-import type { CraneMove, ForkliftState, HeatState, LotsState, ReuseState, SalvageState, WorksState } from './types';
+import type { CraneMove, ForkliftState, HeatState, LotsState, MachineWork, ReuseState, SalvageState, WorksState } from './types';
 import type { Stage2Fields } from './state2';
-import { arr, dueOrNull, fin, isStock, num, obj, money, stock, str, strs, whole } from './state2Read';
+import { arr, dateOrNull, dueOrNull, fin, isStock, num, obj, money, stock, str, strs, whole } from './state2Read';
 
 /** At most this many plates (bounded state). */
 const MAX_PLATES = 64;
@@ -44,6 +44,21 @@ function moveOf(v: unknown, t: number): CraneMove | null {
 }
 
 /**
+ * X4 (RULING2 22): a plate's piece in work, kept only when well formed (its piece a grade, a uid and finite whole
+ * grams above zero; its start and rate finite, the rate not negative; its credited grams a stock; base_g and n in
+ * range), else null, as a machine's work that cannot be read: the yard never throws at its first jump on it.
+ */
+function workOf(v: unknown): MachineWork | null {
+  const k = obj(v);
+  const p = obj(k.piece);
+  if (!str(p.grade) || !str(p.uid, 128) || !fin(p.g) || p.g <= 0 || p.g !== Math.floor(p.g)) return null;
+  if (!fin(k.startAt) || !fin(k.rate_kg_s) || k.rate_kg_s < 0 || !isStock(k.credited)) return null;
+  if (k.base_g !== undefined && (!fin(k.base_g) || k.base_g < 0 || k.base_g > p.g)) return null;
+  if (k.n !== undefined && (!fin(k.n) || k.n < 1 || k.n !== Math.floor(k.n))) return null;
+  return { ...(k as unknown as MachineWork), piece: { ...(p as unknown as MachineWork['piece']), g: p.g }, credited: stock(k.credited) };
+}
+
+/**
  * A saved plate, kept when well formed (its machine part as save.ts keeps a machine's: hopper pieces
  * with a grade and grams, tray grams), else dropped. Phase B (rules-works) adds: unknown plates of the
  * content dropped, levels within `works.maxLevel`, hopper grades known.
@@ -63,6 +78,7 @@ function worksOf(id: string, v: unknown, t: number): WorksState | null {
     trayClaim_g: stock(w.trayClaim_g),
     since: num(w.since),
     commissionAt: dueOrNull(w.commissionAt, t),
+    work: workOf(w.work),
   };
   if (w.heat !== undefined) {
     const h = heatOf(w.heat, t);
@@ -99,7 +115,11 @@ export function repairWorks(raw: Partial<SalvageState>, fresh: Stage2Fields, t: 
 
   const r = obj(raw.reuse);
   const sold = obj(r.sold);
-  const reuse: ReuseState = { nextAt: dueOrNull(r.nextAt, t), vanAt: dueOrNull(r.vanAt, t), level: Math.min(99, whole(r.level)), sold: { day: Math.floor(num(sold.day, fresh.reuse.sold.day)), n: whole(sold.n), money: money(sold.money) } };
+  // X5 (RULING2 22): the next visitor's date is clamped to the save's clock only while the rack holds a thing (only then
+  // is it in the queue, reuse.ts reuseDated); with the rack empty it is kept as saved, as the live yard keeps it (a
+  // thing racked onto an empty rack is dated max(nextAt, t + period) either way): a reload goes on bit for bit.
+  const rackHeld = arr(raw.things).some((th) => obj(obj(th).at).at === 'rack');
+  const reuse: ReuseState = { nextAt: rackHeld ? dueOrNull(r.nextAt, t) : dateOrNull(r.nextAt), vanAt: dueOrNull(r.vanAt, t), level: Math.min(99, whole(r.level)), sold: { day: Math.floor(num(sold.day, fresh.reuse.sold.day)), n: whole(sold.n), money: money(sold.money) } };
 
   const f = obj(raw.forklift);
   const forklift: ForkliftState | null =

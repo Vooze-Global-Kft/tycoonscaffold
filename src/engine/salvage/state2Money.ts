@@ -90,3 +90,36 @@ export function repairMoney(raw: Partial<SalvageState>, fresh: Stage2Fields, t: 
 
   return { bank, iap, ads };
 }
+
+/**
+ * WHAT A RESTART KEEPS (s2c-fix-money M3, RULING2 22: "what was paid for and what a parent answered survive 'Start the
+ * yard again'"). `old` the game before the restart, `fresh` the new yard the shared store built. Kept: the shared
+ * entitlements whole (every owned look and No ad videos, in the same session, not only after the next start), the
+ * age band, the packs-hidden lock (its code's hash), and a chosen look that is an OWNED product (an earned look,
+ * a sign style of a rung or the foundry's plate, is earned again). Lost, as the restart card says: bought scrip
+ * (the cash), every quote still waiting (`iap.pending`) and the ledger with the yard. The country read is the shared
+ * store's `region`, which reset() does not touch. A content without stage 2's fields on either side: `fresh` as it
+ * is. Pure; the SAME `fresh` when there is nothing to keep. The shared store calls it through the mode's restart
+ * hook (a seam for the lead: requests.md, s2c-fix-money).
+ */
+export function restartKeeps(
+  old: { entitlements?: unknown; salvage?: Partial<SalvageState> },
+  fresh: { entitlements?: unknown; salvage?: Partial<SalvageState> },
+): typeof fresh {
+  const oi = old.salvage?.iap;
+  const fi = fresh.salvage?.iap;
+  const ent = old.entitlements as { products?: unknown } | undefined;
+  const owned = new Set(Array.isArray(ent?.products) ? (ent!.products as unknown[]).filter((p): p is string => typeof p === 'string') : []);
+  let out = fresh;
+  if (old.entitlements !== undefined && old.entitlements !== fresh.entitlements) out = { ...out, entitlements: structuredClone(old.entitlements) };
+  if (oi && fi && out.salvage) {
+    const looks = { ...fi.looks };
+    for (const k of LOOKS) {
+      const id = oi.looks?.[k];
+      if (typeof id === 'string' && owned.has(id)) looks[k] = id;
+    }
+    const iap: IapState = { ...fi, ageBand: oi.ageBand ?? fi.ageBand, hidden: oi.hidden ? { ...oi.hidden } : fi.hidden, looks };
+    out = { ...out, salvage: { ...out.salvage, iap } };
+  }
+  return out;
+}

@@ -470,6 +470,12 @@ export interface PartnerState {
   level: number;
   /** The skips in rotation, one per level (the trial first). */
   skips: SkipState[];
+  /**
+   * ADDED (s2-fix-loop, RULING2.md 22 E4 (a)): the hired driver's departures this partner's full skip has waited through
+   * (it was there, payable, and another partner's was taken). From the works' opening with content truck.fairAfter_trips
+   * only (truck.ts driverDepart); absent = 0 (the first yard never writes it).
+   */
+  fairWait?: number;
 }
 
 /** The skip on the truck after a hook: paid, then weighed in over the weighbridge, then tipped. */
@@ -718,6 +724,14 @@ export interface SalvageState {
    * is not kept), so that the newer build can take it back. Absent on every other save; no rule reads it.
    */
   newerSave?: { v: number; raw: unknown };
+  /**
+   * ADDED (s2-fix-loop, RULING2.md 22 X6): a save that has seen stage 2, loaded by a build at release.stage 1, is KEPT
+   * AND FROZEN: what the first yard does not own (the stage-2 fields as saved, counts.bathSet, the rung above the first
+   * yard's top, the tool tier above it, the works layer's things, pieces, bays, partners, shop keys, a bridge skip on the
+   * truck) is set aside here untouched, and the first yard's rules run on the rest. A build at stage 2 puts it back
+   * (save.ts). Absent on every other save; no rule reads it.
+   */
+  stage2Frozen?: { v: 1; [k: string]: unknown };
 
   // ---------------------------------------------------------------- v3: stage 2 (2.18). Made fresh by ./state2.ts.
   /** Every works plate bought (absent until bought), by plate id. The first yard's `machines` stay as they are; both are read through `station(s, id)` (2.5.3). */
@@ -1386,6 +1400,32 @@ export interface Goal {
    * the same step. Absent: no load step (the goal's own line).
    */
   step?: Txt;
+  /** s2-fix-small (R3, RULING2 24; ADDED): on a rung goal (`rung:<n>`) from the works' opening, what that rung waits for (advice.ts adviceWait). Absent otherwise. */
+  waits?: AdviceWait;
+}
+
+/**
+ * s2-fix-small (R3, RULING2 21.5 and 24; ADDED): WHAT THE YARD WAITS FOR when nothing is left to buy (advice.ts
+ * adviceWait; adviceLine gives it when advice() is null, from the works' opening only). Names nothing to buy.
+ */
+export interface AdviceWait {
+  kind: 'waiting';
+  /** The rung it waits for (the next one, at most the stage's top). */
+  rung: number;
+  /** Grams still to supply for that rung (0 when the tonnes are met and only a material is short). */
+  missing_g: number;
+  /** The material that rung's range waits for (content grades' `material`), when one is short of its worth θ; else null. */
+  material: string | null;
+  /** That material's first grade (its name is what the line prints, as the table's range chips do); null with no material. */
+  grade: GradeId | null;
+  /** Who brings most of it: an open partner, else a plate of the works that makes it; null when none does. */
+  from: { partner: PartnerId } | { plate: PlateId } | null;
+  /** The line: advice.waitTonnes ("Rung 5: 1,240 t to go") or advice.waitGrade ("Rung 5 waits for Light iron"). */
+  line: Txt;
+  /** The line under it: advice.waitBrings ("Hob's Farm Clearance brings it") or advice.waitMakes; null without a source. */
+  source: Txt | null;
+  /** The card that shows the source (the Partners tab, the plate's works card), else null. */
+  open: CardRef | null;
 }
 
 /** The advice line (2.10): the cheapest purchase that widens the bottleneck now (a buy, a hire or a level). */
