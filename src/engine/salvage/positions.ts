@@ -576,11 +576,11 @@ export function southOfWall(c: SalvageContent, p: { x: number; y: number }): { x
 function spotRaw(c: SalvageContent, spot: Spot, things: readonly ThingState[], truck: { x: number; y: number }): { x: number; y: number } {
   if ('place' in spot) return pointOf(c, spot.place);
   if ('pile' in spot) {
-    const at = (uid: string) => things.find((t) => t.uid === uid)?.at ?? null;
+    const at = (uid: string) => thingById(things, uid)?.at ?? null;
     return piecePos(c, spot.pile, spot.k ?? 0, at);
   }
   if ('thing' in spot) {
-    const th = things.find((t) => t.uid === spot.thing);
+    const th = thingById(things, spot.thing);
     return th ? thingPos(c, th.at) : pointOf(c, 'start');
   }
   if ('truck' in spot) return { x: truck.x, y: truck.y };
@@ -623,6 +623,7 @@ export function pileNear(c: SalvageContent, pieces: readonly GroundPiece[], thin
 // ============================================================================ the facade's entries (cfg-level; the seam, 16:20)
 
 import type { SalvageConfig, SalvageGame } from './types';
+import { thingById } from './lookup';
 
 export const thingPosCfg = (cfg: SalvageConfig, at: ThingAt) => thingPos(cfg.salvage, at);
 export const piecePosCfg = (cfg: SalvageConfig, pile: PileKey, k: number, thingAt?: (uid: string) => ThingAt | null) => piecePos(cfg.salvage, pile, k, thingAt);

@@ -41,14 +41,13 @@ import { tagUid, toCorner } from './reuse';
 import { supply } from './round';
 import { hashString } from '../rng';
 import type { ObjectId, PartnerId, ThingAt, ThingState, Ticket, TicketLine } from './types';
+import { pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
 const H_CRATE = hashString('crate');
 
 /** Things on the picking table. */
 export function crateCount(x: Pick<Ctx, 's'>): number {
-  let n = 0;
-  for (const th of x.s.things) if (th.at.at === 'crate') n++;
-  return n;
+  return thingsAt(x.s.things, 'crate').length;
 }
 
 /** Where a tipped thing stands instead of the floor, or null (the floor). */
@@ -63,7 +62,7 @@ export function tipDivert(x: Ctx, thing: { uid: string; obj: ObjectId }, partner
   if (rb && rb.obj === thing.obj && c.reuse && sk && !sk.trial) {
     const extra = (sk.contents[rb.obj] ?? 0) - (c.partners[partner].skip[rb.obj] ?? 0);
     let done = 0;
-    for (const th of x.s.things) if (th.at.at === 'corner' && th.at.since === t && th.obj === rb.obj) done++;
+    for (const th of thingsAt(x.s.things, 'corner')) if (th.at.at === 'corner' && th.at.since === t && th.obj === rb.obj) done++;
     if (done < Math.min(extra, rb.n)) return toCorner(x, t);
   }
   // A thing the Yard sale tags is racked from the floor; it does not go to the picking table.
@@ -71,7 +70,7 @@ export function tipDivert(x: Ctx, thing: { uid: string; obj: ObjectId }, partner
   const C = c.crate;
   if (!C || crateCount(x) >= C.max || hash01(c.worldSeed, H_CRATE, hashString(thing.uid)) >= C.share) return null;
   const used = new Set<number>();
-  for (const th of x.s.things) if (th.at.at === 'crate') used.add(th.at.k);
+  for (const th of thingsAt(x.s.things, 'crate')) if (th.at.at === 'crate') used.add(th.at.k);
   let k = 0;
   while (used.has(k)) k++;
   if (heard(x)) x.ev.push({ type: 'crateIn', thing: thing.uid });
@@ -81,7 +80,7 @@ export function tipDivert(x: Ctx, thing: { uid: string; obj: ObjectId }, partner
 /** The oldest thing on the picking table (since, then uid), or null. */
 function oldest(x: Ctx): ThingState | null {
   let best: ThingState | null = null;
-  for (const th of x.s.things) {
+  for (const th of thingsAt(x.s.things, 'crate')) {
     if (th.at.at !== 'crate' || th.by) continue;
     const b = best?.at as { since: number } | undefined;
     if (!best || th.at.since < b!.since || (th.at.since === b!.since && th.uid < best.uid)) best = th;
@@ -126,7 +125,7 @@ export function crateAct(x: Ctx, t: number): boolean {
 export function crateActHolds(x: Ctx, t: number): boolean {
   void t;
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   const ok = atTable(x) && !!th && th.at.at === 'crate';
   if (!ok) closeTicket(x);
   return ok;
@@ -136,7 +135,7 @@ export function crateActHolds(x: Ctx, t: number): boolean {
 export function crateActEnd(x: Ctx, t: number): void {
   const C = x.c.crate;
   const id = x.s.act.target;
-  const th = id ? x.s.things.find((q) => q.uid === id) : undefined;
+  const th = id ? thingById(x.s.things, id) : undefined;
   if (!C || !th || th.at.at !== 'crate') return;
   const day = dayAt(x, t);
   const byGrade: Record<string, number> = {};
@@ -153,7 +152,7 @@ export function crateActEnd(x: Ctx, t: number): void {
     supply(x, grade, g);
   }
   x.s.waste_g += x.c.objects[th.obj]?.waste_g ?? 0;
-  x.s.things.splice(x.s.things.indexOf(th), 1);
+  spliceThing(x.s.things, x.s.things.indexOf(th));
   const { y, z } = payLot(x, paid, t);
   let tk = openTicket(x);
   if (!tk) {
