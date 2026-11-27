@@ -479,8 +479,19 @@ function worksKey(c: Ctx['c'], s: Ctx['s']): string {
  * account): the yard hands' carrying to and from the yard plates (so a hands-fed plate's term is an upper bound), whole
  * objects as inputs (the shear's beams and tanks, the depollution bay's cars: 0), the analyser and the magnet crane (0).
  * No plate lowers I: every term is ≥ 0 (a content check holds every plate's margin ≥ 1.05 × its input).
+ *
+ * s2g-rate (RULING2.md 29.4, with 29.1): WHAT THE BAYS RECEIVE. The flow by grade is the replay's own (`kgBy`: the loads its
+ * driver brings, cut and carried as its crew does, the drop-off at its pace, the first yard's machines' outputs; and the cars
+ * the garage sets down, carTerm), each hall taking at most its heats' capacity. THE CRUCIBLE'S CLAIM COMES FIRST: `kgBy` is
+ * what is left once valueOf's crucible has melted its inputs (its best recipe first, within its hour), and no hall takes
+ * anything back from it (s2e-rate's exchange, where a hall paying more a kilogram took the crucible's metal, is retired: the
+ * ruling's order). A hall with several recipes is counted at the recipe it would choose (halls.ts hallPick, 29.1: each heat
+ * the recipe that adds the most worth from what its bays hold; the hall keeps a richer recipe's input in its bay meanwhile,
+ * works.ts hallRecipeFor): over an hour the heats share its capacity and the richer input a kilogram is charged first, which
+ * is this pass's order (best margin first, the hall's capacity shared between its recipes). Never a switch (the recipe the
+ * player pinned is not read: I is a function of the assets).
  */
-function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt?: Readonly<Record<string, { kg: number; gain: number }>>, by?: Record<string, { kg: number; add: number }>): number {
+function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, by?: Record<string, PlateGain>): number {
   const plates = c.works?.plates;
   if (!plates || s.counts?.bathSet === undefined) return 0;
   const pbar = (g: string) => c.grades[g]?.pbar ?? 0;
@@ -510,24 +521,12 @@ function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt
   for (const wy of ways) wy.margin += wy.out.reduce((a, [o, sh]) => a + sh * (wy.grade === 'stream' ? pbar(o) : worth(o)), 0) - (wy.grade === 'stream' ? 0 : pbar(wy.grade));
   ways.sort((a, b) => b.margin - a.margin || (a.id < b.id ? -1 : 1));
   const avail: Record<string, number> = { ...kgBy };
-  // s2e-rate (2.3 item 2, the rotary hall): what the first yard's crucible melts (valueOf: its best recipe first, I4) a plate
-  // may take instead where it pays more a kilogram than the crucible's gain on it (a hall built for that metal); each such
-  // kilogram adds the plate's margin less the crucible's gain it forgoes.
-  const meltLeft: Record<string, number> = {};
-  for (const [g, m] of Object.entries(melt ?? {})) meltLeft[g] = m.kg;
   let add = 0;
   // A few passes, so that what one plate makes (the stream, zorba, twitch, paste) reaches the plate after it.
   for (let pass = 0; pass < 4; pass++) {
     let moved = false;
     for (const wy of ways) {
       if (wy.margin <= 0) continue;
-      const m = melt?.[wy.grade];
-      if (m && wy.margin > m.gain + 1e-9 && (cap.get(wy.id) ?? 0) > (avail[wy.grade] ?? 0) + 1e-9 && (meltLeft[wy.grade] ?? 0) > 1e-9) {
-        const y = Math.min(meltLeft[wy.grade], (cap.get(wy.id) ?? 0) - (avail[wy.grade] ?? 0));
-        meltLeft[wy.grade] -= y;
-        avail[wy.grade] = (avail[wy.grade] ?? 0) + y;
-        add -= y * m.gain;
-      }
       const x = Math.min(avail[wy.grade] ?? 0, cap.get(wy.id) ?? 0);
       if (x <= 1e-9) continue;
       avail[wy.grade] -= x;
@@ -536,9 +535,10 @@ function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>, melt
       const dx = x * wy.margin - (wy.grade === 'stream' ? 0 : x * wy.out.reduce((a, [o, sh]) => a + (o === 'stream' ? sh * worth(o) : 0), 0));
       add += dx;
       if (by) {
-        const r = (by[wy.id] ??= { kg: 0, add: 0 });
+        const r = (by[wy.id] ??= { kg: 0, add: 0, grades: {} });
         r.kg += x;
         r.add += dx;
+        r.grades[wy.grade] = (r.grades[wy.grade] ?? 0) + x;
       }
       for (const [o, sh] of wy.out) avail[o] = (avail[o] ?? 0) + x * sh;
       moved = true;
@@ -795,7 +795,7 @@ function rawTerms(c: Ctx['c'], s: Ctx['s'], key = assetKey(c, s)): RatedTerms {
     const car = carTerm(c, s, t.loads);
     const kgAll: Record<string, number> = { ...(t.detail?.kgBy ?? {}) };
     for (const [g, kg] of Object.entries(car.kg)) kgAll[g] = (kgAll[g] ?? 0) + kg;
-    const I0 = roundMoney(kappa * (t.I + car.net + plateTerms(c, s, kgAll, t.detail?.melt)));
+    const I0 = roundMoney(kappa * (t.I + car.net + plateTerms(c, s, kgAll)));
     t.I0 = I0;
     t.I = roundMoney(I0 + kappa * (yardSaleTerm(c, s, I0, t) + vanTerm(c, s, t.loads)));
     // the same terms are gross sales too (G_r, the bank's "Save up" with an agreement open, E9)
@@ -893,7 +893,7 @@ function walksOf(c: Ctx['c']): { floorWalk: number; dropWalk: number } {
   return w;
 }
 
-export function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
+function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
   const none: RatedTerms = { I: 0, dropoff: 0, loads: {}, bind: 'none', cut: { have: 0, need: 0 }, carry: { have: 0, need: 0 }, truck: { have: 0, need: 0 }, carryBy: { scale: 0, whole: 0, feed: 0, tray: 0 }, sales: 0, spent: 0 };
   const hands = s.crew.filter((m) => m.role === 'hand');
   if (!hands.length) return none;
@@ -1510,20 +1510,28 @@ export function replayTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   return copyTerms(rawTerms(c, s));
 }
 
+/** s2g-rate: one plate's part of the plates' term: kg an hour it takes (by input grade) and § an hour it adds. */
+export interface PlateGain {
+  kg: number;
+  add: number;
+  grades: Record<string, number>;
+}
+
 /**
- * s2g-rate: each running plate's part of the plates' term on the state's own replay (before the envelope and kappa), kg an
- * hour it takes and § an hour it adds; empty below the works' opening. For the measurement and the tests (what each hall is
- * rated to gain against its measured lasting gain).
+ * s2g-rate: THE PLATES' TERM TAKEN APART on the state's own replay (before the envelope and kappa): `flow`, what the bays
+ * receive an hour by grade once the first yard's machines and the crucible have taken theirs (the replay's kgBy and the cars'
+ * drained grades: what plateTerms reads), and each running plate's part. Empty below the works' opening. For the measurement
+ * and the tests (each hall's rated gain against its measured lasting gain; the crucible's claim first).
  */
-export function plateGains(c: Ctx['c'], s: Ctx['s']): Record<string, { kg: number; add: number }> {
-  const by: Record<string, { kg: number; add: number }> = {};
-  if (!worksOn(c, s)) return by;
+export function plateGains(c: Ctx['c'], s: Ctx['s']): { flow: Record<string, number>; plates: Record<string, PlateGain> } {
+  const plates: Record<string, PlateGain> = {};
+  if (!worksOn(c, s)) return { flow: {}, plates };
   const t = rawTerms(c, s);
   const car = carTerm(c, s, t.loads);
   const kgAll: Record<string, number> = { ...(t.detail?.kgBy ?? {}) };
   for (const [g, kg] of Object.entries(car.kg)) kgAll[g] = (kgAll[g] ?? 0) + kg;
-  plateTerms(c, s, kgAll, t.detail?.melt, by);
-  return by;
+  plateTerms(c, s, kgAll, plates);
+  return { flow: kgAll, plates };
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */

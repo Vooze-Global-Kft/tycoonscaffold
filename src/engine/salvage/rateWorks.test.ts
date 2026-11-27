@@ -24,7 +24,7 @@ import { away, newBot, newSitting, playUntil, seededCfg, startGame } from './bot
 import { begin, finish } from './clock';
 import { buyCheck, hireCheck, levelCheck, levelled, shopItems } from './ladder';
 import { contentAt, worksOpened } from './layer';
-import { levelGain, levelLadderOf, own, ratedIncome, ratedTerms, replayIncome, replayTerms } from './rate';
+import { levelGain, levelLadderOf, own, plateGains, ratedIncome, ratedTerms, replayIncome, replayTerms } from './rate';
 import { jump } from './tick';
 import { driverRoundS, fairPick, fairWaitNext, fullerFirst } from './truck';
 import type { LevelTarget, SalvageConfig, SalvageGame } from './types';
@@ -252,5 +252,77 @@ describe("below the works' opening I is the first yard's, bit for bit", () => {
     const base = { cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as never;
     const got = Object.fromEntries(FIXTURE_NAMES.map((n) => [n, ratedTerms(SALVAGE_TEST, fixtureGame(n, base, FIXTURE_NOW).salvage).I]));
     expect(got).toEqual({ fresh: 0, m5: 2088, m15: 5040.1, m30: 5040.1, back: 5040.1 });
+  });
+});
+
+describe("s2g-rate (RULING2.md 29.4): the halls' term reads what the replay's bays receive by grade, the crucible's claim first", () => {
+  /** r4 on the works' content with every hall past its first heat and the first yard's crucible owned and poured. */
+  const poured = (crucible = true): SalvageGame['salvage'] => {
+    const s = structuredClone(r4Game().salvage);
+    for (const id of Object.keys(s.works)) if (s.works[id].heat) s.counts![`poured:${id}`] = 1;
+    s.machines.crucible.owned = crucible;
+    s.counts!.poured = crucible ? 1 : 0;
+    return s;
+  };
+  /** The works' test content with the induction hall's brass recipe paying far more a kilogram than the crucible's gain on brass. */
+  const richBrass = () => {
+    const c = structuredClone(C(worksCfg(), r4Game())) as SalvageConfig['salvage'];
+    const rec = c.works!.plates.induction.recipes!.brass as { out: [string, number][] };
+    rec.out = [['bb', 1]];
+    return c;
+  };
+  it('each plate takes at most what the bays receive of a grade no plate makes, and a hall at most its heats\' capacity an hour', () => {
+    const s = poured();
+    const c = C(worksCfg(), { salvage: s } as SalvageGame);
+    const { flow, plates } = plateGains(c, s);
+    expect(Object.keys(plates).length).toBeGreaterThan(0);
+    const made = new Set<string>();
+    for (const d of Object.values(c.works!.plates)) {
+      for (const outs of Object.values(d.out ?? {})) for (const [o] of outs) made.add(o);
+      for (const r of Object.values(d.recipes ?? {})) for (const [o] of r.out) made.add(o);
+    }
+    const taken: Record<string, number> = {};
+    for (const p of Object.values(plates)) for (const [g, kg] of Object.entries(p.grades)) taken[g] = (taken[g] ?? 0) + kg;
+    for (const [g, kg] of Object.entries(taken)) if (!made.has(g)) expect(kg).toBeLessThanOrEqual((flow[g] ?? 0) + 1e-6);
+    for (const [id, p] of Object.entries(plates)) {
+      const d = c.works!.plates[id];
+      if (d.kind !== 'batch' || !d.batch) continue;
+      const cap = (3600 * d.batch.kg * (1 + d.lev * Math.max(0, s.works[id].level - 1))) / d.batch.s;
+      expect(p.kg).toBeLessThanOrEqual(cap + 1e-6);
+      expect(p.add).toBeGreaterThanOrEqual(0);
+    }
+  });
+  it("the crucible's claim comes first: what it melts no hall takes back, even a hall that pays more a kilogram; without it the hall takes the flow", () => {
+    const c = richBrass();
+    const s = poured(true);
+    const melt = replayTerms(c, s).detail?.melt ?? {};
+    expect(melt.brs?.kg ?? 0).toBeGreaterThan(0);
+    const a = plateGains(c, s);
+    expect(a.flow.brs ?? 0).toBeLessThan(1e-6);
+    expect(a.plates.induction?.grades.brs ?? 0).toBe(0);
+    // The crucible never poured (it earns nothing away, 14.5): the brass is the bays', and the induction hall takes it.
+    const s0 = poured(false);
+    const b = plateGains(c, s0);
+    expect(b.flow.brs ?? 0).toBeGreaterThan(0);
+    expect(b.plates.induction?.grades.brs ?? 0).toBeCloseTo(b.flow.brs, 6);
+  });
+  it("a hall is counted at the recipe it would choose, never at a switch: its recipe tapped or pinned, Take from bays: the same parts and the same I", () => {
+    const c = richBrass();
+    const s = poured(false);
+    const ref = plateGains(c, s);
+    const I0 = ratedIncome(c, s);
+    for (const recipe of ['bronze', 'brass']) {
+      const t = structuredClone(s);
+      const h = t.works.induction.heat as unknown as Record<string, unknown>;
+      h.recipe = recipe;
+      h.pinned = true;
+      h.fromBays = false;
+      expect(plateGains(c, t)).toEqual(ref);
+      expect(ratedIncome(c, t)).toBe(I0);
+    }
+  });
+  it("below the works' opening there is no plates' term", () => {
+    const base = { cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as never;
+    for (const n of FIXTURE_NAMES) expect(plateGains(SALVAGE_TEST, fixtureGame(n, base, FIXTURE_NOW).salvage)).toEqual({ flow: {}, plates: {} });
   });
 });
