@@ -424,6 +424,28 @@ def lint(s, sprites):
         for n, k in ((2, 'rung2'), (3, 'rung3')):
             if r['n'] == n and (r['t'] != s['ladder'][k]['t'] or r['range'] != s['ladder'][k]['range']):
                 bad('ladder.rungs n %d (%s t, range %s) disagrees with ladder.%s (%s t, range %s)' % (n, r['t'], r['range'], k, s['ladder'][k]['t'], s['ladder'][k]['range']))
+    # s2-fix-works2 (RULING2 24, R2; L2 real physics): a lot kind's mass range is what such a real object weighs:
+    # min <= max, min at least a tenth of the object's own gross mass, max at most what its partner's lorry can bring
+    # (lots.lorry_kg when the content gives it; checked against it then).
+    lots = s.get('lots') or {}
+    objs = dict(O)
+    objs.update(((s.get('worksLayer') or {}).get('objects')) or {})
+    lorry = lots.get('lorry_kg')
+    for i, kd in enumerate(lots.get('kinds') or []):
+        mk = kd.get('mass_kg')
+        if mk is None:
+            continue
+        o = objs.get(kd.get('obj'))
+        if not o:
+            bad('lots.kinds[%d].obj %r is not an object' % (i, kd.get('obj')))
+            continue
+        lo, hi = mk
+        if lo > hi:
+            bad('lots.kinds[%d] (%s).mass_kg: min %s > max %s' % (i, kd['obj'], lo, hi))
+        if lo * 1000 < o['gross_g'] / 10:
+            bad('lots.kinds[%d] (%s).mass_kg: min %s kg is under a tenth of the object\'s own %s kg' % (i, kd['obj'], lo, o['gross_g'] / 1000))
+        if lorry is not None and hi > lorry:
+            bad('lots.kinds[%d] (%s).mass_kg: max %s kg is over what its partner\'s lorry brings (lots.lorry_kg %s)' % (i, kd['obj'], hi, lorry))
     return out
 
 

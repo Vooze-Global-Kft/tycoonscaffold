@@ -378,6 +378,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     "shopRules: no one-at-a-time, no card delay (R13 refused, E25); the reserve is a load full now or within 60 s (E29)",
     "levels.opens torch -> rung 2 (E25); levels.floor added: no level costs less than §1,800 (a little above the last goal, the driver at §1,500), rising x1.25 a level, so that buying levels first delays the list instead of starving it",
     "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)",
+    "s2-fix-works2 (27 Nov, RULING2 24 R2): lots.kinds[].mass_kg set for the four kinds whose object fits (casing [80, 300], bushingCrate [200, 1000], cateringTable [60, 120], propeller [400, 3000] kg); build-yard.py refuses a range with min > max or min under a tenth of the object's own mass (and max over lots.lorry_kg once the content has it)",
   ],
   "$keys": [
     "grades: id -> name, p̄ §/kg (whole-game 4.2), family for the board, material for range, kind",
@@ -1582,10 +1583,13 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     kinds: [
       // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
       // cut_s: the boss's seconds for each kind within [4, 10] (the lead's ruling 6: per kind; first values, s2a-fix: the heavier piece the longer)
-      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7 },
-      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7 },
-      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4 },
-      { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10 },
+      // mass_kg (RULING2 24 R2, s2-fix-works2; L2): what such a real object weighs, in kg: an aluminium engine casing 80 to 300,
+      // a pallet crate of bronze bushings 200 to 1,000, a catering table 60 to 120 (it stays a table), a bronze propeller 400
+      // to 3,000 (a workboat's to a coaster's). The heavier kinds for rungs 4 and 5 come with the stage's screens (Phase C).
+      { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7, mass_kg: [80, 300] },
+      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7, mass_kg: [200, 1000] },
+      { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4, mass_kg: [60, 120] },
+      { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10, mass_kg: [400, 3000] },
     ],
     // The lead's ruling 6 (26 Nov 09:50): no fallback thing ("else an intermediate sold whole" is withdrawn): while no kind
     // can be drawn (every kind is tier 4: before the plasma cutter) the lots WAIT for one the yard can open.

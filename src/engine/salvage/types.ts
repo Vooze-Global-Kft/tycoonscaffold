@@ -1400,6 +1400,32 @@ export interface Goal {
    * the same step. Absent: no load step (the goal's own line).
    */
   step?: Txt;
+  /** s2-fix-small (R3, RULING2 24; ADDED): on a rung goal (`rung:<n>`) from the works' opening, what that rung waits for (advice.ts adviceWait). Absent otherwise. */
+  waits?: AdviceWait;
+}
+
+/**
+ * s2-fix-small (R3, RULING2 21.5 and 24; ADDED): WHAT THE YARD WAITS FOR when nothing is left to buy (advice.ts
+ * adviceWait; adviceLine gives it when advice() is null, from the works' opening only). Names nothing to buy.
+ */
+export interface AdviceWait {
+  kind: 'waiting';
+  /** The rung it waits for (the next one, at most the stage's top). */
+  rung: number;
+  /** Grams still to supply for that rung (0 when the tonnes are met and only a material is short). */
+  missing_g: number;
+  /** The material that rung's range waits for (content grades' `material`), when one is short of its worth θ; else null. */
+  material: string | null;
+  /** That material's first grade (its name is what the line prints, as the table's range chips do); null with no material. */
+  grade: GradeId | null;
+  /** Who brings most of it: an open partner, else a plate of the works that makes it; null when none does. */
+  from: { partner: PartnerId } | { plate: PlateId } | null;
+  /** The line: advice.waitTonnes ("Rung 5: 1,240 t to go") or advice.waitGrade ("Rung 5 waits for Light iron"). */
+  line: Txt;
+  /** The line under it: advice.waitBrings ("Hob's Farm Clearance brings it") or advice.waitMakes; null without a source. */
+  source: Txt | null;
+  /** The card that shows the source (the Partners tab, the plate's works card), else null. */
+  open: CardRef | null;
 }
 
 /** The advice line (2.10): the cheapest purchase that widens the bottleneck now (a buy, a hire or a level). */

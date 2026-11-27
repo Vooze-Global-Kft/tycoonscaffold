@@ -115,7 +115,8 @@
       "shop.*.price: goal k = 1.6 minutes of the normal player's net income (sales less loads bought, last two minutes) when goal k-1 is bought, and at least 1.12 x the price before it (monotone, E25/E28)",
       "shopRules: no one-at-a-time, no card delay (R13 refused, E25); the reserve is a load full now or within 60 s (E29)",
       "levels.opens torch -> rung 2 (E25); levels.floor added: no level costs less than §1,800 (a little above the last goal, the driver at §1,500), rising x1.25 a level, so that buying levels first delays the list instead of starving it",
-      "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)"
+      "rivals: T0 x (1 + g x min(d, 40)), d = market days since the player's first second (E27); T0 from the tuned hour (passed at 4, 15, 30, 50 min)",
+      "s2-fix-works2 (27 Nov, RULING2 24 R2): lots.kinds[].mass_kg set for the four kinds whose object fits (casing [80, 300], bushingCrate [200, 1000], cateringTable [60, 120], propeller [400, 3000] kg); build-yard.py refuses a range with min > max or min under a tenth of the object's own mass (and max over lots.lorry_kg once the content has it)"
     ],
     "$keys": [
       "grades: id -> name, p̄ §/kg (whole-game 4.2), family for the board, material for range, kind",
@@ -4302,7 +4303,11 @@
             "crucible",
             "rotary"
           ],
-          "cut_s": 7
+          "cut_s": 7,
+          "mass_kg": [
+            80,
+            300
+          ]
         },
         {
           "obj": "bushingCrate",
@@ -4310,7 +4315,11 @@
           "line": [
             "induction"
           ],
-          "cut_s": 7
+          "cut_s": 7,
+          "mass_kg": [
+            200,
+            1000
+          ]
         },
         {
           "obj": "cateringTable",
@@ -4318,7 +4327,11 @@
           "line": [
             "analyser"
           ],
-          "cut_s": 4
+          "cut_s": 4,
+          "mass_kg": [
+            60,
+            120
+          ]
         },
         {
           "obj": "propeller",
@@ -4326,7 +4339,11 @@
           "line": [
             "induction"
           ],
-          "cut_s": 10
+          "cut_s": 10,
+          "mass_kg": [
+            400,
+            3000
+          ]
         }
       ]
     },

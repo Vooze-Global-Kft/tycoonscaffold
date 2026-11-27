@@ -235,7 +235,11 @@ export const TEXT_KEYS = {
     'goal.supplyRung5',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
-  advice: ['advice.buy', 'advice.level', 'advice.loanHint'],
+  /**
+   * s2-fix-small (R3, RULING2 21.5 and 24): when nothing is left to buy, the advice line says what the yard waits for
+   * (advice.ts adviceLine, AdviceWait): the next rung's tonnes, or the material it waits for and who brings it.
+   */
+  advice: ['advice.buy', 'advice.level', 'advice.loanHint', 'advice.waitTonnes', 'advice.waitGrade', 'advice.waitBrings', 'advice.waitMakes'],
   /** Package 8 and the tickets: lessons (5.5, ≤ 48 on the ticket). */
   lesson: ['lesson.li', 'lesson.drum', 'lesson.mot', 'lesson.cab', 'lesson.bb', 'lesson.no2', 'lesson.brs', 'lesson.alw', 'lesson.alcast', 'lesson.ci', 'lesson.hms', 'lesson.hmsu', 'lesson.cbody', 'lesson.bri', 'lesson.dross', 'lesson.ali', 'lesson.conv', 'lesson.ss', 'lesson.bzs', 'lesson.bzi', 'lesson.pb', 'lesson.zorba', 'lesson.lib'],
   /**

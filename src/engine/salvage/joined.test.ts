@@ -241,7 +241,12 @@ describe('mass over a day of every plate working (2.5.3: Σ out + Σ waste = the
     const did = (key: string) => (c[key] ?? 0) - (worked0[key] ?? 0);
     for (const plate of ['shredder', 'sorter', 'breaker', 'rotary', 'induction', 'smelter']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(300);
     for (const hall of ['rotary', 'induction', 'smelter']) expect(did(`poured:${hall}`), hall).toBeGreaterThan(300);
-    for (const plate of ['baler', 'shear', 'granulator']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(10);
+    // s2-fix-works2 (RULING2 24.1): the yard plates weigh at the plate, so the yard hands carry no trays and clear the floor
+    // within minutes; the cable the granulator's hopper (inbuf) has no room for goes to the scale as the first yard's feed
+    // does. The baler and the shear (fed by the crane too) still work many pieces; the granulator works what fits.
+    for (const plate of ['baler', 'shear']) expect(did(`worked:${plate}`), plate).toBeGreaterThan(10);
+    expect(did('worked:granulator'), 'granulator').toBeGreaterThan(0);
+    expect(h.salvage.pieces.filter((p) => p.uid.startsWith('j.')).length, 'the floor\'s test pieces all taken').toBe(0);
   });
 });
 

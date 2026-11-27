@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { SalvageSchema, type SalvageContent } from '../../config/schema.salvage';
 import { shipped2Config } from '../fixtures/shipped2';
 import { newBot, playTo, seededCfg, startGame } from './bot';
+import { pushPiece } from './lookup';
 import { r3Works, r4Game, TEST_PLATES, worksCfg } from '../fixtures/salvage2works';
 import { buy, setPresence } from './actions';
 import { plateBuyCheck, setPlateRecipe, setRoute } from './actionsWorks';
@@ -292,7 +293,7 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
     x.s.things = x.s.things.filter((th) => th.at.at !== 'floor');
     x.s.pieces = x.s.pieces.filter((p) => p.pile !== 'floor' && !p.pile.startsWith('beside.'));
     let k = 900;
-    for (const [uid, grade, gr] of add) x.s.pieces.push({ uid, grade, g: gr, from: null, spec: -1, pile: 'floor', k: k++, claim: null });
+    for (const [uid, grade, gr] of add) pushPiece(x.s.pieces, { uid, grade, g: gr, from: null, spec: -1, pile: 'floor', k: k++, claim: null });
   };
   it('E5 / R1: baling pays (lib §0.62 against li §0.50): the crane lifts the floor\'s iron into the baler and the bale is weighed at the plate into its bay; mass exact', () => {
     let g = setRoute(cfg, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
@@ -598,7 +599,7 @@ describe('RULING2 24.1: the first yard\'s trays still go to the platform scale b
       }
       expect(sawTray).toBe(true);
       g = jump(c, g, g.salvage.t + 300);
-      const handLi = g.salvage.tickets.filter((tk) => tk.kind === 'weighIn' && tk.by !== 'boss' && (tk.no ?? 0) > before).flatMap((tk) => tk.lines).filter((l) => l.grade === 'li').reduce((a, l) => a + l.g, 0);
+      const handLi = g.salvage.tickets.filter((tk) => tk.kind === 'weighIn' && tk.by !== 'boss' && (tk.no ?? 0) > before).flatMap((tk) => (tk.kind === 'weighIn' ? tk.lines : [])).filter((l) => l.grade === 'li').reduce((a, l) => a + l.g, 0);
       expect(handLi).toBeGreaterThanOrEqual(30_000);
       expect(g.salvage.works).toEqual({});
     }, 120_000);

@@ -11,10 +11,10 @@
 import type { SalvageContent } from '../../config/schema.salvage';
 import { loanOffered, platePrice } from './bank';
 import { contentAt, worksOpened } from './layer';
-import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, levelled, ratedGain, roleOfKey, shopItems } from './ladder';
+import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, levelled, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
 import { roundMoney } from './money';
 import { incomeRate } from './tick';
-import type { Advice, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt } from './types';
+import type { Advice, AdviceWait, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt } from './types';
 
 // ============================================================================ the bottleneck (E13c)
 
@@ -369,6 +369,103 @@ function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Adv
     offer({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, levelled(g, x.t));
   }
   return (best as { a: Advice; h: number } | null)?.a ?? null;
+}
+
+// ============================================================================ what the yard waits for (21.5)
+
+/**
+ * THE ADVICE LINE AS THE SCREEN PRINTS IT (s2-fix-small, R3; RULING2 21.5 and 24): the purchase of `advice` when there is
+ * one; from the works' opening, when nothing pays back within tau_r (advice null), what the yard waits for
+ * (adviceWait). Below the works' opening this is `advice` exactly (the first yard on the phone: pinned).
+ */
+export function adviceLine(cfg: SalvageConfig, g: SalvageGame, now: number): Advice | AdviceWait | null {
+  const a = advice(cfg, g, now);
+  if (a || !worksOpened(g.salvage)) return a;
+  return adviceWait(cfg, g);
+}
+
+/** Grams of each material in one skip of partner `pid` (its contents and the grows its plates have opened), by its pieces' grades. */
+function skipMaterialGrams(c: SalvageContent, g: SalvageGame, pid: string, material: string): number {
+  const def = c.partners[pid] as (SalvageContent['partners'][string] & { grows?: { needs: string; contents: Record<string, number> }[] }) | undefined;
+  if (!def) return 0;
+  const s = g.salvage;
+  const contents: Record<string, number>[] = [def.skip ?? {}];
+  for (const gr of def.grows ?? []) if (s.works[gr.needs]?.owned) contents.push(gr.contents);
+  let sum = 0;
+  for (const list of contents) {
+    for (const [obj, n] of Object.entries(list)) {
+      const o = c.objects[obj];
+      if (!o) continue;
+      let per = 0;
+      for (const [gr, pg, k] of o.pieces) if (c.grades[gr]?.material === material) per += pg * k;
+      if (o.whole && c.grades[o.whole]?.material === material) per = Math.max(per, o.gross_g);
+      sum += per * Math.max(0, n);
+    }
+  }
+  return sum;
+}
+
+/** The plates of the works whose output (a rate plate's `out`, a hall's recipes' `out`) is of `material`, the yard's own running plates first. */
+function platesMaking(c: SalvageContent, g: SalvageGame, material: string): string[] {
+  const s = g.salvage;
+  const out: string[] = [];
+  for (const [pid, d] of Object.entries(c.works?.plates ?? {})) {
+    const p = d as unknown as { out?: Record<string, [string, number][]>; recipes?: Record<string, { out: [string, number][] }> };
+    const outs = [...Object.values(p.out ?? {}).flat(), ...Object.values(p.recipes ?? {}).flatMap((r) => r.out)];
+    if (outs.some(([gr]) => c.grades[gr]?.material === material)) out.push(pid);
+  }
+  const running = (pid: string) => (s.works[pid]?.phase === 'running' ? 0 : 1);
+  return out.sort((a, b) => running(a) - running(b));
+}
+
+/** Who brings most of `material`: the open partner whose skip holds the most of it a second of filling, else a plate that makes it. */
+function sourceOf(c: SalvageContent, g: SalvageGame, material: string): AdviceWait['from'] {
+  let best: { pid: string; rate: number } | null = null;
+  for (const [pid, p] of Object.entries(g.salvage.partners)) {
+    if (!p.open || !c.partners[pid]) continue;
+    const rate = skipMaterialGrams(c, g, pid, material) / Math.max(1, c.partners[pid].fill_s);
+    if (rate > 0 && (!best || rate > best.rate + 1e-9)) best = { pid, rate };
+  }
+  if (best) return { partner: best.pid };
+  const plate = platesMaking(c, g, material)[0];
+  return plate ? { plate } : null;
+}
+
+/**
+ * WHAT THE YARD WAITS FOR (s2-fix-small, R3; RULING2 21.5 and 24; from the works' opening, null before): the next rung
+ * (at most the stage's top; null at the top) and what it still needs. When its range lacks materials (fewer than the
+ * rung's `range` have lifetime products worth θ of that rung, ladder.ts thetaOf), the material nearest to its worth that
+ * someone brings (else the nearest), with the open partner whose skip brings most of it a second of filling, else a plate
+ * of the works that makes it: "Rung 5 waits for Light iron" over "Hob's Farm Clearance brings it". Else the tonnes still
+ * to supply: "Rung 5: 1,240 t to go". Null when nothing is missing (the rung opens at the next check). Names nothing to buy.
+ */
+export function adviceWait(cfg: SalvageConfig, g: SalvageGame): AdviceWait | null {
+  const s = g.salvage;
+  if (!worksOpened(s)) return null;
+  const c = contentAt(cfg.salvage, s);
+  const n = Math.floor(s.ladder.rung) + 1;
+  if (n > topRungOf(c)) return null;
+  const r = rungsOf(c).find((x) => x.n === n);
+  if (!r) return null;
+  const missing_g = Math.max(0, rungGrams(c, n) - s.ladder.supplied_g);
+  const th = thetaOf(c, n);
+  const mats = materialsOf(c);
+  const worth = s.ladder.worth;
+  const counted = mats.filter((m) => (worth[m] ?? 0) >= th).length;
+  if (counted < r.range) {
+    const short = mats.filter((m) => (worth[m] ?? 0) < th).sort((a, b) => th - (worth[a] ?? 0) - (th - (worth[b] ?? 0)));
+    const withSource = short.map((m) => ({ m, from: sourceOf(c, g, m) }));
+    const pick = withSource.find((x) => x.from !== null) ?? withSource[0];
+    if (pick) {
+      const grade = Object.entries(c.grades).find(([, gr]) => gr.material === pick.m)?.[0] ?? null;
+      const from = pick.from;
+      const source: Txt | null = !from ? null : 'partner' in from ? { key: 'advice.waitBrings', args: { partner: { name: from.partner } } } : { key: 'advice.waitMakes', args: { plate: { text: `title.works.${from.plate}` as TextKey } } };
+      const open: CardRef | null = !from ? null : 'partner' in from ? { kind: 'office', tab: 'partners' } : { kind: 'works', plate: from.plate };
+      return { kind: 'waiting', rung: n, missing_g, material: pick.m, grade, from, line: grade ? { key: 'advice.waitGrade', args: { n: { n }, grade: { grade } } } : { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source, open };
+    }
+  }
+  if (missing_g <= 0) return null;
+  return { kind: 'waiting', rung: n, missing_g, material: null, grade: null, from: null, line: { key: 'advice.waitTonnes', args: { n: { n }, t: { tonnes_g: missing_g } } }, source: null, open: null };
 }
 
 /** The item of an advice as a { text } argument (goal.widen's {item}). */
