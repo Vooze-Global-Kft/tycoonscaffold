@@ -14,7 +14,7 @@ import { rackChoice } from './reuse';
 import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
-import { pieceById, pieceClaimed, piecesOn, piecesUnique, removePieces, thingsAt } from './lookup';
+import { pieceById, pieceClaimed, piecesOn, piecesUnique, removePieces, thingsAt, thingsAtWhere } from './lookup';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
@@ -660,16 +660,35 @@ function thingLeft_g(x: Ctx, th: ThingState): number {
  * is all such things' grams (the heap the floor's pieces are weighed against). Null when none waits.
  */
 function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
-  const cands: ThingState[] = [];
+  let cands: ThingState[] = [];
+  // engine5: each candidate's grams left (thingLeft_g, a pure function of its object and cut, neither of which changes
+  // inside this function) read once and kept beside it, in the candidates' order (`ws[i]` is cands[i]'s).
+  let ws: number[] = [];
   // A thing the Yard sale takes is kept off (reuse.ts rackChoice, s2a-fix; the stub never keeps one off).
-  for (const th of thingsAt(x.s.things, 'floor')) if (th.at.at === 'floor' && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 1) === 0 && thingLeft_g(x, th) <= cap && !rackChoice(x, m, t, th)) cands.push(th);
+  // engine5: the floor's things whose object needs no cutting (tier 0: a fact of the thing's object and the content), from
+  // lookup.ts's kept sub-list (the floor's list less the things the tier test refuses, in the same order).
+  for (const th of thingsAtWhere(x.s.things, 'floor', x.c, 'loose.floor', looseObj(x.c))) {
+    if (!(th.at.at === 'floor' && !th.by && !th.shell)) continue;
+    const w = thingLeft_g(x, th);
+    if (w <= cap && !rackChoice(x, m, t, th)) {
+      cands.push(th);
+      ws.push(w);
+    }
+  }
   if (!cands.length) return null;
   // engine4: the sort skipped when the things already stand in its order (the usual case: tipped things are pushed in
   // the order of their f-numbers); sorting a sorted list by a consistent comparison leaves it as it is.
   const byUid = (a: ThingState, b: ThingState) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
   let sorted = true;
   for (let i = 1; i < cands.length && sorted; i++) if (byUid(cands[i - 1], cands[i]) > 0) sorted = false;
-  if (!sorted) cands.sort(byUid);
+  if (!sorted) {
+    // engine5: the positions sorted by the same comparison of their things (a stable sort: the same order as cands.sort(byUid)), both lists reordered by it.
+    const order = cands.map((_, i) => i).sort((i, j) => byUid(cands[i], cands[j]));
+    const c0 = cands;
+    const w0 = ws;
+    cands = order.map((i) => c0[i]);
+    ws = order.map((i) => w0[i]);
+  }
   // engine3: nothing changes inside this function, so a thing's destination is a function of its next piece's grade
   // alone here (floorWholeDest reads the machines as they stand): asked once a grade.
   const dests = new Map<string, MachineId | 'scale'>();
@@ -681,18 +700,22 @@ function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things
     return d;
   };
   const dest = destOf(cands[0]);
-  let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), thingLeft_g(x, cands[0])));
+  let room = dest === 'scale' ? cap : Math.min(cap, Math.max(hopperRoom(x, dest), ws[0]));
   const things: ThingState[] = [];
   let g = 0;
-  for (const th of cands) {
-    if (destOf(th) !== dest) continue;
-    const w = thingLeft_g(x, th);
+  for (let i = 0; i < cands.length; i++) {
+    const th = cands[i];
+    const w = ws[i];
+    // engine5: the two tests in the other order (each a pure read: destOf only keeps answers), so a thing that does not
+    // fit what is left of his load is not asked where it goes.
     if (w > room) continue;
+    if (destOf(th) !== dest) continue;
     things.push(th);
     room -= w;
     g += w;
   }
-  const waiting_g = cands.reduce((a, th) => a + thingLeft_g(x, th), 0);
+  let waiting_g = 0;
+  for (let i = 0; i < ws.length; i++) waiting_g += ws[i];
   return things.length ? { things, dest, g, waiting_g } : null;
 }
 
@@ -1324,6 +1347,22 @@ function cutLeftKept(x: Ctx, th: ThingState, P: number): number {
   return v;
 }
 
+/** engine5: the fixed test of floorWholeTrip's sub-list (a thing whose object needs no cutting: tier 0, an unknown object not), one per content object. */
+const LOOSE_OBJ = new WeakMap<object, (th: ThingState) => boolean>();
+function looseObj(c: Ctx['c']): (th: ThingState) => boolean {
+  let f = LOOSE_OBJ.get(c);
+  if (!f) LOOSE_OBJ.set(c, (f = (th: ThingState) => (c.objects[th.obj]?.tier ?? 1) === 0));
+  return f;
+}
+
+/** engine5: the fixed test of bestCut's sub-list (a thing whose object a cutter may cut: tier >= 1), one per content object. */
+const CUTS_OBJ = new WeakMap<object, (th: ThingState) => boolean>();
+function cutsObj(c: Ctx['c']): (th: ThingState) => boolean {
+  let f = CUTS_OBJ.get(c);
+  if (!f) CUTS_OBJ.set(c, (f = (th: ThingState) => (c.objects[th.obj]?.tier ?? 0) >= 1));
+  return f;
+}
+
 /**
  * s2e-crew (G9): the first of cutCands' order alone (best score, then the smallest uid), as a list of at most one:
  * the same filter, the same score, one scan instead of a sort. Read only with planning ahead off from the works' opening.
@@ -1332,7 +1371,10 @@ function bestCut(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P
   const s = x.s;
   let best: ThingState | null = null;
   let bestV = 0;
-  for (const th of thingsAt(s.things, where)) {
+  // engine5: only the things whose object a cutter cuts at all (tier >= 1: a fact of the thing's object and the content)
+  // are walked, from lookup.ts's kept sub-list (the same things in the same order as the place's list less those the
+  // test below refuses first); the floor holds mostly tier-0 things at the works (130 to 220), never a cutter's.
+  for (const th of thingsAtWhere(s.things, where, x.c, `cuts.${where}`, cutsObj(x.c))) {
     if (!(th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier)) continue;
     const v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeftKept(x, th, P));
     if (best && (v < bestV || (v === bestV && th.uid > best.uid))) continue;
