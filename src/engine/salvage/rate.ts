@@ -717,6 +717,12 @@ const copyTerms = (t: RatedTerms): RatedTerms => ({
  *    kilogram first, within the crucible's s_per_kg; only once poured at least once, RULING2.md 14.5),
  *    whatever the switches say; less the loads' label prices (k × the as-found value at usual prices).
  * 0 before the first yard hand (2.3.1).
+ * FROM THE WORKS' OPENING (s2e-rate; yard-stage2-economy.md 2.3, RULING2.md 27.4; below it every term is the first yard's,
+ * bit for bit): the replay plays the driver the yard ships (truck.ts fullerFirst, fairPick, fairWaitNext) over the truck's
+ * round as dated (truck.ts driverRoundS); a skip carries its grown contents; the analyser's assay grades at the weigh-in;
+ * the drop-off takes every second the loads leave (a full drop-off refills the instant a thing is taken); the Yard sale's
+ * racking takes the hands' seconds first; the shredder line's cars (carTerm), the halls taking the crucible's metal where
+ * they pay more (plateTerms), the Yard sale (yardSaleTerm) and the van (vanTerm); all of it times kappa_r (rate.kappa).
  */
 export function ratedTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const key = assetKey(c, s);
@@ -790,9 +796,10 @@ function rawTerms(c: Ctx['c'], s: Ctx['s'], key = assetKey(c, s)): RatedTerms {
 const ENVELOPE_ROUNDS = 2;
 /** The effective levels a dimension of the envelope tries: top, top − 1, top − 2, top − 4, ... and 1 (a few, not every level: its cost). */
 function envelopeLevels(top: number): number[] {
-  const out: number[] = [top];
-  for (let k = 1; top - k > 1; k *= 2) out.push(top - k);
-  if (top > 1) out.push(1);
+  // s2e-rate: EVERY level from top down to 1 (the earlier top, top - 1, top - 2, top - 4, ..., 1 was not monotone in the top:
+  // one level more dropped a level the search had found, measured on the bots' states: the garage at 3 of 5 lost at 6).
+  const out: number[] = [];
+  for (let e = top; e >= 1; e--) out.push(e);
   return out;
 }
 function envelope(c: Ctx['c'], s: Ctx['s'], raw: RatedTerms): RatedTerms {
@@ -1044,7 +1051,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
       sales: roundMoney(v.sales),
       spent: roundMoney(spent),
       rank,
-      detail: { melt: v.melt, trips: nBy, kgTrip: nBy.scale > 0 ? took.scaleKg / nBy.scale : 0, kgBy: v.kg, machH: v.machH, truckShare: q.truckShare, floorKg: q.floorKg, cutUse: cutHave > 0 ? cutUsed / cutHave : 0, carryUse: carryUsed / carryHave },
+      detail: { ...(works ? { melt: v.melt } : {}), trips: nBy, kgTrip: nBy.scale > 0 ? took.scaleKg / nBy.scale : 0, kgBy: v.kg, machH: v.machH, truckShare: q.truckShare, floorKg: q.floorKg, cutUse: cutHave > 0 ? cutUsed / cutHave : 0, carryUse: carryUsed / carryHave },
     };
   };
   const share = (need: number, left: number) => (need > 1e-9 ? Math.max(0, left / need) : Infinity);

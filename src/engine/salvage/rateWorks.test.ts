@@ -248,7 +248,7 @@ describe('no purchase, hire or level lowers I (ruling 17; every step of the walk
 });
 
 describe("below the works' opening I is the first yard's, bit for bit", () => {
-  it('the five frozen first-yard states on the test content: I as before this build (measured against HEAD 8666853\'s rate.ts: every term equal)', () => {
+  it('the five frozen first-yard states on the test content: I as before this package (measured against rate.ts at a624652, the commit before it: every term equal)', () => {
     const base = { cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as never;
     const got = Object.fromEntries(FIXTURE_NAMES.map((n) => [n, ratedTerms(SALVAGE_TEST, fixtureGame(n, base, FIXTURE_NOW).salvage).I]));
     expect(got).toEqual({ fresh: 0, m5: 2088, m15: 5040.1, m30: 5040.1, back: 5040.1 });
