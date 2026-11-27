@@ -11,10 +11,17 @@ import { FIXTURE_NOW, SALVAGE_TEST, fixtureGame } from '../fixtures/salvage';
 import { r4Game, worksCfg } from '../fixtures/salvage2works';
 import { awayPass } from './away';
 import { MEMO_CHECK } from './memo';
-import { floorKept, pieceById, pieceClaimed, pileKs, piecesOn, pushPiece, pushThing, removePieces, spliceThing, splicePiece, thingById, thingCut, thingsAt } from './lookup';
+import { floorKept, INDEX_AFTER, pieceById, pieceClaimed, pileKs, piecesOn, pushPiece, pushThing, removePieces, spliceThing, splicePiece, thingById, thingCut, thingsAt } from './lookup';
 import { jump } from './tick';
 import type { GroundPiece, SalvageConfig, SalvageGame, ThingState } from './types';
 
+/** Read an array often enough that it is indexed (lookup.ts INDEX_AFTER). */
+const warmP = (arr: GroundPiece[]) => {
+  for (let i = 0; i <= INDEX_AFTER; i++) piecesOn(arr, 'floor');
+};
+const warmT = (arr: ThingState[]) => {
+  for (let i = 0; i <= INDEX_AFTER; i++) thingsAt(arr, 'floor');
+};
 const piece = (uid: string, pile: string, k: number, g = 1000): GroundPiece => ({ uid, grade: 'li', g, from: null, spec: 0, pile, k, claim: null });
 const thing = (uid: string, at: ThingState['at']): ThingState => ({ uid, obj: 'washer', at, cut: 0, progress: 0, by: null });
 
@@ -39,6 +46,12 @@ describe('engine4 lookup: the writers keep the index equal to the arrays', () =>
     MEMO_CHECK.verify = true;
     const arr: GroundPiece[] = [];
     expect(piecesOn(arr, 'floor')).toEqual([]);
+    // Before the array is indexed (its first reads) the readers scan it: the same answers.
+    const cold: GroundPiece[] = [];
+    for (let i = 0; i < 3; i++) pushPiece(cold, piece(`q${i}`, 'floor', i));
+    expect(piecesOn(cold, 'floor').map((p) => p.uid)).toEqual(['q0', 'q1', 'q2']);
+    expect(pileKs(cold, 'floor').low).toBe(3);
+    warmP(arr);
     for (let i = 0; i < 12; i++) pushPiece(arr, piece(`p${i}`, i % 3 ? 'floor' : 'dropoff', Math.floor(i / 2)));
     samePieces(arr);
     expect(splicePiece(arr, 4)?.uid).toBe('p4');
@@ -57,6 +70,7 @@ describe('engine4 lookup: the writers keep the index equal to the arrays', () =>
   it('things: push and splice (indexOf -1 removes the last, as Array.splice does), by place and by uid', () => {
     MEMO_CHECK.verify = true;
     const arr: ThingState[] = [];
+    warmT(arr);
     for (let i = 0; i < 9; i++) pushThing(arr, thing(`f${i}`, i % 2 ? { at: 'floor', slot: i } : { at: 'dropoff', slot: i }));
     expect(thingsAt(arr, 'floor')).toEqual(arr.filter((t) => t.at.at === 'floor'));
     expect(spliceThing(arr, arr.indexOf(thing('none', { at: 'floor', slot: 0 })))?.uid).toBe('f8');
@@ -68,6 +82,7 @@ describe('engine4 lookup: the writers keep the index equal to the arrays', () =>
 
   it('an array changed without a writer: rebuilt outside verify mode, thrown in it', () => {
     const arr: GroundPiece[] = [piece('a', 'floor', 0)];
+    warmP(arr);
     expect(piecesOn(arr, 'floor').length).toBe(1);
     arr.push(piece('b', 'floor', 1));
     expect(piecesOn(arr, 'floor').map((p) => p.uid)).toEqual(['a', 'b']);
@@ -78,6 +93,7 @@ describe('engine4 lookup: the writers keep the index equal to the arrays', () =>
 
   it('two pieces with one uid: the uid lookups are the array find (the first)', () => {
     const arr: GroundPiece[] = [];
+    warmP(arr);
     pushPiece(arr, piece('a', 'floor', 0));
     pushPiece(arr, piece('a', 'dropoff', 0));
     expect(pieceById(arr, 'a')).toBe(arr[0]);
@@ -88,6 +104,8 @@ describe('engine4 lookup: the writers keep the index equal to the arrays', () =>
 
   it('floorKept: kept while nothing on the floor changes; a write or a cut computes again', () => {
     const s = { things: [] as ThingState[], pieces: [] as GroundPiece[] };
+    warmP(s.pieces);
+    warmT(s.things);
     const x = { c: {}, s };
     let n = 0;
     const f = () => floorKept(x, 'probe', () => ++n);

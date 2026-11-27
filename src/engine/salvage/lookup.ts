@@ -102,13 +102,28 @@ function fresh<T>(i: Idx<T>, arr: readonly T[]): boolean {
   return i.n === arr.length && i.last === arr[arr.length - 1];
 }
 
-function get<T extends { uid: string }>(map: WeakMap<readonly T[], Idx<T>>, arr: readonly T[], key: (q: T) => string, what: string): Idx<T> {
+/**
+ * An array is indexed only from its INDEX_AFTER-th read on: building an index costs about as much as a dozen plain
+ * scans, and a tick's draft (fresh arrays every tick) is read a few times only, so until then each reader does what it
+ * did before (the plain scan: the same answer). An away pass reads its arrays thousands of times.
+ */
+export const INDEX_AFTER = 24;
+const READS = new WeakMap<object, number>();
+
+function get<T extends { uid: string }>(map: WeakMap<readonly T[], Idx<T>>, arr: readonly T[], key: (q: T) => string, what: string): Idx<T> | null {
   const i = map.get(arr);
   if (i && fresh(i, arr)) {
     if (MEMO_CHECK.verify) compare(what, i, build(arr, key));
     return i;
   }
   if (i && MEMO_CHECK.verify) mismatch(what, `the array changed without a writer (kept ${i.n} items at version ${i.ver}, now ${arr.length})`);
+  if (!i) {
+    const n = READS.get(arr) ?? 0;
+    if (n < INDEX_AFTER) {
+      READS.set(arr, n + 1);
+      return null;
+    }
+  }
   const b = build(arr, key);
   map.set(arr, b);
   return b;
@@ -164,13 +179,14 @@ function fileOut<T extends { uid: string }>(i: Idx<T>, q: T, k: string): boolean
 
 /** The ground pieces of one pile, in the order of `s.pieces` (read only: copy before changing the pile while walking it). */
 export function piecesOn(arr: readonly GroundPiece[], pile: string): readonly GroundPiece[] {
-  return get(PIECES, arr, pileOf, 'pieces').by.get(pile) ?? EMPTY;
+  const i = get(PIECES, arr, pileOf, 'pieces');
+  return i ? (i.by.get(pile) ?? EMPTY) : arr.filter((q) => q.pile === pile);
 }
 
 /** The first ground piece with this uid (`arr.find((q) => q.uid === uid)`). */
 export function pieceById(arr: readonly GroundPiece[], uid: string): GroundPiece | undefined {
   const i = get(PIECES, arr, pileOf, 'pieces');
-  return i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
+  return !i || i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
 }
 
 function ksOf(l: readonly GroundPiece[]): PileKs {
@@ -187,6 +203,7 @@ function ksOf(l: readonly GroundPiece[]): PileKs {
  */
 export function pileKs(arr: readonly GroundPiece[], pile: string): PileKs {
   const i = get(PIECES, arr, pileOf, 'pieces');
+  if (!i) return ksOf(arr.filter((q) => q.pile === pile));
   const ks = (i.ks ??= new Map());
   let e = ks.get(pile);
   if (e && MEMO_CHECK.verify) {
@@ -200,14 +217,15 @@ export function pileKs(arr: readonly GroundPiece[], pile: string): PileKs {
 /** The first ground piece with this uid claimed by `by` (`arr.find((q) => q.uid === uid && q.claim === by)`). */
 export function pieceClaimed(arr: readonly GroundPiece[], uid: string, by: string): GroundPiece | undefined {
   const i = get(PIECES, arr, pileOf, 'pieces');
-  if (i.dup) return arr.find((q) => q.uid === uid && q.claim === by);
+  if (!i || i.dup) return arr.find((q) => q.uid === uid && q.claim === by);
   const q = i.uid.get(uid);
   return q !== undefined && q.claim === by ? q : undefined;
 }
 
-/** No two ground pieces share a uid (so pieceById's piece is the only one with its uid). */
+/** The array is indexed and no two of its pieces share a uid (so pieceById's piece is the only one with its uid); false: use the plain scan. */
 export function piecesUnique(arr: readonly GroundPiece[]): boolean {
-  return !get(PIECES, arr, pileOf, 'pieces').dup;
+  const i = get(PIECES, arr, pileOf, 'pieces');
+  return !!i && !i.dup;
 }
 
 /** `arr.push(p)`, the index kept. */
@@ -274,13 +292,14 @@ export function removePieces(arr: GroundPiece[], at: readonly number[]): void {
 
 /** The things whose place is of this kind (`at.at`: 'floor', 'dropoff', 'zone', ...), in the order of `s.things` (read only). */
 export function thingsAt(arr: readonly ThingState[], kind: string): readonly ThingState[] {
-  return get(THINGS, arr, placeOf, 'things').by.get(kind) ?? EMPTY;
+  const i = get(THINGS, arr, placeOf, 'things');
+  return i ? (i.by.get(kind) ?? EMPTY) : arr.filter((q) => q.at.at === kind);
 }
 
 /** The first thing with this uid (`arr.find((t) => t.uid === uid)`). */
 export function thingById(arr: readonly ThingState[], uid: string): ThingState | undefined {
   const i = get(THINGS, arr, placeOf, 'things');
-  return i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
+  return !i || i.dup ? arr.find((q) => q.uid === uid) : i.uid.get(uid);
 }
 
 /** `arr.push(th)`, the index kept. */
@@ -331,6 +350,7 @@ export function thingCut(arr: readonly ThingState[]): void {
 export function floorKept(x: { c: object; s: { things: readonly ThingState[]; pieces: readonly GroundPiece[] } }, slot: string, compute: () => number): number {
   const ti = get(THINGS, x.s.things, placeOf, 'things');
   const pi = get(PIECES, x.s.pieces, pileOf, 'pieces');
+  if (!ti || !pi) return compute();
   const kept = (ti.kept ??= new Map());
   const e = kept.get(slot);
   if (e && e.c === x.c && e.p === pi && e.pv === pi.ver && e.tv === ti.ver) {
