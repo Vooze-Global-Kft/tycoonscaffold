@@ -2832,3 +2832,33 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         and the always-finance bot and the manager bought nothing for three to four sittings with
         a headroom of zero while the normal hand bought levels: both are findings for the
         measurement to explain with their smallest example before the table is read.
+
+28.5 THE JOIN (`notes/s2e-join.md`; 27 November, about 13:20). The new stage stands together: every
+    gate green (93 test files, 1,087 tests), the first yard unchanged (its content as parsed; 30
+    recorded states bit for bit; the bots' first yard on 4 hands; 75 of 75 recorded runs to the
+    millisecond), no pressable Buy that the rules refuse on 114 cards of a played stage, nothing
+    dark offered, named or counted, no level sold under 1 % or at the floor. What the join found
+    and left for the lead, ruled:
+    (a) THE GAIN ON A LEVEL'S CARD IS THE GAIN ITS PRICE IS MADE OF (this replaces 27.2 c's "the
+        change in rated income"): price = tau x that gain, and the card says both. Rated income is
+        its own figure (it must never fall at a purchase, so it reads the best the yard could do
+        with what it owns, and can move by more than one level's own gain: the plumber's first
+        level prints +7,884 an hour and moves rated income by 14,050).
+    (b) ONE MEASURE FOR MACHINES TOO (27.2 d was true for levels only): for a sold machine,
+        vehicle or tool the advice line and the headroom read the SAME measured gain its price is
+        made of (the bots' figure in the content), not the replay's. So a sold machine pays back
+        in exactly tau, is always inside the advice's and the headroom's windows while it is
+        unbought, and the goal and the advice can no longer disagree about it (they did on the
+        plasma; and at rung 4's entry the headroom was zero with the induction hall unbought).
+        Rated income stays the replay (it must read what the yard owns); the replay's "bought"
+        state sets a line's second plate running with the first (the line was counted without
+        its cars).
+    (c) The goal says "Buy the shredder line" (the purchase is the line).
+    (d) The two rules of 28.2 a and b are built now, before the measurement (the age question at
+        the second session's start in every country, before any ad button, consent prompt or shop
+        row; no ad buttons at all under 13).
+    (e) THE OLD STOCK (42 things of the first yard in its zones, untouched from rung 3 to rung 5)
+        and the hands' idle time at the works under the slower drop-off: the measurement prints
+        each crew role's idle share by rung; what idle hands do at the works is ruled on that
+        number.
+    (f) Not changed: the rung-5 plateau (D10 stands); the window constants stay in the code.
