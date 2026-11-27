@@ -29,7 +29,7 @@ const isRepeat = (d: Spec) => !!d.repeat || d.done === 'repeat';
 
 /** yard-stage2-economy.md 1.3's list, by id, in its order (the bracketed copper hall and trailer goals are not built). */
 const DESIGN = [
-  'rackBath', 'buyTruckBridge', 'fetchGarage', 'fetchPlumbing', 'buyPlasma', 'buyAnalyser', 'startAnalyser', 'cutLot', 'sortCrate', 'supplyRung4',
+  'rackBath', 'buyTruckBridge', 'fetchGarage', 'fetchPlumbing', 'buyAnalyser', 'startAnalyser', 'buyPlasma', 'cutLot', 'sortCrate', 'supplyRung4',
   'walkBackfield', 'buyInduction', 'pourInduction', 'buyShredder', 'buyRotary', 'pourRotary', 'supplyRung5',
 ];
 
@@ -53,6 +53,8 @@ describe('goals.json stage2 as shipped (1.3; ruling 27)', () => {
     // the plasma before the oversize piece; the analyser bought before it starts up; each hall bought before it pours
     const at = (id: string) => DESIGN.indexOf(id);
     expect(at('buyPlasma')).toBeLessThan(at('cutLot'));
+    // s2g-halls (RULING2.md 29.5 a): the analyser and its start-up before the plasma (the plasma's bronze pieces need the analyser)
+    expect(at('startAnalyser')).toBeLessThan(at('buyPlasma'));
     expect(at('buyAnalyser')).toBeLessThan(at('startAnalyser'));
     expect(at('buyInduction')).toBeLessThan(at('pourInduction'));
     expect(at('buyRotary')).toBeLessThan(at('pourRotary'));

@@ -6681,16 +6681,6 @@
         "stall": null
       },
       {
-        "id": "buyPlasma",
-        "text": "goal.buyPlasma",
-        "target": "rack",
-        "via": null,
-        "done": "owned:plasma",
-        "buy": "plasma",
-        "optional": false,
-        "stall": null
-      },
-      {
         "id": "buyAnalyser",
         "text": "goal.buyAnalyser",
         "target": "scalehouse",
@@ -6709,6 +6699,16 @@
         "buy": null,
         "optional": false,
         "stall": "stand"
+      },
+      {
+        "id": "buyPlasma",
+        "text": "goal.buyPlasma",
+        "target": "rack",
+        "via": null,
+        "done": "owned:plasma",
+        "buy": "plasma",
+        "optional": false,
+        "stall": null
       },
       {
         "id": "cutLot",

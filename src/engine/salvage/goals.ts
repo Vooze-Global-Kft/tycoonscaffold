@@ -221,6 +221,30 @@ export function goalMet(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): boolea
 }
 
 const isOpen = (gs: GoalState, d: GoalSpec) => !gs.done.includes(d.id) && !gs.skipped.includes(d.id);
+const isRepeat = (d: GoalSpec) => !!d.repeat || d.done === 'repeat';
+
+/**
+ * s2g-halls (RULING2.md 29.5 b; REPORT10: the card-only player's goal card read "cut a car" from hour 3 to hour 60): FROM THE
+ * WORKS' OPENING (layer.ts worksOpened) the ids of the first yard's own list (content `goals`, the hour's) are HELD: one still
+ * open never holds the stage's list back nor stands ahead of it on the goal card; it ticks the moment it is met (the
+ * check) and stays where the clipboard's list shows it, in the first yard's order. Empty below the works' opening (the
+ * first yard's goal card and check are as they were).
+ */
+function yardHeld(cfg: SalvageConfig, g: SalvageGame): ReadonlySet<string> {
+  if (!worksOpened(g.salvage)) return EMPTY;
+  let v = YARD_IDS.get(cfg.salvage);
+  if (!v) YARD_IDS.set(cfg.salvage, (v = new Set(goalSpecs(cfg.salvage).goals.map((d) => d.id))));
+  return v;
+}
+const EMPTY: ReadonlySet<string> = new Set();
+const YARD_IDS = new WeakMap<object, ReadonlySet<string>>();
+
+/** A held first-yard repeating goal ("Buy next") is passed over once the first-yard goal after it is done or met (as below the works). */
+function yardRepeatPassed(cfg: SalvageConfig, g: SalvageGame, gs: GoalState, d: GoalSpec): boolean {
+  const list = goalSpecs(cfg.salvage).goals;
+  const nx = list[list.findIndex((q) => q.id === d.id) + 1];
+  return !!nx && (gs.done.includes(nx.id) || goalMet(cfg, g, nx));
+}
 
 /**
  * The goals in the order the card offers them: the hour's, then stage 2's from the works' rung (requests.md
@@ -259,10 +283,17 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
     const list = o.list.filter((d) => isOpen(gs, d));
     // A day-one goal put before stage 2's repeating goal (the lead's rule) is offered first but never holds the
     // stage's list back: it ticks when met, and the goals after it go on ticking as before (the list never stalls).
+    // s2g-halls (29.5 b): from the works' opening the first yard's own goals still open are held the same way (yardHeld).
+    const yard = yardHeld(cfg, g);
     let k = 0;
-    while (k < list.length && o.lead.has(list[k].id) && !goalMet(cfg, g, list[k])) k++;
+    while (k < list.length && (o.lead.has(list[k].id) || yard.has(list[k].id)) && !goalMet(cfg, g, list[k]) && !(yard.has(list[k].id) && isRepeat(list[k]) && yardRepeatPassed(cfg, g, gs, list[k]))) k++;
     const cur = list[k];
     if (!cur) break;
+    if (yard.has(cur.id) && isRepeat(cur)) {
+      gs = { ...gs, done: [...gs.done, cur.id] };
+      done.push(cur.id);
+      continue;
+    }
     if (!o.lead.has(cur.id) && (cur.repeat || cur.done === 'repeat')) {
       const after = list[k + 1];
       if (after && goalMet(cfg, g, after)) {
@@ -283,7 +314,8 @@ export function checkGoals(cfg: SalvageConfig, g: SalvageGame): { goals: GoalSta
 }
 
 function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpec | null {
-  return ordered(cfg, g, gs).find((d) => isOpen(gs, d)) ?? null;
+  const yard = yardHeld(cfg, g);
+  return ordered(cfg, g, gs).find((d) => isOpen(gs, d) && !yard.has(d.id)) ?? null;
 }
 
 /**
@@ -295,7 +327,10 @@ function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpe
  */
 export function goalBuyNow(cfg: SalvageConfig, g: SalvageGame): string | null {
   const gs = g.salvage.goals;
-  for (const d of ordered(cfg, g, gs)) if (isOpen(gs, d) && d.buy && !goalMet(cfg, g, d)) return d.buy;
+  // s2g-halls (29.5 b): from the works' opening the stage's goals (and day one's) first, the first yard's own after them.
+  const yard = yardHeld(cfg, g);
+  const list = ordered(cfg, g, gs);
+  for (const d of [...list.filter((q) => !yard.has(q.id)), ...list.filter((q) => yard.has(q.id))]) if (isOpen(gs, d) && d.buy && !goalMet(cfg, g, d)) return d.buy;
   return null;
 }
 
@@ -457,9 +492,11 @@ export function chevronOf(cfg: SalvageConfig, g: SalvageGame): { x: number; y: n
 /** The goal card (2.10), or null after the last goal. */
 export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
   const gs = g.salvage.goals;
+  // s2g-halls (29.5 b): from the works' opening the card shows the stage's list; a first-yard goal still open is the clipboard's.
+  const yard = yardHeld(cfg, g);
   let list = ordered(cfg, g)
     .map((d, n) => ({ d, n }))
-    .filter(({ d }) => isOpen(gs, d));
+    .filter(({ d }) => isOpen(gs, d) && !yard.has(d.id));
   // The repeating goal with nothing to advise shows the goal after it (it stays open).
   if (list[0]?.d.repeat && list.length > 1 && !advice(cfg, g, 0)) list = list.slice(1);
   // s2e-advice: from the works' opening a repeating goal with nothing to name (no purchase, no rung to go) is not shown.
@@ -501,9 +538,11 @@ function rungWaits(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): Goal['waits
 export function goalListOf(cfg: SalvageConfig, g: SalvageGame): GoalLine[] {
   const { done, skipped } = g.salvage.goals;
   let current = false;
+  // s2g-halls (29.5 b): from the works' opening a first-yard goal still open is listed where it stands, never the current one.
+  const yard = yardHeld(cfg, g);
   return ordered(cfg, g).map((d) => {
     // W24: a goal whose condition already holds (owned, charged) is ticked, whether or not the pointer reached it.
-    const state: GoalLine['state'] = done.includes(d.id) || goalMet(cfg, g, d) ? 'done' : skipped.includes(d.id) ? 'skipped' : current ? 'later' : ((current = true), 'current');
+    const state: GoalLine['state'] = done.includes(d.id) || goalMet(cfg, g, d) ? 'done' : skipped.includes(d.id) ? 'skipped' : current || yard.has(d.id) ? 'later' : ((current = true), 'current');
     return { id: d.id, text: goalText(cfg, g, d), state, optional: !!d.optional };
   });
 }

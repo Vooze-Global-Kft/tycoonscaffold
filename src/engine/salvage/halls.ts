@@ -35,6 +35,15 @@ import { plateIds, reagentCostOf, routeOf, routeUnder, type DatedAdd } from './w
 // 4. A pour puts floor(share × charge) of each recipe output into its grade's bay (the belt weigher: no tray, no
 //    ticket); the rest of the charge is waste (the reagents' own mass is not counted in the yard's mass). The hall
 //    then charges again from its bays. No heel is kept.
+// 5. s2g-halls (RULING2.md 29.1): A HALL CHOOSES ITS OWN RECIPE. A hall with several recipes whose recipe no tap pinned
+//    (`heat.pinned` absent, the default of every hall and of every save before the rule) takes, at each heat's start
+//    (the first gram of a new charge, rule 1), the recipe hallPick names: the one whose charge from the bays now adds the
+//    most worth for that heat (its outputs at usual prices less the charge as it would sell, less its reagents), one that
+//    reaches a heat's start before one that does not, ties by the content's order; with nothing to charge it stays as it
+//    is. While it chooses it also keeps, for its next heat, the input of each recipe richer a kilogram than the one it is
+//    on (works.ts hallRecipeFor: routed and reserved to it as any input), so the richer input is not sold by the round
+//    while a poorer heat runs. A tapped recipe (actionsWorks.ts setPlateRecipe) holds, heat after heat, until "Let the hall
+//    choose" (letHallChoose). The first yard's crucible is not a hall: unchanged.
 
 type Recipe = NonNullable<ReturnType<typeof plateDef>>['recipes'] extends infer R ? (R extends Record<string, infer V> ? V : never) : never;
 

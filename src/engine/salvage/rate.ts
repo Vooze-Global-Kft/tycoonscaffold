@@ -893,7 +893,7 @@ function walksOf(c: Ctx['c']): { floorWalk: number; dropWalk: number } {
   return w;
 }
 
-function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
+export function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
   const none: RatedTerms = { I: 0, dropoff: 0, loads: {}, bind: 'none', cut: { have: 0, need: 0 }, carry: { have: 0, need: 0 }, truck: { have: 0, need: 0 }, carryBy: { scale: 0, whole: 0, feed: 0, tray: 0 }, sales: 0, spent: 0 };
   const hands = s.crew.filter((m) => m.role === 'hand');
   if (!hands.length) return none;

@@ -29,6 +29,8 @@ function heatOf(v: unknown, t: number): HeatState | undefined {
     lastFeedAt: h.lastFeedAt,
     firstPoured: !!h.firstPoured,
     cooling: c && str(c.grade) ? ({ ...(c as object), grade: c.grade, n: whole(c.n), short_g: whole(c.short_g) } as HeatState['cooling']) : null,
+    // s2g-halls (RULING2.md 29.1): a recipe pinned by a tap is kept; anything else (absent: every save before the rule) reads as "the hall chooses".
+    ...(h.pinned === true ? { pinned: true as const } : {}),
   };
 }
 
