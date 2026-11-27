@@ -582,6 +582,8 @@ function lotWorth(cfg: R.SalvageConfig, g: R.SalvageGame, c0: Record<string, num
   }
   return { cut4, cut3 };
 }
+/** s2e-measure (the lead's line of 19:25, --dump <item>): the lasting gain's branch states (start, after the run-up, at the absence's end), for the halls' negative seeds. */
+let dumpStates: Record<string, unknown> | null = null;
 function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, key: string | null, playS?: number): LastE {
   const cfg = cfg0.salvage.board.a === 0 ? cfg0 : ({ ...cfg0, salvage: { ...cfg0.salvage, board: { ...cfg0.salvage.board, a: 0 } } } as R.SalvageConfig);
   const g = { ...g0, cash: 1e7, salvage: { ...g0.salvage, away: null } } as R.SalvageGame;
@@ -601,7 +603,9 @@ function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, ke
   const v1 = stockAt(cfg, b.g);
   const lw = lotWorth(cfg, b.g, c0);
   const s1 = b.g.salvage.ladder.supplied_g;
+  const gRun = b.g;
   away(b, S2_AWAY_S);
+  if (dumpStates) dumpStates[`${key ?? 'without'}|${playS ?? '-'}`] = { start: g, run: gRun, end: b.g, ev: b.ev.length };
   const bank = b.g.salvage.away?.bank ?? 0;
   const ha = (b.g.salvage.away?.seconds ?? 0) / 3600;
   return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw, Tp: (s1 - s0) / 1e6, Ta: (b.g.salvage.ladder.supplied_g - s1) / 1e6 };
@@ -1036,7 +1040,9 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       return A && B ? lastingGain(A, B) : null;
     };
     // --plasmaOnly (the lead's line of 18:30): only the plasma's third moment below (the seeds whose price shards ran before it)
-    for (const pid of arg('plasmaOnly') ? [] : items) {
+    const dumpKey = arg('dump');
+    if (dumpKey) dumpStates = {};
+    for (const pid of arg('plasmaOnly') ? [] : dumpKey ? items.filter((q) => q === dumpKey) : items) {
       let ri = returns.findIndex((x) => x.bought.includes(pid));
       const bought = ri >= 0;
       // an item the hand never buys (no goal names it, the advice line never did): its planned moment is the FIRST return at
@@ -1105,6 +1111,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
     // pieces it opens are worth an hour over those that come without it (tier-4 and tier-3 pieces cut in the run-up).
+    if (dumpKey && dumpStates) fs.writeFileSync(path.resolve(`${arg('json') ?? 'dump'}.${dumpKey}.s${spec.seed}.states.json`), JSON.stringify(dumpStates));
     // s2e-measure (the lead's line of 18:30): THE PLASMA'S PRICE READS "WHAT IT OPENS" AT THE THIRD MOMENT: the first return
     // at which the hook-lift and the analyser are both owned (the crate of bronze bushings needs the analyser), the pad
     // cleared in both branches, with the plasma and without it (owned list and tool tier back to the torch's where the hand
@@ -2145,7 +2152,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -2513,7 +2520,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
