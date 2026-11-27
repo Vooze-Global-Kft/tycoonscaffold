@@ -2542,3 +2542,23 @@ the halls' pours; and brought four things to light that need one more round:
 After this round: the bots' second measurement (prices with a played hour, 21.1; the crane pair;
 packs against headroom; fifteen seeds), then the calibration of rated income (23.4), then a
 confirmation by engineers who wrote none of it, and the specification brought into step.
+
+### 25. The specification of stage 2 brought into step (27 November, about 04:50), and what its editor asked
+
+`docs/design/yard-stage2.md` now says the rules as rulings 16 to 24 and the fixes left them (an
+editor, a checker who edited none of it: one blocking, four important and eleven minor findings,
+all taken in): 79 passages marked [27 Nov, ruling N.M]; new sub-sections 2.1.14 (the yard hands'
+order of work), 2.1.15, 2.4.1 (the driver's choice and the fair driver), 2.17.1 (the deferred away
+pass and the yard clock's rule), 2.20.1 and 2.20.2 (release.stage; a stage-2 save in a stage-1
+build); nothing renumbered. A builder of the stage's screens reads it, not the rulings.
+
+25.1 NO STORE BUILD OFFERS A PACK BEFORE RATED INCOME IS CALIBRATED. Packs, the bank's limit, the
+    ads' caps and the oversize pieces read rated income as it stands (that is how the rules run and
+    how the bots measure them); but what a pack SAYS ("hours of your yard's income") is true only
+    once the calibration of 23.4 has landed in the band of 14.10. Until then the shop's pack rows
+    are for the bots and the tests; a store build of stage 2 is gated on it (a line of the release
+    checks).
+25.2 THE WALK'S GATE AND ITS OPEN STEPS. Ruling 17.1 stands as a gate. The steps that still fail
+    at stage 2 after the second round (partner levels: the farm's at rung 4's entry about -3.4 %)
+    are read on the bots' second measurement; each is then either fixed, or named as an accepted
+    exception with its number in this file. None is accepted by silence.

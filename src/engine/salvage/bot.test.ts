@@ -9,6 +9,8 @@ import { away, closeLeg, graphOf, GUARD_BLOCK_S, isBlocked, newBot, newSitting, 
 import { lots4, r3Works, r4Game, worksCfg } from '../fixtures/salvage2works';
 import { thingPos } from './positions';
 import type { SalvageConfig } from './types';
+import { begin, finish } from './clock';
+import { orderPlate, worksOwn } from './works';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
 const NOW = Date.UTC(2026, 10, 25, 9);
@@ -182,5 +184,44 @@ describe('R4 (RULING2 24): the boss in the forklift, and the guard against a ref
     // Set aside for a while, then offered again.
     playTo(b, b.g.salvage.t + GUARD_BLOCK_S + 1);
     expect(isBlocked(b, 'cut x1')).toBe(false);
+  });
+});
+
+describe('REPORT9 (content2-bots): the measured branches buy nothing; the boss drives the forklift', () => {
+  const wcfg = worksCfg();
+  const opts = { hand: 'normal' as const, habit: 'goal' as const, route: 'A' as const, seed: 3 };
+
+  it('noBuy: an hour\'s branch of RULING2 21.1 plays the hand and buys, hires and levels nothing', () => {
+    const g0 = { ...structuredClone(r3Works()), cash: 1e7 };
+    const b = newBot(wcfg, g0, g0.salvage.clock.highMs, { ...opts, noBuy: true });
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 240);
+    expect(b.rec.purchases).toEqual([]);
+    expect(b.g.salvage.owned).toEqual(g0.salvage.owned);
+    expect(b.g.salvage.crew.length).toBe(g0.salvage.crew.length);
+    expect(b.rec.broken).toEqual([]);
+    // the same state without the option buys (so the option is what keeps the branch from buying)
+    const a = newBot(wcfg, g0, g0.salvage.clock.highMs, opts);
+    newSitting(a);
+    playTo(a, a.g.salvage.t + 240);
+    expect(a.rec.purchases.length).toBeGreaterThan(0);
+  });
+
+  it('a car on the pad and a running depollution bay: the bot walks into the forklift, sets the car on the apron and steps out', () => {
+    const x = begin(wcfg, structuredClone(r3Works()), [], true);
+    orderPlate(x, 'depollution', x.s.t);
+    x.s.works.depollution = { ...x.s.works.depollution, phase: 'running', status: 'idle', commissionAt: null, commissionedBy: 'self' };
+    if (!x.s.owned.includes('forklift')) x.s.owned.push('forklift');
+    worksOwn(x, 'forklift', x.s.t);
+    x.s.things.push({ uid: 'carT', obj: 'elv', at: { at: 'elvPad', k: 0 }, cut: 0, progress: 0, by: null });
+    const g0 = finish(r3Works(), x);
+    const b = newBot(wcfg, g0, g0.salvage.clock.highMs, { ...opts, noBuy: true });
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 180);
+    const car = b.g.salvage.things.find((t) => t.uid === 'carT');
+    expect(car === undefined || car.at.at === 'apron').toBe(true);
+    expect(b.g.salvage.works.depollution.car?.thing === 'carT' || (b.g.salvage.counts?.depolluted ?? 0) >= 1).toBe(true);
+    expect(b.g.salvage.forklift?.by).toBe(null);
+    expect(b.rec.broken).toEqual([]);
   });
 });
