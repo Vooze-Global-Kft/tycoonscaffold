@@ -2862,3 +2862,29 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         each crew role's idle share by rung; what idle hands do at the works is ruled on that
         number.
     (f) Not changed: the rung-5 plateau (D10 stands); the window constants stay in the code.
+
+28.6 ENGINE STEP 5 (`notes/engine5.md`; own working copy, merged as 1340ff1). An 8-hour absence at
+    the works is 25 to 45 % cheaper to compute and every result is the same (a baseline of 40
+    cases and 425 operations recorded from the joined build before a line changed: 0 differences;
+    the first yard's 30 recorded cases: 0 differences; verify mode on). Rung 4's last purchase:
+    2.1 to 2.3 s became 1.2 to 1.4 s; rung 5's entry: 1.7 to 2.0 s became 1.2 to 1.5 s (node,
+    warm, measured alone). THE AIM OF A SECOND WAS NOT REACHED, and the lead measured what it
+    means for a phone: without the compiler (as a phone's engine runs) the same pass takes about
+    7 s on this machine, and the first yard's six hours about 1.1 s (the owner's "freeze on
+    return" was that second). Ruled:
+    (a) Ruling 20.3 stands: stage 2 goes to no phone as it is.
+    (b) THE WAY THERE, in this order: (1) the return COUNTS IN PASSES with its progress on the
+        card, so that nothing blocks for more than a moment (exact already: an absence in eleven
+        passes equals one; the card that takes every pass exists): the screens' phase; (2) ENGINE
+        STEP 6 before the screens' phase ends, its aim restated for a phone: an 8-hour pass at
+        rung 5 under 2 s without the compiler on this machine (about a quarter of today), by the
+        exact changes the engineer named and did not make (floor searches kept while no claim
+        changes, by a version counter with verify mode; rated income's first computation kept
+        across a start; whole crew cycles jumped where the order of instants and of sums is
+        proved unchanged), each behind the recorded baseline; (3) one RULE to be weighed with
+        numbers, the lead's: at the works 37,800 things leave the tipping floor one at a time in
+        such a pass; a hand who carries several small whole things a trip (as he already carries
+        several pieces) would cut the instants at their source, and would change what the yard
+        earns: measured before it is ruled.
+    (c) The first yard's strict bench reads 263 ms against its 250 on the old engine and the new
+        alike: not this step's; the bench is restated to compare engines in one run.
