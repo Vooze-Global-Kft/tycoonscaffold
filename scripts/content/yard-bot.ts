@@ -1067,8 +1067,37 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       // nothing, at least an hour and until the item works; the branch without plays as long). dT (the run-up and the
       // absence together: 21.1's measure where the run-up is the hour) and dP (the run-up alone) are printed beside it.
       void branch;
-      const q = pair(`r${ri}`, returns[ri].g, pre, pid);
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), tL: +q.tL.toFixed(3), tT: +q.tT.toFixed(3), T0: +q.T0.toFixed(2), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked } : {}), pre };
+      // s2f-plasma-cars (RULING2.md 28.7 a): A TOOL OF THE HAND (a shop item of kind 'tool': the plasma cutter, the boss's own)
+      // is priced by what the richer oversize pieces it opens bring an hour AT THE REFERENCE HAND'S PACE: from the same state
+      // with it and without it, the reference bot (buying nothing) plays TWO SITTINGS (S2_PLAY_S, then the capped absence,
+      // twice), cutting what waits at each return; dE = the worth at usual prices (lots.ts lotValue) of the pieces cut an hour
+      // more with it; dT = everything the yard kept an hour more over the two sittings (the cutters' use of its tier with the
+      // pieces), printed beside; tonnes an hour more beside (dTonnes_h).
+      const handOf = (g1: R.SalvageGame) => {
+        const fl = cfg.salvage.board.a === 0 ? cfg : ({ ...cfg, salvage: { ...cfg.salvage, board: { ...cfg.salvage.board, a: 0 } } } as R.SalvageConfig);
+        const g2 = { ...g1, cash: 1e7, salvage: { ...g1.salvage, away: null } } as R.SalvageGame;
+        const hb = newBot(fl, g2, g2.salvage.clock.highMs, { ...opts, noBuy: true, gate2: false });
+        const v0 = stockAt(fl, g2);
+        let bank = 0;
+        let pieces = 0;
+        for (let k = 0; k < 2; k++) {
+          if (k > 0) newSitting(hb);
+          const wait = hb.g.salvage.things.filter((th) => th.at.at === 'lot').map((th) => [th.uid, R.cardOf(fl, hb.g, { kind: 'lot', k: (th.at as { k: number }).k } as never, hb.g.salvage.clock.highMs).lot?.valueOnceCut ?? 0] as const);
+          playTo(hb, hb.g.salvage.t + S2_PLAY_S);
+          for (const [uid, w] of wait) if (!hb.g.salvage.things.some((th) => th.uid === uid)) pieces += w;
+          away(hb, S2_AWAY_S);
+          bank += hb.g.salvage.away?.bank ?? 0;
+        }
+        return { E: hb.g.cash - g2.cash + bank + stockAt(fl, hb.g) - v0, pieces, h: (hb.g.salvage.t - g2.salvage.t) / 3600, t: (hb.g.salvage.ladder.supplied_g - g2.salvage.ladder.supplied_g) / 1e6 };
+      };
+      const tool = soldItems(cfg).find((i) => i.key === pid)?.kind === 'tool';
+      const gA = tool ? stateWith(returns[ri].g, [...pre, pid]) : null;
+      const gB = tool ? stateWith(returns[ri].g, pre) : null;
+      const hA = gA && gB ? handOf(gA) : null;
+      const hB = gA && gB ? handOf(gB) : null;
+      const hh = hA && hB ? (hA.h + hB.h) / 2 : 1;
+      const q = hA && hB ? { dL: (hA.pieces - hB.pieces) / hh, dT: (hA.E - hB.E) / hh, dP: (hA.E - hB.E) / hh, E0: hB.E / hB.h, E0T: hB.E / hB.h, tW_h: hA.h, worked: true, tL: (hA.t - hB.t) / hh, tT: (hA.t - hB.t) / hh, T0: hB.t / hB.h, hand: true as const } : pair(`r${ri}`, returns[ri].g, pre, pid);
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), tL: +q.tL.toFixed(3), tT: +q.tT.toFixed(3), T0: +q.T0.toFixed(2), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked, ...('hand' in q ? { hand: true } : {}) } : {}), pre };
     }
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize

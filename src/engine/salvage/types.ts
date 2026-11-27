@@ -834,6 +834,8 @@ export type SalvageEvent =
   | { type: 'analysed'; grade: GradeId; from: GradeId }
   /** A car drained at the depollution bay (the chip "Certificate of destruction issued"). */
   | { type: 'depolluted'; thing: string; plate: PlateId }
+  /** s2f-plasma-cars (RULING2.md 28.7 b): the partner's own recovery truck set a car (`obj`) on the station's apron, paid `price` as it landed (the screens draw the truck). */
+  | { type: 'carLanded'; thing: string; obj: ObjectId; plate: PlateId; partner: PartnerId; price: number }
   | { type: 'routeSet'; grade: GradeId; to: StationId | 'bay' }
   | { type: 'lotArrived'; thing: string; k: number; sender: PartnerId | null }
   | { type: 'lotOpened'; thing: string }
@@ -1924,6 +1926,8 @@ export interface WorksState extends MachineState {
   drawn_g?: Stock;
   /** Station plates (the depollution bay): the car on its apron and its drain's span, or null. */
   car?: { thing: string; t0: number; end: number } | null;
+  /** s2f-plasma-cars (RULING2.md 28.7 b): a truck-fed station: the yard second the recovery truck last set a car on its apron (absent: none yet). */
+  carLandedAt?: number;
   /** The magnet crane: the move under way, or null; its run (kind, place, destination, start). */
   move?: CraneMove | null;
   course?: { t0: number; from: PileKey | 'apron'; to: StationId | 'bay' };

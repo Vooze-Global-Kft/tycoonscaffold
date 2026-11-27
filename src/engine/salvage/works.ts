@@ -30,7 +30,7 @@
 import type { PlateDef, SalvageContent } from '../../config/schema.salvage';
 import { bayOf } from './bays';
 import { partnerOf } from './create';
-import { boostFactor, count, heard, numberBays, spend, type Ctx } from './clock';
+import { boostFactor, count, dayAt, heard, numberBays, spend, type Ctx } from './clock';
 import { legM, plateDef, plateKey, plateOut, sumStock, vpk } from './content';
 import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
@@ -43,6 +43,7 @@ import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
 import { bayDraw, refreshReserves } from './shredder';
 import { dropOnPile, takeFromPile, thingGone, thingOf } from './things';
 import { weighIn } from './scales';
+import { asFoundValue } from './partners';
 import type { CarriedSkip, CrewMember, GroundPiece, MachineId, Piece, Spot, StationId, ThingState, WorksState } from './types';
 import { pieceClaimed, pushThing, spliceThing, thingById, thingsAt } from './lookup';
 
@@ -100,6 +101,12 @@ export function worksDated(x: Ctx, add: DatedAdd<WorksKind>): void {
     }
     if (w.work) add(pieceEndsAt(w), 'plate', id);
     else if (w.car) add(w.car.end, 'plate', id);
+    else {
+      // s2f-plasma-cars (RULING2.md 28.7 b): the recovery truck's next car is due (a wake only: worksDepart lands it at the
+      // first instant from then on the apron is free and the cash less the driver's reserve covers its label price).
+      const due = carDueAt(x, id, w);
+      if (due !== null && due > x.s.t) add(due, 'plate', id);
+    }
     if (w.move) add(w.move.end, 'crane', id);
   }
   hallsDated(x, add as DatedAdd<'hall'>);
@@ -155,7 +162,10 @@ export function worksDepart(x: Ctx, t: number): void {
       if (!w.work && d.feedBy === 'bays') bayDraw(x, id, w, t);
       if (!w.work) startPlate(x, id, w, t);
     } else if (d.kind === 'batch') hallFromBays(x, id, t);
-    else if (d.kind === 'station' && !w.car) carStart(x, id, w, t);
+    else if (d.kind === 'station' && !w.car) {
+      carRecover(x, id, w, t);
+      carStart(x, id, w, t);
+    }
     else if (d.kind === 'handling' && !w.move) craneDepart(x, id, w, t);
   }
   for (const m of x.s.crew) if (m.role === 'hand' && m.phase === 'wait' && m.job === 'idle' && !m.run) handToPlate(x, m, t);
@@ -1274,6 +1284,78 @@ export function landBody(x: Ctx, skip: CarriedSkip, t: number): boolean {
 }
 
 // ---------------------------------------------------------------------------------------- the depollution bay (2.7, 2.9; wave 2)
+
+/**
+ * s2f-plasma-cars (RULING2.md 28.7 b): THE PARTNER'S OWN RECOVERY TRUCK (content `partners.<id>.recovery`: needs, obj,
+ * period_s; the garage's, needing the shredder line). From the instant the plate it needs RUNS, the partner sets one car on
+ * the apron of the station fed by the truck that takes it (the depollution bay) whenever that apron is free, at most one a
+ * period (the station's dated field `carLandedAt`: the last landing's yard second; absent, none yet), the yard PAYING THE
+ * CAR'S LABEL PRICE AS IT LANDS (carLabelPrice: k x as found at the day's prices, a skip's rule) when the cash less the
+ * driver's reserve covers it; otherwise the car waits at the garage and lands at the first instant the yard can pay
+ * (nothing expires, nothing is owed). The hook-lift fetches no car (the content's rotation has no flatrack). The car on the
+ * apron is drained as built (carStart, carDrained). A dated arrival: the due date is a wake of the derived queue
+ * (worksDated), the landing is worksDepart's at every instant, so a tick, a jump and time away land it at the same instant.
+ */
+type RecoveryDef = { partner: string; obj: string; period_s: number; needs: string };
+const RECOVERY = new WeakMap<object, Map<string, RecoveryDef | null>>();
+/** The recovery truck that serves station `id` (a truck-fed station taking the partner's `obj`), or null. Memoised per content. */
+export function recoveryOf(c: SalvageContent, id: string): RecoveryDef | null {
+  let m = RECOVERY.get(c);
+  if (!m) RECOVERY.set(c, (m = new Map()));
+  let r = m.get(id);
+  if (r === undefined) {
+    r = null;
+    const d = c.works?.plates[id];
+    if (d && d.kind === 'station' && d.feedBy === 'truck')
+      for (const [pid, p] of Object.entries(c.partners)) {
+        const q = p.recovery;
+        if (q && d.in.includes(q.obj)) {
+          r = { partner: pid, obj: q.obj, period_s: q.period_s, needs: q.needs };
+          break;
+        }
+      }
+    m.set(id, r);
+  }
+  return r;
+}
+/** The yard second the recovery truck's next car may land at station `id`, or null (no recovery truck, or its plate not running). */
+export function carDueAt(x: Pick<Ctx, 'c' | 's'>, id: string, w: WorksState): number | null {
+  if (w.phase !== 'running') return null;
+  const r = recoveryOf(x.c, id);
+  if (!r || x.s.works[r.needs]?.phase !== 'running') return null;
+  const last = w.carLandedAt;
+  return typeof last === 'number' && Number.isFinite(last) ? last + r.period_s : -Infinity;
+}
+/** The car's label price at yard second t (what the bay's card shows and what its landing pays): roundMoney(k x as found at the day's prices). */
+export function carLabelPrice(x: Ctx, id: string, t: number): number | null {
+  const r = recoveryOf(x.c, id);
+  const p = r ? x.c.partners[r.partner] : undefined;
+  if (!r || !p) return null;
+  return roundMoney(p.k * asFoundValue(x, { [r.obj]: 1 }, dayAt(x, t)));
+}
+/** The recovery truck sets a car on station `id`'s apron at t, if one is due, the apron is free and the yard can pay. */
+function carRecover(x: Ctx, id: string, w: WorksState, t: number): void {
+  const due = carDueAt(x, id, w);
+  if (due === null || t < due - 1e-9) return;
+  for (const th of thingsAt(x.s.things, 'apron')) if (th.at.at === 'apron' && th.at.plate === id) return;
+  const r = recoveryOf(x.c, id)!;
+  const price = carLabelPrice(x, id, t)!;
+  if (price > x.cash - (x.s.truck.earmark?.money ?? 0) + 1e-9) return;
+  spend(x, price);
+  if (x.away) {
+    const b = (x.away.bought[r.partner] ??= { n: 0, spent: 0 });
+    b.n += 1;
+    b.spent = roundMoney(b.spent + price);
+  }
+  const k = (x.s.counts!.floorThings ?? 0) + 1;
+  x.s.counts!.floorThings = k;
+  const uid = `f${k}`;
+  pushThing(x.s.things, { uid, obj: r.obj, at: { at: 'apron', plate: id }, cut: 0, progress: 0, by: null, sender: r.partner });
+  w.carLandedAt = t;
+  count(x, 'recovered');
+  x.dirty = true;
+  x.ev.push({ type: 'carLanded', thing: uid, obj: r.obj, plate: id, partner: r.partner, price });
+}
 
 /** A station plate (the depollution bay) starts draining the car the forklift set on its apron: depollution.s ÷ the level factor. */
 export function carStart(x: Ctx, id: string, w: WorksState, t: number): void {

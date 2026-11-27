@@ -612,7 +612,7 @@ function vanTerm(c: Ctx['c'], s: Ctx['s'], loads: Record<string, number>): numbe
  * terms) at usual prices, less its price (k x as-found, partners.ts ratedLoadNet's rule) and less the skip it displaces
  * on the truck (that partner's rated net a load). The truck's time is unchanged (a car's trip is a skip's: owner1 V3).
  */
-function carTerm(c: Ctx['c'], s: Ctx['s'], loads: Record<string, number>): { net: number; kg: Record<string, number>; cars: number } {
+export function carTerm(c: Ctx['c'], s: Ctx['s'], loads: Record<string, number>): { net: number; kg: Record<string, number>; cars: number } {
   const out = { net: 0, kg: {} as Record<string, number>, cars: 0 };
   const plates = c.works?.plates;
   if (!plates) return out;
@@ -623,34 +623,52 @@ function carTerm(c: Ctx['c'], s: Ctx['s'], loads: Record<string, number>): { net
     drainS = ((c as { depollution?: { s?: number } }).depollution?.s ?? 0) / (1 + d.lev * Math.max(0, w.level - 1));
   }
   if (!(drainS > 0)) return out;
+  // s2f-plasma-cars (RULING2.md 28.7 b): THE PARTNER'S OWN RECOVERY TRUCK (works.ts carRecover) sets a car on the apron
+  // whenever it is free, at most one a period: cars an hour 3600 / max(period, the bay's drain); each at usual prices less
+  // its label price (k x as found); no skip displaced (the hook-lift fetches no car). The flatrack's rule below stays for
+  // the frozen contents (no shipped partner has both).
+  for (const p of Object.values(c.partners)) {
+    const r = p.recovery;
+    if (!r || !s.works?.[r.needs] || !c.objects[r.obj]) continue;
+    const cars = 3600 / Math.max(r.period_s, drainS);
+    const v = carWorth(c, { [r.obj]: 1 }, cars, out.kg);
+    out.cars += cars;
+    out.net += cars * (v.worth - roundMoney(p.k * v.asFound));
+  }
   for (const [pid, n] of Object.entries(loads)) {
     const p = c.partners[pid];
     const gr = (p?.grows ?? []).find((q) => q.body === 'flatrack' && s.works?.[q.needs]);
     if (!gr || !(n > 0)) continue;
     const L = Math.max(1, s.partners[pid]?.level ?? 1);
     const cars = Math.min(n / 2, 3600 / (drainS + p.fill_s + ((L + 1) * 3600) / n));
-    let worth = 0;
-    let asFound = 0;
-    for (const [obj, q] of Object.entries(gr.contents)) {
-      const o = c.objects[obj];
-      if (!o) continue;
-      let thing = 0;
-      for (const [grade, g, k] of specsOf(c, obj)) {
-        out.kg[grade] = (out.kg[grade] ?? 0) + cars * q * k * (g / 1000);
-        thing += k * (g / 1000) * usualP(c, grade);
-        if (o.asFound === undefined) asFound += q * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
-      }
-      if (o.shell) {
-        out.kg[o.shell.grade] = (out.kg[o.shell.grade] ?? 0) + cars * q * (o.shell.g / 1000);
-        thing += (o.shell.g / 1000) * usualP(c, o.shell.grade);
-      }
-      worth += q * thing;
-      if (o.asFound !== undefined) asFound += q * o.asFound * thing;
-    }
+    const { worth, asFound } = carWorth(c, gr.contents, cars, out.kg);
     out.cars += cars;
     out.net += cars * (worth - roundMoney(p.k * asFound) - ratedLoadNet(c, pid));
   }
   return out;
+}
+
+/** A car load's worth at usual prices and its as-found value (asFoundValue's rule), its drained grades' kg an hour at `cars` an hour added to `kg`. */
+function carWorth(c: Ctx['c'], contents: Record<string, number>, cars: number, kg: Record<string, number>): { worth: number; asFound: number } {
+  let worth = 0;
+  let asFound = 0;
+  for (const [obj, q] of Object.entries(contents)) {
+    const o = c.objects[obj];
+    if (!o) continue;
+    let thing = 0;
+    for (const [grade, g, k] of specsOf(c, obj)) {
+      kg[grade] = (kg[grade] ?? 0) + cars * q * k * (g / 1000);
+      thing += k * (g / 1000) * usualP(c, grade);
+      if (o.asFound === undefined) asFound += q * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
+    }
+    if (o.shell) {
+      kg[o.shell.grade] = (kg[o.shell.grade] ?? 0) + cars * q * (o.shell.g / 1000);
+      thing += (o.shell.g / 1000) * usualP(c, o.shell.grade);
+    }
+    worth += q * thing;
+    if (o.asFound !== undefined) asFound += q * o.asFound * thing;
+  }
+  return { worth, asFound };
 }
 
 /** rate.kappa at the rung (s2e-rate, 2.3 item 3): the content's factor at rungs 3 to 5 (a rung past the list reads its last), 1 where none is given. */

@@ -555,6 +555,14 @@ export const PartnerSchema = z.object({
    * partner's rotation, each with its label fixed at fill (E3). The label price stays k x as found.
    */
   grows: z.array(z.object({ needs: id, body: z.enum(['skip', 'flatrack', 'batteryBox']), contents: z.record(id, z.number().int().positive()) })).optional(),
+  /**
+   * STAGE 2 (s2f-plasma-cars; RULING2.md 28.7 b): THE PARTNER'S OWN RECOVERY TRUCK. Once the plate `needs` (a works plate id:
+   * the shredder line) runs, the partner sets one `obj` (a thing that arrives by 'pad': the end-of-life car) on the apron of
+   * the station fed by the truck whenever the apron is free, at most one each `period_s`, the yard paying its label price
+   * (k x as found at the day's prices) as it lands, cash less the driver's reserve allowing (else it waits: nothing expires,
+   * nothing is owed). A partner with it has no flatrack in `grows` (the hook-lift fetches no car).
+   */
+  recovery: z.object({ needs: id, obj: id, period_s: z.number().positive() }).optional(),
 });
 export type PartnerDef = z.infer<typeof PartnerSchema>;
 
@@ -905,6 +913,12 @@ const LotsSchema = z.object({
   kinds: z.array(LotKindSchema).min(1),
   /** s2e-content (yard-stage2-economy.md 2.10): what the low-loader brings at most, kg (build-yard.py's third clause: no kind's mass_kg max above it). */
   lorry_kg: z.number().positive().optional(),
+  /**
+   * s2f-plasma-cars (RULING2.md 28.7 a): mu minutes of I by rung FOR A KIND WHOSE OBJECT IS OF THIS TOOL TIER (key: the tier,
+   * "4": what only the plasma cuts), in place of `mu_min` for that kind; with it, the piece that comes is the RICHEST kind
+   * whose worth is at most its own mu x I (lots.ts lotArrive). Absent: `mu_min` for every kind and the heaviest comes (as built).
+   */
+  mu_min_tier: z.record(z.string(), z.array(z.number().positive().nullable())).optional(),
 });
 /** The crate, "the picking table" (2.10.2): share of a tip by hash, things it holds, seconds a thing, the factor on its prepared value. No hold time (P2). */
 const CrateSchema = z.object({ share: z.number().min(0).max(1), max: z.number().int().positive(), sort_s: z.number().positive(), u: z.number().positive() });
@@ -1144,6 +1158,7 @@ const SalvageObject = z.object({
     ['tau_h', s.tau_h],
     // awayCapByRung_h's length is lintStage2More's (f) (s2a-fix): a content frozen before it (salvage-stage2.json) must still parse.
     ['lots.mu_min', s.lots?.mu_min],
+    ...Object.entries(s.lots?.mu_min_tier ?? {}).map(([k, l]): [string, unknown[] | undefined] => [`lots.mu_min_tier.${k}`, l]),
     ['reuse.shareI', s.reuse?.shareI],
     ['reuse.shareI_r', s.reuse?.shareI_r],
     ['rate.kappa', s.rate?.kappa],
@@ -1403,6 +1418,13 @@ export function lintStage2(s0: SalvageContent): string[] {
       if (lanes[p.lane] === undefined) out.push(`worksLayer.partners.${pid}.lane "${p.lane}" is in neither map.lane nor map.works.lane`);
       if (!keys.has(p.opens)) out.push(`worksLayer.partners.${pid}.opens "${p.opens}" is not a shop key`);
       for (const x of p.grows ?? []) if (!plates[x.needs]) out.push(`worksLayer.partners.${pid}.grows needs "${x.needs}", which is not a works plate`);
+      // s2f-plasma-cars (RULING2.md 28.7 b): the recovery truck's car lands on a truck-fed station's apron; the hook-lift fetches none.
+      if (p.recovery) {
+        if (!plates[p.recovery.needs]) out.push(`worksLayer.partners.${pid}.recovery needs "${p.recovery.needs}", which is not a works plate`);
+        if (O[p.recovery.obj]?.arrives !== 'pad') out.push(`worksLayer.partners.${pid}.recovery brings "${p.recovery.obj}", which does not arrive by 'pad' (an end-of-life car, T1)`);
+        if (!Object.values(plates).some((d) => d.kind === 'station' && d.feedBy === 'truck' && d.in.includes(p.recovery!.obj))) out.push(`worksLayer.partners.${pid}.recovery: no station fed by the truck takes "${p.recovery.obj}"`);
+        if ((p.grows ?? []).some((x) => x.body === 'flatrack')) out.push(`worksLayer.partners.${pid} has a recovery truck and a flatrack in grows: the hook-lift fetches no car (RULING2.md 28.7 b)`);
+      }
     }
     for (const g of Object.keys(L.bays)) if (!isGrade(g)) out.push(`worksLayer.bays.${g} is not a grade`);
     for (const [g, gr] of Object.entries(L.grades)) if (gr.bay?.place && !mapPlaces.has(gr.bay.place)) out.push(`worksLayer.grades.${g}.bay.place "${gr.bay.place}" is not a map point of either layer`);
@@ -1808,6 +1830,8 @@ export function partnerLoads(s: SalvageContent): [string, { name: string; prepar
         rows.push([pid, { name: `skip with ${gr.needs}`, prepared: preparedValue(s, skip, owned), price: Math.round(p.k * asFoundValue(s, skip)) }]);
       } else rows.push([pid, { name: `${gr.body} (${gr.needs})`, prepared: preparedValue(s, gr.contents, owned), price: Math.round(p.k * asFoundValue(s, gr.contents)) }]);
     }
+    // s2f-plasma-cars (RULING2.md 28.7 b): the car the partner's own recovery truck sets on the apron, at its label price
+    if (p.recovery) rows.push([pid, { name: `recovery (${p.recovery.needs})`, prepared: preparedValue(s, { [p.recovery.obj]: 1 }, [...owned, p.recovery.needs]), price: Math.round(p.k * asFoundValue(s, { [p.recovery.obj]: 1 })) }]);
   }
   return rows;
 }
@@ -1851,6 +1875,7 @@ export function sourcesByRung(s: SalvageContent): Map<string, number> {
     const r = Math.max(1, shopGate(p.opens));
     for (const o of [...Object.keys(p.trial), ...Object.keys(p.skip)]) objAt(o, r);
     for (const gr of p.grows ?? []) for (const o of Object.keys(gr.contents)) objAt(o, Math.max(r, shopGate(gr.needs)));
+    if (p.recovery) objAt(p.recovery.obj, Math.max(r, shopGate(p.recovery.needs)));
   }
   for (const k of s.lots?.kinds ?? []) objAt(k.obj, Math.max(3, k.line.length ? Math.min(...k.line.map((l) => (plates[l] ? rungOf(plates[l].gate) : 1))) : 3));
   const analyser = plates.analyser ? rungOf(plates.analyser.gate) : 99;

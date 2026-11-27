@@ -519,7 +519,7 @@ WORKS_WALKS = ['scale-crate', 'dropoff-reuseRack', 'floor-reuseRack', 'floor-cra
 WALK_ALIAS = {'apron': 'depollution.apron'}
 # 3.6 (5): the walks with a limit (metres)
 WORKS_LIMITS = {'scale-crate': 20, 'dropoff-reuseRack': 24, 'floor-crane': 10}
-HALLS = [('rotary', 'rotary.filter'), ('induction', 'induction.filter'), ('smelter', 'smelter.filter')]
+HALLS = [('rotary', 'rotary.filter'), ('induction', 'induction.filter'), ('smelter', 'smelter.filter'), ('copper', 'copper.filter')]  # s2f-copper: the copper refining hall
 LINE = ['shredder', 'eddy', 'sorter']
 
 

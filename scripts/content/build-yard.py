@@ -150,6 +150,17 @@ def build():
     for k in ('goals', 'dayOne', 'teach', 'stage2'):  # stage2: the stage's goal list (goals2, rules-money, 26 Nov)
         if k in goals:
             s[k] = goals[k]
+    # s2f-copper (RULING2.md 27.2 b, 28.7 c): a stage-2 goal that names a plate or works item NOT SOLD at this stage (its gate past
+    # the stage's top: dark) is not written, so a hall shipped only by its gate (the copper hall) needs one switch, its gate
+    if 'stage2' in s:
+        top = s['ladder'].get('topRung') or 3
+        dark = {k for k, p in ((s.get('works') or {}).get('plates') or {}).items() if gate_n(p.get('gate')) > top}
+        dark |= {i['key'] for i in ((s.get('worksLayer') or {}).get('shop') or []) if gate_n(i.get('gate')) > top}
+
+        def names_dark(d):
+            kind, _, a = (d.get('done') or '').partition(':')
+            return d.get('buy') in dark or (kind in ('plate', 'commissioned', 'poured', 'owned') and a in dark)
+        s['stage2'] = [d for d in s['stage2'] if not names_dark(d)]
     for fam, extra in (src['pending'] or {}).items():
         s.setdefault(fam, {}).update(extra)
     # s2e-content (yard-stage2-economy.md 2.14.2): a plate's or a vehicle's `financeable` is a MARK of the content (a machine or
@@ -773,13 +784,14 @@ def selftest():
     pl = s['works']['plates']
     # s2e-content (2.14.2): financeable is the content's mark: the hook-lift and the machines sold that earn; never a tool, never a dark plate
     sold = {k for k, p in pl.items() if gate_n(p['gate']) <= (s['ladder'].get('topRung') or 3)}
-    expect('the analyser, the shredder and the two halls are marked financeable', all(pl[k].get('financeable') is True for k in ('analyser', 'shredder', 'induction', 'rotary')))
+    copper = {'copper'} & sold  # s2f-copper: the copper refining hall, sold while its gate sells it (RULING2.md 27.5, 28.7 c)
+    expect('the analyser, the shredder and the halls are marked financeable', all(pl[k].get('financeable') is True for k in ('analyser', 'shredder', 'induction', 'rotary', *copper)))
     expect('no dark plate is marked financeable', not any(p.get('financeable') for k, p in pl.items() if k not in sold))
     shop = {i['key']: i for i in s['worksLayer']['shop']}
     expect('the three-axle hook-lift is financeable, the plasma cutter (a tool) is not', shop['truckBridge'].get('financeable') is True and not shop['plasma'].get('financeable'))
     # s2e-content (2.6.4, 2.7 to 2.9; ruling 27.2 b, 27.3 D1, D2): what is sold, and what is dark
     expect('sold at stage 2: the analyser, shredder, induction and rotary; the hook-lift and the plasma',
-           sold == {'analyser', 'shredder', 'induction', 'rotary'} and {k for k, i in shop.items() if i['kind'] != 'works' and gate_n(i['gate']) <= 5} == {'truckBridge', 'plasma'})
+           sold == {'analyser', 'shredder', 'induction', 'rotary'} | copper and {k for k, i in shop.items() if i['kind'] != 'works' and gate_n(i['gate']) <= 5} == {'truckBridge', 'plasma'})
     # s2e-rate (ruling 27.4): a rung's kappa outside 0.85 to 1.15 is refused by this script's lint; the shipped kappas pass
     k = copy.deepcopy(s)
     expect('rate.kappa: the shipped factors pass', not any(e.startswith('rate.kappa') for e in lint(k, [])))

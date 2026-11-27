@@ -22,6 +22,8 @@
  *   first free square of the oversize pad with its mass fixed (`ThingState.g`) so that its pieces at p̄ are worth
  *   μ_rung minutes of rated income I at that instant (rate.ts ratedIncome), and its sender; then nextAt =
  *   max(nextAt, t) + period, or null when it makes four.
+ * - s2f-plasma-cars (RULING2.md 28.7 a): with `lots.mu_min_tier` a kind of a tier listed there (4: what only the plasma
+ *   cuts: stainless, bronze, copper) is held to its own, larger mu, and the richest kind within its own cap comes.
  * - Only the boss cuts one (act `lot`): standing still within reach.work of it with a tool of its tier, for the kind's
  *   `cut_s` whatever its mass. Its pieces (each spec's share of the mass in pieces of at most the spec's grams, the
  *   rest waste) fall on the tipping floor's pile, where the crews take them as any other. While nextAt is null (four
@@ -57,9 +59,13 @@ export function lotsDated(x: Ctx): number | null {
   return x.c.lots && x.s.lots ? x.s.lots.nextAt : null;
 }
 
-/** μ at the yard's rung, minutes of I (`lots.mu_min`; the last given at a rung past its end). */
-function muAt(x: Ctx): number {
-  const mu = x.c.lots!.mu_min;
+/**
+ * μ at the yard's rung, minutes of I (`lots.mu_min`; the last given at a rung past its end). s2f-plasma-cars (RULING2.md
+ * 28.7 a): for a kind whose object's tier `tier` has its own list (`lots.mu_min_tier`), that list.
+ */
+function muAt(x: Ctx, tier?: number): number {
+  const L = x.c.lots!;
+  const mu = (tier !== undefined ? L.mu_min_tier?.[String(tier)] : undefined) ?? L.mu_min;
   for (let k = Math.max(1, Math.min(x.s.ladder.rung, mu.length)) - 1; k >= 0; k--) if (mu[k] !== null && mu[k] !== undefined) return mu[k] as number;
   return 0;
 }
@@ -126,15 +132,21 @@ export function lotArrive(x: Ctx, t: number): void {
   // X3 (b), RULING2 22: μ × I chooses WHICH object comes, not a multiplier on its mass. One draw u = hash01(worldSeed,
   // 'lot', n) places every eligible kind's mass inside its own range; the heaviest whose worth at p̄ is at most μ × I
   // comes (ties: content order); when none is, the one of least worth.
-  const want = (muAt(x) / 60) * ratedIncome(x.c, x.s);
+  // s2f-plasma-cars (RULING2.md 28.7 a): with `lots.mu_min_tier` each kind is held to the mu of ITS object's tier (what only
+  // the plasma cuts may be worth more than what a torch cuts) and the RICHEST kind within its own cap comes (ties: the
+  // heavier, then content order): the plasma's pieces are worth more, not merely allowed to be. Without the key: as built.
+  const I = ratedIncome(x.c, x.s);
+  const byTier = !!L.mu_min_tier;
+  const want0 = (muAt(x) / 60) * I;
   const u = hash01(x.c.worldSeed, H_LOT, n);
-  let pick: { kind: (typeof kinds)[number]; g: number } | null = null;
+  let pick: { kind: (typeof kinds)[number]; g: number; w: number } | null = null;
   let least: { kind: (typeof kinds)[number]; g: number; w: number } | null = null;
   for (const k of kinds) {
     const [lo, hi] = lotMassRange(x, k);
     const gk = Math.round(lo + u * (hi - lo));
     const w = lotValue(x, { obj: k.obj, g: gk });
-    if (w <= want && (!pick || gk > pick.g)) pick = { kind: k, g: gk };
+    const want = byTier ? (muAt(x, x.c.objects[k.obj]!.tier) / 60) * I : want0;
+    if (w <= want && (!pick || (byTier ? w > pick.w || (w === pick.w && gk > pick.g) : gk > pick.g))) pick = { kind: k, g: gk, w };
     if (!least || w < least.w) least = { kind: k, g: gk, w };
   }
   const { kind, g } = pick ?? least!;

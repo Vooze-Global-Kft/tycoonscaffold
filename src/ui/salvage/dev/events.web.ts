@@ -98,6 +98,7 @@ export const EVENT_SAMPLES: { [T in SalvageEventType]: Sample<T> } = {
   plateOut: (cfg) => ({ type: 'plateOut', plate: 'baler', grade: firstGrade(cfg, 'li'), g: 20000 }),
   analysed: (cfg) => ({ type: 'analysed', grade: firstGrade(cfg, 'ss'), from: firstGrade(cfg, 'ssu') }),
   depolluted: () => ({ type: 'depolluted', thing: 'f1', plate: 'depollution' }),
+  carLanded: () => ({ type: 'carLanded', thing: 'f1', obj: 'elv', plate: 'depollution', partner: 'partner.garage', price: 990 }),
   routeSet: (cfg) => ({ type: 'routeSet', grade: firstGrade(cfg, 'li'), to: 'bay' }),
   lotArrived: () => ({ type: 'lotArrived', thing: 'l1', k: 0, sender: null }),
   lotOpened: () => ({ type: 'lotOpened', thing: 'l1' }),
