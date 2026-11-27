@@ -2238,7 +2238,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json', 'items', 'borrower', 'forceLevels', 'probe'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
