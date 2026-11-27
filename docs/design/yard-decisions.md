@@ -2736,3 +2736,37 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         departures, the shredder's reserves and the tick's tail run at each). It is done in its
         own working copy beside the third measurement. Ruling 20.3 stands: stage 2 goes to no
         phone before that pass is under a second.
+
+28.2 THE STORE-RULES PASS on the stage's purchases (`notes/s2e-policy.md`; no code). Its verdict:
+    the list passes as designed on most points (one shop card, after the second session; prices
+    only from what a thing earns; packs refused above the headroom; the country switch; no shop
+    or ad beside a debt; a play-money loan with a flat charge, no date and no rate). Ruled:
+    (a) THE AGE QUESTION COMES FIRST. The neutral year-of-birth question is asked when the second
+        session begins, in every country, before any ad button, consent prompt or shop row; until
+        a band is known, ad requests are child-treated and no shop row shows. (Today it waits for
+        a pack row at rung 4, and is never asked where packs are off.) A rule change of stage 2,
+        with a test; its screen is the screens' phase.
+    (b) UNDER 13: NO AD BUTTONS AT ALL (no away bonus video, no spot buyer), as there is no shop.
+    (c) D7 IS AMENDED: while a Bank loan is open the pack section is ABSENT (no header, no row, no
+        word), exactly as where the country's switch is off; a line that names the loan would put
+        a debt on the shop card, and "packs return when repaid" would make buying the prize for
+        repaying. Help's page on scrip says it once. A quote already waiting when a loan is signed
+        is still granted.
+    (d) THE PACK'S WORDS: "about {H} hours of what your yard earns on its own" (rated income is
+        the yard without the boss; "your yard's earnings" reads as what he earns playing, which is
+        more). Help says what an hour of the yard's earnings is.
+    (e) THE WORDS' CHECK refuses "APR", "% a year" and "interest rate" on any loan card (a rate
+        would be untrue of a loan with no term, and would invite the real-loan reading).
+    (f) A refused pack row keeps the product's name and its store price as plain grey text (the
+        screens' phase); the restart card's line about bought scrip is release-blocking there.
+    (g) The packs bot is also run with always-finance (a pack bought before signing can pay a
+        deposit): its lead at rung 5 stays at most one sitting (gate G6).
+    (h) BEFORE ANY STORE BUILD THAT HOLDS STAGE 2 (added to ruling 25.1's list): the state of the
+        app stores' age-signal rules in the United States is checked afresh and the owner decides
+        whether the build carries the stores' age-signal modules (a native dependency) or keeps
+        packs, looks and ads off on that storefront; the review notes explain the four gates on
+        packs and the headroom rule with a picture of each product and a short film of the shop;
+        the store sentence names no feature the build lacks; packs are made unavailable in the
+        stores' own listings where the game hides them; the lawyer's first question also asks
+        whether "No ad videos" (which grants the capped scrip rewards without the video) counts
+        as selling the currency.

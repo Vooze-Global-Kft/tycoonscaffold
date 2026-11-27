@@ -724,6 +724,7 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const driver = s.crew.find((m) => m.role === 'driver');
   const F = driverRoundF(c, driver?.level ?? 1);
   const dv = c.truck.v * c.truck.driverFactor * F;
+  const works = worksOn(c, s);
   const buildParts = (raw: boolean): QueuePart[] => {
   const parts: QueuePart[] = [];
   if (driver && s.truck.owned) {
@@ -731,9 +732,13 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       const ps = s.partners[id];
       if (!ps?.open && !s.owned.includes(p.opens)) continue;
       const lane = laneM(c, id);
-      const hookS = (routeM(c, 'park', 'gate') + lane) / dv + c.truck.handle_s / F;
-      const tipS = hookS + (lane + routeM(c, 'gate', 'weighbridge')) / dv + c.weigh_s / F + routeM(c, 'weighbridge', 'floor') / dv + c.truck.handle_s / F;
-      const trip = tipS + routeM(c, 'floor', 'park') / dv;
+      let hookS = (routeM(c, 'park', 'gate') + lane) / dv + c.truck.handle_s / F;
+      let tipS = hookS + (lane + routeM(c, 'gate', 'weighbridge')) / dv + c.weigh_s / F + routeM(c, 'weighbridge', 'floor') / dv + c.truck.handle_s / F;
+      let trip = tipS + routeM(c, 'floor', 'park') / dv;
+      // s2e-rate (2.3 item 1): from the works' opening the truck's round is counted AS SHIPPED (truck.ts driverRoundS: the
+      // dated trip's own drive, the lane at the speed the yard leaves it, the hook, the weighbridge and the tip), the mean
+      // over the partner's skip slots. Below the works' opening the first yard's legs, bit for bit.
+      if (works) ({ hookS, tipS, trip } = shippedRound(c, id, Math.max(1, ps?.level ?? 1), driver.level));
       const u = emptyUnit();
       let asFound = 0;
       for (const [obj, n] of Object.entries(p.skip)) {
@@ -896,8 +901,11 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
     // s2c-fix-money (E6, RULING2 22): from the works' opening the VALUATION ranks the partners' loads by net per truck-second
     // (the driver's own rule is the loop's, truck.ts; its ranks, `rank`, are unchanged), so a skip of lesser worth for the
     // truck's time never crowds a better load off the floor.
-    const valueRank = c.works && s.counts?.bathSet !== undefined;
-    const q = rateQueue(c, parts, cutForLoads, carryHave, valueRank || s.ladder.rung >= pickFromRung(c), valueRank ? (p) => p.net / Math.max(1e-9, p.trip) : undefined);
+    // s2e-rate (yard-stage2-economy.md 2.3 item 1; RULING2.md 27): from the works' opening the replay plays THE DRIVER THE
+    // YARD SHIPS (the skip full longest that fits the floor, with the fair count truck.fairAfter_trips, through truck.ts's own
+    // rule: fullerFirst, fairPick, fairWaitNext), never a rank by net per truck-second (s2c-fix-money's valueRank, retired:
+    // it read the yard's truck as serving the richest partner, which the driver does not do).
+    const q = rateQueue(c, parts, cutForLoads, carryHave, s.ladder.rung >= pickFromRung(c), undefined, works ? fairTripsOf(c) : null);
     const cutLeft = Math.max(0, cutHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wc, 0));
     const carryLeft = Math.max(0, carryHave - parts.reduce((a, p) => a + (q.n[p.id] ?? 0) * p.wh, 0));
     return { q, f: rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
@@ -960,7 +968,7 @@ interface QueueResult {
  * income2: at the steps' WHOLE hour: while the floor is busy the hands serve it before the drop-off).
  * Counted: the loads hooked in the second and third hours (the first fills the floor), halved.
  */
-function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false, rankOf: (p: QueuePart) => number = (p) => p.rank): QueueResult {
+function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: number, byNet = false, rankOf: (p: QueuePart) => number = (p) => p.rank, fairN: number | null = null): QueueResult {
   const room = c.floorRoom_kg;
   const cutRate = cutHave / 3600;
   const carryRate = carryHave / 3600;
@@ -998,6 +1006,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
   };
   const H = 3 * 3600;
   const n = parts.map(() => 0);
+  const fairW = parts.map(() => 0);
   let busy = 0;
   let massT = 0;
   let lastT = 3600;
@@ -1033,6 +1042,29 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
         wantMass = parts[skips[pick].k].mass;
         pick = -1;
       }
+    } else if (fairN !== null) {
+      // s2e-rate: the shipped driver (truck.ts driverDepart from the works' opening). Each partner's fullest skip; the rule's
+      // own choice is the one full longest that fits (fullerFirst, in the partners' order); the fair rule may take a more
+      // urgent one instead, or wait for the floor's room for it (fairPick); at the departure every other waiting partner
+      // counts a trip more (fairWaitNext).
+      const full = fullestOf(skips, clock);
+      let best: { k: number; fullAt: number } | null = null;
+      const waiting: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+      for (let k = 0; k < parts.length; k++) {
+        const i = full[k];
+        if (i < 0) continue;
+        const fits = m + parts[k].mass <= room + 1e-9;
+        if (fits && fullerFirst(skips[i].fullAt, best)) best = { k, fullAt: skips[i].fullAt };
+        if (parts[k].mass <= room + 1e-9) waiting.push({ id: parts[k].id, r: fairN - fairW[k], fullAt: skips[i].fullAt, fits });
+      }
+      const f = fairPick(waiting, best ? parts[best.k].id : null);
+      if (f !== null && typeof f === 'object') {
+        wantMass = parts[parts.findIndex((p) => p.id === f.wait)].mass;
+      } else if (f !== null) {
+        const k = parts.findIndex((p) => p.id === f);
+        pick = full[k];
+        for (let j = 0; j < parts.length; j++) fairW[j] = fairWaitNext(parts[j].id, f, fairW[j], full[j] >= 0 && parts[j].mass <= room + 1e-9);
+      }
     } else
       for (let i = 0; i < skips.length; i++) {
         const sk = skips[i];
@@ -1047,7 +1079,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
         if (sk.fullAt > clock + 1e-9) next = Math.min(next, sk.fullAt);
         else lightest = Math.min(lightest, parts[sk.k].mass);
       }
-      if (byNet && Number.isFinite(wantMass)) lightest = wantMass;
+      if ((byNet || fairN !== null) && Number.isFinite(wantMass)) lightest = wantMass;
       if (Number.isFinite(lightest)) {
         let D = m + lightest - room;
         let dt = 0;
