@@ -1304,7 +1304,8 @@ function reportS2e(all: Summary[], tauH: (number | null)[], platesLines: string[
     const s5 = sitAt(r, 5);
     const before = ss.filter((x) => s5 === null || x.n < s5);
     const dry = before.filter((x) => !useful(x)).map((x) => x.n);
-    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan')).map((x) => x.n));
+    // the last goal purchase of the STAGE (a sold machine, vehicle or tool; not a first-yard item a later goal names)
+    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => (q.via === 'goal' || q.via === 'loan') && soldKeys.has(q.k))).map((x) => x.n));
     L.push(`     ${String(r.spec.bot).padEnd(11)} s${pad(r.spec.seed, 3)}  E19 ${e19.join(' ')}  |  without a useful purchase: ${dry.length} of ${before.length} (${dry.map((n) => `s${n}`).join(' ') || '-'})  |  last goal purchase s${lastGoal || '-'}, rung 5 s${s5 ?? '-'}${s5 && lastGoal ? ` (${s5 - lastGoal} ${daily ? 'days' : 'sittings'} apart)` : ''}  |  lots cut ${ss.map((x) => x.lotsCut).join(' ')} (came ${ss.map((x) => x.lotsCame).join(' ')})${ss.some((x) => x.lotMassBad?.length) ? `  MASS OUTSIDE ITS RANGE: ${ss.flatMap((x) => x.lotMassBad ?? []).join(', ')}` : ''}`);
   }
   const persons = runs.map((r) => r.extra.person as PersonRow | null).filter((q): q is PersonRow => !!q);
@@ -1364,7 +1365,7 @@ function gatesTable(runs: Summary[], tauH: (number | null)[], platesLines: strin
     const s5 = sitAt(r, 5);
     const lastM = Math.max(0, ...ss.filter((x) => x.rung === 4 && (x.keys ?? []).some((q) => (q.via === 'goal' || q.via === 'loan') && soldKeys.has(q.k))).map((x) => x.n));
     const dry = ss.filter((x) => (s5 === null || x.n < s5) && !(x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan' || (q.pb !== undefined && q.pb <= 1.25 * tauOf(x.rung) + 1e-9)));
-    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan')).map((x) => x.n));
+    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => (q.via === 'goal' || q.via === 'loan') && soldKeys.has(q.k))).map((x) => x.n));
     return { s: r.spec.seed, dry: dry.length, early: dry.filter((x) => x.n < lastM).length, gap: s5 && lastGoal ? s5 - lastGoal : null };
   });
   row('G4', 'Sittings', '63 of 139 without a purchase; last goal purchase to rung 5: 4 to 5 sittings', `${g4.map((q) => `s${q.s}: ${q.dry} dry (${q.early} before rung 4's last machine), gap ${q.gap ?? '-'}`).join('; ')}${few(ns, 15)}`, ns ? g4.every((q) => q.dry <= 2 && q.early === 0 && q.gap !== null && q.gap <= 3) : null);
@@ -1725,8 +1726,8 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
         continue;
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
-        // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
