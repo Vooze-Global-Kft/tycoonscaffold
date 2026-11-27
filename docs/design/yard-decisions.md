@@ -2596,3 +2596,124 @@ the player's own cash; rated income over-reads by a third to a half from rung 3'
     phone is untouched by it.
 26.2 UNTIL THEN the numbers of REPORT9 stand in the content as measured (they are dark at
     release.stage 1), and no further tuning round is run on them.
+
+### 27. Stage 2's economy, designed again: the lead's ruling (27 November, about 08:20)
+
+Three designers each wrote a whole design from a different starting point (the fewest machines that
+each earn; the owner's bank, packs and yard sale given a place; the flows of metal), three judges
+scored them through one lens each (a player's evenings; the owner's wishes and fair money; can it
+be built and measured), and one synthesis was written: `docs/design/yard-stage2-economy.md` (THE
+DESIGN below). All three designers found the same thing in REPORT9 on their own. The bridge
+partners carry the stage's money (copper is half of what the yard supplies by value, and no
+machine touches it). At rung 3 the cutting is what limits the yard and at rung 4 the one truck is
+(a driver level: +6.2 % on 15 of 15 seeds; a cutter or hand level there: nothing). And one
+inequality decides whether a thing can ever cost more than a sitting brings:
+price / a sitting's cash = (τ / hours away) × (its gain / the yard's income). At rung 4 nothing in
+the stage as built passes it, which is why the bank never spoke and no pack fitted.
+One thing the lead checked himself and closes here: a driver who fetches the richest load first
+(the rank of 16.5, built, switched off) was measured twice and does NOT pay (-3.4 % over the bots'
+days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
+
+27.1 THE DESIGN IS ADOPTED as written in `yard-stage2-economy.md`, with the changes of 27.2 to
+    27.9. Where it and `yard-stage2.md` differ, it is right until the specification is brought
+    into step (after the third measurement, with the measured numbers).
+
+27.2 FOUR RULES THAT STAND ABOVE EVERY NUMBER OF THE STAGE.
+    (a) A PRICE COMES FROM WHAT THE THING EARNS, never from what the player holds: price =
+        max(floor, τ_r × its gain). No price is set from a purse, a median cash or a pace in order
+        to make a loan or a pack fit (the "milestone priced at 1.3 sittings" of one design is
+        refused: priced just above what you hold is a paywall's pattern, whatever it is called).
+    (b) THE ENTRY RULE: a machine, vehicle or tool is sold at stage 2 only if its measured gain at
+        its planned moment is at least 2 % of the yard's income there (mean of 15 seeds) and no
+        seed is below -1 %. A chain whose parts cannot work alone is one purchase, measured as
+        one. What fails is not sold: its rules and tests stay in the code, dark. Nothing costs
+        scrip and then does nothing.
+    (c) A LEVEL IS SOLD ONLY WHILE IT IS WORTH HAVING (at least 1 % of rated income on the
+        player's own yard), at τ_r × its gain, with the gain printed on its card; otherwise the
+        card says the step is not the limit now and has no Buy.
+    (d) PRICE, ADVICE AND RATED INCOME READ ONE MEASURE.
+
+27.3 THE LIST FOR THE LEAD, ruled:
+    D1  CARS STAY, inside the shredder line (the depollution bay and the shredder, one purchase;
+        the hook-lift sets each car on the bay's own apron; no forklift). If the line as one
+        purchase fails the entry rule because a car's trip costs more than the car brings, the
+        cars come by the garage's own recovery truck (a dated delivery, as the low-loader's) and
+        the line is measured once more; failing that too, the line waits for stage 3.
+    D2  BATTERIES AND LEAD WAIT for stage 3's battery hall (with lithium, fed by a collector's own
+        lorry). Rung 5 asks for eight metals and its tonnes. Everything that still arrives has a
+        route to a sale: a drained car's battery is sold whole at its label price. (The builders
+        check that no thing or grade of the stage waits for a machine that is not sold.)
+    D3  THE COPPER HALL IS BUILT AND MEASURED after the core, in its own working copy, and ships
+        only by its gate (27.5). THE TRAILER IS NOT BUILT NOW: more haul is stage 3's subject
+        (road and rail), the owner's review was about a truck among people and buildings, and the
+        driver's levels, priced at what they earn, already sell the same haul. It is looked at
+        again only if the third measurement shows two or more empty sittings a seed in rung 4's
+        back half.
+    D4  τ: 12 h at rung 3, 36 h at rung 4, 48 h at rung 5. If rung 4 leaves its band (sittings 4
+        to 6 on 13 of 15 seeds), first rung 4's tonnes move within their band, then τ_3 goes back
+        to 9 h.
+    D5  EVERY LEVEL from the works' opening at τ_r × its gain, sold only while worth having
+        (27.2 c). The step in price at the works' opening (a cutter's level from a few thousand to
+        some tens of thousands) is a rule a player must be able to read: the level's card prints
+        what it earns, and the confirm looks at that moment with a player's eyes.
+    D6  A plot of something not sold is NOT DRAWN; the process board's greyed row names what comes
+        with a later stage ("Batteries and lead", "Cable"), with no date and no promise.
+    D7  NO PACK IS OFFERED WHILE A BANK LOAN IS OPEN, with a plain line of its own on the row (not
+        "Nothing to spend it on yet", which would be untrue there). Bought scrip never repays a
+        loan, and a shop button never stands beside a debt.
+    D8  THE PACKS LISTED are the 2-hour and the 5-hour ones. The 10- and 20-hour packs leave the
+        list (they fitted at none of 180 measured moments) and return only if a later measurement
+        shows them fitting a player's own cash at ordinary moments.
+    D9  THE OWNER IS TOLD, in plain words, which machines wait for a later stage and why.
+    D10 STAGE 2 GOES TO NO STORE PLAYER BEFORE STAGE 3 EXISTS (its top is a plateau of levels).
+        On the owner's phone it may be looked at alone once its screens exist.
+    D11 The windows stand: the advice names what pays back within 1.25 τ_r; the headroom counts
+        what pays back within 1.5 τ_r.
+    D12 The boiler drum comes "Certified empty" (the plate says so; no method is shown).
+
+27.4 RATED INCOME is made right as the design says (the replay plays the driver as shipped and
+    counts the truck's real round; the missing terms; one factor a rung, refused outside 0.85 to
+    1.15), and the driver-level check decides how levels are priced: the level's price and its
+    card read one function, `levelGain`, which is the calculated gain where the check passes and
+    the bots' measured ladder (g1 × d^(L-1), written beside `plates.json`) for any ladder where it
+    fails. Both sources are built from the start, so no package waits on the outcome. The band of
+    14.10 is calibrated on the normal board and GATED on route B, the flat board, the unseen
+    seeds and the other habits (a band met only where it was fitted is no band).
+
+27.5 THE COPPER HALL (candidate C2): a tilting furnace that fire-refines No. 2 copper, copper
+    cylinders and granulated cable (the granulator is part of it) into fire-refined ingot under a
+    bag-house filter. Bare bright is not charged (it sells at nearly the refined price as it is;
+    nobody melts it). First values: yield 0.95, slag to the licensed carrier, the ingot's price
+    such that No. 2 stands at about nine tenths of it. It ships only if its measured gain is at
+    least 2 % of the yard's income on 15 seeds; it is then rung 4's dearest purchase and the place
+    of the second loan.
+
+27.6 HOW THE NUMBERS ARE SET, so that it ends: first prices are T8's gains times the new τ; the
+    bots measure every sold item at its planned moment in the NEW goal order and write the prices;
+    a second round only for a price that moved by more than its standard error and by more than a
+    tenth; then they stand. While building: one or two seeds, one rung. The fifteen-seed table is
+    run once.
+
+27.7 THE FIXTURES. Before anything is made dark, today's stage-2 content is frozen as a test
+    fixture ("the stage as REPORT9 measured it"), and the tests of what goes dark read it, so the
+    rules of the crane, the baler, the shear, the lead line and the rest stay tested. The stage-2
+    fixtures that pin a tuned number may be re-recorded ONCE, by their owner, at the end of the
+    build, each with a line saying what moved and why. The first yard's pins, `same.ts`, the
+    75-run comparison and the modes' regression recordings are never re-recorded.
+
+27.8 WHAT THE THIRD MEASUREMENT MUST SHOW is the design's gates G1 to G16, with three additions:
+    G1 also prints each sold item's standard error (an item priced over a sitting's cash whose
+    gain's standard error is over a quarter of its mean gets more seeds before its price stands);
+    G2's band is gated off the fitted board (27.4); and the stage's bill is printed against the
+    purse at each rung's entry (the inequality of the design's section 0), which refuses nothing
+    and is the lead's line. A gate that misses is a finding for the lead with its number, never
+    a number quietly retuned.
+
+27.9 ORDER OF WORK: the content (frozen fixture first; what is sold; τ; the bank's reach; the
+    goal list; the heavy oversize kinds) beside the crews' rule, the Yard sale's share and the
+    away report; then the shredder line with its map beside the bank; then rated income beside
+    the store-rules pass; then the levels and the headroom beside the advice line and its words;
+    then the bots; then one engineer joins it and runs every gate. Then the third measurement,
+    the confirm by engineers who wrote none of it, the copper hall in its own working copy, and
+    the specification brought into step. The first yard at `release.stage` 1 is unchanged at
+    every step: every new rule is read only once the works have opened.
