@@ -2562,3 +2562,37 @@ build); nothing renumbered. A builder of the stage's screens reads it, not the r
     at stage 2 after the second round (partner levels: the farm's at rung 4's entry about -3.4 %)
     are read on the bots' second measurement; each is then either fixed, or named as an accepted
     exception with its number in this file. None is accepted by silence.
+
+### 26. The bots' second measurement of stage 2 (REPORT9, 27 November, about 07:20): what stands, and why the stage's economy is designed again
+
+Fifteen seeds on both opening routes, five unseen, the strategy pairs of the attacks. WHAT STANDS:
+rung 4 on day 2.0 to 2.5 and rung 5 on day 4.5 to 5.0 on every normal seed (15/15, 15/15, 5/5 unseen);
+no hard promise broke on 198 runs; a minute of ticks equals a jump at 120 checks; the first yard's
+hour at release.stage 1 is unchanged to the millisecond on 75 of 75 runs. The prices of every
+plate, vehicle and tool were set once more from the gain over an hour of play and a capped absence
+(21.1): the hook-lift §12,000 to §154,000 and the plasma §8,000 to §64,900 (the stage's two best
+buys), the shredder §419,000 to §83,200, the breaker to the floor.
+
+WHAT NO NUMBER FIXES (the measurement's eight findings): the battery breaker makes the yard poorer
+(-§4,476 an hour on 15 of 15 seeds); the magnet crane is inert; the depollution bay with the
+forklift gains nothing; planning ahead now costs (trip by trip keeps 9.9 % more by day 3); the
+normal hand never buys the plasma, so no oversize piece ever comes; the card manager stalls at
+rung 3 (the advice reads rated gain, the prices are set from measured gain); no Bank loan is ever
+offered (no plate costs more than the cash a sitting holds); no pack ever fits the headroom with
+the player's own cash; rated income over-reads by a third to a half from rung 3's last purchase on;
+63 of 139 sittings buy nothing; an hour away is 0.89 of an hour played at rung 4.
+
+26.1 THESE ARE ONE FAULT, NOT ELEVEN: the stage was specified machine by machine, and its prices
+    then set by a rule (payback within τ on each machine's own gain) that makes every purchase
+    small against a sitting's cash. A stage in which nothing costs more than a sitting's cash has
+    no use for a bank or a pack, nothing to save for, and machines whose own gain is nil cost
+    nothing and do nothing. THE STAGE'S ECONOMY IS DESIGNED AGAIN, as a whole, from what the bots
+    measured: which machines the stage has and what each is for, what each costs and why, what a
+    sitting is for (a purchase to make, to save for, or to borrow for), where the Bank loan and
+    the packs fit without ever being needed to progress, what the advice line reads, and how rated
+    income is made right. Three designs from different starting points, judged by three, one
+    synthesis, then the lead's ruling (section 27), then it is built, measured a third time and
+    confirmed. Nothing of stage 2 is merged for a store build before that; the first yard on the
+    phone is untouched by it.
+26.2 UNTIL THEN the numbers of REPORT9 stand in the content as measured (they are dark at
+    release.stage 1), and no further tuning round is run on them.
