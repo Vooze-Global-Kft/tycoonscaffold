@@ -141,7 +141,7 @@ function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, le
 
 /**
  * THE LEVEL'S LINES FROM THE WORKS' OPENING (s2e-levels; yard-stage2-economy.md 2.11; RULING2.md 27.2 c, 27.3 D5): the rule a
- * player reads where the price changes rule at the works' opening. Sold: [0] "+§x an hour on your figures" (x = levelQuote's
+ * player reads where the price changes rule at the works' opening. Sold: [0] "+§x an hour on your yard" (x = levelQuote's
  * gain, the one measure the price is made of: the change in I the step applies) and [1] "Pays for itself in about {t}" (t =
  * price ÷ gain, hours of the yard's running); the Buy carries the price charged. Not sold: [0] the check's refusal "Not the
  * limit now · +§x an hour", no Buy, no [1]. Empty below the works' opening, for a plate's level, and where the target has no
