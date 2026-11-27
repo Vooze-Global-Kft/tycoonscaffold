@@ -2345,3 +2345,54 @@ pick (the old engine, commit aeda1dd, beside the new, each in its own process).
 20.4 The first yard on the owner's phone: the counting card covers today's quarter of a second in
     node (half a second to a second and a half on a phone). Steps 3 and 4 reach the phone with the
     next update that is merged, after ruling 19.9's test.
+
+### 21. The bots' first measured table of stage 2 (27 November, about 01:00; `docs/design/yard-bots2.md`)
+
+Measured on five seeds (three for the habits, five unseen for the normal hand): rung 4 on day 2.0,
+rung 5 on day 4.0 after its tonnage went from 10,000 t to 3,600 t (19.3); no hard promise broke on
+65 runs; a minute of ticks equals a jump at all 30 checks; the first yard plays bit for bit as
+before. What holds from here:
+
+21.1 THE MEASURED GAIN IS MEASURED WITH THE BOSS IN THE YARD TOO (19.1 as it was meant). The first
+    prices were set from the gain over one capped absence alone, and six plates that are fed only
+    while the boss plays (the crane, the shear, the depollution bay, the granulator, the eddy
+    current, the sorter: oversize pieces, cars by the forklift, car bodies and appliances in the
+    shredder's stream) showed a gain of exactly nothing and were priced at the floor (§3,000). The
+    walk's horizon is an hour of play by the reference bot (the normal hand, the goal habit) and
+    then one absence at the cap; the gain is taken over both, as a rate per hour of yard time. A
+    plate that still shows no gain for a yard whose boss plays is a finding about the plate, not a
+    price. The six prices, and the vehicles' and tools', are set again by this in the fix pass's
+    measurement; L1 and L5 (the first loan near rung 3, repaid before rung 4) are read again after
+    it (they cannot hold while every rung-3 plate costs the floor).
+21.2 THE MAGNET CRANE MAKES THE YARD POORER (what the yard keeps over a capped absence falls by 14
+    to 29 % at its planned moment). BLOCKING, by ruling 17 (no purchase makes the yard poorer). The
+    fix pass finds why with the smallest example (what it moves, where to, at what loss: whole
+    things into the shear that a cutter would have cut into dearer grades; hoppers kept full so
+    that hands stand; the floor's rule of 17.2) and changes the crane's rule so that it only ever
+    does what leaves the yard at least as rich. The walk of 17.1 is its gate.
+21.3 The walk's other failing steps (the baler; the driver's level and the farm's level at rung 3;
+    the demolition's level on day 3): each with its smallest example in the fix pass. Where the
+    cause is the driver's choice of load, the rank of ruling 16.5 is measured again at stage 2 (it
+    stays unshipped at stage 1).
+21.4 RATED INCOME as 19.2: its terms completed in rate.ts and calibrated against the bots' measured
+    earnings to the band of 14.10 at the six named moments on both boards (medians 0.88 to 1.33
+    today).
+21.5 WHEN NOTHING IS LEFT TO BUY, THE YARD SAYS WHAT IT IS WAITING FOR. Between the last goal
+    purchase and the next rung the advice line and the goal card name the rung's missing tonnes and
+    materials; a level is named only when it pays back within τ_r by the rules' own measure. No
+    rule invents a purchase.
+21.6 THE LEAD CUT (a yard without the battery breaker and the lead smelter has eight materials and
+    rung 5 asks for nine: a dead end no tonnage can fix): the build refuses a content whose rung
+    asks for more materials than its plates and partners can supply at that rung (a check in
+    build-yard.py). The shipped content keeps the lead line.
+21.7 ACCEPTED AS MEASURED until the fifteen-seed table (after engine step 4): rung 5 at 3,600 t; the
+    van's batch factor 1.25 (the Yard sale and the van at 5.2, 4.7 and 4.5 % of days 1 to 3); an
+    hour away at 0.46 of an hour played at stage 2; ads at most 1.6 % of a day; the hand at twice
+    the card manager; the shredder's and the breaker's payback short of τ (0.65 to 0.87 and 0.57
+    to 0.83): looked at again with 21.1's prices. The first yard's own open rows (the farm level at
+    minute 90, the slow hand's rung 3, an hour away at 0.81 of an hour played) stay as they are on
+    the owner's phone until the owner has played more.
+21.8 19.9's test is the lead's, before any store build: the sixteen products and
+    `ads.initOn` 'firstOffer' are already in the build on the owner's phone and inactive there
+    (Expo Go has no store; the first yard has no shop and makes no offer, so the ad SDK is never
+    started).
