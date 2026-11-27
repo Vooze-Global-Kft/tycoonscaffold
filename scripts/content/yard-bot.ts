@@ -47,7 +47,7 @@ import { contentAt, worksOpened } from '../../src/engine/salvage/layer';
 import { awayPass } from '../../src/engine/salvage/away';
 import { idleWhyOf } from '../../src/engine/salvage/crew';
 import { begin, finish } from '../../src/engine/salvage/clock';
-import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
+import { buyCheck, hireCheck, levelCheck, levelQuote } from '../../src/engine/salvage/ladder';
 import { levelGainCfg, own } from '../../src/engine/salvage/rate';
 import type { LevelTarget } from '../../src/engine/salvage/types';
 import { packProducts } from '../../src/engine/salvage/shop';
@@ -564,7 +564,7 @@ function worksNow(cfg: R.SalvageConfig, g: R.SalvageGame, key: string, c0: Recor
   if (!s.owned.includes(key as never)) return false;
   if (key === 'truckBridge') {
     const ps = Object.entries(contentAt(cfg.salvage, s).partners).filter(([, p]) => (p as { opens?: string }).opens === 'truckBridge').map(([id]) => id);
-    return ps.every((id) => s.partners[id]?.trialUsed) && !s.truck.trip && !s.truck.skip;
+    return ps.every((id) => s.partners[id]?.trialUsed) && !s.truck.skip?.trial;
   }
   return true;
 }
@@ -626,6 +626,31 @@ function lastingGain(A: LastE, B: LastE) {
   };
 }
 
+/** s2e-measure (28.4 f): what the advice line names at a state: "buy key §p (payback h)", "save key §p", "wait <line key>", or "none". */
+function advSummary(cfg: R.SalvageConfig, g: R.SalvageGame): string {
+  if (!worksOpened(g.salvage)) return '-';
+  const a = R.advice(cfg, g, g.salvage.clock.highMs) as (R.Advice & { works?: { saveUp_s: number | null; payback_h: number; meanwhile: { price: number } | null } }) | null;
+  if (!a) return 'none';
+  const x = a.action as { act: string; item?: string; role?: string; target?: { kind: string; id?: string; partner?: string; machine?: string } };
+  const what = x.act === 'buy' ? x.item : x.act === 'hire' ? `hire ${x.role}` : x.target ? `lev ${x.target.id ?? x.target.partner ?? x.target.machine}` : x.act;
+  const key = (a.line as { key?: string })?.key ?? '';
+  return `${a.works?.saveUp_s ? 'save' : 'buy'} ${what} §${Math.round(a.price)}${a.works ? ` pb ${a.works.payback_h.toFixed(1)}h` : ''} (${key})${a.works?.meanwhile ? ` +forNow §${Math.round(a.works.meanwhile.price)}` : ''}`;
+}
+/** s2e-measure (28.4 f): every level the yard holds, by levelQuote: how many are sold (worth having), not the limit (under minShareI x I), floor-bound; the best payback. */
+function levelsSummary(cfg: R.SalvageConfig, g: R.SalvageGame) {
+  const out = { sold: 0, notLimit: 0, floor: 0, best: '-' };
+  if (!worksOpened(g.salvage)) return out;
+  let best = Infinity;
+  const ts: LevelTarget[] = [...g.salvage.crew.map((m) => ({ kind: 'crew', id: m.id }) as LevelTarget), ...Object.keys(g.salvage.partners).filter((p) => g.salvage.partners[p]?.open).map((p) => ({ kind: 'partner', partner: p }) as LevelTarget), ...(['stripper', 'bench', 'crucible'] as const).map((m) => ({ kind: 'machine', machine: m }) as LevelTarget)];
+  for (const t of ts) {
+    const q = levelQuote(cfg, g, t);
+    if (!q) continue;
+    if (!q.sold) out.notLimit++;
+    else { out.sold++; if (q.floorBound) out.floor++; if (q.paybackH < best) { best = q.paybackH; out.best = `${t.kind === 'crew' ? t.id : t.kind === 'partner' ? t.partner : t.kind === 'machine' ? t.machine : t.kind} ${q.paybackH.toFixed(0)}h`; } }
+  }
+  return out;
+}
+
 interface Sitting2 {
   n: number;
   h: number;
@@ -672,6 +697,9 @@ interface Sitting2 {
   tier?: number;
   /** s2e-measure: the drop-off's arrivals so far (dropoff.n) at the sitting's end (28.3 d's pair). */
   drop?: number;
+  /** s2e-measure (28.4 f): the advice line at the sitting's end, and its levels: sold (worth having), not the limit, floor-bound. */
+  adv?: string;
+  lv?: { sold: number; notLimit: number; floor: number; best: string };
 }
 
 // ============================================================================================ s2e-bots: the new economy's measures
@@ -910,7 +938,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
     if (arg('walk2') && (which === 'normal' || which === 'freeDrop') && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
     const end = back ? endLook(cfg, b.g) : null;
-    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, drop: s.dropoff.n, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
+    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, drop: s.dropoff.n, adv: advSummary(cfg, b.g), lv: levelsSummary(cfg, b.g), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
       const d = tickJumpGate(cfg, b.g, b.now, 60);
@@ -1445,7 +1473,7 @@ function reportS2e(all: Summary[], tauH: (number | null)[], platesLines: string[
     L.push(`   ${r.spec.bot} seed ${r.spec.seed}${r.extra.daily ? ' (ONCE A DAY: a sitting is a day)' : ''}: rung 3 at ${hours((r.extra.rungsAt as Record<string, number>)?.[3])}, rung 4 at sitting ${sitAt(r, 4) ?? '-'}, rung 5 at sitting ${sitAt(r, 5) ?? '-'}`);
     for (const x of SS(r)) {
       const bought = (x.keys ?? []).map((q) => `${q.k} ${k$(q.p)}${q.via ? ` [${q.via}${q.pb !== undefined ? ` ${q.pb.toFixed(1)}h` : ''}]` : ''}`).join(', ') || 'nothing';
-      L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 5)} r${x.rung} ${pad(Math.round(x.t), 5)} t | §${k$(x.cashBack)} -> §${k$(x.cash)} | G ${k$(x.G)} I ${k$(x.Iback)} ${x.G ? f2((x.Iback ?? 0) / x.G) : '-'} | U ${k$(x.Uback)} bill ${k$(x.billM)} | bank offers ${x.offers ?? 0}${x.loans?.length ? ` SIGNED ${x.loans.join('; ')}` : ''}${x.loanLeft ? ` left ${k$(x.loanLeft)}` : ''} | lots ${x.lotsCut}/${x.lotsCame} (${x.lotsWait ?? 0} waiting, tier ${x.tier ?? '-'}) | packs ${(x.fitBack ?? []).join('+') || '-'} / ${(x.fitEnd ?? []).join('+') || '-'} | ${bought} | -> ${x.goal}`);
+      L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 5)} r${x.rung} ${pad(Math.round(x.t), 5)} t | §${k$(x.cashBack)} -> §${k$(x.cash)} | G ${k$(x.G)} I ${k$(x.Iback)} ${x.G ? f2((x.Iback ?? 0) / x.G) : '-'} | U ${k$(x.Uback)} bill ${k$(x.billM)} | bank offers ${x.offers ?? 0}${x.loans?.length ? ` SIGNED ${x.loans.join('; ')}` : ''}${x.loanLeft ? ` left ${k$(x.loanLeft)}` : ''} | lots ${x.lotsCut}/${x.lotsCame} (${x.lotsWait ?? 0} waiting, tier ${x.tier ?? '-'}) | packs ${(x.fitBack ?? []).join('+') || '-'} / ${(x.fitEnd ?? []).join('+') || '-'} | ${bought} | -> ${x.goal}${x.adv ? ` | advice at the end: ${x.adv}; levels sold ${x.lv?.sold ?? '-'} (floor-bound ${x.lv?.floor ?? '-'}, best ${x.lv?.best ?? '-'}), not the limit ${x.lv?.notLimit ?? '-'}` : ''}`);
     }
   }
   // the measures
@@ -1740,7 +1768,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
 }
 
 /** The level ladders' three steps over the runs (--book): per ladder g1 (mean of the first step's gain), g2, g3 and d = sqrt(g3 / g1) within (0, 1]. */
-type BookT = { g1: number; d: number; at: string; gains: number[]; gainsT: number[]; se: number; L0: number; seeds: number; calc: number; ratio: number; fails: boolean; perSeed: number[][] };
+type BookT = { g1: number; d: number; at: string; gains: number[]; gainsT: number[]; se: number; L0: number; seeds: number; calc: number; ratio: number; fails: boolean; I: number; perSeed: number[][] };
 function bookTable(all: Summary[]): Record<string, BookT> {
   const out: Record<string, BookT> = {};
   const rows = all.flatMap((r) => ((r.extra.book as BookRow[] | undefined) ?? []));
@@ -1760,7 +1788,7 @@ function bookTable(all: Summary[]): Record<string, BookT> {
     const g1 = Math.round(g1s.reduce((a, v) => a + v, 0) / Math.max(1, g1s.length));
     const calc = Math.round(xs.reduce((a, q) => a + q.calc, 0) / xs.length);
     const ratio = gL0 > 0 ? calc / gL0 : NaN;
-    out[L.ladder] = { g1, d: +d.toFixed(3), at: L.at, gains, gainsT, se: Math.round(se), L0: +(xs.reduce((a, q) => a + q.L0, 0) / xs.length).toFixed(1), seeds: xs.length, calc, ratio, fails: !(ratio >= 0.7 && ratio <= 1.4), perSeed: xs.map((q) => q.gains) };
+    out[L.ladder] = { g1, d: +d.toFixed(3), at: L.at, gains, gainsT, se: Math.round(se), L0: +(xs.reduce((a, q) => a + q.L0, 0) / xs.length).toFixed(1), seeds: xs.length, calc, ratio, fails: !(ratio >= 0.7 && ratio <= 1.4), I: Math.round(xs.reduce((a, q) => a + q.I, 0) / xs.length), perSeed: xs.map((q) => q.gains) };
   }
   return out;
 }
@@ -1775,7 +1803,7 @@ function writeBook(all: Summary[]): string[] {
   // s2e-measure (28.4 c): EVERY ladder whose calculated gain is outside 0.7 to 1.4 of its measured first step (and a book
   // entry kept where the measurement has no row)
   void BOOK_FAILING;
-  const want = Object.fromEntries(Object.entries(t).filter(([, v]) => v.fails && v.g1 > 0).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
+  const want = Object.fromEntries(Object.entries(t).filter(([, v]) => v.fails && v.g1 > 0 && v.gains[0] >= 0.01 * v.I).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
   const file = path.join(ROOT, 'src/config/salvage.content.ts');
   const src = fs.readFileSync(file, 'utf8');
   const re = /\n    book: \{[^\n]*\},\n/;
