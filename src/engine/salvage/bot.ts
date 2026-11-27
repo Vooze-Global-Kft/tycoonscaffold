@@ -28,7 +28,7 @@ import { hash01 } from './board';
 import { hashString } from '../rng';
 import { dealTerms } from './cards';
 import { carrierCap_g, cutTime, pieceSpec, pieceValue, tierOf, toolP, vpk } from './content';
-import { advice, reserve } from './advice';
+import { advice, reserve, type AdviceW } from './advice';
 import { buyCheck, hireCheck, levelCheck } from './ladder';
 import { nextGoal } from './goals';
 import { ackAway, buy, declineDeal, hire, level, noteSeen, setHold, setPresence, signDeal, skipGoal, stepOut } from './actions';
@@ -40,9 +40,9 @@ import { createSalvage } from './create';
 import { ratedCapacity } from './rate';
 import { lanePath, mapAt, piecePos, pointOf, skipZone, thingPos } from './positions';
 import { contentAt, worksOpened } from './layer';
-import { financeTerms, loanOffered, shownOf } from './bank';
+import { financeKind, financeTerms, loanOffered, shownOf } from './bank';
 import { adPaid, quotePack, setAgeBand, signFinance } from './actionsMoney';
-import { setRoute, stepOutForklift } from './actionsWorks';
+import { setPlateRecipe, setRoute, stepOutForklift } from './actionsWorks';
 import { grantProduct, packProducts, packsShown, quoteCheck, secondSession, shopReachable } from './shop';
 import { adOffer, adsAllowed, sellNow } from './ads';
 import type { SalvageContent } from '../../config/schema.salvage';
@@ -126,6 +126,15 @@ export interface Purchase {
   /** Cash when the boss set out for the card (P20: held at the card), and the seconds from that decision to the press (react, walk, read). */
   cashAtCard?: number;
   walkToBuy_s?: number;
+  /**
+   * s2e-bots (from the works' opening only; absent below it, so the first yard's record is unchanged): the payback in hours
+   * the card or the advice line showed when it was bought (price over its calculated gain an hour), or 0 for a goal
+   * purchase (a goal's machine is priced at tau_r x its measured gain: it pays back in tau_r by construction); absent where
+   * neither named a gain.
+   */
+  payback_h?: number;
+  /** s2e-bots: how it came to be bought (from the works' opening only): 'goal', 'advice', 'meanwhile', 'loan'. */
+  via?: 'goal' | 'advice' | 'meanwhile' | 'loan';
 }
 export interface BotRecord {
   /** Yard seconds of each first (beats); absent when it never happened. */
@@ -839,8 +848,27 @@ function cardPlace(b: Bot, a: CardAction): string {
   return 'office';
 }
 
+/** s2e-bots: why a stage-2 purchase was made and the payback it was shown with (recorded on the purchase; nothing below the works' opening). */
+type Why = { via: NonNullable<Purchase['via']>; payback_h?: number };
+
+/** The card's action as the card shows it NOW (cardOf re-reads every 500 ms): a level's, a buy's or a hire's price read again, or null when refused. */
+function freshAction(b: Bot, a: CardAction): CardAction | null {
+  return a.act === 'level' ? levels(b).find((l) => JSON.stringify(l.action.target) === JSON.stringify(a.target))?.action ?? null : a.act === 'buy' ? actionFor(b, a.item) : a.act === 'hire' ? (() => {
+    const ch = hireCheck(b.cfg, b.g, a.role);
+    return ch.refusal || ch.price === null ? null : ({ act: 'hire', role: a.role, price: ch.price } as CardAction);
+  })() : a;
+}
+
+/** s2e-bots: a purchase's record gets its reason and shown payback (from the works' opening only). */
+function noteWhy(b: Bot, n: number, why: Why | undefined): void {
+  if (!why || !worksOpened(b.g.salvage) || b.rec.purchases.length <= n) return;
+  const p = b.rec.purchases[n];
+  p.via = why.via;
+  if (why.payback_h !== undefined && Number.isFinite(why.payback_h)) p.payback_h = +why.payback_h.toFixed(2);
+}
+
 /** Walk to the card's place (unless managing from cards), read the card, press. */
-function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
+function purchase(b: Bot, a: CardAction, goal: boolean, why?: Why): boolean {
   if (b.opts.noBuy) return false;
   const t0 = b.g.salvage.t;
   const cash0 = b.g.cash;
@@ -852,10 +880,7 @@ function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
   else b.g = noteSeen(b.cfg, b.g, { card: a.act === 'buy' ? 'rack' : 'rota' }, b.g.salvage.t);
   stand(b, b.P.card);
   // The card re-reads its price at the moment of the press (cardOf every 500 ms).
-  const fresh = a.act === 'level' ? levels(b).find((l) => JSON.stringify(l.action.target) === JSON.stringify(a.target))?.action ?? null : a.act === 'buy' ? actionFor(b, a.item) : a.act === 'hire' ? (() => {
-    const ch = hireCheck(b.cfg, b.g, a.role);
-    return ch.refusal || ch.price === null ? null : ({ act: 'hire', role: a.role, price: ch.price } as CardAction);
-  })() : a;
+  const fresh = freshAction(b, a);
   if (!fresh) return false;
   if ('price' in fresh && b.g.cash - reserveFor(b) < (fresh as { price: number }).price - 1e-9) return false;
   const n = b.rec.purchases.length;
@@ -864,6 +889,7 @@ function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
     const p = b.rec.purchases[n];
     p.cashAtCard = cash0;
     p.walkToBuy_s = p.t - t0;
+    noteWhy(b, n, why);
   }
   return ok;
 }
@@ -1320,8 +1346,11 @@ export function decide(b: Bot): void {
     if (goal?.buy && allowed(b, goal.buy)) {
       const a = actionFor(b, goal.buy);
       if (a && 'price' in a && b.g.cash - res >= a.price - 1e-9) {
-        if (purchase(b, a, true)) return;
+        if (purchase(b, a, true, { via: 'goal' })) return;
       }
+      // s2e-bots (yard-stage2-economy.md 2.13 (b)): while the goal's item costs more than the cash, the advice line's second
+      // line "For now: {item}" names what the cash buys without delaying it; a person who follows the line buys it.
+      if (worksOpened(s) && meanwhile(b, res)) return;
     } else if (!goal || def?.repeat || goalListDone(b) || (worksOpened(s) && (!goal.buy || !allowed(b, goal.buy)))) {
       if (o.handFirst && s.crew.some((m) => m.role === 'hand')) {
         const waiting = s.pieces.filter((p) => !p.claim && !p.pile.startsWith('zone.') && !p.pile.startsWith('tray.')).reduce((a, p) => a + p.g, 0);
@@ -1339,8 +1368,9 @@ export function decide(b: Bot): void {
       }
       const adv = adviceFor(b);
       if (adv && b.g.cash - res >= adv.price - 1e-9) {
-        if (purchase(b, adv.action, false)) return;
+        if (purchase(b, adv.action, false, { via: 'advice', payback_h: (adv as AdviceW).works?.payback_h })) return;
       }
+      if (worksOpened(s) && meanwhile(b, res)) return;
     }
   }
   // The goal card first (a person follows it): "Cut up the car" and the like, while the thing can be worked.
@@ -1369,6 +1399,18 @@ export function decide(b: Bot): void {
   return liftLeg(b, src);
 }
 
+/**
+ * s2e-bots: the advice line's "For now: {item}" (advice.ts works.meanwhile; from the works' opening only) bought when the
+ * cash less the reserve covers it. True when it was bought.
+ */
+function meanwhile(b: Bot, res: number): boolean {
+  const m = (adviceFor(b) as AdviceW | null)?.works?.meanwhile;
+  if (!m || b.g.cash - res < m.price - 1e-9) return false;
+  const key = m.action.act === 'buy' ? m.action.item : m.action.act === 'level' && m.action.target.kind === 'plate' ? m.action.target.plate : null;
+  if (key !== null && !allowed(b, key)) return false;
+  return purchase(b, m.action, false, { via: 'meanwhile', payback_h: m.gain_h > 0 ? m.price / m.gain_h : undefined });
+}
+
 function goalListDone(b: Bot): boolean {
   const gs = b.g.salvage.goals;
   return C(b).goals.filter((d) => !d.repeat && !d.done.startsWith('rung')).every((d) => gs.done.includes(d.id) || gs.skipped.includes(d.id));
@@ -1387,6 +1429,9 @@ function manage(b: Bot): void {
   }
   const goal = nextGoal(b.cfg, b.g);
   const res = reserveFor(b);
+  // s2e-bots: from the works' opening the manager taps ONLY what the goal card and the advice line name (the goal's item,
+  // the line's purchase, its "For now"), each at the price the card shows when he presses (read again after reading it).
+  if (worksOpened(s)) return manageWorks(b, res);
   for (const key of c.goalOrder) {
     const a = actionFor(b, key);
     if (!a) continue;
@@ -1402,6 +1447,28 @@ function manage(b: Bot): void {
     stand(b, b.P.card);
     if (press(b, adv.action, false)) return;
   }
+  stand(b, 10);
+}
+
+/** s2e-bots: the card manager from the works' opening (see manage). */
+function manageWorks(b: Bot, res: number): void {
+  const tap = (a: CardAction | null, goal: boolean, why: Why): boolean => {
+    if (!a || !('price' in a) || b.g.cash - res < (a as { price: number }).price - 1e-9) return false;
+    stand(b, b.P.card);
+    // The card re-reads its price at the press (a level priced from its gain moves with the assets while he reads).
+    const f = freshAction(b, a);
+    if (!f || !('price' in f) || b.g.cash - reserveFor(b) < (f as { price: number }).price - 1e-9) return false;
+    const n = b.rec.purchases.length;
+    const ok = press(b, f, goal);
+    if (ok) noteWhy(b, n, why);
+    return ok;
+  };
+  const goal = nextGoal(b.cfg, b.g);
+  if (goal?.buy && tap(actionFor(b, goal.buy), true, { via: 'goal' })) return;
+  const adv = advice(b.cfg, b.g, b.now) as AdviceW | null;
+  if (adv && tap(adv.action, false, { via: 'advice', payback_h: adv.works?.payback_h })) return;
+  const m = adv?.works?.meanwhile;
+  if (m && tap(m.action, false, { via: 'meanwhile', payback_h: m.gain_h > 0 ? m.price / m.gain_h : undefined })) return;
   stand(b, 10);
 }
 
@@ -1539,10 +1606,17 @@ function rackRoom(b: Bot): boolean {
   return n < cap;
 }
 
-/** Finance (2.14; 8.2 "Always / never finances"): the goal's (or the advice line's) plate when cash cannot pay it outright. */
+/**
+ * Finance (2.14; 8.2 "Always / never finances"): the goal's (or the advice line's) plate when cash cannot pay it outright.
+ * s2e-bots (yard-stage2-economy.md 2.14.2; s2e-bank): also a financeable VEHICLE (the three-axle hook-lift), whose card is
+ * the truck park's (noteSeen {card: 'park', place}): the letter, the offer and signFinance exactly as for a plate.
+ */
 function financeHabit(b: Bot, plate: string): boolean {
   const s = b.g.salvage;
-  if (s.works[plate] || !(plate in (C(b).works?.plates ?? {})) || s.bank.agreement) return false;
+  const kind = financeKind(C(b), plate);
+  if (kind === null || s.bank.agreement) return false;
+  if (kind === 'plate' && s.works[plate]) return false;
+  if (kind === 'vehicle' && (s.owned.includes(plate as never) || s.arriving.some((q) => q.item === plate))) return false;
   const tm = financeTerms(b.cfg, b.g, plate);
   if (!tm) return false;
   const room = b.g.cash - reserveFor(b);
@@ -1550,8 +1624,17 @@ function financeHabit(b: Bot, plate: string): boolean {
   // Once a sitting a person opens the goal's card to see what it costs (E8): the letter and the offer are read there.
   if (!s2Note(b, `open:${plate}`)) return false;
   react(b, `open ${plate}`);
-  walk(b, placeSpot(b, C(b).works!.plates[plate].plot));
-  openWorks(b, plate);
+  if (kind === 'plate') {
+    walk(b, placeSpot(b, C(b).works!.plates[plate].plot));
+    openWorks(b, plate);
+  } else {
+    const place = C(b).shop.find((i) => i.key === plate)?.place ?? 'park';
+    walk(b, placeSpot(b, place));
+    // He walked into the truck at the park (the park's card is read from beside it): out first, as a person would.
+    if (driving(b)) leaveTruck(b);
+    b.g = noteSeen(b.cfg, b.g, { card: 'park', place } as never, b.g.salvage.t, b.ev);
+    if (b.rec.s2.letter === undefined && b.g.salvage.bank.letterSeen) b.rec.s2.letter = b.g.salvage.t;
+  }
   stand(b, b.P.card);
   if (!loanOffered(b.cfg, b.g, plate)) return true;
   const t2 = financeTerms(b.cfg, b.g, plate)!;
@@ -1569,7 +1652,7 @@ function financeHabit(b: Bot, plate: string): boolean {
     // Shown equals applied: the deposit P − F, exactly.
     if (Math.abs(cash0 - b.g.cash - (t2.P - t2.F)) > 0.005) b.rec.broken.push({ t: b.g.salvage.t, what: `signFinance took ${cash0 - b.g.cash} for a deposit shown ${t2.P - t2.F}` });
     b.rec.s2.loans.push({ t: b.g.salvage.t, plate, P: t2.P, F: t2.F, T: t2.T });
-    b.rec.purchases.push({ t: b.g.salvage.t, key: plate, price: t2.P - t2.F, kind: 'buy', goal: true, cashAfter: b.g.cash });
+    b.rec.purchases.push({ t: b.g.salvage.t, key: plate, price: t2.P - t2.F, kind: 'buy', goal: true, cashAfter: b.g.cash, via: 'loan' });
   }
   observe(b);
   return true;
@@ -1669,7 +1752,9 @@ function decide2(b: Bot): boolean {
     }
   }
   // REPORT9: a car waiting on the car pad and a running station plate fed by the forklift with a free apron: the boss
-  // drives the forklift (2.9; the only way a car reaches the apron, T1).
+  // drives the forklift (2.9; the only way a car reaches the apron, T1). s2e-bots: DROPPED IN USE at stage 2 as built (no
+  // forklift is sold and no car pad drawn; the hook-lift sets each car on the bay's apron, D1 a): forkliftPlate is null
+  // without a forklift in the state, so this runs only on the frozen REPORT9 content (its tests).
   const fp = forkliftPlate(b);
   if (fp && !isBlocked(b, 'forklift')) {
     forkliftLeg(b, fp);
@@ -1735,6 +1820,14 @@ function decide2(b: Bot): boolean {
     }
     return skip();
   }
+  // s2e-bots (yard-stage2-economy.md 2.10, D4; gate G8): THE BOSS'S OWN HAND. Every oversize piece waiting on the pad that
+  // his tool can open is cut, whatever the goal (a person who comes back to pieces on the pad cuts them: 2 to 3 a return,
+  // 4 to 10 s each); once a sitting he sorts the picking table if it holds things; and once a sitting he sets each hall on
+  // the recipe whose input the bays hold most of (s2e-rate's request: the card names the recipes; a person does not leave a
+  // hall on brass while bronze solids pile up). Each is a habit of the bot, not a rule.
+  if (lotHabit(b)) return true;
+  if (crateHabit(b)) return true;
+  if (recipeHabit(b)) return true;
   // The racker: a tagged thing he can lift, while the rack has a place (8.2 Racker).
   if (o.rack === 'rack' && loadG(b) === 0 && rackRoom(b)) {
     const th = taggedThings(b).sort((a, q) => Math.hypot(thingPos(c, a.at).x - pos(b).x, thingPos(c, a.at).y - pos(b).y) - Math.hypot(thingPos(c, q.at).x - pos(b).x, thingPos(c, q.at).y - pos(b).y))[0];
@@ -1748,6 +1841,60 @@ function decide2(b: Bot): boolean {
   if (plate && financeHabit(b, plate)) return true;
   // The goal's works purchase opens its card at the plot (the letter reads the card it was seen on).
   if (plate && plate in (c.works?.plates ?? {}) && s2Note(b, `seen:${plate}`)) openWorks(b, plate);
+  return false;
+}
+
+/** s2e-bots: an oversize piece the boss's tool opens, waiting on the pad: walk beside it and stand while he cuts it (true: a leg). */
+function lotHabit(b: Bot): boolean {
+  const s = b.g.salvage;
+  const c = C(b);
+  if (isBlocked(b, 'lot')) return false;
+  const lot = s.things.filter((th) => th.at.at === 'lot' && !th.by && tierOf(c, th) <= s.tier).sort((a, q) => a.uid < q.uid ? -1 : 1)[0];
+  if (!lot) return false;
+  const n0 = s.things.filter((th) => th.at.at === 'lot').length;
+  react(b, 'lot');
+  walk(b, thingSpot(b, lot));
+  standUntil(b, () => b.g.salvage.things.filter((th) => th.at.at === 'lot').length < n0, 40);
+  return true;
+}
+
+/** s2e-bots: once a sitting, the picking table sorted when it holds things (the boss stands at it). */
+function crateHabit(b: Bot): boolean {
+  const s = b.g.salvage;
+  if (!s.things.some((th) => th.at.at === 'crate') || isBlocked(b, 'crate') || !s2Note(b, `crate:${b.sitting}`)) return false;
+  standAt(b, 'crate', () => !b.g.salvage.things.some((th) => th.at.at === 'crate'), 90, 'crate');
+  return true;
+}
+
+/**
+ * s2e-bots: once a sitting, each running hall with more than one recipe is set on the recipe whose input grades the bays hold
+ * the most worth of at usual prices, when that is over twice the current recipe's (no switching back and forth on a small
+ * difference); the boss walks to the hall's plot and presses the card's recipe (actionsWorks.ts setPlateRecipe, the charge
+ * confirmed back to its bays). Refused presses are recorded.
+ */
+function recipeHabit(b: Bot): boolean {
+  const s = b.g.salvage;
+  const c = C(b);
+  for (const [id, w] of Object.entries(s.works)) {
+    const d = c.works?.plates[id];
+    const recs = Object.entries(d?.recipes ?? {});
+    if (!d || !w.heat || w.phase !== 'running' || recs.length < 2) continue;
+    if (!s2Note(b, `recipe:${id}:${b.sitting}`)) continue;
+    const worth = (ins: string[]) => ins.reduce((a, gr) => a + (s.bays[gr]?.g ?? 0) * vpk(c, gr), 0);
+    const cur = d.recipes?.[w.heat.recipe];
+    const best = recs.sort((a, q) => worth(q[1].in) - worth(a[1].in))[0];
+    if (!best || best[0] === w.heat.recipe || worth(best[1].in) <= 2 * (cur ? worth(cur.in) : 0) + 1e-9) continue;
+    react(b, `recipe ${id}`);
+    walk(b, placeSpot(b, d.plot));
+    stand(b, b.P.card);
+    const ev: SalvageEvent[] = [];
+    b.g = setPlateRecipe(b.cfg, b.g, id, best[0] as never, true, b.g.salvage.t, ev);
+    b.ev.push(...ev);
+    const r = ev.find((e) => e.type === 'refused');
+    if (r && r.type === 'refused') b.rec.refused.push({ t: b.g.salvage.t, key: r.key, what: `setPlateRecipe ${id} ${best[0]}` });
+    observe(b);
+    return true;
+  }
   return false;
 }
 

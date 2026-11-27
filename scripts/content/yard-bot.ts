@@ -47,7 +47,8 @@ import { contentAt, worksOpened } from '../../src/engine/salvage/layer';
 import { awayPass } from '../../src/engine/salvage/away';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
-import { own } from '../../src/engine/salvage/rate';
+import { levelGainCfg, own } from '../../src/engine/salvage/rate';
+import type { LevelTarget } from '../../src/engine/salvage/types';
 import { packProducts } from '../../src/engine/salvage/shop';
 import { shipped2Config } from '../../src/engine/fixtures/shipped2';
 
@@ -363,7 +364,7 @@ function walkSection(L: string[], all: Summary[]): void {
 // ============================================================================================ stage 2 (yard-stage2.md 8.2; content2-bots)
 
 /** The bots of 8.2's table, each a habit on the first yard's normal hand unless it names another hand. */
-type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise' | 'old' | 'noCrane' | 'bridgeLevels' | 'routeB' | 'cut60' | 'hand15';
+type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise' | 'old' | 'noCrane' | 'bridgeLevels' | 'routeB' | 'cut60' | 'hand15' | 'packsAlways' | 'planned' | 'freeDrop';
 const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   normal: {},
   brisk: { hand: 'brisk' },
@@ -395,13 +396,39 @@ const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   // REPORT9's probe of planning ahead (14.9, T3): the planned runs shorter (group.cutRun_s 120 -> 60; group.handRun_s 30 -> 15)
   cut60: {},
   hand15: {},
+  // s2e-bots (the new economy, RULING2.md 27 and 28): packsAlways: the packs bot that also takes every Bank loan (28.2 (g), gate
+  // G6: its lead at rung 5 at most one sitting); planned: the normal hand with planning ahead kept at the works
+  // (group.aheadWorks true: the pair of 28.1 and gate G9's measure beside trip by trip); freeDrop: the normal hand on the old
+  // drop-off rule (works.dropoffPeriod_s absent: a thing taken from a full drop-off replaced at once; the pair of 28.3 (d)).
+  packsAlways: { packs: true, finance: 'always' },
+  planned: {},
+  freeDrop: {},
 };
+/**
+ * s2e-bots: habits that no longer mean anything on the stage as built, dropped with their reason (asked for by name, the call
+ * prints the line and runs nothing). The crane is not sold (27.2 b), the lead line waits for stage 3 (27.3 D2), planning ahead
+ * is off at the works by content (group.aheadWorks false; 'behind' switched it off everywhere, and the run-length probes
+ * measured planning that is no longer done; its pair is now 'planned').
+ */
+const DROPPED2: Partial<Record<Bot2, string>> = {
+  noCrane: 'the magnet crane is not sold at stage 2 (RULING2.md 27.2 b): the normal hand already never buys it',
+  leadCut: 'the battery breaker and the lead smelter wait for stage 3 (27.3 D2): the shipped content is the lead cut',
+  behind: 'trip by trip is the works\' rule (group.aheadWorks false, 28.1): its pair is now `planned` (planning kept at the works)',
+  cut60: 'a probe of planned runs\' lengths; planning is off at the works (28.1)',
+  hand15: 'a probe of planned runs\' lengths; planning is off at the works (28.1)',
+};
+/** s2e-bots: the slow hand plays ONCE A DAY (yard-stage2-economy.md risk 4, gate G3: 15 minutes every 23.75 h). Its sittings are days. */
+const DAILY2 = new Set<Bot2>(['slow']);
 /** The bots a plain --stage 2 call runs (the variants are asked for by name). */
-const DEFAULT2: Bot2[] = ['normal', 'brisk', 'slow', 'manager', 'always', 'packs', 'ads', 'racker', 'cutter', 'holder', 'steelMax', 'leadCut'];
-/** The bots whose sittings measure G (a capped absence at usual prices from each return) beside I (REPORT8). */
-const MEASURES_G = new Set<Bot2>(['normal', 'flat']);
+const DEFAULT2: Bot2[] = ['normal', 'brisk', 'slow', 'manager', 'always', 'packs', 'packsAlways', 'ads', 'racker', 'cutter', 'holder', 'steelMax'];
+/**
+ * The bots whose sittings measure G (a capped absence at usual prices from each return) beside I (REPORT8). s2e-bots: EVERY
+ * bot (ruling 27.4: rated income is calibrated on the normal board and GATED on route B, the flat board, the unseen seeds and
+ * the other habits), and the headroom U, the purse and the bill at every return.
+ */
+const MEASURES_G = { has: (_b: Bot2) => true };
 /** The bots whose first part (to the works' opening) is the normal hand's own: they share one snapshot per seed. */
-const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut', 'behind', 'noise', 'noCrane', 'bridgeLevels', 'cut60', 'hand15']);
+const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'packsAlways', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut', 'behind', 'noise', 'noCrane', 'bridgeLevels', 'cut60', 'hand15', 'planned', 'freeDrop']);
 const S2_SITTINGS = Number(arg('sittings', '16')); // 8 days twice a day (8.2)
 const S2_AWAY_S = 11.75 * 3600;
 const S2_PLAY_S = 15 * 60;
@@ -454,6 +481,12 @@ function variant(cfg: R.SalvageConfig, which: Bot2): R.SalvageConfig {
   if (which === 'hand15') return { ...cfg, salvage: { ...c, group: { ...c.group, handRun_s: 15 } } } as R.SalvageConfig;
   if (which === 'behind') return { ...cfg, salvage: { ...c, group: { ...c.group, ahead: false } } } as R.SalvageConfig;
   if (which === 'old') return { ...cfg, salvage: { ...c, crew: { ...c.crew, orderFromRung: 99 } } } as R.SalvageConfig;
+  if (which === 'planned') return { ...cfg, salvage: { ...c, group: { ...c.group, aheadWorks: true } } } as R.SalvageConfig;
+  if (which === 'freeDrop') {
+    const w = { ...(c as unknown as { works: Record<string, unknown> }).works };
+    delete w.dropoffPeriod_s;
+    return { ...cfg, salvage: { ...c, works: w } } as unknown as R.SalvageConfig;
+  }
   if (which === 'noise') return { ...cfg, salvage: { ...c, crew: { ...c.crew, cutter: { ...c.crew.cutter, share: c.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig;
   return cfg;
 }
@@ -521,6 +554,143 @@ interface Sitting2 {
   Uend?: number;
   /** REPORT9 (E4's play): the bridge partners' levels at the sitting's end (garage, plumbing). */
   bridge?: [number, number];
+  /** s2e-bots: what the sitting bought (key, price, why, the payback it was shown with), the bank's offers and loans in it, what of a loan is left at its end, the sold machines' bill at the return (the gated, unowned sold items' prices), the packs that would fit (H hours: cash + H x I <= U, no loan open) at the return and at the end, and the oversize pieces waiting at the return with their masses inside their kind's range or not. */
+  keys?: { k: string; p: number; via?: string; pb?: number }[];
+  offers?: number;
+  loans?: string[];
+  loanLeft?: number;
+  loanBack?: boolean;
+  billM?: number;
+  fitBack?: number[];
+  fitEnd?: number[];
+  lotsWait?: number;
+  lotMassBad?: string[];
+  tier?: number;
+}
+
+// ============================================================================================ s2e-bots: the new economy's measures
+
+/** A content gate's rung ('rung4' -> 4; a gate past the ladder, salvage.content.ts DARK 'rung99', is past every rung). */
+const gateN = (gate: unknown): number => Number(/^rung(\d+)$/.exec(String(gate ?? ''))?.[1] ?? 0);
+
+/**
+ * THE SOLD ITEMS of the stage (yard-stage2-economy.md 2.7 to 2.9; ruling 27.2 b): every works-layer shop item (a works plate,
+ * a vehicle, a tool, a carrier) whose gate is a rung within the ladder's top; what is gated past the ladder is dark. A plate
+ * that comes `with` another (the depollution bay with the shredder) has no item on sale of its own: the line is `shredder`.
+ */
+function soldItems(cfg: R.SalvageConfig): { key: string; kind: string; gate: number; price: number }[] {
+  const c = contentAt(cfg.salvage, { counts: { bathSet: 1 } } as never);
+  const top = c.ladder.topRung ?? 3;
+  const layer = new Set(((cfg.salvage as unknown as { worksLayer?: { shop: { key: string }[] } }).worksLayer?.shop ?? []).map((i) => i.key));
+  return c.shop.filter((i) => layer.has(i.key) && i.kind !== 'crew' && gateN(i.gate) >= 1 && gateN(i.gate) <= top).map((i) => ({ key: i.key, kind: i.kind, gate: gateN(i.gate), price: i.price }));
+}
+
+/** What a loan has left to repay (T - taken), or null with no agreement open. */
+function agreementLeft(g: R.SalvageGame): number | null {
+  const a = g.salvage.bank?.agreement as { T: number; taken: number } | null | undefined;
+  return a ? a.T - a.taken : null;
+}
+
+/** The packs that fit with the cash in hand now (T11's arithmetic: cash + H x I <= U), none while a loan is open (D7). */
+function packsFit(cfg: R.SalvageConfig, g: R.SalvageGame): number[] {
+  if (agreementLeft(g) !== null) return [];
+  const U = R.headroomU(cfg, g);
+  const I = incomeAt(cfg, g);
+  return ((cfgPacks ?? packProducts(cfg)) as { H: number }[]).map((p) => p.H).filter((H) => g.cash + H * I <= U + 1e-9);
+}
+
+/** s2e-bots: what the first look reads at a return: the sold machines' bill, the packs that fit, a loan open, the oversize pieces waiting and their masses against their kind's range (G8), the boss's tool tier. */
+function returnLook(cfg: R.SalvageConfig, g: R.SalvageGame) {
+  let billM = 0;
+  for (const it of soldItems(cfg)) {
+    if (it.gate > g.salvage.ladder.rung) continue;
+    const ck = buyCheck(cfg, g, it.key as never);
+    if (ck.price !== null && !['locked', 'top', 'owned', 'arriving', 'info'].includes(String(ck.state))) billM += ck.price;
+  }
+  const kinds = (contentAt(cfg.salvage, g.salvage).lots?.kinds ?? []) as { obj: string; mass_kg?: [number, number] }[];
+  const lots = g.salvage.things.filter((th) => th.at.at === 'lot');
+  const bad = lots.filter((th) => { const k = kinds.find((q) => q.obj === th.obj); const m = (th as { g?: number }).g ?? 0; return !k?.mass_kg || m < k.mass_kg[0] * 1000 - 1 || m > k.mass_kg[1] * 1000 + 1; }).map((th) => `${th.obj} ${Math.round(((th as { g?: number }).g ?? 0) / 1000)} kg`);
+  return { billM: Math.round(billM), fitBack: packsFit(cfg, g), loanBack: agreementLeft(g) !== null, lotsWait: lots.length, lotMassBad: bad, tier: g.salvage.tier };
+}
+function endLook(cfg: R.SalvageConfig, g: R.SalvageGame) {
+  return { fitEnd: packsFit(cfg, g) };
+}
+
+/**
+ * THE LEVEL LADDERS' THREE STEPS (yard-stage2-economy.md 2.3's fallback; ruling 27.4; the gain book g(L) = g1 x d^(L-1)): at
+ * the ladder's planned moment (the return of that sitting, the sitting's goal purchases owned in every branch), the
+ * ladder's level bought one, two and three steps up, each branch measured by ruling 21.1's measure (an hour of play by the
+ * reference bot buying nothing, then one capped absence; prices flat). g_k = (E_k - E_{k-1}) / the hours. The steps are
+ * bought through the rules' own level action on a copy of the content where the ladder is SOLD whatever its calculated gain
+ * (minShareI 0 and a book entry for it: only the price differs, and the branches hold cash 1e12); the play reads the shipped
+ * content. Beside g1: the calculated gain (rate.ts levelGain on the shipped content, the one measure) for G2 R.
+ */
+const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutter' | 'hand'; partner?: string }[] = [
+  { ladder: 'driver', at: 'r4entry', role: 'driver' },
+  { ladder: 'cutter', at: 'r3s1', role: 'cutter' },
+  { ladder: 'partner.plumbing', at: 'r4entry', partner: 'partner.plumbing' },
+];
+/** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
+const BOOK_FAILING = ['driver'];
+type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; E0: number; calc: number; I: number; price: number | null };
+
+function ladderTarget(g: R.SalvageGame, L: (typeof LADDERS)[number]): LevelTarget | null {
+  if (L.partner) return g.salvage.partners[L.partner]?.open ? ({ kind: 'partner', partner: L.partner } as LevelTarget) : null;
+  const m = g.salvage.crew.find((q) => q.role === L.role);
+  return m ? ({ kind: 'crew', id: m.id } as LevelTarget) : null;
+}
+function levelOf(g: R.SalvageGame, t: LevelTarget): number {
+  return t.kind === 'partner' ? g.salvage.partners[t.partner]?.level ?? 0 : t.kind === 'crew' ? g.salvage.crew.find((m) => m.id === t.id)?.level ?? 0 : 0;
+}
+function stepUp(cfg: R.SalvageConfig, g: R.SalvageGame, t: LevelTarget, ladder: string): R.SalvageGame | null {
+  const lv = cfg.salvage.levels as unknown as { book?: Record<string, unknown> };
+  const sell = { ...cfg, salvage: { ...cfg.salvage, levels: { ...cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [ladder]: { g1: 1e6, d: 1 } } } } } as R.SalvageConfig;
+  const ck = levelCheck(sell, g, t);
+  if (ck.price === null || ck.refusal) return null;
+  const after = R.level(sell, g, t, ck.price, g.salvage.t);
+  return levelOf(after, t) > levelOf(g, t) ? ({ ...after, cash: 1e12 } as R.SalvageGame) : null;
+}
+
+/** G15 (yard-stage2-economy.md G15; the specification's 8.4): what a person-paced rung-4 entry sitting does in 15 minutes. */
+type PersonRow = { seed: number; hand: string; t0_h: number; cash: number; done: Record<string, number>; lotsWaiting: number; lotsCut: number; cards: { t: number; card: string; by: string }[]; twoCards: number; fits: boolean; missing: string[] };
+function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, seed: number): PersonRow {
+  const p = resumeBot(cfg, snap, { ...opts, hand: 'slow', gate2: false });
+  const t0 = p.g.salvage.t;
+  const want = soldItems(cfg).filter((i) => i.gate === 4).map((i) => i.key);
+  const lots0 = p.g.salvage.things.filter((th) => th.at.at === 'lot' && (contentAt(cfg.salvage, p.g.salvage).objects[th.obj]?.tier ?? 9) <= p.g.salvage.tier).length;
+  const cut0 = p.g.salvage.counts?.lotOpened ?? 0;
+  const n0 = p.rec.purchases.length;
+  const c0 = p.rec.s2.commissioned.length;
+  const po0 = p.rec.s2.pours.length;
+  // The centred cards the screen would open, in order, each with what opened it: the away card on return (no action);
+  // the lender's letter when a works or park card is opened (an action); the finance card only when Bank loan is pressed.
+  const cards: PersonRow['cards'] = [];
+  if (p.g.salvage.away) cards.push({ t: 0, card: 'away', by: 'the return' });
+  let letter = p.g.salvage.bank.letterSeen;
+  let loans = p.rec.s2.loans.length;
+  const done: Record<string, number> = {};
+  for (let guard = 0; guard < 20000 && p.g.salvage.t < t0 + 1800; guard++) {
+    const t1 = p.g.salvage.t;
+    const k = p.rec.purchases.length;
+    playTo(p, t1 + 1);
+    const dt = Math.round(p.g.salvage.t - t0);
+    if (!letter && p.g.salvage.bank.letterSeen) { letter = true; cards.push({ t: dt, card: 'letter', by: 'opening a works or park card' }); }
+    if (p.rec.s2.loans.length > loans) { loans = p.rec.s2.loans.length; cards.push({ t: dt, card: 'finance', by: 'pressing Bank loan' }); }
+    for (const q of p.rec.purchases.slice(k)) if (want.includes(q.key) && done[`buy ${q.key}`] === undefined) done[`buy ${q.key}`] = Math.round(q.t - t0);
+    for (const q of p.rec.s2.commissioned.slice(c0)) if (done[`start ${q.plate}`] === undefined) done[`start ${q.plate}`] = Math.round(q.t - t0);
+    for (const q of p.rec.s2.pours.slice(po0)) if (done[`pour ${q.plate}`] === undefined) done[`pour ${q.plate}`] = Math.round(q.t - t0);
+    const cut = (p.g.salvage.counts?.lotOpened ?? 0) - cut0;
+    for (let j = 1; j <= cut; j++) if (done[`cut ${j}`] === undefined) done[`cut ${j}`] = dt;
+  }
+  const lotsCut = (p.g.salvage.counts?.lotOpened ?? 0) - cut0;
+  const halls = want.filter((k) => contentAt(cfg.salvage, p.g.salvage).works?.plates[k]?.recipes);
+  const need = [...want.map((k) => `buy ${k}`), ...want.filter((k) => contentAt(cfg.salvage, p.g.salvage).works?.plates[k]).map((k) => `start ${k}`), ...halls.map((k) => `pour ${k}`), ...Array.from({ length: Math.min(2, lots0) }, (_, j) => `cut ${j + 1}`)];
+  const missing = need.filter((x) => done[x] === undefined || done[x] > 900);
+  // Two centred cards without a player's action between them: only the away card opens without one; another card opened
+  // in the same instant as it (before the away card was put aside) would be the fault.
+  const twoCards = cards.filter((q, i) => i > 0 && q.by === 'the return').length;
+  void n0;
+  return { seed, hand: 'slow', t0_h: +(t0 / 3600).toFixed(2), cash: Math.round(snap.g.cash), done, lotsWaiting: lots0, lotsCut, cards, twoCards, fits: missing.length === 0, missing };
 }
 
 /**
@@ -536,6 +706,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const base = variant(base0, which);
   const cfg = seededCfg(base, spec.seed);
   const opts: BotOptions = { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed, ...BOTS2[which] };
+  // s2e-bots: the slow hand once a day (DAILY2), every other hand twice a day.
+  const awayS = DAILY2.has(which) ? 23.75 * 3600 : S2_AWAY_S;
   const cacheDir = arg('cache');
   const share = SHARES_NORMAL.has(which) ? 'normal' : which;
   const snapFile = cacheDir ? path.join(cacheDir, `snap-${createHash('sha1').update(JSON.stringify({ share, seed: spec.seed, game: snapHash })).digest('hex').slice(0, 16)}.json`) : null;
@@ -560,17 +732,23 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   let n0 = b.rec.purchases.length;
   const returns: { g: R.SalvageGame; bought: string[] }[] = [];
   const walk2: ReturnType<typeof walk2Row>[] = [];
+  let personSnap: BotSnap | null = null;
   for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
     newSitting(b);
     const cash0 = b.g.cash;
     const cut0 = b.g.salvage.counts?.lotOpened ?? 0;
     const came0 = b.g.salvage.lots?.n ?? 0;
+    const off0 = b.rec.s2.offers.length;
+    const ln0 = b.rec.s2.loans.length;
     const a = performance.now();
-    away(b, S2_AWAY_S);
+    away(b, awayS);
     const awayMs = performance.now() - a;
     const card = b.g.salvage.away;
     const cashBack = b.g.cash;
     const gBack = b.g;
+    // G15 (--person): the person-paced sitting is played from the normal hand's FIRST return at rung 4, as it stood.
+    if (arg('person') && which === 'normal' && !personSnap && gBack.salvage.ladder.rung >= 4) personSnap = snapBot(b);
+    const back = MEASURES_G.has(which) && worksOpened(gBack.salvage) ? returnLook(cfg, gBack) : null;
     if (which === 'bridgeLevels') levelBridge(b);
     playTo(b, b.g.salvage.t + S2_PLAY_S);
     if (which === 'bridgeLevels') levelBridge(b);
@@ -580,7 +758,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const s = b.g.salvage;
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
     if (arg('walk2') && which === 'normal' && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
-    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
+    const end = back ? endLook(cfg, b.g) : null;
+    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
       const d = tickJumpGate(cfg, b.g, b.now, 60);
@@ -615,8 +794,10 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const plates: Record<string, PlateRow> = {};
   if (arg('plates') && which === 'normal') {
     const W = contentAt(cfg.salvage, returns[0]?.g.salvage ?? b.g.salvage).works;
-    // RULING2.md 21.1 (and 19.1): every plate AND the stage's vehicles and tools (2.9, payback-priced) at its planned moment
-    const items = [...Object.keys(W?.plates ?? {}), ...MEASURED_ITEMS];
+    // RULING2.md 21.1 (and 19.1): every plate AND the stage's vehicles and tools (2.9, payback-priced) at its planned moment.
+    // s2e-bots (27.2 b, 27.6): every SOLD machine, vehicle and tool of the stage as built (the line as `shredder`), at its
+    // planned moment in the new goal order; what is dark is not measured again (its REPORT9 row stays in plates.json).
+    const items = soldItems(cfg).map((i) => i.key);
     // one played branch per (return, purchases made first): a chain of one sitting shares its branches
     const memo = new Map<string, { E: number; h: number; hold: number } | null>();
     const branch = (ri: number, keys: string[]) => {
@@ -670,10 +851,45 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(dE !== null ? { dE: Math.round(dE), E0: Math.round(B!.E / B!.h), hE: +(((A!.h + B!.h) / 2).toFixed(2)) } : {}), pre };
     }
   }
+  // s2e-bots: the level ladders' three steps (--book), normal hand only.
+  const book: BookRow[] = [];
+  if (arg('book') && which === 'normal') {
+    const memoB = new Map<string, { E: number; h: number } | null>();
+    for (const L of LADDERS) {
+      const ri = L.at === 'r3s1' ? 0 : returns.findIndex((x) => x.g.salvage.ladder.rung >= 4);
+      if (ri < 0 || !returns[ri]) continue;
+      // the sitting's goal purchases owned in every branch (as the plates' measure)
+      let g = { ...returns[ri].g, cash: 1e12 } as R.SalvageGame;
+      for (const q of returns[ri].bought) {
+        const cq = buyCheck(cfg, g, q as never);
+        if (cq.price !== null && !cq.refusal) g = { ...R.buy(cfg, g, q as never, cq.price, g.salvage.t), cash: 1e12 } as R.SalvageGame;
+      }
+      g = landed(cfg, g);
+      const t = ladderTarget(g, L);
+      if (!t) continue;
+      const states = [g];
+      for (let k = 0; k < 3; k++) {
+        const nx = stepUp(cfg, states[k], t, L.ladder);
+        if (!nx) break;
+        states.push(nx);
+      }
+      const E = states.map((st, k) => {
+        const key = `${ri}|${k === 0 ? 'base' : `${L.ladder}${k}`}`;
+        if (!memoB.has(key)) memoB.set(key, playedE(cfg, st, opts));
+        return memoB.get(key)!;
+      });
+      const gains = E.slice(1).map((e, k) => (e && E[k] ? (e.E - E[k]!.E) / ((e.h + E[k]!.h) / 2) : NaN)).map((v) => Math.round(v));
+      const calc = levelGainCfg(cfg, g, t);
+      const q = levelCheck(cfg, g, t);
+      book.push({ ladder: L.ladder, at: L.at, at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, L0: levelOf(g, t), gains, E0: Math.round(E[0] ? E[0].E / E[0].h : NaN), calc: Math.round(calc), I: Math.round(incomeAt(cfg, g)), price: q.refusal ? null : q.price });
+    }
+  }
+  // G15 (--person): the person-paced rung-4 entry sitting (yard-stage2-economy.md G15).
+  const person = personSnap ? personSitting(cfg, personSnap, opts, spec.seed) : null;
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
