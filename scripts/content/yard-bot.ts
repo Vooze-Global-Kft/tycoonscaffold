@@ -777,8 +777,8 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
 ];
 /** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
 const BOOK_FAILING = ['driver'];
-/** RULING2.md 28.7 (the lead's line of 15:55): the items whose prices this price round writes. */
-const WRITE_ITEMS = ['truckBridge', 'analyser', 'induction', 'rotary'];
+/** The full measurement (RULING2.md 28.8, after a13a006): EVERY sold item's row and price is written, unless it misses the entry rule (then its row and price stand and it is reported to the lead). */
+const WRITE_ITEMS: string[] | null = null;
 const f2s = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
 type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; gainsT?: number[]; E0: number; calc: number; I: number; price: number | null };
 
@@ -1788,7 +1788,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const entryOk = !!E0 && dE >= 0.02 * E0 && lowE >= -0.01 * E0;
     // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
     // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
-    const keep = !WRITE_ITEMS.includes(pid);
+    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : !entryOk;
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
@@ -1796,7 +1796,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
     lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
-    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? '  (NOT WRITTEN: its price and its row stand until it is measured in its new form, RULING2.md 28.7)' : !entryOk ? '  (written by the lead\'s line of 15:55, RULING2.md 28.7; THE ENTRY RULE IS MISSED: for the lead)' : ''}`);
+    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? (entryOk ? '  (NOT WRITTEN: outside WRITE_ITEMS)' : '  (NOT WRITTEN: THE ENTRY RULE IS MISSED: its row and price stand; reported to the lead)') : ''}`);
     lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
     { const tl = xs.map((x) => x.tL ?? NaN).filter(Number.isFinite); const m = tl.reduce((q, v) => q + v, 0) / Math.max(1, tl.length); const se2 = tl.length > 1 ? Math.sqrt(tl.reduce((q, v) => q + (v - m) ** 2, 0) / (tl.length - 1) / tl.length) : NaN; const t0m = xs.reduce((q, x) => q + (x.T0 ?? 0), 0) / xs.length; Object.assign(row, { tL: +m.toFixed(3), seTL: +se2.toFixed(3), T0: +t0m.toFixed(2) }); lines.push(`                IN TONNES: the lasting gain ${m.toFixed(2)} t an hour (s.e. ${f2s(se2)}) of the yard's ${t0m.toFixed(1)} t an hour supplied over the absence (${(100 * m / Math.max(1e-9, t0m)).toFixed(1)} %); together ${(xs.reduce((q, x) => q + (x.tT ?? 0), 0) / xs.length).toFixed(2)} t an hour`); }
   }
