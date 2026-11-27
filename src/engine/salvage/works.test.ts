@@ -49,8 +49,8 @@ function quiet(g: SalvageGame): SalvageGame {
 }
 
 /** Run a body on a live Ctx of g and finish it. */
-function act(g: SalvageGame, body: (x: Ctx) => void, live = true): SalvageGame {
-  const x = begin(cfg, g, [], live);
+function act(g: SalvageGame, body: (x: Ctx) => void, live = true, on: SalvageConfig = cfg): SalvageGame {
+  const x = begin(on, g, [], live);
   body(x);
   return finish(g, x);
 }
@@ -275,7 +275,27 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
     expect(got >= 30_000 || (h.salvage.counts!['worked:baler'] ?? 0) - (g.salvage.counts!['worked:baler'] ?? 0) >= 1).toBe(true);
   });
 
+  it('E5: on the test map the crane lifts nothing into a plate whose tray a yard hand would carry farther than the same iron is worth (works.ts craneWorth)', () => {
+    let g = setRoute(cfg, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
+    g = act(g, (x) => {
+      x.s.works.crane.move = null;
+      x.s.things = x.s.things.filter((th) => th.at.at !== 'floor');
+      x.s.pieces = x.s.pieces.filter((p) => p.pile !== 'floor' && !p.pile.startsWith('beside.'));
+      x.s.pieces.push({ uid: 'q.li', grade: 'li', g: 20_000, from: null, spec: -1, pile: 'floor', k: 901, claim: null });
+      worksDepart(x, x.s.t);
+      // Baled light iron §0.62 against §0.50 loose (+24 %), but the baler's tray is 31 m from the scale against the floor's 13 m.
+      expect(x.s.works.crane.move).toBeNull();
+      expect(x.s.pieces.find((p) => p.uid === 'q.li')?.claim).toBeNull();
+    });
+    const h = jump(cfg, g, g.salvage.t + 1);
+    expect(h.salvage.works.crane.move ?? null).toBeNull();
+  });
+
+  // Where a yard hand's round is mostly handling (handle_s 60 s), the walk from the baler costs little more than the
+  // walk from the floor and baling pays: the crane takes the iron.
+  const worth = { ...cfg, salvage: { ...cfg.salvage, crew: { ...cfg.salvage.crew, hand: { ...cfg.salvage.crew.hand, handle_s: 60 } } } } as SalvageConfig;
   it('the magnet crane moves ferrous pieces from the floor into a hopper its reach holds, never a grade of crane.never', () => {
+    const cfg = worth;
     let g = setRoute(cfg, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
     g = act(g, (x) => {
       // Only these two on the floor (r4's crane move set aside: its things go too).
@@ -288,7 +308,7 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
       expect(x.s.works.crane.move).toMatchObject({ items: ['q.li'], g: 20_000, to: 'baler' });
       // 20 kg at 50 kg/s: 0.4 s.
       expect(x.s.works.crane.move!.end - x.s.t).toBeCloseTo(0.4, 9);
-    });
+    }, true, cfg);
     const h = jump(cfg, g, g.salvage.t + 1);
     expect(h.salvage.pieces.some((p) => p.uid === 'q.li')).toBe(false);
     expect(h.salvage.pieces.find((p) => p.uid === 'q.cu')?.claim).toBeNull();

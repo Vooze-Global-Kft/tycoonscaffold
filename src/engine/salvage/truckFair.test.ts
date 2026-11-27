@@ -14,6 +14,7 @@ import { awayPass } from './away';
 import { newBot, playTo, seededCfg, startGame } from './bot';
 import { begin, finish } from './clock';
 import { contentAt } from './layer';
+import { MEMO_CHECK } from './memo';
 import { advanceNoBoss } from './tick';
 import type { SalvageConfig, SalvageGame } from './types';
 
@@ -72,7 +73,13 @@ describe('E4 (a): the driver keeps every open partner served (from the works\' o
     const cfg = withFair(worksCfg(), N);
     const g = { ...bridgeYard(), lastSavedAt: 0 };
     const at = g.salvage.clock.highMs;
-    const one = awayPass(cfg, g, at + 3 * 1800_000);
+    MEMO_CHECK.verify = true;
+    let one: SalvageGame;
+    try {
+      one = awayPass(cfg, g, at + 3 * 1800_000);
+    } finally {
+      MEMO_CHECK.verify = false;
+    }
     let three = g;
     for (const k of [1, 2, 3]) three = awayPass(cfg, three, at + k * 1800_000);
     const strip = (h: SalvageGame) => JSON.stringify({ p: h.salvage.partners, cash: h.cash, t: h.salvage.t, tr: h.salvage.truck });

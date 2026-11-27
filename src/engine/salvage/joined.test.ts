@@ -262,6 +262,15 @@ describe('a save in the middle of everything at once reloads and goes on as the 
     // a quote waiting for approval
     const S = 1_000;
     g = { ...g, salvage: { ...g.salvage, iap: { ...g.salvage.iap, pending: [{ id: `pack2:${SHOP_NOW}`, product: 'pack2', S, I: 2_000, atMs: SHOP_NOW, askedMs: SHOP_NOW, known: [], state: 'waiting', wait: 'pending' }] } } };
+    // s2-fix-works (E5, RULING2 22): the crane moves only what is worth a yard hand's carrying from its plate (works.ts
+    // craneWorth); on the test map it moves nothing, so the move this case saves is set as a departure sets one: a
+    // floor piece of light iron claimed by it, landing in the baler.
+    if (g.salvage.works.crane && !g.salvage.works.crane.move) {
+      const s2 = structuredClone(g.salvage) as SalvageState;
+      s2.pieces.push({ uid: 'jt.li', grade: 'li', g: 20_000, from: null, spec: -1, pile: 'floor', k: 9_901, claim: 'crane.crane' });
+      s2.works.crane.move = { items: ['jt.li'], g: 20_000, from: 'floor', to: 'baler', t0: t, end: t + 0.4 };
+      g = { ...g, salvage: s2 };
+    }
     const w = g.salvage.works;
     expect(w.depollution?.phase).toBe('arriving');
     expect(Object.values(w).some((x) => x.heat?.phase === 'heating')).toBe(true);

@@ -12,6 +12,7 @@ import { SalvageSchema } from '../../config/schema.salvage';
 import { shipped2Config } from '../fixtures/shipped2';
 import { away, newBot, newSitting, playTo, seededCfg } from './bot';
 import { reconcileSalvage } from './save';
+import { MEMO_CHECK } from './memo';
 import { jump } from './tick';
 import type { SalvageConfig, SalvageGame } from './types';
 
@@ -91,7 +92,14 @@ describe('X6: a stage-2 save at a stage-1 build is kept and frozen', () => {
     const uids = [...g2.salvage.things.map((th) => th.uid), ...g2.salvage.pieces.map((p) => p.uid)];
     expect(new Set(uids).size).toBe(uids.length);
     // It goes on: ten minutes at stage 2 move the works, no throw.
-    const g3 = jump(cfg2, g2, g2.salvage.t + 600);
+    // With the index's verify mode on (lookup.ts: every read rebuilt and compared): the restored things and pieces are indexed right.
+    MEMO_CHECK.verify = true;
+    let g3: SalvageGame;
+    try {
+      g3 = jump(cfg2, g2, g2.salvage.t + 600);
+    } finally {
+      MEMO_CHECK.verify = false;
+    }
     expect(JSON.stringify(g3.salvage.works)).not.toBe(JSON.stringify(g2.salvage.works));
   }, 600_000);
 

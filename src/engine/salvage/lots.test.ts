@@ -14,6 +14,7 @@ import { begin, dayAt, finish, priceAt, type Ctx } from './clock';
 import { tipDivert } from './crate';
 import { lotMassRange, lotSplit, lotValue, lotsWaiting } from './lots';
 import { contentAt } from './layer';
+import { pushThing } from './lookup';
 import { lineAmount, roundMoney } from './money';
 import { thingPos } from './positions';
 import { ratedIncome } from './rate';
@@ -357,7 +358,7 @@ describe('2.10.2 the picking table', () => {
       const at = tipDivert(x, { uid, obj: 'motor' }, 'partnerFarm', x.s.t);
       if (h(uid) < TEST_CRATE.share && n < TEST_CRATE.max) {
         expect(at).toMatchObject({ at: 'crate', since: x.s.t });
-        x.s.things.push({ uid, obj: 'motor', at: at!, cut: 0, progress: 0, by: null });
+        pushThing(x.s.things, { uid, obj: 'motor', at: at!, cut: 0, progress: 0, by: null });
         n++;
       } else expect(at).toBeNull();
     }
