@@ -106,6 +106,11 @@ export interface BotOptions {
   steelMax?: boolean;
   /** Stage-2 hard-promise checks that cost CPU (a tick against a jump at each sitting's end): on for the normal runs. */
   gate2?: boolean;
+  /**
+   * Measurements only (RULING2.md 21.1, content2-bots): the hand plays (cuts, carries, weighs, starts plates up, pours)
+   * but buys, hires and levels nothing, so that two branches of one state differ by the one purchase measured.
+   */
+  noBuy?: boolean;
 }
 
 // ============================================================================================ the record
@@ -836,6 +841,7 @@ function cardPlace(b: Bot, a: CardAction): string {
 
 /** Walk to the card's place (unless managing from cards), read the card, press. */
 function purchase(b: Bot, a: CardAction, goal: boolean): boolean {
+  if (b.opts.noBuy) return false;
   const t0 = b.g.salvage.t;
   const cash0 = b.g.cash;
   if (!b.managing) {
