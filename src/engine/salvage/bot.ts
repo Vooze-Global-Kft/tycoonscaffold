@@ -42,7 +42,7 @@ import { lanePath, mapAt, piecePos, pointOf, skipZone, thingPos } from './positi
 import { contentAt, worksOpened } from './layer';
 import { financeTerms, loanOffered, shownOf } from './bank';
 import { adPaid, quotePack, setAgeBand, signFinance } from './actionsMoney';
-import { setRoute } from './actionsWorks';
+import { setRoute, stepOutForklift } from './actionsWorks';
 import { grantProduct, packProducts, packsShown, quoteCheck, secondSession, shopReachable } from './shop';
 import { adOffer, adsAllowed, sellNow } from './ads';
 import type { SalvageContent } from '../../config/schema.salvage';
@@ -198,11 +198,22 @@ export interface Bot {
   /** Stage 2: the sitting's number (yard-bot.ts counts them; once-a-sitting habits read it) and what this sitting already did. */
   sitting: number;
   sat: Set<string>;
+  /**
+   * s2-fix-small (R4, RULING2 24): THE GUARD. The leg under way (its label from `react`, whether the boss's own act ran or
+   * a card was pressed with effect in it, his load at its start), how many legs of one label in a row came to nothing, and
+   * the labels set aside (until a yard second) after two in a row came to nothing: the bot chooses something else.
+   */
+  leg: { what: string; acted: boolean; load0: number } | null;
+  fruitless: { what: string; n: number };
+  blocked: Record<string, number>;
 }
+
+/** s2-fix-small (R4): yard seconds a leg that came to nothing twice in a row is set aside (a bot's own habit, not a rule). */
+export const GUARD_BLOCK_S = 180;
 
 export function newBot(cfg: SalvageConfig, g: SalvageGame, now: number, opts: BotOptions): Bot {
   const o = { dt: 0.1, standDt: Math.min(0.3, cfg.salvage.feel.staleS / 2), ...opts };
-  return { cfg, g, now, opts: o, P: HANDS[o.hand], k: 0, standing: 0, rec: emptyRecord(), graph: graphOf(cfg), managing: false, ev: [], lastGoal: null, lastMinute: -1, heldDay: null, known: new Set(), sitting: 0, sat: new Set() };
+  return { cfg, g, now, opts: o, P: HANDS[o.hand], k: 0, standing: 0, rec: emptyRecord(), graph: graphOf(cfg), managing: false, ev: [], lastGoal: null, lastMinute: -1, heldDay: null, known: new Set(), sitting: 0, sat: new Set(), leg: null, fruitless: { what: '', n: 0 }, blocked: {} };
 }
 
 // ============================================================================================ the path graph
@@ -423,6 +434,7 @@ function step(b: Bot, dt: number): void {
   const cash0 = b.g.cash;
   const e0 = b.g.lifetimeEarnings;
   b.g = advanceSalvage(b.cfg, b.g, dt, b.now, b.ev);
+  if (b.leg && (b.g.salvage.act.kind !== 'none' || driving(b))) b.leg.acted = true;
   // Hard promise (8.3): cash rises only by what was earned or credited (lot payments, ads, grants: lifetime earnings).
   if (b.g.cash - cash0 > b.g.lifetimeEarnings - e0 + 0.011) b.rec.broken.push({ t: b.g.salvage.t, what: `cash rose ${(b.g.cash - cash0).toFixed(2)} with earnings up ${(b.g.lifetimeEarnings - e0).toFixed(2)}` });
   observe(b);
@@ -487,6 +499,46 @@ function walk(b: Bot, to: { x: number; y: number }): void {
   const t0 = b.g.salvage.t;
   travel(b, pts, C(b).walk / b.P.detour);
   if (m > 0.5) b.rec.walks.push({ t: t0, m, s: b.g.salvage.t - t0 });
+  // R4: he walked into the forklift on the way (entering is by walking near it): every act of the bot is his own, not
+  // the forklift's, so he steps out where he arrived before standing to work.
+  if (inForklift(b)) leaveForklift(b);
+}
+
+const inForklift = (b: Bot) => b.g.salvage.forklift?.by === 'boss';
+
+/** R4: Step out of the forklift (the one button while he sits in it: the facade's stepOutForklift). */
+function leaveForklift(b: Bot): void {
+  // Still first (the rules refuse Step out while he moves: stopFirst).
+  const p = pos(b);
+  if (b.g.salvage.presence.moving) sample(b, p.x, p.y, false);
+  b.g = stepOutForklift(b.cfg, b.g, b.g.salvage.t, b.ev);
+  stand(b, b.opts.standDt);
+}
+
+/** R4's guard: is this leg (its `react` label, or `press <action>`) set aside now? Exported for bot.test.ts. */
+export function isBlocked(b: Bot, what: string): boolean {
+  const until = b.blocked[what];
+  return until !== undefined && b.g.salvage.t < until;
+}
+
+/** R4's guard: the leg that ends here came to nothing (no act of his ran, no card took effect, his load unchanged)? Twice in a row for one label sets it aside. Exported for bot.test.ts. */
+export function closeLeg(b: Bot): void {
+  const L = b.leg;
+  b.leg = null;
+  if (!L || !L.what) return;
+  const none = !L.acted && Math.abs(loadG(b) - L.load0) < 1;
+  if (!none) {
+    b.fruitless = { what: '', n: 0 };
+    return;
+  }
+  const n = b.fruitless.what === L.what ? b.fruitless.n + 1 : 1;
+  b.fruitless = { what: L.what, n };
+  if (n >= 2) {
+    b.blocked[L.what] = b.g.salvage.t + GUARD_BLOCK_S;
+    b.rec.refused.push({ t: b.g.salvage.t, key: 'guard', what: `${L.what}: came to nothing twice in a row; set aside ${GUARD_BLOCK_S} s` });
+    b.fruitless = { what: '', n: 0 };
+  }
+  for (const [k, until] of Object.entries(b.blocked)) if (b.g.salvage.t >= until) delete b.blocked[k];
 }
 
 /** Stand still for `seconds` (samples at most every standDt). */
@@ -518,6 +570,8 @@ function standUntil(b: Bot, cond: () => boolean, max: number): boolean {
 
 /** A person's reaction before a leg: react + hes × an exponential draw × 0.5 (yard4.py reaction()). */
 function react(b: Bot, what = ''): void {
+  closeLeg(b);
+  b.leg = { what, acted: false, load0: loadG(b) };
   b.k += 1;
   if (b.opts.trace) b.rec.log.push(`${b.g.salvage.t.toFixed(1)} ${what} cash ${b.g.cash.toFixed(0)} load ${(loadG(b) / 1000).toFixed(1)}`);
   const u = hash01(b.opts.seed, b.opts.hand.length * 7 + 3, b.k);
@@ -649,6 +703,9 @@ function rankOf(b: Bot): number {
 
 /** Press a card's button as the screen does (modes/salvage/actions.ts press): the action with its shown price. */
 export function press(b: Bot, a: CardAction, goal: boolean): boolean {
+  // R4's guard: a card press refused twice in a row is not pressed again for a while (the bot chooses something else).
+  const pk = `press ${JSON.stringify(a)}`;
+  if (isBlocked(b, pk)) return false;
   const before = b.g;
   const cash0 = b.g.cash;
   const ev: SalvageEvent[] = [];
@@ -686,9 +743,17 @@ export function press(b: Bot, a: CardAction, goal: boolean): boolean {
   if (refused && refused.type === 'refused') {
     b.rec.refused.push({ t: clock, key: refused.key, what: JSON.stringify(a) });
     if (refused.key === 'priceUpdated') b.rec.broken.push({ t: clock, what: `shown price not applied: ${JSON.stringify(a)}` });
+    const n = b.fruitless.what === pk ? b.fruitless.n + 1 : 1;
+    b.fruitless = { what: pk, n };
+    if (n >= 2) {
+      b.blocked[pk] = clock + GUARD_BLOCK_S;
+      b.rec.refused.push({ t: clock, key: 'guard', what: `${pk}: refused twice in a row; set aside ${GUARD_BLOCK_S} s` });
+      b.fruitless = { what: '', n: 0 };
+    }
     observe(b);
     return false;
   }
+  if (b.leg && before !== b.g) b.leg.acted = true;
   if (a.act === 'buy' || a.act === 'hire' || a.act === 'level') {
     // Shown equals applied: cash fell by exactly the price shown.
     if (Math.abs(cash0 - b.g.cash - a.price) > 0.005) b.rec.broken.push({ t: clock, what: `paid ${cash0 - b.g.cash} for shown ${a.price}` });
@@ -1003,7 +1068,8 @@ function sources(b: Bot, prefer: string | null): Source[] {
     const T = Math.hypot(pp.x - here.x, pp.y - here.y) * 1.15 / v + n * c.pick_s + Math.hypot(pp.x - scale.x, pp.y - scale.y) * 1.15 / v + 2 * b.P.react;
     best.set(`pile:${pile}`, { score: val / T, kind: 'lift', spot: pp, pile, value: val, g });
   }
-  return [...best.values()].sort((a, q) => q.score - a.score);
+  // R4's guard: a source whose leg came to nothing twice in a row is set aside (cutLeg's and liftLeg's labels).
+  return [...best.values()].filter((q) => !isBlocked(b, q.kind === 'cut' ? `cut ${q.thing?.uid}` : `lift ${q.pile ?? q.thing?.uid}`)).sort((a, q) => q.score - a.score);
 }
 
 // ============================================================================================ legs
@@ -1176,6 +1242,8 @@ export function decide(b: Bot): void {
     if (Math.hypot(pos(b).x - park.x, pos(b).y - park.y) > 1) drive(b, [park]);
     return leaveTruck(b);
   }
+  // R4: in the forklift (he walked into it): every act of the bot is his own, so he steps out first.
+  if (inForklift(b)) return leaveForklift(b);
   if (o.holder) holdByWord(b);
   if (s.away) press(b, { act: 'ackAway' }, false);
   // Stage 2 (8.2): the works' own legs and the money's habits come first once the works are open; below that, nothing.
@@ -1622,6 +1690,7 @@ function decide2(b: Bot): boolean {
   if (id === 'cutLot') {
     const lot = s.things.find((th) => th.at.at === 'lot' && !th.by);
     if (!take || !lot || tierOf(c, lot) > s.tier) return skip();
+    if (isBlocked(b, 'lot')) return false;
     const n0 = s.things.filter((th) => th.at.at === 'lot').length;
     react(b, 'lot');
     walk(b, thingSpot(b, lot));
@@ -1631,6 +1700,7 @@ function decide2(b: Bot): boolean {
   if (id === 'sortCrate') {
     const n0 = s.things.filter((th) => th.at.at === 'crate').length;
     if (!take || n0 === 0) return skip();
+    if (isBlocked(b, 'crate')) return false;
     standAt(b, 'crate', () => b.g.salvage.things.filter((th) => th.at.at === 'crate').length === 0, 90, 'crate');
     return true;
   }
@@ -1795,14 +1865,17 @@ export interface BotSnap {
   managing: boolean;
   sitting: number;
   sat: string[];
+  /** R4's guard (absent in an older snapshot: none). */
+  fruitless?: { what: string; n: number };
+  blocked?: Record<string, number>;
 }
 export function snapBot(b: Bot): BotSnap {
-  return JSON.parse(JSON.stringify({ g: b.g, now: b.now, k: b.k, standing: b.standing, rec: b.rec, known: [...b.known], lastGoal: b.lastGoal, lastMinute: b.lastMinute, heldDay: b.heldDay, managing: b.managing, sitting: b.sitting, sat: [...b.sat] })) as BotSnap;
+  return JSON.parse(JSON.stringify({ g: b.g, now: b.now, k: b.k, standing: b.standing, rec: b.rec, known: [...b.known], lastGoal: b.lastGoal, lastMinute: b.lastMinute, heldDay: b.heldDay, managing: b.managing, sitting: b.sitting, sat: [...b.sat], fruitless: b.fruitless, blocked: b.blocked })) as BotSnap;
 }
 /** A bot with `opts` resumed from a snapshot (the state is data: the content may be another variant's). */
 export function resumeBot(cfg: SalvageConfig, snap: BotSnap, opts: BotOptions): Bot {
   const b = newBot(cfg, snap.g, snap.now, opts);
-  Object.assign(b, { k: snap.k, standing: snap.standing, rec: snap.rec, known: new Set(snap.known), lastGoal: snap.lastGoal, lastMinute: snap.lastMinute, heldDay: snap.heldDay, managing: snap.managing, sitting: snap.sitting, sat: new Set(snap.sat) });
+  Object.assign(b, { k: snap.k, standing: snap.standing, rec: snap.rec, known: new Set(snap.known), lastGoal: snap.lastGoal, lastMinute: snap.lastMinute, heldDay: snap.heldDay, managing: snap.managing, sitting: snap.sitting, sat: new Set(snap.sat), fruitless: snap.fruitless ?? { what: '', n: 0 }, blocked: { ...(snap.blocked ?? {}) } });
   return b;
 }
 

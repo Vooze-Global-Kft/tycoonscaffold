@@ -807,6 +807,7 @@ export const TEXT = {
   'refusal.noRoute': 'That machine does not take this',
   'refusal.routed': 'This feeds the {plate}. Choose Sell from the bay first.', // T17: a toast of two lines
   'refusal.adCap': 'No more this market day',
+  'refusal.inForklift': 'Step out of the forklift first', // R4: an act of his own tried from the forklift
 } as const satisfies Record<R.TextKey, string>;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).

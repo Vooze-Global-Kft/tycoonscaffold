@@ -36,7 +36,7 @@ import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
 import { MEMO_CHECK, memoMismatch, ROUTES, routesChanged } from './memo';
 import { roundMoney } from './money';
-import { nearPlace, placeGap, pointOf, spotPos } from './positions';
+import { nearPlace, placeGap, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
 import { crateAct, crateActEnd, crateActHolds } from './crate';
 import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
@@ -57,9 +57,9 @@ import { pieceClaimed, pushThing, spliceThing, thingById, thingsAt } from './loo
 //   grams = floor(share × processed) per output of the piece's input key (2.5.3, out per input), the piece's end
 //   giving the exact remainder; the rest is waste. Rate = rate_kg_s (the shear: shear.P / the whole thing's
 //   hardness `h`, 1 for a loose piece) × (1 + lev × (L − 1)), fixed at the piece's start; a level re-rates at once.
-//   A hands-fed plate's outputs go to its TRAY as they are credited (a full tray stops it before its next piece,
-//   nothing lost; yard hands carry the tray to the platform scale); a bay-fed plate's outputs are credited on its
-//   belt and land in their grades' BAYS when the piece is done (its belt weigher), and its `stream` share becomes
+//   EVERY rate plate's outputs (a hands-fed yard plate's too: RULING2 24.1, s2-fix-works2) are credited on its
+//   belt and land in their grades' BAYS when the piece is done (its belt weigher; no tray, no ticket; a tray's grams
+//   kept by an older save are still carried to the platform scale by hand), and a bay-fed plate's `stream` share becomes
 //   the eddy current's outputs while the eddy current runs (else waste). Reagents are paid when a piece (a bay-fed plate's draw) or a heat starts, never by the clock; a
 //   start the cash cannot pay waits.
 // - A BAY-FED plate draws, when idle, ONE piece of at most `inbuf` kg from the first bay of its `in` list whose
@@ -335,7 +335,7 @@ function processedG(w: WorksState, t: number): number {
   return Math.min(k.piece.g, (k.base_g ?? 0) + Math.max(0, t - k.startAt) * k.rate_kg_s * 1000);
 }
 
-/** Where a credited output goes: a hands-fed plate's tray; a bay-fed plate's bays (its belt weigher); the stream to the eddy current's outputs (while it runs). */
+/** Where a credited output goes: the plate's belt (its bays at the piece's end: RULING2 24.1, the yard's plates too); the stream to the eddy current's outputs (while it runs). */
 function deliver(x: Ctx, id: string, w: WorksState, to: string, add: number): void {
   const d = plateDef(x.c, id)!;
   if (to === 'stream') {
@@ -354,10 +354,13 @@ function deliver(x: Ctx, id: string, w: WorksState, to: string, add: number): vo
     void add;
     return;
   }
-  // A bay-fed plate's credited grams stay on its belt (work.credited) and land in their bays when the piece is
+  // Every rate plate's credited grams stay on its belt (work.credited) and land in their bays when the piece is
   // done (finishPlatePiece): a bay changes only at an instant of the queue, so a tick equals a jump (the bays'
-  // first-stock numbering, the round's lots) however the clock is cut.
-  if (d.feedBy === 'hands') w.tray_g[to] = (w.tray_g[to] ?? 0) + add;
+  // first-stock numbering, the round's lots) however the clock is cut. RULING2 24.1 (s2-fix-works2): the yard's
+  // hands-fed plates (the shear, the baler, the granulator) WEIGH WHAT THEY MAKE at the plate, as the back field's
+  // belt weighers do: nothing goes to a tray any more (a tray's grams from an older save are still carried off).
+  void w;
+  void add;
 }
 
 /** Credit a plate's piece to yard second t by the cumulative rule (nothing at a rate of 0). */
@@ -386,7 +389,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
   const key = plateKey(d, k.piece) ?? k.piece.grade;
   creditPlate(x, id, w, t);
   let outSum = 0;
-  const toBays = d.feedBy !== 'hands';
+  // RULING2 24.1: every rate plate's outputs land in their grades' bays at the piece's end (no tray, no ticket).
   for (const [to, share] of plateOut(x.c, id, key)) {
     const total = Math.floor(share * k.piece.g + 1e-6);
     const add = total - (k.credited[to] ?? 0);
@@ -396,7 +399,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
     }
     if (to !== 'stream') {
       outSum += total;
-      if (toBays && total > 0) bayOf(x, to).g += total;
+      if (total > 0) bayOf(x, to).g += total;
       if (total > 0) {
         count(x, `made:${to}`);
         if (heard(x)) x.ev.push({ type: 'plateOut', plate: id, grade: to, g: total });
@@ -414,7 +417,7 @@ function finishPlatePiece(x: Ctx, id: string, w: WorksState, t: number): void {
   x.s.waste_g += k.piece.g - outSum;
   w.work = null;
   count(x, `worked:${id}`);
-  if (d.feedBy !== 'hands') numberBays(x);
+  numberBays(x);
   startPlate(x, id, w, t);
 }
 
@@ -897,13 +900,15 @@ function gapOf(c: SalvageContent, a: string, b: string): number {
  * the floor 12 m from it (their time: 122 samples of 240 on tray trips against 11); the floor filled with the things
  * only they carry, the hook waited for room, the cutters stood with nothing to cut (161 against 84) and every cut
  * count halved. The baler adds §0.12 a kg (+24 %), the walk costs more than twice the hands' time.
- * THE RULE AS BUILT: the crane takes an input key into a plate only when what the plate makes of a kilogram, carried
- * from the plate's plot to the platform scale, is worth at least as much a second of a yard hand's carrying as the
- * same kilogram carried from the tipping floor as the yard would carry it without the crane (a loose piece at its own
- * grade's p̄; a whole thing as a cutter would cut it: its prepared value a kilogram): out(key) / T(plot) ≥ in(key) /
- * T(floor), T(place) = 2 × (legM(place, scale) / hand.v + hand.handle_s) (a yard hand's round from there to the scale
- * and back). A pure function of the content (memoised per content), so the crane does the same work present and
- * away and a tick equals a jump. Where the hands do not bind this forgoes a small gain; it never loses one.
+ * THE RULE AS BUILT (s2-fix-works2, RULING2 24.1): the yard's plates weigh what they make at the plate (finishPlatePiece:
+ * into the bays, no tray), so what the crane lifts from the floor into a plate costs NO yard hand's time at all, where
+ * without the crane a hand would carry the same kilogram from the floor to the platform scale (or a cutter cut it
+ * first). The crane takes an input key into a plate only when what the plate makes of a kilogram is worth at least what
+ * the yard would make of it without the crane (a loose piece at its own grade's p̄; a whole thing as a cutter would cut
+ * it: its prepared value a kilogram): out(key) ≥ in(key). The hand's saved trip is then pure gain, never a loss of worth.
+ * (The first pass's rule out / T(plot) ≥ in / T(floor) priced the tray's walk to the scale, which no longer exists.)
+ * A pure function of the content (memoised per content), so the crane does the same work present and away and a tick
+ * equals a jump.
  */
 const CRANE_WORTH = new WeakMap<object, Map<string, boolean>>();
 function craneWorth(c: SalvageContent, to: string, key: string): boolean {
@@ -922,17 +927,20 @@ function craneWorthNow(c: SalvageContent, to: string, key: string): boolean {
   for (const [g, sh] of plateOut(c, to, key)) if (g !== 'stream') out += sh * pbar(g);
   const o = c.objects[key];
   const vin = o ? (o.gross_g > 0 ? ((o.preparedValue ?? 0) * 1000) / o.gross_g : 0) : pbar(key);
-  const hand = c.crew.hand;
-  const scale = pointOf(c, 'scale');
-  const T = (place: string) => 2 * (legM(c, pointOf(c, place), scale) / Math.max(1e-9, hand.v) + hand.handle_s);
-  return out * T('floor') >= vin * T(d.plot);
+  return out > 0 && out >= vin;
 }
 
-/** May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? */
+/**
+ * May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? A MAGNET lifts only
+ * what is ferrous (2.7: "whole ferrous things and ferrous pieces"; L2): a grade of family `fe`. s2-fix-works2: the thin
+ * cable (`tcab`, material null) passed crane.never, so once the crane's worth rule let it work it would have carried
+ * copper cable into the granulator (8.8 m from its stand, inside reach_m 9).
+ */
 function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
   const k = x.c.crane;
   if (!k) return false;
   if (obj && k.neverObjects.includes(obj)) return false;
+  if (x.c.grades[grade]?.family !== 'fe') return false;
   const mat = x.c.grades[grade]?.material;
   return !(mat && k.never.includes(mat));
 }

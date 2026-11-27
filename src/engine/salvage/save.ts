@@ -275,12 +275,52 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   // Lifetime counters (goals.ts) survive as they are; a save without them gets none.
   const counts = (raw as { counts?: Record<string, unknown> }).counts;
   if (counts && typeof counts === 'object') (s as unknown as { counts: Record<string, number> }).counts = Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, Math.max(0, Math.floor(num(v)))]));
+  // s2-fix-small (R5, RULING2 24): goals.done and goals.skipped are lists of known goal ids on any load (the first yard too).
+  const stage1 = (c.release?.stage ?? 2) < 2;
+  const g = goalsOf(c, raw.goals, fresh.goals, stage1);
+  s.goals = g.goals;
   // s2-fix-loop (X6): a save that has seen stage 2 is kept and frozen by a build at release.stage 1, and put back by a build at stage 2.
-  if ((c.release?.stage ?? 2) < 2) {
+  if (stage1) {
     if (obj<Record<string, unknown>>(raw.counts).bathSet !== undefined) freezeStage2(c, raw, s, fresh2);
     else if (frozenOf(raw)) s.stage2Frozen = JSON.parse(JSON.stringify(frozenOf(raw)));
-  } else if (frozenOf(raw)) thawStage2(c, raw, s, fresh2);
+    // A stage-2 goal's id (a string the first yard's content does not know) waits aside with the rest of stage 2.
+    const was = obj<{ done?: unknown; skipped?: unknown }>(frozenOf(raw)?.goals);
+    const aside = { done: idList([...arr(was.done), ...g.aside.done]), skipped: idList([...arr(was.skipped), ...g.aside.skipped]) };
+    if (aside.done.length || aside.skipped.length) s.stage2Frozen = { ...(s.stage2Frozen ?? { v: 1 }), goals: aside };
+  } else if (frozenOf(raw)) {
+    thawStage2(c, raw, s, fresh2);
+    const was = obj<{ done?: unknown; skipped?: unknown }>(frozenOf(raw)?.goals);
+    const back = goalsOf(c, { ...s.goals, done: [...s.goals.done, ...arr(was.done)], skipped: [...s.goals.skipped, ...arr(was.skipped)] }, fresh.goals, false);
+    s.goals = back.goals;
+  }
   return s;
+}
+
+/** At most this many goal ids in a list (the content has a few dozen goals). */
+const GOAL_IDS_MAX = 500;
+/** Distinct short strings of a list, first occurrence kept (the order the goals were done in). */
+const idList = (x: unknown[]): string[] => [...new Set(x.filter(str))].slice(0, GOAL_IDS_MAX);
+
+/**
+ * s2-fix-small (R5): the goal state of a load. done and skipped are lists of the content's goal ids (every list of
+ * goals.ts goalSpecs: the hour's, day one's, stage 2's), each once, in their order; anything else is dropped. At
+ * release.stage 1 the content has no stage-2 list: a string id it does not know is returned in `aside` (kept with the
+ * rest of stage 2, X6) instead of being lost. The two numbers are finite (a corrupt one takes the fresh yard's).
+ */
+function goalsOf(c: SalvageContent, rawGoals: unknown, fresh: SalvageState['goals'], stage1: boolean): { goals: SalvageState['goals']; aside: { done: string[]; skipped: string[] } } {
+  const x = c as unknown as { goals?: { id: string }[]; dayOne?: { id: string }[]; stage2?: { id: string }[] };
+  const known = new Set([...(x.goals ?? []), ...(x.dayOne ?? []), ...(x.stage2 ?? [])].map((d) => d.id));
+  const rg = obj<SalvageState['goals']>(rawGoals);
+  const aside = { done: [] as string[], skipped: [] as string[] };
+  const keep = (l: unknown, out: string[]) =>
+    idList(arr<unknown>(l)).filter((id) => {
+      if (known.has(id)) return true;
+      if (stage1) out.push(id);
+      return false;
+    });
+  const done = keep(rg.done, aside.done);
+  const skipped = keep(rg.skipped, aside.skipped);
+  return { goals: { ...fresh, ...rg, done, skipped, lastPromptAt: num(rg.lastPromptAt, fresh.lastPromptAt), repeats: Math.max(0, Math.floor(num(rg.repeats, fresh.repeats))) }, aside };
 }
 
 // ------------------------------------------------------------------------------------------------ X6: kept and frozen

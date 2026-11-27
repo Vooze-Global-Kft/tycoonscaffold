@@ -4,8 +4,11 @@
  * the halls, the magnet crane, and a tick equal to a jump on r4 with every plate working. On the works' frozen test
  * content (fixtures/salvage2works.ts: round numbers; no tuned number of the game). Owner: rules-works.
  */
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { SalvageContent } from '../../config/schema.salvage';
+import { SalvageSchema, type SalvageContent } from '../../config/schema.salvage';
+import { shipped2Config } from '../fixtures/shipped2';
+import { newBot, playTo, seededCfg, startGame } from './bot';
 import { r3Works, r4Game, TEST_PLATES, worksCfg } from '../fixtures/salvage2works';
 import { buy, setPresence } from './actions';
 import { plateBuyCheck, setPlateRecipe, setRoute } from './actionsWorks';
@@ -169,8 +172,10 @@ describe('2.6 buying, delivery, commissioning', () => {
     // The works the same present or away (the rest of the yard differs by the first yard's own rules: goalsAt, 2.1.10).
     expect(A.salvage.works).toEqual(L.salvage.works);
     expect(L.salvage.counts!['commissioned:baler']).toBe(1);
-    // 5 s worked at 1 kg/s since t0 + 110: 5 kg of baled light iron in its tray.
-    expect(L.salvage.works.baler.tray_g.lib).toBe(5000);
+    // 5 s worked at 1 kg/s since t0 + 110: 5 kg of baled light iron on its belt (RULING2 24.1: weighed at the plate into
+    // its bay when the piece is done; nothing in a tray).
+    expect(L.salvage.works.baler.work!.credited.lib).toBe(5000);
+    expect(L.salvage.works.baler.tray_g).toEqual({});
   });
 
   it('the boss standing still at its plot for commission_s starts it up; walking off cancels', () => {
@@ -210,14 +215,18 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
     }
     const b = jump(cfg, g, a.salvage.t);
     expect(whole(b)).toEqual(whole(a));
-    expect(Math.abs(b.salvage.works.baler.tray_g.lib - 20_000)).toBeLessThanOrEqual(1);
-    expect(jump(cfg, g, t0 + 20).salvage.works.baler.tray_g.lib).toBe(20_000);
+    expect(Math.abs(b.salvage.works.baler.work!.credited.lib - 20_000)).toBeLessThanOrEqual(1);
+    expect(jump(cfg, g, t0 + 20).salvage.works.baler.work!.credited.lib).toBe(20_000);
+    // RULING2 24.1: the bale is weighed at the plate: the bay gets the whole piece at its end, the tray nothing.
+    expect(bayG(b.salvage, 'lib')).toBe(bayG(g.salvage, 'lib'));
     const c = jump(cfg, g, t0 + 60);
-    expect(c.salvage.works.baler.tray_g.lib).toBe(50_500);
+    expect(bayG(c.salvage, 'lib') - bayG(g.salvage, 'lib')).toBe(50_500);
+    expect(c.salvage.works.baler.tray_g).toEqual({});
     expect(c.salvage.works.baler.work).toBeNull();
   });
 
-  it('a full tray stops a south-yard plate before its next piece and loses nothing', () => {
+  // RULING2 24.1: no plate fills a tray any more; a tray's grams kept by an older save still stop it and are carried off.
+  it('a full tray (an older save\'s) stops a south-yard plate before its next piece and loses nothing', () => {
     const g = act(r4q(), (x) => {
       x.s.works.baler.tray_g = { lib: 200_000 };
       feedPlate(x, 'baler', { uid: 'q.p2', grade: 'li', g: 40_000, from: null, spec: -1 }, x.s.t);
@@ -270,32 +279,58 @@ describe('2.7 the rate plates: the cumulative rule, trays, routes, the crane', (
     const h = jump(cfg, g, g.salvage.t + 120);
     expect(h.salvage.pieces.some((p) => p.uid === 'q.p3')).toBe(false);
     const w = h.salvage.works.baler;
-    const got = (w.tray_g.lib ?? 0) + (w.work ? w.work.piece.g : 0) + w.hopper.reduce((a, p) => a + p.g, 0);
-    // (wave 2) on the played yard a yard hand may already have carried the baled tray to the scale: worked counts it then.
-    expect(got >= 30_000 || (h.salvage.counts!['worked:baler'] ?? 0) - (g.salvage.counts!['worked:baler'] ?? 0) >= 1).toBe(true);
+    const got = (w.work ? w.work.piece.g : 0) + w.hopper.reduce((a, p) => a + p.g, 0);
+    // RULING2 24.1: once worked it is weighed at the plate into the lib bay (no tray trip).
+    expect(w.tray_g).toEqual({});
+    expect(got >= 30_000 || bayG(h.salvage, 'lib') - bayG(g.salvage, 'lib') >= 30_000).toBe(true);
   });
 
-  it('E5: on the test map the crane lifts nothing into a plate whose tray a yard hand would carry farther than the same iron is worth (works.ts craneWorth)', () => {
+  // s2-fix-works2 (RULING2 24.1): the plate weighs what it makes, so the crane's move costs no yard hand's walk; it lifts
+  // a key only when the plate's out is worth at least the key as the yard would sell it (works.ts craneWorth: out >= in).
+  const floorOnly = (x: Ctx, add: Array<[string, string, number]>): void => {
+    x.s.works.crane.move = null;
+    x.s.things = x.s.things.filter((th) => th.at.at !== 'floor');
+    x.s.pieces = x.s.pieces.filter((p) => p.pile !== 'floor' && !p.pile.startsWith('beside.'));
+    let k = 900;
+    for (const [uid, grade, gr] of add) x.s.pieces.push({ uid, grade, g: gr, from: null, spec: -1, pile: 'floor', k: k++, claim: null });
+  };
+  it('E5 / R1: baling pays (lib §0.62 against li §0.50): the crane lifts the floor\'s iron into the baler and the bale is weighed at the plate into its bay; mass exact', () => {
     let g = setRoute(cfg, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
     g = act(g, (x) => {
-      x.s.works.crane.move = null;
-      x.s.things = x.s.things.filter((th) => th.at.at !== 'floor');
-      x.s.pieces = x.s.pieces.filter((p) => p.pile !== 'floor' && !p.pile.startsWith('beside.'));
-      x.s.pieces.push({ uid: 'q.li', grade: 'li', g: 20_000, from: null, spec: -1, pile: 'floor', k: 901, claim: null });
+      floorOnly(x, [['q.li', 'li', 20_000]]);
       worksDepart(x, x.s.t);
-      // Baled light iron §0.62 against §0.50 loose (+24 %), but the baler's tray is 31 m from the scale against the floor's 13 m.
+      expect(x.s.works.crane.move).toMatchObject({ items: ['q.li'], to: 'baler' });
+    });
+    const h = jump(cfg, g, g.salvage.t + 120);
+    expect(h.salvage.pieces.some((p) => p.uid === 'q.li')).toBe(false);
+    expect(h.salvage.works.baler.tray_g).toEqual({});
+    const w = h.salvage.works.baler;
+    const inPlate = (w.work ? w.work.piece.g - (w.work.credited.lib ?? 0) : 0) + w.hopper.reduce((a, p) => a + p.g, 0) + (w.work?.credited.lib ?? 0);
+    // Every gram of the 20 kg is in the baler or in the lib bay (the bale is 1:1, no waste).
+    expect(bayG(h.salvage, 'lib') - bayG(g.salvage, 'lib') + inPlate).toBeGreaterThanOrEqual(20_000);
+  });
+  it('E5 / R1: where the plate\'s out is worth less than its input as the yard sells it, the crane lifts nothing (craneWorth)', () => {
+    // A content where loose light iron is dearer than its bale: the baler would make the yard poorer.
+    const cheap = { ...cfg, salvage: { ...cfg.salvage, worksLayer: { ...cfg.salvage.worksLayer!, grades: { ...cfg.salvage.worksLayer!.grades, lib: { ...cfg.salvage.worksLayer!.grades.lib, pbar: pbar('li') * 0.9 } } } } } as SalvageConfig;
+    let g = setRoute(cheap, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
+    g = act(g, (x) => {
+      floorOnly(x, [['q.li', 'li', 20_000]]);
+      worksDepart(x, x.s.t);
       expect(x.s.works.crane.move).toBeNull();
       expect(x.s.pieces.find((p) => p.uid === 'q.li')?.claim).toBeNull();
+    }, true, cheap);
+  });
+  it('R1: the magnet lifts only ferrous grades: thin cable on the floor is never carried into the granulator, even within reach', () => {
+    let g = quiet(r4Game());
+    g = act(g, (x) => {
+      floorOnly(x, [['q.cab', 'tcab', 5_000]]);
+      worksDepart(x, x.s.t);
+      expect(x.s.works.crane.move).toBeNull();
+      expect(x.s.pieces.find((p) => p.uid === 'q.cab')?.claim).not.toBe('crane.crane');
     });
-    const h = jump(cfg, g, g.salvage.t + 1);
-    expect(h.salvage.works.crane.move ?? null).toBeNull();
   });
 
-  // Where a yard hand's round is mostly handling (handle_s 60 s), the walk from the baler costs little more than the
-  // walk from the floor and baling pays: the crane takes the iron.
-  const worth = { ...cfg, salvage: { ...cfg.salvage, crew: { ...cfg.salvage.crew, hand: { ...cfg.salvage.crew.hand, handle_s: 60 } } } } as SalvageConfig;
   it('the magnet crane moves ferrous pieces from the floor into a hopper its reach holds, never a grade of crane.never', () => {
-    const cfg = worth;
     let g = setRoute(cfg, quiet(r4Game()), 'li', 'baler', r4Game().salvage.t);
     g = act(g, (x) => {
       // Only these two on the floor (r4's crane move set aside: its things go too).
@@ -531,4 +566,41 @@ describe('2.20 the save (the works part)', () => {
     const b = jump(cfg, { ...g0, salvage: { ...g0.salvage, presence: loaded.salvage.presence, presenceAt: loaded.salvage.presenceAt } }, g0.salvage.t + 300);
     expect(a.salvage.works).toEqual(b.salvage.works);
   }, 120_000);
+});
+
+/**
+ * RULING2 24.1 (s2-fix-works2): only the WORKS' yard plates weigh what they make at the plate. The first yard's own machines
+ * (the strippers, the motor bench, the crucible) keep their trays, which yard hands carry to the platform scale: PINNED on
+ * the shipped content at release.stage 1 (the game on the owner's phone) and at stage 2 below the works' opening.
+ */
+describe('RULING2 24.1: the first yard\'s trays still go to the platform scale by hand (shipped content)', () => {
+  const NOW = Date.UTC(2026, 10, 25, 12);
+  const raw = JSON.parse(fs.readFileSync(new URL('../../../games/scrap-yard/game.json', import.meta.url), 'utf8'));
+  const stage1 = (): SalvageConfig => ({ mode: 'salvage', salvage: SalvageSchema.parse(raw.salvage), monetization: raw.monetization }) as unknown as SalvageConfig;
+  for (const [name, base] of [['release.stage 1', stage1], ['stage 2 below the works\' opening', () => shipped2Config(SalvageSchema.parse)]] as const) {
+    it(`${name}: the motor bench's tray is carried off by a yard hand and weighed in on a hand's ticket`, () => {
+      const c0 = base();
+      if (name === 'release.stage 1') expect(c0.salvage.release?.stage ?? 1).toBe(1);
+      const c = seededCfg(c0, 101);
+      const b = newBot(c, startGame(c, NOW), NOW, { hand: 'normal', habit: 'goal', route: 'A', seed: 101 } as never);
+      playTo(b, 40 * 60);
+      const s = structuredClone(b.g.salvage) as SalvageState;
+      expect(s.ladder.rung).toBeLessThan(3);
+      expect(s.counts?.bathSet).toBeUndefined();
+      expect(s.machines.bench.owned).toBe(true);
+      s.machines.bench.tray_g = { ...s.machines.bench.tray_g, li: (s.machines.bench.tray_g.li ?? 0) + 30_000 };
+      const before = s.tickets.length ? s.tickets[s.tickets.length - 1].no ?? 0 : 0;
+      let g = { ...b.g, salvage: s } as SalvageGame;
+      let sawTray = false;
+      for (let k = 0; k < 120 && !sawTray; k++) {
+        g = jump(c, g, g.salvage.t + 5);
+        sawTray = g.salvage.crew.some((m) => m.role === 'hand' && m.job === 'tray');
+      }
+      expect(sawTray).toBe(true);
+      g = jump(c, g, g.salvage.t + 300);
+      const handLi = g.salvage.tickets.filter((tk) => tk.kind === 'weighIn' && tk.by !== 'boss' && (tk.no ?? 0) > before).flatMap((tk) => tk.lines).filter((l) => l.grade === 'li').reduce((a, l) => a + l.g, 0);
+      expect(handLi).toBeGreaterThanOrEqual(30_000);
+      expect(g.salvage.works).toEqual({});
+    }, 120_000);
+  }
 });
