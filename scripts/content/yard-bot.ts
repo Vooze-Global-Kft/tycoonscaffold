@@ -48,7 +48,8 @@ import { awayPass } from '../../src/engine/salvage/away';
 import { idleWhyOf } from '../../src/engine/salvage/crew';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck, levelQuote } from '../../src/engine/salvage/ladder';
-import { levelGainCfg, own } from '../../src/engine/salvage/rate';
+import { levelGainCfg, levelLadderOf, own } from '../../src/engine/salvage/rate';
+import { floorMass } from '../../src/engine/salvage/cards';
 import type { LevelTarget } from '../../src/engine/salvage/types';
 import { packProducts } from '../../src/engine/salvage/shop';
 import { shipped2Config } from '../../src/engine/fixtures/shipped2';
@@ -515,7 +516,7 @@ function gAt(cfg: R.SalvageConfig, g0: R.SalvageGame): { G: number; h: number } 
 // s2e-bots: superseded by soldItems (the stage as built); kept for the record of REPORT9's measure.
 const MEASURED_ITEMS = ['truckBridge', 'pallet', 'forklift', 'plasma'];
 void MEASURED_ITEMS;
-type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[]; tL?: number; tT?: number; T0?: number; dT?: number; dP?: number; E0T?: number; tW_h?: number; worked?: boolean };
+type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[]; tL?: number; tT?: number; T0?: number; dT?: number; dP?: number; E0T?: number; tW_h?: number; worked?: boolean; pourA?: Record<string, number>; pourB?: Record<string, number>; recipeA?: Record<string, string>; recipeB?: Record<string, string> };
 /** s2e-measure (28.4 b): the plasma's lasting gain at one of its three moments. */
 type Plasma3 = { at: string; at_h: number; tL: number; dL: number; dT: number; dP: number; E0: number; tW_h: number; lot4: number; lot3: number; lotA: { cut4: number; cut3: number }; lotB: { cut4: number; cut3: number } };
 
@@ -546,7 +547,7 @@ function playedE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions): { 
  * back); tW: the seconds played; worked: the item worked before the absence began; cut4 / cut3: the worth (prepared value)
  * of the tier-4 and the tier-3 oversize pieces cut in the play.
  */
-type LastE = { Ep: number; hp: number; Ea: number; ha: number; tW: number; worked: boolean; cut4: number; cut3: number; Tp: number; Ta: number };
+type LastE = { Ep: number; hp: number; Ea: number; ha: number; tW: number; worked: boolean; cut4: number; cut3: number; Tp: number; Ta: number; pour?: Record<string, number>; recipe?: Record<string, string> };
 function worksNow(cfg: R.SalvageConfig, g: R.SalvageGame, key: string, c0: Record<string, number>): boolean {
   const s = g.salvage;
   const W = contentAt(cfg.salvage, s).works;
@@ -608,7 +609,13 @@ function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, ke
   if (dumpStates) dumpStates[`${key ?? 'without'}|${playS ?? '-'}`] = { start: g, run: gRun, end: b.g, ev: b.ev.length };
   const bank = b.g.salvage.away?.bank ?? 0;
   const ha = (b.g.salvage.away?.seconds ?? 0) / 3600;
-  return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw, Tp: (s1 - s0) / 1e6, Ta: (b.g.salvage.ladder.supplied_g - s1) / 1e6 };
+  // s2g-measure (RULING2.md 29.1): the heats poured over the absence by plate, and each hall's recipe at its end (the
+  // branches of REPORT10's negative seeds parted on the induction hall's recipe)
+  const pour: Record<string, number> = {};
+  for (const [k, v] of Object.entries(b.g.salvage.counts ?? {})) if (k.startsWith('poured:')) { const d = (v ?? 0) - ((gRun.salvage.counts as Record<string, number> | undefined)?.[k] ?? 0); if (d) pour[k.slice(7)] = d; }
+  const recipe: Record<string, string> = {};
+  for (const [id, w] of Object.entries(b.g.salvage.works)) if (w.heat) recipe[id] = `${w.heat.recipe}${(w.heat as { pinned?: true }).pinned ? '*' : ''}`;
+  return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw, Tp: (s1 - s0) / 1e6, Ta: (b.g.salvage.ladder.supplied_g - s1) / 1e6, pour, recipe };
 }
 /** The lasting gain and its two companions from a branch with the item (A) and one without (B). */
 function lastingGain(A: LastE, B: LastE) {
@@ -710,6 +717,8 @@ interface Sitting2 {
   /** s2e-measure (28.4 f): the advice line at the sitting's end, and its levels: sold (worth having), not the limit, floor-bound. */
   adv?: string;
   lv?: { sold: number; notLimit: number; floor: number; best: string };
+  /** s2g-measure (the lead's pair of 21:15): the loads the driver bought over the absence, by partner (the away card's `bought`). */
+  awayLoads?: Record<string, number>;
 }
 
 // ============================================================================================ s2e-bots: the new economy's measures
@@ -782,9 +791,9 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
 /** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
 const BOOK_FAILING = ['driver'];
 /** The full measurement (RULING2.md 28.8, after a13a006): EVERY sold item's row and price is written, unless it misses the entry rule (then its row and price stand and it is reported to the lead). */
-const WRITE_ITEMS: string[] | null = null;
+const WRITE_ITEMS: string[] | null = ['induction', 'rotary', 'copper'];
 /** The lead's line of 18:30 (3): the rotary hall stays as it is for the table whatever its mean (he rules on it with the fifteen seeds). */
-const STAND_ITEMS = ['rotary'];
+const STAND_ITEMS: string[] = [];
 const f2s = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
 type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; gainsT?: number[]; E0: number; calc: number; I: number; price: number | null };
 
@@ -852,6 +861,66 @@ function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, se
 }
 
 /**
+ * s2g-measure (RULING2.md 29.7, the borrower's numbers; not ruled yet): every level the yard's cards show at a return, by
+ * levelQuote (its calculated gain § an hour, as a share of rated income, sold or "not the limit", its price), and the same
+ * level MEASURED as the price round measures a step (stepUp, then lastingE: an hour played by the reference bot buying
+ * nothing, then one capped absence; with the level and without it): the money it adds an hour and the TONNES it adds an
+ * hour (supplied to the ladder over the absence) against the yard's own; the calculated tonnes beside (rate.ts
+ * ratedCapacity, the yard's capacity in t an hour, with the level less without).
+ */
+type BorrowLevel = { target: LevelTarget; label: string; L: number; gain: number; share: number; sold: boolean; price: number; dE: number; dEshare: number; dT: number; dTshare: number; calcT: number };
+type BorrowRow = { n: number; h: number; rung: number; I: number; cash: number; E0: number; T0: number; cap0: number; levels: BorrowLevel[] };
+function levelTargets(g: R.SalvageGame): { t: LevelTarget; label: string }[] {
+  return [
+    ...g.salvage.crew.map((m) => ({ t: { kind: 'crew', id: m.id } as LevelTarget, label: `${m.role}:${m.id}` })),
+    ...Object.keys(g.salvage.partners).filter((p) => g.salvage.partners[p]?.open).map((p) => ({ t: { kind: 'partner', partner: p } as LevelTarget, label: p })),
+    ...(['stripper', 'bench', 'crucible'] as const).map((m) => ({ t: { kind: 'machine', machine: m } as LevelTarget, label: m })),
+  ];
+}
+function borrowRow(cfg: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, n: number): BorrowRow {
+  const g = landed(cfg, { ...g0, cash: 1e12 } as R.SalvageGame);
+  const I = incomeAt(cfg, g);
+  const cap0 = ratedCapacity(at(cfg, g), g);
+  const E0 = lastingE(cfg, g, opts, null, 3600);
+  const levels: BorrowLevel[] = [];
+  for (const { t, label } of levelTargets(g)) {
+    const q = levelQuote(cfg, g, t);
+    if (!q) continue;
+    const st = stepUp(cfg, g, t, levelLadderOf(g.salvage, t));
+    if (!st) continue;
+    const E1 = lastingE(cfg, st, opts, null, 3600);
+    const ha = (E0.ha + E1.ha) / 2;
+    const dE = (E1.Ea - E0.Ea) / Math.max(1e-9, ha);
+    const dT = (E1.Ta - E0.Ta) / Math.max(1e-9, ha);
+    const T0 = E0.Ta / Math.max(1e-9, E0.ha);
+    levels.push({ target: t, label, L: q.L, gain: Math.round(q.gain), share: q.gain / Math.max(1e-9, q.I), sold: q.sold, price: q.price, dE: Math.round(dE), dEshare: dE / Math.max(1e-9, q.I), dT: +dT.toFixed(3), dTshare: dT / Math.max(1e-9, T0), calcT: +(ratedCapacity(at(cfg, st), st) - cap0).toFixed(3) });
+  }
+  return { n, h: +(g.salvage.t / 3600).toFixed(2), rung: g.salvage.ladder.rung, I: Math.round(I), cash: Math.round(g0.cash), E0: Math.round(E0.Ea / Math.max(1e-9, E0.ha)), T0: +(E0.Ta / Math.max(1e-9, E0.ha)).toFixed(2), cap0: +cap0.toFixed(2), levels };
+}
+/**
+ * s2g-measure (29.7 d, a scratch run): the levels named in --forceLevels (a file {seed: [LevelTarget, ...]}) bought at the
+ * return of the third sitting WHATEVER THEY ADD IN MONEY, each at the price its card would show (levelQuote: tau_r x its
+ * gain, or the floor), paid from the yard's own cash (a level the cash does not cover is skipped and noted). Only the sale
+ * is forced (a copy of the content where that ladder is sold at that price); the play reads the shipped content.
+ */
+function forceLevels(b: Bot, list: LevelTarget[]): string[] {
+  const out: string[] = [];
+  for (const t of list) {
+    const q = levelQuote(b.cfg, b.g, t);
+    if (!q) { out.push(`${JSON.stringify(t)}: no level`); continue; }
+    const lv = b.cfg.salvage.levels as unknown as { book?: Record<string, unknown> };
+    const sell = { ...b.cfg, salvage: { ...b.cfg.salvage, levels: { ...b.cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [levelLadderOf(b.g.salvage, t)]: { g1: Math.max(q.gain, 2e-6), d: 1 } } } } } as R.SalvageConfig;
+    const ck = levelCheck(sell, b.g, t);
+    if (ck.price === null || ck.refusal) { out.push(`${JSON.stringify(t)}: refused ${ck.refusal?.key ?? '-'} (price ${q.price}, cash ${Math.round(b.g.cash)})`); continue; }
+    const cash0 = b.g.cash;
+    b.g = R.level(sell, b.g, t, ck.price, b.g.salvage.t);
+    b.rec.purchases.push({ t: b.g.salvage.t, key: `force:${levelLadderOf(b.g.salvage, t)}`, price: ck.price, kind: 'level', goal: false, cashAfter: b.g.cash });
+    out.push(`${levelLadderOf(b.g.salvage, t)} L${q.L} -> ${q.L + 1} at ${ck.price} (shown ${q.price}; paid ${Math.round(cash0 - b.g.cash)})`);
+  }
+  return out;
+}
+
+/**
  * One stage-2 run (8.2's twice-a-day habit to rung 5): a first hour, then 15 minutes every 11.75 h, up to 8 days (16
  * sittings), stopping at rung 5. The first part (to the works' opening) is cached per seed and hand under --cache and
  * shared by every bot whose habit differs only from there (SHARES_NORMAL). Hard promises are the bot's own checks
@@ -898,13 +967,20 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const idle: Record<string, Record<string, { n: number; idle: number; why: Record<string, number> }>> = {};
   const oldStock: { n: number; rung: number; things: number; byZone: Record<string, number>; objs: Record<string, number> }[] = [];
   // (not in the prices' runs: --plates measures from the returns and needs no probe)
-  const idleOn = which === 'normal' || which === 'freeDrop';
+  // s2g-measure (the lead's pair of 21:15): --probe samples every bot (the always-finance pair too); the tipping floor's fill beside
+  const idleOn = which === 'normal' || which === 'freeDrop' || !!arg('probe');
+  const floorFill: Record<string, { n: number; sum: number }> = {};
+  const borrow: BorrowRow[] = [];
+  const forced: string[] = [];
+  const forceFile = arg('forceLevels');
+  const forceList = forceFile ? ((JSON.parse(fs.readFileSync(path.resolve(forceFile), 'utf8')) as Record<string, LevelTarget[]>)[String(spec.seed)] ?? []) : [];
   const zones1 = new Set(Object.keys(base0.salvage.zones ?? {}));
   const sampleCrew = (g: R.SalvageGame, mode: 'away' | 'play') => {
     const c = contentAt(cfg.salvage, g.salvage);
     for (const m of g.salvage.crew) {
       const k = `r${g.salvage.ladder.rung} ${mode}`;
       const row = ((idle[k] ??= {})[m.role] ??= { n: 0, idle: 0, why: {} });
+      if (m === g.salvage.crew[0]) { const f = (floorFill[k] ??= { n: 0, sum: 0 }); f.n += 1; f.sum += floorMass(c as never, g as never) / Math.max(1, (c as { floorRoom_kg: number }).floorRoom_kg * 1000); }
       row.n += 1;
       if (m.job === 'idle') {
         row.idle += 1;
@@ -957,6 +1033,9 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       oldStock.push({ n: k, rung: gBack.salvage.ladder.rung, things: Object.values(byZone).reduce((a, v) => a + v, 0), byZone, objs });
     }
     if (which === 'bridgeLevels') levelBridge(b);
+    // s2g-measure (29.7): the borrower's numbers at the returns of the third and fourth sittings; the forced levels at the third
+    if (arg('borrower') && (k === 3 || k === 4) && worksOpened(gBack.salvage)) borrow.push(borrowRow(cfg, gBack, opts, k));
+    if (forceList.length && k === 3) forced.push(...forceLevels(b, forceList));
     playTo(b, b.g.salvage.t + S2_PLAY_S, idleOn && worksOpened(gBack.salvage) ? (bb) => sampleCrew(bb.g, 'play') : undefined);
     if (which === 'bridgeLevels') levelBridge(b);
     const ps = b.rec.purchases.slice(n0);
@@ -966,7 +1045,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
     if (arg('walk2') && (which === 'normal' || which === 'freeDrop') && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
     const end = back ? endLook(cfg, b.g) : null;
-    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, drop: s.dropoff.n, adv: advSummary(cfg, b.g), lv: levelsSummary(cfg, b.g), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
+    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, drop: s.dropoff.n, adv: advSummary(cfg, b.g), lv: levelsSummary(cfg, b.g), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0], awayLoads: Object.fromEntries(((card as { bought?: { partner: string; n: number }[] } | null)?.bought ?? []).map((q) => [q.partner, q.n])) });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
       const d = tickJumpGate(cfg, b.g, b.now, 60);
@@ -1005,7 +1084,9 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     // RULING2.md 21.1 (and 19.1): every plate AND the stage's vehicles and tools (2.9, payback-priced) at its planned moment.
     // s2e-bots (27.2 b, 27.6): every SOLD machine, vehicle and tool of the stage as built (the line as `shredder`), at its
     // planned moment in the new goal order; what is dark is not measured again (its REPORT9 row stays in plates.json).
-    const items = soldItems(cfg).map((i) => i.key);
+    // s2g-measure (the lead's budget after ruling 29: ONE price round for the three halls): --items a,b,c measures only those
+    const only = arg('items');
+    const items = soldItems(cfg).map((i) => i.key).filter((k) => !only || only === 'true' || only.split(',').includes(k));
     // one played branch per (return, purchases made first, the item measured, the play's length): s2e-measure (28.4 a)
     const memo = new Map<string, LastE | null>();
     const stateWith = (g0: R.SalvageGame, keys: string[]): R.SalvageGame | null => {
@@ -1037,7 +1118,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const pair = (tag: string, g0: R.SalvageGame, pre: string[], pid: string) => {
       const A = branchAt(tag, g0, [...pre, pid], pid);
       const B = A ? branchAt(tag, g0, pre, null, A.tW) : null;
-      return A && B ? lastingGain(A, B) : null;
+      return A && B ? { ...lastingGain(A, B), pourA: A.pour, pourB: B.pour, recipeA: A.recipe, recipeB: B.recipe } : null;
     };
     // --plasmaOnly (the lead's line of 18:30): only the plasma's third moment below (the seeds whose price shards ran before it)
     const dumpKey = arg('dump');
@@ -1106,7 +1187,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const hB = gA && gB ? handOf(gB) : null;
       const hh = hA && hB ? (hA.h + hB.h) / 2 : 1;
       const q = hA && hB ? { dL: (hA.pieces - hB.pieces) / hh, dT: (hA.E - hB.E) / hh, dP: (hA.E - hB.E) / hh, E0: hB.E / hB.h, E0T: hB.E / hB.h, tW_h: hA.h, worked: true, tL: (hA.t - hB.t) / hh, tT: (hA.t - hB.t) / hh, T0: hB.t / hB.h, hand: true as const } : pair(`r${ri}`, returns[ri].g, pre, pid);
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), tL: +q.tL.toFixed(3), tT: +q.tT.toFixed(3), T0: +q.T0.toFixed(2), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked, ...('hand' in q ? { hand: true } : {}) } : {}), pre };
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), tL: +q.tL.toFixed(3), tT: +q.tT.toFixed(3), T0: +q.T0.toFixed(2), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked, ...('hand' in q ? { hand: true } : {}), ...('pourA' in q ? { pourA: q.pourA, pourB: q.pourB, recipeA: q.recipeA, recipeB: q.recipeB } : {}) } : {}), pre };
     }
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
@@ -1214,7 +1295,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, bench8, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { borrow, forced, floorFill, fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, bench8, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -1855,21 +1936,26 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     // ways after the purchase and a few rich loads more or less move a whole absence): the entry rule reads the mean; the
     // seeds below zero are counted and printed instead
     void lowE;
-    const entryOk = !!E0 && dE >= 0.02 * E0;
     const belowZero = dEs.filter((v) => v < 0).length;
     const tSe = se ? dE / se : NaN;
+    // s2g-measure (RULING2.md 29.3): THE ENTRY RULE'S FORM on the lasting gain: the mean at least 2 % of the yard's income AND
+    // at least two standard errors above zero
+    const entryOk = !!E0 && dE >= 0.02 * E0 && Number.isFinite(tSe) && tSe >= 2;
     // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
     // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
-    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : STAND_ITEMS.includes(pid) || (!entryOk && !forced);
+    // s2g-measure (after ruling 29): prices written ONLY for the three halls (the other items' prices stand), each only if it passes
+    const keep = (WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : false) || STAND_ITEMS.includes(pid) || (!entryOk && !forced);
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
     const moved = Math.abs(price - old);
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
-    lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  = ${Number.isFinite(tSe) ? tSe.toFixed(1) : '-'} s.e. above zero  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  ${belowZero}/${dEs.length} seeds below zero  entry (the mean at least 2 %) ${entryOk ? 'met' : 'MISSED'}${forced ? ' (the plasma: its price is written from this whatever the entry rule, the lead 18:30)' : ''}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
+    lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  = ${Number.isFinite(tSe) ? tSe.toFixed(1) : '-'} s.e. above zero  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  ${belowZero}/${dEs.length} seeds below zero  entry (the mean at least 2 % and 2 s.e.) ${entryOk ? 'met' : 'MISSED'}${forced ? ' (the plasma: its price is written from this whatever the entry rule, the lead 18:30)' : ''}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
     lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? (entryOk ? '  (NOT WRITTEN: outside WRITE_ITEMS)' : '  (NOT WRITTEN: THE ENTRY RULE IS MISSED: its row and price stand; reported to the lead)') : ''}`);
     lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
+    // s2g-measure (29.1): each seed's halls at the absence's end, with the item / without it: recipe (* = pinned) and heats poured over the absence
+    if (xs.some((x) => x.recipeA)) lines.push(`                halls at the absence's end, with | without (recipe, heats over the absence): ${xs.map((x, i) => `s${all.filter((r) => (r.extra.plates as Record<string, PlateRow> | undefined)?.[pid])[i]?.spec.seed ?? '?'} ${Object.entries(x.recipeA ?? {}).map(([k, v]) => `${k}:${v}:${x.pourA?.[k] ?? 0}`).join(',')} | ${Object.entries(x.recipeB ?? {}).map(([k, v]) => `${k}:${v}:${x.pourB?.[k] ?? 0}`).join(',')}`).join('; ')}`);
     { const tl = xs.map((x) => x.tL ?? NaN).filter(Number.isFinite); const m = tl.reduce((q, v) => q + v, 0) / Math.max(1, tl.length); const se2 = tl.length > 1 ? Math.sqrt(tl.reduce((q, v) => q + (v - m) ** 2, 0) / (tl.length - 1) / tl.length) : NaN; const t0m = xs.reduce((q, x) => q + (x.T0 ?? 0), 0) / xs.length; Object.assign(row, { tL: +m.toFixed(3), seTL: +se2.toFixed(3), T0: +t0m.toFixed(2) }); lines.push(`                IN TONNES: the lasting gain ${m.toFixed(2)} t an hour (s.e. ${f2s(se2)}) of the yard's ${t0m.toFixed(1)} t an hour supplied over the absence (${(100 * m / Math.max(1e-9, t0m)).toFixed(1)} %); together ${(xs.reduce((q, x) => q + (x.tT ?? 0), 0) / xs.length).toFixed(2)} t an hour`); }
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
@@ -2520,7 +2606,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('items') ? `i${arg('items')}` : ''}${arg('borrower') ? 'B' : ''}${arg('forceLevels') ? `F${createHash('sha1').update(fs.readFileSync(path.resolve(arg('forceLevels')!))).digest('hex').slice(0, 8)}` : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
