@@ -1,10 +1,10 @@
 {
  "game": "scrap-yard",
- "date": "2026-11-26T20:33:29.728Z",
+ "date": "2026-11-27T04:17:45.424Z",
  "platform": "ios",
  "stage": "export",
  "result": "pass",
- "sourceHash": "82e716e7880062aa7dd4a867aa5f54cd27a2fd472428bc77d5a8b6cfa8ef3814",
+ "sourceHash": "40be7519c66fc7f00b3c9d0be20490b26a0f5c017d8f7949e3c389323203d5fb",
  "sources": [
   "app.config.ts",
   "games/scrap-yard/assets/sfx/amb_yard_1.m4a",
@@ -156,8 +156,10 @@
   "src/engine/salvage/hand.ts",
   "src/engine/salvage/ladder.ts",
   "src/engine/salvage/layer.ts",
+  "src/engine/salvage/lookup.ts",
   "src/engine/salvage/lots.ts",
   "src/engine/salvage/machines.ts",
+  "src/engine/salvage/memo.ts",
   "src/engine/salvage/money.ts",
   "src/engine/salvage/notBuilt.ts",
   "src/engine/salvage/partners.ts",
@@ -348,7 +350,7 @@
   "src/ui/theme.ts"
  ],
  "violations": [],
- "modules": 1942,
+ "modules": 1944,
  "assets": 99,
- "bytes": 5686019
+ "bytes": 5721250
 }
