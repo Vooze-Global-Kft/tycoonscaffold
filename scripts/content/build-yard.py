@@ -779,7 +779,7 @@ def selftest():
     ws = warnings(s, game)
     expect('(3) warns while bots/plates.json is missing', os.path.exists(PLATES_TABLE) or any(w.startswith('(3)') for w in ws))
     c = copy.deepcopy(s)
-    c['map']['works']['places']['shear']['label'] = 'place.noSuchKey'
+    c['map']['works']['places']['shredder']['label'] = 'place.noSuchKey'  # s2e-join: the shear's plot is not drawn at stage 2 (D6)
     expect('(10) warns on a label textKeys.ts lacks', any('place.noSuchKey' in w for w in warnings(c, game)))
     c = copy.deepcopy(s)
     c['worksLayer']['grades']['zzz'] = dict(c['worksLayer']['grades']['ss'])

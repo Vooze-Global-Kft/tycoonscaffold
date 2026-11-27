@@ -18,11 +18,11 @@ import { onSeen, quotePack, signFinance } from './actionsMoney';
 import { reserve } from './advice';
 import { bankRow, financeKind, financePrice, financeTerms, keepPerHour, loanFavoured, loanHintDue, loanOffered, payLot, ratedIG, saveUpSeconds, shownOf, termsAt } from './bank';
 import { cardOf } from './cards';
-import { cardOfMoney, PACK_ROW_LOAN, packRows, parkFinanceRows } from './cardsMoney';
+import { cardOfMoney, packRows, parkFinanceRows } from './cardsMoney';
 import { begin, finish } from './clock';
 import { contentAt, mergedContent } from './layer';
 import { roundMoney } from './money';
-import { packHours, packS, PACK_LOAN, quoteCheck } from './shop';
+import { packHours, packS, packsShown, quoteCheck } from './shop';
 import type { GameConfig } from '../../config/schema';
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { GameState } from '../types';
@@ -310,22 +310,19 @@ describe('RULING2 27.3 D7: no pack is offered while a Bank loan is open; offered
     expect(quoteCheck(cfg, g0, 'pack2', null, SHOP_NOW, US).refusal).toBeNull();
     expect(rowOf(g0).state).toBe('offer');
   });
-  it('while open: refused with a reason of its own (packLoan, not packHeadroom), its row has a line of its own and no Buy', () => {
-    expect(quoteCheck(cfg, open, 'pack2', null, SHOP_NOW, US).refusal).toEqual({ key: PACK_LOAN, args: {} });
-    expect(String(PACK_LOAN)).toBe('packLoan');
-    const row = rowOf(open);
-    expect(row.state).toBe(PACK_ROW_LOAN);
-    expect(String(row.state)).toBe('loanOpen');
-    expect(row.button).toBeNull();
-    for (const r of packRows(cfg, open, SHOP_NOW, US)) expect(r.state, r.product).not.toBe('noRoom');
-    // The pack sheet names the same reason.
+  it('while open (RULING2 28.2 c, amending D7): the pack SECTION is absent, as where the country is off; a Buy pressed all the same is refused packOff', () => {
+    expect(packsShown(cfg, open, US)).toBe(false);
+    expect(quoteCheck(cfg, open, 'pack2', null, SHOP_NOW, US).refusal).toEqual({ key: 'packOff', args: {} });
+    const shop: CardData = cardOf(cfg, open, { kind: 'shop' }, SHOP_NOW, US);
+    expect(shop.shop?.packs).toBeNull();
+    // The pack sheet names nothing of the loan: the words of a pack not offered here.
     const sheet = cardOfMoney(cfg, open, { kind: 'packSheet', product: 'pack2' }, SHOP_NOW, US);
-    expect(sheet.lead).toEqual([{ key: 'refusal.packLoan', args: {} }]);
+    expect(JSON.stringify(sheet)).not.toMatch(/loan|bank/i);
     expect(sheet.packSheet).toBeUndefined();
     // Buy pressed all the same: the SAME state, the refusal heard.
     const ev: SalvageEvent[] = [];
     expect(quotePack(cfg, open, 'pack2', S2, SHOP_NOW, [], SHOP_NOW, open.salvage.t, ev, US)).toBe(open);
-    expect(ev).toContainEqual({ type: 'refused', key: PACK_LOAN, args: {}, retry: null });
+    expect(ev).toContainEqual({ type: 'refused', key: 'packOff', args: {}, retry: null });
   });
   it('no shop button stands beside a debt: no shop card row offers a Buy for a pack while the agreement is open', () => {
     const d: CardData = cardOf(cfg, open, { kind: 'shop' }, SHOP_NOW, US);

@@ -27,8 +27,13 @@ export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem'
  * - adCap: the day's count of that ad is used up (the button is hidden; the action refuses all the same).
  * - inForklift: the boss sits in the forklift and tries an act of his own (cut, sort, weigh, carry): "Step out of the forklift
  *   first" (s2-fix-small, RULING2 24 R4; frameWorks.ts holds it on the frame while he stays where the act would be).
- * Gates reuse `rung` and `needsItem`; money reuses `cash` and `ceiling`; "nothing offered" reuses `nothing`.
+ * - notLimit (s2e-levels, RULING2 27.2 c): a level from the works' opening whose levelGain is under levels.minShareI × I
+ *   ("Not the limit now · +{x} an hour"; state locked, no price, no Buy).
+ * - toApron (s2e-line, RULING2 27.3 D1): a weighed car at the tipping floor, or the boss stepping out with one: it is set
+ *   down on the depollution bay's apron ("Set the car down at the depollution bay").
+ * Gates reuse `rung` and `needsItem`; money reuses `cash` and `ceiling`; "nothing offered" reuses `nothing`. A pack while
+ * a Bank loan is open reuses `packOff` (RULING2 28.2 c: the pack section is absent, as where the country's switch is off).
  */
-export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap', 'inForklift'] as const;
+export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap', 'inForklift', 'notLimit', 'toApron'] as const;
 /** Every refusal key of version 3 (stage 1 and stage 2). */
 export type RefusalKey = (typeof REFUSAL_KEYS)[number] | (typeof REFUSAL_KEYS_V3)[number];

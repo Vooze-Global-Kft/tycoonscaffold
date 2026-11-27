@@ -107,13 +107,20 @@ describe('2.6.4, 2.7 to 2.9 (ruling 27.2 b, 27.3 D1, D2): what the shipped stage
     expect(SalvageSchema.safeParse({ ...raw, rate: { kappa: [null, null, 0.9, 1, 1.1] } }).success).toBe(true);
   });
 
-  it('D2: with no breaker and no depollution bay sold, no partner brings a battery or a car (the garage\'s condition is never met)', () => {
+  it('D2: with no breaker sold no partner brings a battery; a car comes only inside the sold shredder line (27.3 D1, D2)', () => {
+    // s2e-join (s2e-line's request): ruling 27.3 D1 keeps cars INSIDE THE SHREDDER LINE (the depollution bay comes `with`
+    // the shredder). The battery half stands: no sold load brings 'pbb' loose (a drained car's battery goes whole to its box).
     const m = withWorksLayer(S2);
     const sell = new Set(sold(S2).plates);
+    const plates = S2.works!.plates as Record<string, { with?: string[] }>;
+    const lineOf = (needs: string) => sell.has(needs) && (plates[needs]?.with ?? []).length > 0;
     for (const [pid, p] of Object.entries(m.partners)) {
-      const loads = [p.trial, p.skip, ...(p.grows ?? []).filter((x) => sell.has(x.needs)).map((x) => x.contents)];
-      for (const ld of loads) for (const o of Object.keys(ld)) expect(['pbb', 'elv'], `${pid} brings ${o}`).not.toContain(o);
-      for (const x of p.grows ?? []) if (Object.keys(x.contents).some((o) => o === 'pbb' || o === 'elv')) expect(sell.has(x.needs), `${pid} grows on ${x.needs}`).toBe(false);
+      for (const ld of [p.trial, p.skip]) for (const o of Object.keys(ld)) expect(['pbb', 'elv'], `${pid} brings ${o}`).not.toContain(o);
+      for (const x of p.grows ?? []) {
+        const objs = Object.keys(x.contents);
+        if (objs.includes('pbb')) expect(sell.has(x.needs), `${pid} grows batteries on ${x.needs}`).toBe(false);
+        if (objs.includes('elv') && sell.has(x.needs)) expect(lineOf(x.needs), `${pid} brings a car on ${x.needs}, not a line`).toBe(true);
+      }
     }
     // ... and every lot kind's line is a machine or plate the stage sells (or none): nothing waits for a machine not sold
     const lines = new Set([...sell, ...Object.keys(S2.machines)]);

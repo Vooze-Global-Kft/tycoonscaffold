@@ -17,7 +17,7 @@ import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemN
 import { roundMoney } from './money';
 import { levelGain, levelGainCfg, ratedIncome } from './rate';
 import { incomeRate } from './tick';
-import type { Advice, AdviceWait, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt, TxtArgs } from './types';
+import type { Advice, AdviceWait, AdviceWorks, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt, TxtArgs } from './types';
 
 // ============================================================================ the bottleneck (E13c)
 
@@ -317,31 +317,10 @@ export function boughtState(c: SalvageContent, g: SalvageGame, item: string): Sa
   return { ...g, salvage: n };
 }
 
-/**
- * s2e-advice (yard-stage2-economy.md 2.13; RULING2 27.2 d, 27.3 D11): the stage-2 fields of the advice line, present ONLY
- * from the works' opening (a first-yard advice has no `works` field). STAND-IN for types.ts `Advice.works` (closed to this
- * package: requests.md asks the join to ADD `works?: AdviceWorks` to Advice and `next?: Txt | null` to AdviceWait).
- */
-export interface AdviceWorks {
-  /** The calculated gain an hour of the item named, on the player's own yard (levelGain for a level; rate.ts's replay with the item bought less now for a machine, vehicle, tool or hire): the one measure price and advice read. */
-  gain_h: number;
-  /** "+§x an hour on your yard" (advice.gain): x is gain_h as the formatter rounds it, never a table's mean. */
-  gain: Txt;
-  /** Payback, hours: price ÷ gain_h. */
-  payback_h: number;
-  /** (b) THE TARGET: the item costs more than the cash less the driver's reserve. `line` then reads "Save up: {item}" (advice.saveFor) and `save` "Cash for it in about {t}" (advice.saveTime) with this time (bank.ts saveUpSeconds, the card's closed form; while only the reserve stands in the way, the reserve's part). Null when the line names a purchase the cash pays now (a). */
-  saveUp_s: number | null;
-  /** The save-up time's line (advice.saveTime), or null when not saving. */
-  save: Txt | null;
-  /** (b) the second line "For now: {item}" (advice.meanwhile; the design's "Meanwhile") and its purchase: the largest-gain item the cash can buy that still leaves the target affordable on return; null when none, or when not saving. */
-  meanwhile: { action: Advice['action']; open: CardRef; price: number; gain_h: number; line: Txt } | null;
-}
-
-/** The advice line from the works' opening: the first yard's Advice plus its stage-2 fields (`works`). */
-export type AdviceW = Advice & { works?: AdviceWorks };
-
-/** AdviceWait plus the next rung's main purchase (s2e-advice; STAND-IN for types.ts AdviceWait.next, requests.md). */
-export type AdviceWaitW = AdviceWait & { next?: Txt | null };
+/** s2e-join: the stage-2 fields now live in types.ts (`Advice.works`, `AdviceWait.next`); these names stay for their readers. */
+export type { AdviceWorks };
+export type AdviceW = Advice;
+export type AdviceWaitW = AdviceWait;
 
 /** One purchase the works' line may name: its card's action and price, its calculated gain and payback. */
 interface Cand {

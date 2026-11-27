@@ -293,10 +293,9 @@ export const TEXT_KEYS = {
     'card.bay.sellFromBay',
     // s2e-levels (yard-stage2-economy.md 2.11; RULING2 27.2 c, 27.3 D5): a level's row from the works' opening (cards.ts
     // levelWorksLine): what it earns and how soon it pays for itself; and the refusal of a level not worth having now.
-    // STAND-IN: 'refusal.notLimit' moves to the derived `refusal` group once refusals.ts lists 'notLimit' (requests.md).
+    // ('refusal.notLimit' is in the derived `refusal` group: refusals.ts lists 'notLimit', s2e-join.)
     'card.levelEarns',
     'card.levelPays',
-    'refusal.notLimit',
   ],
   /** 2.14, 4.5: the lender's letter, the finance card, the Agreements page; the bank's share in words (`share.*`, see strings.ts). */
   bank: [
@@ -383,13 +382,6 @@ export const TEXT_KEYS = {
     'card.code.confirm',
     'card.code.enter',
     'card.restart.packLost',
-    // s2e-bank (RULING2 27.3 D7): a pack row while a Bank loan is open, and its refusal's words. STAND-IN: 'refusal.packLoan'
-    // moves to the derived `refusal` group (and leaves this one) once refusals.ts lists 'packLoan' (requests.md).
-    'card.shop.loanOpen',
-    'refusal.packLoan',
-    // s2e-line (RULING2 27.3 D1): a weighed car at the floor, or the boss stepping out with one: it goes to the bay's apron.
-    // STAND-IN as packLoan: moves to the derived `refusal` group once refusals.ts lists 'toApron' (requests.md).
-    'refusal.toApron',
   ],
   /** 2.16, 4.9: rewarded ads. */
   ad: ['card.ad.spot', 'card.ad.bonus', 'card.ad.video', 'card.ad.take', 'card.ad.amount', 'card.ad.notReady'],

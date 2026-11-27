@@ -27,7 +27,7 @@ import { bankDef, bankRow, financeCheck, financeName, financeTerms, keepPerHour,
 import { contentAt } from './layer';
 import { awayShowsDebt, bonusCard, spotButton } from './ads';
 import { refusalTxt, topRungOf } from './ladder';
-import { PACK_LOAN, headroomU, ratedI, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
+import { headroomU, ratedI, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
 import type { AgreementRow, AwayCard, CardButton, CardContext, CardData, CardRef, CardRow, EarnedLookRow, FinanceTerms, LookSlot, PackRow, PlateId, SalvageConfig, SalvageGame, ShopCard, ShopLookRow, TextKey, Txt } from './types';
 
 const btn = (label: Txt, action: CardButton['action'], refusal: Txt | null = null): CardButton => ({ label, action, refusal });
@@ -137,13 +137,6 @@ export function lookUsable(cfg: SalvageConfig, g: SalvageGame, slot: LookSlot, i
  * `iap.maxStanding` quotes stand; noRoom ("Nothing to spend it on yet") above headroom. `updated` is the
  * screen's to keep from a quoteUpdated refusal while the card is open (null here).
  */
-/**
- * s2e-bank (RULING2 27.3 D7): a pack row while a Bank loan is open: no Buy, the line `card.shop.loanOpen` ("Not while a
- * Bank loan is open"), never "Nothing to spend it on yet". STAND-IN: types.ts (closed to this package) does not list
- * the state yet; requests.md asks its owner to add 'loanOpen' to PackRow.state, and the cast then goes.
- */
-export const PACK_ROW_LOAN = 'loanOpen' as unknown as PackRow['state'];
-
 export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: CardContext): PackRow[] {
   const I = ratedI(cfg, g);
   const U = headroomU(cfg, g);
@@ -156,7 +149,6 @@ export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: C
     }
     // join2b (the lead, 11:50): past its 24 hours a waiting quote no longer blocks Buy; while it stands the row says so.
     const also = standingOf(g, product).some((q) => q.state === 'waiting') ? { alsoWaiting: true as const } : {};
-    if (ch.refusal?.key === PACK_LOAN) return { product, H, S, state: PACK_ROW_LOAN, ...also, updated: null, button: null };
     if (ch.refusal) return { product, H, S, state: 'noRoom', ...also, updated: null, button: null };
     return { product, H, S, state: 'offer', ...also, updated: null, button: btn({ key: 'card.shop.buy' }, { act: 'buyPack', product, S }) };
   });
@@ -305,6 +297,8 @@ export function moneyOver(cfg: SalvageConfig, g: SalvageGame, card: CardData, no
     const add: CardRow[] = packsHelpShown(cfg, g, ctx)
       ? [
           { id: MONEY_ROW + 'packs', name: { key: 'help.packs' }, line: { key: 'help.packsBody' }, button: null, icon: null, state: 'info' },
+          // s2e-join (s2e-advice's request; RULING2 28.2 d): what an hour of the yard's earnings is, its own row after the pack's.
+          { id: MONEY_ROW + 'packsHour', name: { key: 'help.packsHourBody' }, line: null, button: null, icon: null, state: 'info' },
           { id: MONEY_ROW + 'code', name: { key: 'help.code' }, line: { key: 'help.codeBody' }, button: null, icon: null, state: 'info' },
           { id: MONEY_ROW + 'packLost', name: { key: 'help.packLost' }, line: null, button: null, icon: null, state: 'info' },
         ]

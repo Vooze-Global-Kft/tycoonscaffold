@@ -431,12 +431,8 @@ export function levelQuote(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   return { L, gain, I, tauH, floor, price, paybackH: gain > 1e-6 ? price / gain : Infinity, sold, floorBound: floor >= tauH * gain };
 }
 
-/**
- * s2e-levels: the refusal of a level that is not worth having now ("Not the limit now", with its gain). STAND-IN: refusals.ts
- * (closed to this package) does not list the key yet; requests.md asks the join to add 'notLimit' to REFUSAL_KEYS_V3, and the
- * cast then goes. Its words are `refusal.notLimit` (textKeys.ts, strings.ts).
- */
-export const NOT_LIMIT = 'notLimit' as unknown as RefusalKey;
+/** s2e-levels: the refusal of a level that is not worth having now ("Not the limit now", with its gain); refusals.ts lists it (s2e-join). */
+export const NOT_LIMIT: RefusalKey = 'notLimit';
 
 /** tau(L) minutes of a level priced from its rated gain (a plate's, 2.6.4; a partner's from the works' opening): min(60 x tau_r, levels.tau.first x growth^(L-1)); a rung without a tau: levels.tau.cap. */
 function plateTauMin(c: SalvageContent, L: number, rung: number): number {

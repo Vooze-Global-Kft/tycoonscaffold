@@ -17,10 +17,10 @@
  *   value H hours; S = roundMoney(H × I), I the rated income on the state's content (ratedI, as bank.ts ratedIG).
  * - Packs show (2.15.3) only when: the second session has begun (`iap.sessions2At`), the age band is 'a18',
  *   the rung is at least `iap.packsFromRung`, the store country is known and not in `iap.packsOff`, and the
- *   packs are not hidden in Settings. The age question is due when all but the band hold and no band is kept.
- * - The quote refuses, in order: `packOff` (not a pack, or packs not shown), `packPending` (`iap.maxStanding`
- *   quotes of the product stand, or a WAITING one with 0 ≤ now − atMs < 24 h), `packLoan` (s2e-bank, D7: a Bank
- *   loan is open), `packHeadroom` (S ≤ 0, or cash
+ *   packs are not hidden in Settings, and no Bank loan is open (RULING2 28.2 c). The age question is due when all
+ *   but the band hold and no band is kept (the loan does not count there).
+ * - The quote refuses, in order: `packOff` (not a pack, or packs not shown, a Bank loan open among them), `packPending`
+ *   (`iap.maxStanding` quotes of the product stand, or a WAITING one with 0 ≤ now − atMs < 24 h), `packHeadroom` (S ≤ 0, or cash
  *   + Σ S of every standing quote + S > U), `quoteUpdated` (the S shown is not the S now; event quoteUpdated
  *   {a, b}). Else `{id: q<n>, product, S, I, atMs: now, askedMs, known, state: 'open', wait: null}` is
  *   appended to the END of `iap.pending`; no older quote is ever withdrawn by a Buy (15.12 b).
@@ -113,9 +113,14 @@ function packsBarBand(cfg: SalvageConfig, g: SalvageGame, ctx: CardContext | und
   return !!d && shopReachable(g) && g.salvage.ladder.rung >= d.packsFromRung && countryOn(cfg.salvage, ctx?.country) && !g.salvage.iap.hidden && packProducts(cfg).length > 0;
 }
 
-/** Pack rows show (2.15.3): rung ≥ packsFromRung, the country's switch on, the age band 18 or over, packs not hidden. */
+/**
+ * Pack rows show (2.15.3): rung ≥ packsFromRung, the country's switch on, the age band 18 or over, packs not hidden,
+ * and NO BANK LOAN OPEN (RULING2 28.2 c, amending 27.3 D7; s2e-join): while an agreement is open the pack section is
+ * absent, no header, no row, no word, exactly as where the country's switch is off (a Buy pressed all the same is
+ * refused `packOff`). A quote already waiting when the loan is signed is still granted (grantProduct reads no switch).
+ */
 export function packsShown(cfg: SalvageConfig, g: SalvageGame, ctx?: CardContext): boolean {
-  return packsBarBand(cfg, g, ctx) && g.salvage.iap.ageBand === 'a18';
+  return packsBarBand(cfg, g, ctx) && g.salvage.iap.ageBand === 'a18' && !g.salvage.bank.agreement;
 }
 
 /** The age question is due (4.8): the first time a pack row would show and no band is kept. */
@@ -305,14 +310,6 @@ export function blockingWait(g: SalvageGame, product: string, now: number): Pend
   return standingOf(g, product).find((q) => q.state === 'waiting' && now >= q.atMs && now - q.atMs < WAIT_MS) ?? null;
 }
 
-/**
- * s2e-bank (RULING2 27.3 D7; yard-stage2-economy.md 2.15): NO PACK IS OFFERED WHILE A BANK LOAN IS OPEN. The refusal
- * has its own key and its own line (not packHeadroom's "Nothing to spend it on yet", which would be untrue there).
- * STAND-IN: refusals.ts (closed to this package) does not list the key yet; requests.md asks its owner to add
- * 'packLoan' to REFUSAL_KEYS_V3, and the cast below then goes. Its words are `refusal.packLoan` (textKeys.ts).
- */
-export const PACK_LOAN = 'packLoan' as unknown as RefusalKey;
-
 /** The first refusal of a Buy of `product` now (the order of the header), with S now; refusal null when a quote would be made. */
 export function quoteCheck(cfg: SalvageConfig, g: SalvageGame, product: string, shownS: number | null, now: number, ctx?: CardContext, I?: number, U?: number): { S: number; refusal: { key: RefusalKey; args: TxtArgs } | null } {
   const H = packHours(cfg, product);
@@ -320,8 +317,6 @@ export function quoteCheck(cfg: SalvageConfig, g: SalvageGame, product: string, 
   const S = packS(cfg, g, H, I);
   const d = iapDef(cfg.salvage)!;
   if (standingOf(g, product).length >= d.maxStanding || blockingWait(g, product, now)) return { S, refusal: { key: 'packPending', args: {} } };
-  // s2e-bank (D7): while an agreement is open no pack is offered (bought scrip never repays it; no shop button beside a debt).
-  if (g.salvage.bank.agreement) return { S, refusal: { key: PACK_LOAN, args: {} } };
   if (S <= 0 || g.cash + standingS(g) + S > (U ?? headroomU(cfg, g)) + 1e-9) return { S, refusal: { key: 'packHeadroom', args: {} } };
   if (shownS !== null && Math.abs(shownS - S) >= 0.005) return { S, refusal: { key: 'quoteUpdated', args: { a: { money: shownS }, b: { money: S } } } };
   return { S, refusal: null };

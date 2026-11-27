@@ -18,7 +18,7 @@ import { fullestSkip } from './partners';
 import { placeCardKind, skipLabelOf } from './cards';
 import { truckFree } from './hand';
 import { chevronOf } from './goals';
-import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripPhasePath } from './positions';
+import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripLandingOf, tripPhasePath } from './positions';
 import type {
   FrameArrival,
   FrameBay,
@@ -287,7 +287,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const ownLeg = (() => {
     if (!tk.trip || !tk.trip.speeds || c.truck.yardV === undefined) return null;
     const trip = tk.trip;
-    const path = tripPhasePath(c, trip.phase, trip.partner, trip.slot, { x: tk.x, y: tk.y });
+    // s2e-join (s2e-line's request): a car's 'tip' phase drives round the turning loop to the bay's apron, as the rules do.
+    const path = tripPhasePath(c, trip.phase, trip.partner, trip.slot, { x: tk.x, y: tk.y }, tripLandingOf(c, s));
     const sp = trip.speeds!;
     const L = pathSplit(c, path);
     const drive = L.yard / sp.vy + L.lane / sp.vl;

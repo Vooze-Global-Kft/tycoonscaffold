@@ -12,7 +12,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
-import { buyCheck, crewKeys, gateRefusal, hireCheck, itemName, levelAddsKgMin, levelCheck, levelQuote, refusalTxt, route, rungSign, shopItem, shopItems, type PurchaseCheck } from './ladder';
+import { buyCheck, crewKeys, gateRefusal, gateRung, hireCheck, itemName, levelAddsKgMin, levelCheck, levelQuote, refusalTxt, route, rungSign, shopItem, shopItems, topRungOf, type PurchaseCheck } from './ladder';
 import { driverRoundF, machineShares } from './content';
 import { awayCapH } from './away';
 import { roundMoney } from './money';
@@ -557,7 +557,17 @@ export function processBoardOf(cfg: SalvageConfig, g: SalvageGame): ProcessBoard
 
 /** The truck park's row: the truck (Buy, on its way, owned). */
 function parkRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
-  return shopItem(cfg.salvage, 'truck') ? [shopRow(cfg, g, 'truck', 'effect.truck')] : [];
+  const rows = shopItem(cfg.salvage, 'truck') ? [shopRow(cfg, g, 'truck', 'effect.truck')] : [];
+  // s2e-join (s2e-bank's request; yard-stage2-economy.md 2.14.5): from the works' opening every other vehicle the park
+  // sells (the three-axle hook-lift) has its Buy row here, beside the finance row cardsMoney.ts moneyOver adds. The card's
+  // content is contentAt's (cardOfCfg); a vehicle not sold (gated past the ladder) is not listed. The first yard: unchanged.
+  if (worksOpened(g.salvage)) {
+    for (const it of shopItems(cfg.salvage)) {
+      if (it.key === 'truck' || it.kind !== 'vehicle' || it.place !== 'park' || gateRung(it.gate) > topRungOf(cfg.salvage)) continue;
+      rows.push(shopRow(cfg, g, it.key, effectOf(it.key)));
+    }
+  }
+  return rows;
 }
 
 /** What waits at a place (the drop-off's things, the tipping floor's things and loose pieces). */

@@ -17,7 +17,7 @@ import { FIXTURE_NAMES, FIXTURE_NOW, fixtureGame, stage2Cfg, stage2Game, withTes
 import { firstHour2min, shopCfg, shopGame, SHOP_NOW, r3open, moneyCfg } from '../fixtures/salvage2money';
 import { r4Game, worksCfg } from '../fixtures/salvage2works';
 import { setAgeBand, adPaid } from './actionsMoney';
-import { advice, levelBinds, reserve } from './advice';
+import { ADVICE_WINDOW, advice, levelBinds, reserve } from './advice';
 import { incomeRate } from './tick';
 import { adDay, adOffer, dayRoom, spotButton, sellNow } from './ads';
 import { begin, finish } from './clock';
@@ -339,45 +339,25 @@ describe('E6: rated income never falls when the yard gains (the frozen stage-2 s
 });
 
 describe('E7: the advice line by payback from the works\' opening', () => {
-  it('r4 and r3open: the line names a purchase within the budget whose payback (price / rated gain) is within tau_r and no shorter than any level, hire or shop item\'s', () => {
+  // s2e-join (s2e-advice's request; yard-stage2-economy.md 2.13, RULING2 27.2 d, 27.3 D11): the E7 rule this test pinned (a
+  // purchase within the minutes' budget, payback within tau_r on ratedGain) is superseded: the line names the best buy
+  // within 1.25 tau_r on the ONE measure (levelGain for a level), or a TARGET dearer than the cash ("Save up").
+  // adviceWorks.test.ts holds the rule in full; this keeps E7's two frozen states on its promises.
+  it('r4 and r3open: a purchase the cash pays now pays back within 1.25 tau_r on its printed gain; a dearer one is a save-up target', () => {
     for (const { cfg, g0 } of [{ cfg: worksCfg(), g0: r4Game() }, { cfg: moneyCfg(), g0: r3open() }]) {
       for (const cash of [5_000, 1e9]) {
         const g = { ...g0, cash };
         const a = advice(cfg, g, 0);
         const c = contentAt(cfg.salvage, g.salvage);
         const tau = c.tau_h?.[g.salvage.ladder.rung - 1] ?? Infinity;
-        const pay = (price: number, after: SalvageGame) => {
-          const d = ratedGain(cfg, g, after);
-          return d > 1e-6 ? price / d : Infinity;
-        };
-        // The levels and hires the line could name, by hand, within its budget (2.10).
-        let best = Infinity;
-        const budget = cash + cfg.salvage.advice.minutes * incomeRate(cfg, g) - reserve(cfg, g);
-        for (const m of g.salvage.crew) {
-          const t: LevelTarget = { kind: 'crew', id: m.id };
-          const ck = levelCheck(cfg, g, t);
-          if (ck.price !== null && ck.state !== 'locked' && ck.state !== 'top' && ck.price <= budget + 1e-9) best = Math.min(best, pay(ck.price, levelled(g, t)));
-        }
-        for (const [pid, p] of Object.entries(g.salvage.partners)) {
-          if (!p.open) continue;
-          const t: LevelTarget = { kind: 'partner', partner: pid };
-          const ck = levelCheck(cfg, g, t);
-          if (ck.price !== null && ck.state !== 'locked' && ck.state !== 'top' && ck.price <= budget + 1e-9) best = Math.min(best, pay(ck.price, levelled(g, t)));
-        }
-        for (const role of ['hand', 'cutter', 'driver'] as const) {
-          const ck = hireCheck(cfg, g, role);
-          if (ck.price !== null && ck.state !== 'locked' && ck.state !== 'top' && ck.price <= budget + 1e-9) best = Math.min(best, pay(ck.price, hiredState(g, role)));
-        }
-        if (!a) {
-          expect(best > tau).toBe(true);
-          continue;
-        }
-        expect(a.price).toBeLessThanOrEqual(budget + 1e-9);
-        // A shop item or a plate is rated on its own bought state (advice.ts boughtState); a level or a hire by hand here.
-        if (a.action.act === 'buy') continue;
-        const named = a.action.act === 'level' ? pay(a.price, levelled(g, a.action.target)) : pay(a.price, hiredState(g, a.action.role));
-        expect(named).toBeLessThanOrEqual(tau + 1e-9);
-        expect(named).toBeLessThanOrEqual(best + 1e-9);
+        if (!a) continue;
+        const w = a.works!;
+        expect(w, 'from the works\' opening the line carries its works fields').toBeDefined();
+        expect(w.payback_h).toBeCloseTo(a.price / w.gain_h, 6);
+        if (w.saveUp_s === null) {
+          expect(a.price).toBeLessThanOrEqual(cash - reserve(cfg, g) + 1e-9);
+          expect(w.payback_h).toBeLessThanOrEqual(ADVICE_WINDOW * tau + 1e-9);
+        } else expect(a.price).toBeGreaterThan(cash - reserve(cfg, g) - 1e-9);
       }
     }
   });

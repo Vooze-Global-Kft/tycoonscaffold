@@ -1466,6 +1466,8 @@ export interface AdviceWait {
   source: Txt | null;
   /** The card that shows the source (the Partners tab, the plate's works card), else null. */
   open: CardRef | null;
+  /** s2e-advice (2.13 c): the next rung's main purchase, "Next: {item} · {x}" (advice.buy) at its content price; null when the rung opens none. Only from the works' opening. */
+  next?: Txt | null;
 }
 
 /** The advice line (2.10): the cheapest purchase that widens the bottleneck now (a buy, a hire or a level). */
@@ -1478,7 +1480,29 @@ export interface Advice {
   line: Txt;
   /** v3 (2.13): the bank's one sentence "A loan suits a machine that earns." follows the line (the purchase is a financeable plate the finance card would offer, the letter seen, no agreement open). */
   loanHint?: boolean;
+  /** s2e-advice (yard-stage2-economy.md 2.13): the stage-2 fields, present ONLY from the works' opening (a first-yard advice has none). */
+  works?: AdviceWorks;
 }
+
+/**
+ * s2e-advice (yard-stage2-economy.md 2.13; RULING2 27.2 d, 27.3 D11): the stage-2 fields of the advice line, present ONLY
+ * from the works' opening (moved here from advice.ts by s2e-join).
+ */
+export interface AdviceWorks {
+  /** The calculated gain an hour of the item named, on the player's own yard (levelGain for a level; rate.ts's replay with the item bought less now for a machine, vehicle, tool or hire): the one measure price and advice read. */
+  gain_h: number;
+  /** "+§x an hour on your yard" (advice.gain): x is gain_h as the formatter rounds it, never a table's mean. */
+  gain: Txt;
+  /** Payback, hours: price ÷ gain_h. */
+  payback_h: number;
+  /** (b) THE TARGET: the item costs more than the cash less the driver's reserve. `line` then reads "Save up: {item}" (advice.saveFor) and `save` "Cash for it in about {t}" (advice.saveTime) with this time (bank.ts saveUpSeconds, the card's closed form; while only the reserve stands in the way, the reserve's part). Null when the line names a purchase the cash pays now (a). */
+  saveUp_s: number | null;
+  /** The save-up time's line (advice.saveTime), or null when not saving. */
+  save: Txt | null;
+  /** (b) the second line "For now: {item}" (advice.meanwhile; the design's "Meanwhile") and its purchase: the largest-gain item the cash can buy that still leaves the target affordable on return; null when none, or when not saving. */
+  meanwhile: { action: Advice['action']; open: CardRef; price: number; gain_h: number; line: Txt } | null;
+}
+
 
 /** The top bar (4.1): cash, the ladder chip, carry. */
 export interface TopBar {
