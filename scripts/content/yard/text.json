@@ -38,7 +38,8 @@
     "twitch": { "name": "Twitch", "short": "Twitch", "long": "Shredded aluminium from the sorter" },
     "znh": { "name": "Mixed heavies", "short": "Heavies", "long": "Heavy non-ferrous pieces left by the sorter" },
     "cug": { "name": "Copper granules", "short": "Granules", "long": "Copper chopped from cable by the granulator" },
-    "dust": { "name": "Zinc filter dust", "short": "Zinc dust", "long": "Zinc oxide dust from the brass filter" }
+    "dust": { "name": "Zinc filter dust", "short": "Zinc dust", "long": "Zinc oxide dust from the brass filter" },
+    "cui": { "name": "Refined copper", "short": "Copper ingot", "long": "Fire-refined copper ingot, cast in the yard" }
   },
   "objects": {
     "washer": { "name": "Washing machine", "long": "Washing machine" },

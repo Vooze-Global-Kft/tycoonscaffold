@@ -477,6 +477,7 @@ export const TEXT = {
   'place.eddy': 'Eddy current',
   'place.sorter': 'Sensor sorter',
   'place.smelter': 'Lead smelter',
+  'place.copperHall': 'Copper hall', // s2f-copper (RULING2 27.5, 28.7 c)
 
   // --- chips (4.3, 4.6, 4.5; world chips, 11 pt) ---
   'chip.works.bankTag': '{bank|short}', // the financed plate's tag beside its ring (the ring prints no amount, P7)
@@ -516,6 +517,7 @@ export const TEXT = {
   'title.ageQuestion': 'What year were you born?', // 4.8: no default; kept as a band only
   'title.packCode': '{currency|cap} packs',
   'title.awayBonus': 'For your time away', // 4.9
+  'title.works.copper': 'Copper furnace', // s2f-copper: the copper refining hall's tilting furnace (RULING2 27.5, 28.7 c)
 
   // --- tabs (4.4 the process board's pages; 4.11 the price board's families, content BOARD_TABS) ---
   'tab.first': 'First yard',
@@ -532,6 +534,10 @@ export const TEXT = {
   'recipe.brass': 'Brass',
   'recipe.bronze': 'Bronze',
   'recipe.lead': 'Lead',
+  // s2f-copper: the copper refining hall's three recipes (No.2 copper; copper cylinders whole; thin cable chopped to granules)
+  'recipe.copper': 'No.2 copper',
+  'recipe.cylinders': 'Cylinders',
+  'recipe.cable': 'Cable',
 
   // --- the works plate in the world (4.3; every line ≤ 31, `worksPlateLine`) ---
   'plate.works.buyable': '{plate} · {x}', // "Baler · §9,000"
@@ -793,6 +799,8 @@ export const TEXT = {
   // s2e-advice (yard-stage2-economy.md 1.3): the repeating goal after the list when the advice line names nothing
   'goal.rungToGo': 'Rung {n}: {t} to go', // n: the next rung; t: { tonnes_g } still to supply (adviceWait)
   'goal.buyShredderLine': 'Buy the shredder line', // s2e-fix1 (RULING2 28.5 c): the line is one purchase (the bay and the shredder); goal.buyShredder stays for old contents
+  'goal.buyCopper': 'Buy the copper furnace', // s2f-copper (RULING2 28.7 c): done plate:copper
+  'goal.pourCopper': 'Pour at the copper furnace', // done poured:copper
   // s2e-advice (RULING2 28.2 (d)): Help's scrip page says what an hour of the yard's earnings is (its own row, after help.packsBody)
   'help.packsHourBody': 'An hour of the yard’s own earnings is what it makes in an hour with nobody in it, at today’s prices.',
   // s2e-advice (yard-stage2-economy.md 2.6.2; RULING2 27.3 D6): words for Phase C. A plot whose item opens at the next rung shows

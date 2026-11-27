@@ -59,6 +59,8 @@
     { "id": "buyShredder", "text": "goal.buyShredderLine", "target": "shredder", "via": null, "done": "plate:shredder", "buy": "shredder", "optional": false, "stall": null },
     { "id": "buyRotary", "text": "goal.buyRotary", "target": "rotary", "via": null, "done": "plate:rotary", "buy": "rotary", "optional": false, "stall": null },
     { "id": "pourRotary", "text": "goal.pourRotary", "target": "rotary.apron", "via": null, "done": "poured:rotary", "buy": null, "optional": false, "stall": null },
+    { "id": "buyCopper", "text": "goal.buyCopper", "target": "copper", "via": null, "done": "plate:copper", "buy": "copper", "optional": false, "stall": null },
+    { "id": "pourCopper", "text": "goal.pourCopper", "target": "copper.apron", "via": null, "done": "poured:copper", "buy": null, "optional": false, "stall": null },
     { "id": "supplyRung5", "text": "goal.supplyRung5", "target": null, "via": null, "done": "rung:5", "buy": null, "optional": false, "stall": null },
     { "id": "widenTop", "text": "goal.widen", "target": "advice", "via": null, "done": "repeat", "buy": null, "optional": false, "repeat": true, "stall": null }
   ],

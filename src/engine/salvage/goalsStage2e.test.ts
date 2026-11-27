@@ -23,7 +23,8 @@ import type { SalvageConfig, SalvageGame } from './types';
 
 type Spec = { id: string; text: string; target: string | null; via: string | null; done: string; buy: string | null; optional: boolean; repeat?: boolean; stall: string | null };
 const json = JSON.parse(readFileSync(join(__dirname, '../../../scripts/content/yard/goals.json'), 'utf8')) as { goals: Spec[]; dayOne: Spec[]; stage2: Spec[] };
-const LIST = json.stage2;
+// s2f-copper: the list AS BUILT into game.json (build-yard.py writes no goal naming what the stage does not sell: the copper
+// hall's two goals are written only while its gate sells it), read below from the shipped content
 const isRepeat = (d: Spec) => !!d.repeat || d.done === 'repeat';
 
 /** yard-stage2-economy.md 1.3's list, by id, in its order (the bracketed copper hall and trailer goals are not built). */
@@ -37,6 +38,9 @@ const top = S2.ladder.topRung ?? 3;
 const soldPlates = new Set(Object.entries(S2.works!.plates).filter(([, p]) => gateRung(p.gate) <= top).map(([k]) => k));
 const soldShop = new Map(S2.shop.concat(S2.dayOneList).filter((i) => gateRung(i.gate) <= top).map((i) => [i.key, i]));
 const strings = TEXT as unknown as Record<string, string>;
+const LIST = ((S2 as unknown as { stage2?: Spec[] }).stage2 ?? []) as Spec[];
+// s2f-copper (RULING2.md 27.5, 28.7 c): the copper refining hall's two goals after the rotary hall's, while its gate sells it
+if (soldPlates.has('copper')) DESIGN.splice(DESIGN.indexOf('pourRotary') + 1, 0, 'buyCopper', 'pourCopper');
 
 describe('goals.json stage2 as shipped (1.3; ruling 27)', () => {
   it('the design\'s 17 goals in its order, then one repeating goal at the stage\'s top; ids unique; each entry parses', () => {
