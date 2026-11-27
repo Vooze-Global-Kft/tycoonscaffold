@@ -130,8 +130,13 @@ describe('2.10.1 oversize pieces', () => {
     const g = { ...g0, salvage: s };
     const t1 = s.lots.nextAt!;
     const before = adv(g, t1 - 0.001, false);
-    const xb = begin(cfg, before, [], false);
-    const want = (TEST_LOTS.mu_min[2]! / 60) * ratedIncome(xb.c, before.salvage);
+    // μ set so that μ × I is §4,000 whatever rated income reads on this state (rate.ts is another owner's): two kinds fit.
+    const I = ratedIncome(begin(cfg, before, [], false).c, before.salvage);
+    const mu = (60 * 4_000) / I;
+    const cfgW = { ...cfg, salvage: { ...cfg.salvage, lots: { ...cfg.salvage.lots!, mu_min: [null, null, mu, mu, mu] } } } as typeof cfg;
+    const xb = begin(cfgW, before, [], false);
+    const want = (mu / 60) * ratedIncome(xb.c, before.salvage);
+    expect(want).toBeCloseTo(4_000, 6);
     const u = hash01(C().worldSeed, hashString('lot'), before.salvage.lots.n);
     const cands = xb.c.lots!.kinds.map((k) => {
       const [lo, hi] = lotMassRange(xb, k);
@@ -140,7 +145,9 @@ describe('2.10.1 oversize pieces', () => {
     });
     const fit = cands.filter((q) => q.w <= want).sort((a, b) => b.g - a.g);
     const exp = fit[0] ?? [...cands].sort((a, b) => a.w - b.w)[0];
-    const h = adv(before, t1 + 0.001, false);
+    const xh = begin(cfgW, before, [], false);
+    advance(xh, t1 + 0.001);
+    const h = finish(before, xh);
     const lot = lotsOf(h.salvage)[0];
     expect({ obj: lot.obj, g: lot.g }).toEqual({ obj: exp.obj, g: exp.g });
     // The case is not trivial: more than one kind is open.
