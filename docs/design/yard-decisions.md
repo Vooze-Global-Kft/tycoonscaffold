@@ -2792,3 +2792,43 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
     (c) Rated income's replay reads the same bound (it was just taught the unbounded supply).
     (d) The third measurement runs on this rule, with a pair of five seeds on the old one beside
         it (as the crane's pair was), so that what the rule does is on the table.
+
+28.4 THE BOTS' FIRST LOOK AT THE STAGE AS BUILT (two seeds; `notes/s2e-bots.md`), and THE PRICE'S
+    MEASURE. What the look shows working: the hook-lift is the first big purchase and the loan is
+    offered at the first works sitting (the always-finance bot signs the design's worked example to
+    the unit and repays before rung 4); rung 4 at sitting 4, rung 5 at 10 to 11; oversize pieces
+    come and are cut every sitting; rated income within 0.96 to 1.08 of measured income up to
+    rung 4's entry; an hour away 0.47 and 0.62 of an hour played; both packs fit at rung-4
+    moments; no step of the walk fails. What it shows not working is ruled here so that the
+    fifteen-seed measurement gives one answer:
+    (a) A MACHINE'S OR A VEHICLE'S GAIN IS ITS LASTING GAIN (this amends 21.1 and 27.6). Three
+        engineers measured the shredder line at -0.4 %, +6.7 %, +7.3 % and +33 % of the yard's
+        income, by four methods: an hour of play holds one-off sales of stock and its own noise,
+        and a purchase measured in the hour it is delivered has not started to work. The measure
+        is: what the yard keeps an hour (sales less loads and reagents, stock counted at usual
+        prices) over ONE CAPPED ABSENCE THAT BEGINS ONCE THE ITEM WORKS (set down, started; a hall
+        after its first heat, the line after its first car, the hook-lift after both first loads),
+        with it and without it, on the same state at its planned moment, nobody at the yard in
+        either; the mean of 15 seeds with its standard error. The hour-of-play figure is printed
+        beside it and prices nothing.
+    (b) THE PLASMA CUTTER AND THE SECOND CUTTER DO THE SAME JOB at rung 3 (the cutting is what
+        limits the yard there): whichever is bought second gains little (the plasma: +36 % before
+        the hire, -1 % after it and the hook-lift). The measurement prints the plasma's lasting
+        gain at three moments (the first works return before anything is bought; after the second
+        cutter; after the hook-lift) and what the oversize pieces it opens are worth an hour over
+        those that come without it, and brings them to the lead: its place in the goal order, its
+        price, or its leaving the stage is ruled on those numbers, not before.
+    (c) EVERY LADDER THAT FAILS ITS CHECK IS PRICED FROM THE BOOK (the look: the driver's
+        calculated gain 0.49 of its measured first step, the cutter's 1.79, the plumber's 0.66):
+        the bots write g1 and d for each on 15 seeds. Rated income's over-reading from day 3 on
+        (1.27 to 1.41) is reported with the term that carries it; a factor outside 0.85 to 1.15 is
+        still refused.
+    (d) A HALL'S FIRST HEAT IS POURED AT THE NEXT RETURN where it is not ready within the sitting
+        (a heat takes 8 to 40 minutes): gate G15 reads so. The sitting must still hold the buying,
+        the letter where due and the pieces within a quarter of an hour.
+    (e) Rung 5's tonnes are set in the measurement's one round so that rung 5 comes at sittings 8
+        to 9 where the band allows (the look: 5 to 6 sittings after the last machine).
+    (f) The card manager's goal card stood on a first-yard goal ("sign the deal") all stage long,
+        and the always-finance bot and the manager bought nothing for three to four sittings with
+        a headroom of zero while the normal hand bought levels: both are findings for the
+        measurement to explain with their smallest example before the table is read.
