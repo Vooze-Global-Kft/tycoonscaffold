@@ -644,7 +644,7 @@ function envelope(c: Ctx['c'], s: Ctx['s'], raw: RatedTerms): RatedTerms {
     dims.push({ top: ps.level, at: (st, e) => ({ ...st, partners: { ...st.partners, [id]: { ...st.partners[id], level: e } } }) });
   }
   for (const m of s.crew) {
-    if ((m.role !== 'driver' && m.role !== 'cutter') || m.level <= 1) continue;
+    if (m.level <= 1) continue;
     dims.push({ top: m.level, at: (st, e) => ({ ...st, crew: st.crew.map((x) => (x.id === m.id ? { ...x, level: e } : x)) }) });
   }
   if (s.tier > 1) dims.push({ top: s.tier, at: (st, e) => ({ ...st, tier: e }) });
