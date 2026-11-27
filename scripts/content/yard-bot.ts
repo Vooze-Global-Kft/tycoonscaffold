@@ -651,6 +651,16 @@ function report8(all: Summary[], tauH: (number | null)[]): string {
     }
     return xs;
   };
+  if (by('old').length) {
+    L.push('');
+    L.push("T3b. THE YARD HANDS' ORDER OF WORK, NEW AGAINST OLD (RULING2.md 16.7, 16.3 (ii)): crew.orderFromRung beyond the ladder (old) against the shipped rule (normal), the mean over seeds of old / new - 1; aim: new keeps at least what old kept");
+    for (const [day, n] of [['day 1', 2], ['day 3', 6]] as const) {
+      for (const [what, f] of [['lifetime earnings', (x: Sitting2) => x.Lend], ['supplied t', (x: Sitting2) => x.t]] as const) {
+        const d = cmp('old', n, f);
+        L.push(`   ${day} ${what.padEnd(18)} n ${pad(d.length, 2)}  old vs new mean ${pc(mean(d))} (worst ${pc(Math.min(...d))}, best ${pc(Math.max(...d))}): ${mean(d) <= 0.01 ? 'met' : 'MISSED'}`);
+      }
+    }
+  }
   if (by('behind').length) {
     L.push('');
     L.push('T3. PLANNING AHEAD (14.9): ahead true (normal) against false (behind), the MEAN over seeds of (true / false - 1) ... printed as false against true; the noise floor (cutters x (1 + 1e-9)) beside; gate: within 2 % for lifetime earnings and 5 % for supplied');
