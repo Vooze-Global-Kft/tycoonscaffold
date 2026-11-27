@@ -140,7 +140,8 @@ describe('M1: the real game.json at release.stage 1 sells nothing and asks the s
     // the helper leaves the real file's objects alone
     expect(RAW.monetization.iap.products).toEqual([]);
     const shop = await import('../salvage/shop');
-    const c2 = shipped2Config(RAW);
+    const { SalvageSchema } = await import('../../config/schema.salvage');
+    const c2 = shipped2Config((x) => SalvageSchema.parse(x), RAW);
     expect(shop.productsOf(c2)).toHaveLength(16);
     expect(shop.packHours(c2, 'yard_pack20')).toBe(20);
     expect(shop.noAdsProduct(c2)).toBe('yard_skipAds');

@@ -51,16 +51,15 @@ describe('M4: the works card opened from the screen reports its plate', () => {
   });
 
   it('a place card still reports its place, and no plate (the first yard\'s call as merged)', async () => {
-    const R = await import('../../engine/salvage');
     const { moneyCfg, r3open } = await import('../../engine/fixtures/salvage2money');
     const { useGame } = await import('../../state/store');
     const { salvageActions } = await import('./actions');
     const cfg = moneyCfg();
     const g = r3open();
-    const place = Object.keys((cfg.salvage as unknown as { map: { places: Record<string, unknown> } }).map.places ?? {})[0] as R.PlaceId | undefined;
+    const place = Object.keys((cfg.salvage as unknown as { map: { places: Record<string, unknown> } }).map.places ?? {})[0] as never as string | undefined;
     useGame.setState({ cfg: cfg as never, game: g as never, hydrated: true, offline: null });
     if (!place) return;
-    salvageActions.press({ act: 'open', card: { kind: 'place', place } });
+    salvageActions.press({ act: 'open', card: { kind: 'place', place: place as never } });
     const after = useGame.getState().game as unknown as typeof g;
     expect(after.salvage.seen.places).toContain(place);
     expect(after.salvage.bank.letterSeen).toBe(g.salvage.bank.letterSeen);

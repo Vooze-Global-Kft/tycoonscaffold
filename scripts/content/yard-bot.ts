@@ -80,7 +80,7 @@ function loadCfg(file: string): R.SalvageConfig {
   // since M1 (s2-fix-content) it is empty at release.stage 1, so a stage-2 run reads the game through the one helper
   // (src/engine/fixtures/shipped2.ts: release.stage 2 and the shared list mirrored from salvage.iap.products).
   const stage = Number(arg('stage', '0'));
-  if (stage >= 2) return shipped2Config(raw);
+  if (stage >= 2) return shipped2Config((x) => SalvageSchema.parse(x), raw);
   const salvage = SalvageSchema.parse(stage ? { ...raw.salvage, release: { ...(raw.salvage.release ?? {}), stage } } : raw.salvage);
   return { mode: 'salvage', salvage, ...(stage ? { monetization: raw.monetization } : {}) } as unknown as R.SalvageConfig;
 }
@@ -222,6 +222,41 @@ function walkRow(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: str
 }
 
 /**
+ * E8 (RULING2.md 22; s2-fix-content): A HIDDEN BEST BUY is a step of the walk whose gain is over `HIDDEN_GAIN` (5 %) of G
+ * at a payback (price over the gain an hour) under tau_r, which neither the advice line nor the goal card names at the
+ * state (the report then says so instead of "nothing useful is left"). tau_r: content tau_h at the state's rung, else
+ * the first yard's level cap (levels.tau.cap minutes). Measured, never a rule.
+ */
+const HIDDEN_GAIN = 0.05;
+function tauAt(cfg: R.SalvageConfig, g: R.SalvageGame): number {
+  const tau = (cfg.salvage as { tau_h?: (number | null)[] }).tau_h?.[Math.max(1, g.salvage.ladder.rung) - 1];
+  return typeof tau === 'number' ? tau : cfg.salvage.levels.tau.cap / 60;
+}
+function hiddenBest(d: number, payback_h: number, tau: number, step: string, named: Set<string>): boolean {
+  return d > HIDDEN_GAIN && payback_h < tau && !named.has(step);
+}
+/** The walk's step names of what the advice line and the goal card name at the state (its own cash). */
+function namedSteps(cfg: R.SalvageConfig, g: R.SalvageGame): Set<string> {
+  const out = new Set<string>();
+  const role = (id: string) => g.salvage.crew.find((m) => m.id === id)?.role;
+  const a = R.advice(cfg, g, g.salvage.clock.highMs);
+  if (a) {
+    const x = a.action as { act: string; item?: string; role?: string; target?: { kind: string; id?: string; machine?: string; partner?: string; plate?: string } };
+    if (x.act === 'buy' && x.item) out.add(`buy ${x.item}`);
+    if (x.act === 'hire' && x.role) out.add(`hire ${x.role}`);
+    const tg = x.target;
+    if (x.act === 'level' && tg) out.add(tg.kind === 'crew' ? `level ${role(tg.id ?? '')}` : tg.kind === 'machine' ? `level ${tg.machine}` : tg.kind === 'partner' ? `level ${tg.partner}` : `level plate ${tg.plate}`);
+  }
+  const goal = R.nextGoal(cfg, g);
+  if (goal?.buy) {
+    const it = [...contentAt(cfg.salvage, g.salvage).shop, ...cfg.salvage.dayOneList].find((i) => i.key === goal.buy);
+    const r = it && it.kind === 'crew' ? (['hand', 'cutter', 'driver'] as const).find((q) => goal.buy!.startsWith(q)) : undefined;
+    out.add(r ? `hire ${r}` : `buy ${goal.buy}`);
+  }
+  return out;
+}
+
+/**
  * REPORT8, ruling 17.1 at stage 2 (--walk2): walkRow's walk on a stage-2 state, with the shop read at the state (the works
  * layer's items, the plates) and every owned plate's level one step up; the return's unread card put aside first.
  */
@@ -232,28 +267,32 @@ function walk2Row(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: st
   const g = landed(cfg, { ...g0, cash: 1e12, salvage: { ...g0.salvage, away: null } } as R.SalvageGame);
   const b0 = walkG(cfg, g);
   const t = g.salvage.t;
+  // E8 (RULING2.md 22; s2-fix-content): what the advice line and the goal card name AT THE RETURN (the player's own cash), as step names
+  const named = namedSteps(cfg, g0);
   const steps: [string, () => R.SalvageGame][] = [];
+  const priceOf = new Map<string, number>();
+  const push = (name: string, price: number, f: () => R.SalvageGame) => (priceOf.set(name, price), steps.push([name, f]));
   for (const role of ['hand', 'cutter', 'driver'] as const) {
     const ck = hireCheck(cfg, g, role);
-    if (ck.price !== null && !ck.refusal) steps.push([`hire ${role}`, () => R.hire(cfg, g, role, ck.price!, t)]);
+    if (ck.price !== null && !ck.refusal) push(`hire ${role}`, ck.price, () => R.hire(cfg, g, role, ck.price!, t));
   }
   const roles = new Set<string>();
   for (const m of g.salvage.crew) {
     if (roles.has(m.role)) continue; // one of each role (the cheapest step is the first of its kind)
     const ck = levelCheck(cfg, g, { kind: 'crew', id: m.id });
-    if (ck.price !== null && !ck.refusal) { roles.add(m.role); steps.push([`level ${m.role}`, () => R.level(cfg, g, { kind: 'crew', id: m.id }, ck.price!, t)]); }
+    if (ck.price !== null && !ck.refusal) { roles.add(m.role); push(`level ${m.role}`, ck.price, () => R.level(cfg, g, { kind: 'crew', id: m.id }, ck.price!, t)); }
   }
   for (const id of ['stripper', 'bench', 'crucible'] as const) {
     const ck = levelCheck(cfg, g, { kind: 'machine', machine: id });
-    if (ck.price !== null && !ck.refusal) steps.push([`level ${id}`, () => R.level(cfg, g, { kind: 'machine', machine: id }, ck.price!, t)]);
+    if (ck.price !== null && !ck.refusal) push(`level ${id}`, ck.price, () => R.level(cfg, g, { kind: 'machine', machine: id }, ck.price!, t));
   }
   for (const pid of Object.keys(g.salvage.partners)) {
     const ck = levelCheck(cfg, g, { kind: 'partner', partner: pid });
-    if (ck.price !== null && !ck.refusal) steps.push([`level ${pid}`, () => R.level(cfg, g, { kind: 'partner', partner: pid }, ck.price!, t)]);
+    if (ck.price !== null && !ck.refusal) push(`level ${pid}`, ck.price, () => R.level(cfg, g, { kind: 'partner', partner: pid }, ck.price!, t));
   }
   for (const pid of Object.keys(g.salvage.works)) {
     const ck = levelCheck(cfg, g, { kind: 'plate', plate: pid } as never);
-    if (ck.price !== null && !ck.refusal) steps.push([`level plate ${pid}`, () => R.level(cfg, g, { kind: 'plate', plate: pid } as never, ck.price!, t)]);
+    if (ck.price !== null && !ck.refusal) push(`level plate ${pid}`, ck.price, () => R.level(cfg, g, { kind: 'plate', plate: pid } as never, ck.price!, t));
   }
   const seen = new Set<string>();
   for (const it of [...contentAt(cfg.salvage, g.salvage).shop, ...cfg.salvage.dayOneList]) {
@@ -261,23 +300,28 @@ function walk2Row(base: R.SalvageConfig, seed: number, g0: R.SalvageGame, at: st
     if (it.kind === 'crew' || seen.has(it.key) || it.key in g.salvage.works) continue;
     seen.add(it.key);
     const ck = buyCheck(cfg, g, it.key as never);
-    if (ck.price !== null && !ck.refusal) steps.push([`buy ${it.key}`, () => R.buy(cfg, g, it.key as never, ck.price!, t)]);
+    if (ck.price !== null && !ck.refusal) push(`buy ${it.key}`, ck.price, () => R.buy(cfg, g, it.key as never, ck.price!, t));
   }
-  const rows: { step: string; d: number }[] = [];
+  const rows: { step: string; d: number; price?: number; payback_h?: number; hidden?: boolean }[] = [];
+  const tau = tauAt(cfg, g);
   for (const [name, f] of steps) {
     try {
       const h = landed(cfg, { ...f(), cash: 1e12 } as R.SalvageGame);
-      rows.push({ step: name, d: (walkG(cfg, h, b0.h).G - b0.G) / b0.G });
+      const d = (walkG(cfg, h, b0.h).G - b0.G) / b0.G;
+      const price = priceOf.get(name) ?? 0;
+      // payback: the price over the gain an hour of yard time (G is a rate an hour)
+      const payback_h = d > 0 ? price / (d * b0.G) : Infinity;
+      rows.push({ step: name, d, price, payback_h, hidden: hiddenBest(d, payback_h, tau, name, named) });
     } catch (e) {
       rows.push({ step: `${name} (threw: ${String((e as Error).message).slice(0, 60)})`, d: NaN });
     }
   }
-  return { at, rung: g.salvage.ladder.rung, G: Math.round(b0.G), noise: (walkG(noise, g, b0.h).G - b0.G) / b0.G, rows };
+  return { at, rung: g.salvage.ladder.rung, G: Math.round(b0.G), noise: (walkG(noise, g, b0.h).G - b0.G) / b0.G, rows, tau, named: [...named] };
 }
 
 /** 9. THE PURCHASE WALK (RULING2.md 17.1): per moment and step, the mean change of G over the seeds (a seed's several crew of one role averaged), the worst seed, and the noise floor. */
 function walkSection(L: string[], all: Summary[]): void {
-  type W = { at: string; rung: number; G: number; noise: number; rows: { step: string; d: number }[] };
+  type W = { at: string; rung: number; G: number; noise: number; rows: { step: string; d: number; payback_h?: number; hidden?: boolean }[]; named?: string[]; tau?: number };
   const runs = all.filter((r) => r.spec.kind === 'walk' || (r.spec.kind === 'stage2' && ((r.extra.walk as unknown[] | undefined) ?? []).length > 0));
   if (!runs.length) return;
   L.push('');
@@ -290,6 +334,9 @@ function walkSection(L: string[], all: Summary[]): void {
     if (!ws.length) continue;
     const nz = ws.map((q) => q.w!.noise);
     L.push(` ${at} (${ws.length} states; rungs ${[...new Set(ws.map((q) => q.w!.rung))].join(',')}; median G §${Math.round(med(ws.map((q) => q.w!.G)))} an hour): noise mean ${pc(nz.reduce((a, v) => a + v, 0) / nz.length)}, mean |noise| ${pc(nz.reduce((a, v) => a + Math.abs(v), 0) / nz.length)}, worst ${pc(Math.min(...nz))}`);
+    // E8 (s2-fix-content): the hidden best buys of the moment, per seed (gain over 5 % at a payback under tau_r that neither the advice line nor the goal names)
+    const hid = ws.flatMap(({ seed, w }) => w!.rows.filter((q) => q.hidden).map((q) => `${q.step} s${seed} ${pc(q.d)} payback ${(q.payback_h ?? NaN).toFixed(1)} h`));
+    if (ws.some((q) => q.w!.named)) L.push(`   advice / goal name: ${[...new Set(ws.flatMap((q) => q.w!.named ?? []))].join(', ') || 'nothing'}; HIDDEN BEST BUYS (gain > 5 %, payback < tau ${ws[0].w!.tau ?? '-'} h, named by neither): ${hid.length ? hid.join('; ') : 'none'}`);
     const by = new Map<string, Map<number, number[]>>();
     for (const { seed, w } of ws) for (const q of w!.rows) {
       const m = by.get(q.step) ?? new Map<number, number[]>();
@@ -303,7 +350,8 @@ function walkSection(L: string[], all: Summary[]): void {
       const bad = mean < -0.01 || worst.d < -0.04;
       n++;
       if (bad) fails++;
-      L.push(`   ${step.padEnd(26)} n ${pad(per.length, 2)}  mean ${pc(mean).padStart(9)}  worst ${pc(worst.d).padStart(9)} (s${worst.seed})${bad ? '  FAILS' : ''}`);
+      const hidden = ws.filter(({ w }) => w!.rows.some((q) => q.step === step && q.hidden)).length;
+      L.push(`   ${step.padEnd(26)} n ${pad(per.length, 2)}  mean ${pc(mean).padStart(9)}  worst ${pc(worst.d).padStart(9)} (s${worst.seed})${bad ? '  FAILS' : ''}${hidden ? `  HIDDEN BEST BUY (${hidden} seed${hidden > 1 ? 's' : ''})` : ''}`);
     }
   }
   L.push(` GATE (17.1): ${fails ? `${fails} of ${n} steps FAIL` : `met on all ${n} steps`}`);
@@ -398,6 +446,9 @@ interface Sitting2 {
   mats: number;
   rack: number;
   van: number;
+  /** E8 (s2-fix-content): oversize lots cut in the sitting (its away pass and its play: counts.lotOpened) and lots arrived (lots.n), deltas. */
+  lotsCut: number;
+  lotsCame: number;
   G?: number;
   Iback?: number;
 }
@@ -442,6 +493,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
     newSitting(b);
     const cash0 = b.g.cash;
+    const cut0 = b.g.salvage.counts?.lotOpened ?? 0;
+    const came0 = b.g.salvage.lots?.n ?? 0;
     const a = performance.now();
     away(b, S2_AWAY_S);
     const awayMs = performance.now() - a;
@@ -455,7 +508,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     const s = b.g.salvage;
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
     if (arg('walk2') && which === 'normal' && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
-    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)) } : {}) });
+    sittings.push({ n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)) } : {}) });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
       const d = tickJumpGate(cfg, b.g, b.now, 60);
@@ -556,13 +609,15 @@ function report2(all: Summary[], seeds: number[]): string {
         worst = Math.max(worst, streak);
       }
       L.push(`   ${String(bot).padEnd(9)} s${pad(r.spec.seed, 2)}  r3 ${hours(r.rungs[3])} r4 ${hours(r.rungs[4])} r5 ${hours(r.rungs[5])}  ${ss.length} sittings, ${dry} without a purchase (longest run ${worst}); end ${r.extra.supplied_t} t ${r.extra.materials} materials, cash §${r.extra.cash}, goal ${r.extra.lastGoal}; rung 4 at sitting ${ss.find((x) => x.rung >= 4)?.n ?? '-'} (day ${((ss.find((x) => x.rung >= 4)?.n ?? NaN) / 2).toFixed(1)}), rung 5 at sitting ${ss.find((x) => x.rung >= 5)?.n ?? '-'}  cpu ${Math.round(r.ms / 1000)} s`);
+      // E8 (RULING2.md 22; s2-fix-content): the oversize lots cut a sitting (the lot loop of X1/E1 shows here), and those that came
+      L.push(`               lots cut a sitting: ${ss.map((x) => x.lotsCut ?? 0).join(' ')} (came: ${ss.map((x) => x.lotsCame ?? 0).join(' ')})`);
     }
   }
   L.push('');
   L.push("2. THE SITTINGS (normal bot): hour, rung, supplied t, cash on return -> after, the away pass's cash moved (bank's share), I, purchases (§), the goal after, the away pass's CPU");
   for (const r of runs.filter((q) => q.spec.bot === 'normal')) {
     L.push(`   seed ${r.spec.seed}:`);
-    for (const x of r.extra.sittings as Sitting2[]) L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 6)} r${x.rung} ${pad(x.t, 8)} t  §${pad(x.cashBack, 9)} -> §${pad(x.cash, 9)}  away +${pad(x.awayNet, 8)} (bank ${x.awayBank})  I ${pad(x.I, 7)}  +${pad(x.bought, 2)} (§${x.spent})  ${String(x.goal).padEnd(15)} ${x.awayMs} ms  ${x.works}`);
+    for (const x of r.extra.sittings as Sitting2[]) L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 6)} r${x.rung} ${pad(x.t, 8)} t  §${pad(x.cashBack, 9)} -> §${pad(x.cash, 9)}  away +${pad(x.awayNet, 8)} (bank ${x.awayBank})  I ${pad(x.I, 7)}  +${pad(x.bought, 2)} (§${x.spent})  lots cut ${pad(x.lotsCut ?? 0, 3)} came ${pad(x.lotsCame ?? 0, 2)}  ${String(x.goal).padEnd(15)} ${x.awayMs} ms  ${x.works}`);
   }
   L.push('');
   L.push("3. THE MONEY'S HABITS AND THE WORKS' OWN LEGS");

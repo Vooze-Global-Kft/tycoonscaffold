@@ -1156,7 +1156,8 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // load nets a second of the yard's slowest step. 99: beyond the ladder, the first yard's rule (the skip full longest that
   // fits) everywhere: 16.8 (2) not met over the bots' days (notes/dispatch-engine2.md "After the check"); 1 switches it on.
   // owner1 (RULING-owner1 V3, T3): yardV / bossYardV inside the fence, the lane pays for it (bossV 9 -> 11 on the lane); the boss hooks in 4 s.
-  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 20 },
+  // fairAfter_trips 4 (RULING2.md 22 E4 (a); s2-fix-content): from the works' opening no open partner's full skip waits more than 4 trips (the loop's rule).
+  truck: { v: 12, bossV: 11, handle_s: 10, driverFactor: 0.9, radius: 1.3, enter: 2, tare_kg: 5200, skipTare_kg: 640, pickFromRung: 99, yardV: 4, bossYardV: 4.5, bossHandle_s: 4, laneMaxF: 20, fairAfter_trips: 4 },
   machines: {
     hand_stripper: { rate: 1, needs_boss: true, inbuf: 60, tray: 200 },
     stripper: { rate: 6, inbuf: 200, lev: 0.15, tray: 200 },
@@ -1454,6 +1455,11 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     topRung: 5,
     thetaShare: 0.01,
     thetaPerT: 1200,
+    // s2-fix-content (RULING2.md 21.6, 22 L2 and E4 (c)): build-yard.py's supply check. trips_h 40: the hired driver's trips an
+    // hour at rung 3's entry before any level (the economy attacker's seed 201: 43 an hour over the first five hours; 89 to
+    // 187 at rung 4 with levels); hours_h: the yard hours below rung r by the end of rung r's band (8.2: rung 4 by day 3, from
+    // rung 3 at hour 1: 3 days x 12.3 h = 37; rung 5 by day 6, from rung 4 at day 3 at the latest: 3 x 16.3 h = 49).
+    supply: { trips_h: 40, hours_h: [null, null, null, 37, 49] },
   },
   // rungs 1 to 3 as measured (REPORT6); STAGE 2 rungs 4 and 5 (2.11; E30's guard)
   ceilings_t_h: [6, 110, 400, 800, 3500],
@@ -1656,7 +1662,10 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   },
   // Rewarded ads (2.16; L3): 15 + 3 x 4 = 27 minutes of I a day at most against 0.04 x a day's income; dayHours_h the habit's
   // production hours by rung (ruling 10.6: 2 x (away cap + Night watch) + 0.3 h played).
-  ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [null, null, 12.3, 16.3, 20.3] },
+  // s2-fix-content (ruling 22 M8): rungs 1 and 2 by the same habit (2 x (0.5 + 2) + 0.3 = 5.3, 2 x (2 + 2) + 0.3 = 8.3), so the day's
+  // ceiling (maxDayShare of a day's income) holds wherever the second session begins; minOffer_min 2: the spot buyer offers a
+  // video only for at least two minutes of I.
+  ads: { awayPerDay: 1, awayMinAbsence_min: 30, awayShare: 0.5, awayCap_min: 15, spotShare: 0.1, spotCap_min: 4, spotPerDay: 3, maxDayShare: 0.04, dayHours_h: [5.3, 8.3, 12.3, 16.3, 20.3], minOffer_min: 2 },
   // The entries stage 2 adds to the families above, joined from rung 3 (schema.salvage.ts withWorksLayer).
   worksLayer: WORKS_LAYER,
 };

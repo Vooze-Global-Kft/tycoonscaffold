@@ -34,7 +34,8 @@ Commands (each under 30 minutes; scratchpad yard/bots/s3/run.sh wraps them, --ca
 
 VERDICT. Rung 4 comes at day 2.0 and rung 5 at day 4.0 on every normal seed (5 of 5, 5 of 5 unseen at rung 5 by day 4.5)
 after three rounds of numbers: rung 5's tonnes 10,000 -> 5,000 -> 3,600 t (ruling 19.3), the thirteen plate prices from
-the measured gain (ruling 19.1), the van's factor 1.5 -> 1.25. No hard promise broke on 65 runs; a minute of ticks equals
+the measured gain (ruling 19.1), the van's factor 1.5 -> 1.25. No hard promise broke on 65 runs (before the lot fix: the
+lot loop broke the economy, which no hard promise checks; correction (c) below); a minute of ticks equals
 one jump at 30 checks; the first yard at release.stage 1 plays bit for bit as before (three hands, rung 3, two absences).
 What numbers cannot fix, for the lead: (1) the magnet crane makes the yard POORER (G -14 to -29 % at its moment; the walk's
 "buy crane" -5.6 % mean, -16 % worst) and the baler a little (-2.6 %): ruling 17.1 fails; (2) six plates (shear,
@@ -42,9 +43,28 @@ depollution, granulator, eddy, sorter, and the crane) earn nothing on a capped a
 §3,000: their worth, if any, is in play only; (3) rated income I is off at four of six moments (I/G 1.26 to 1.33 at the
 return before rung 3's last purchases and at rung 4's entry; 0.88 to 0.94 elsewhere): rate.ts's fix pass (19.2);
 (4) with 19.1's prices the first Bank loan is the shredder at rung 4 on every seed: L1 0 of 5, and the first loan cannot be
-repaid before rung 4 (L5); (5) the lead cut is a DEAD END at rung 5 (8 materials, the rung asks 9); (6) the sittings
-between the stage's last goal purchase (sitting 6) and rung 5 (sitting 8) offer nothing useful (the advice line names
-only binding levels); (7) the demolition partner's level lowers what the yard keeps at day 3 (-4.8 % mean, -7.6 % worst).
+repaid before rung 4 (L5); (5) the lead cut is a DEAD END at rung 5 (8 materials, the rung asks 9); (6) [BEFORE THE LOT
+FIX; NOT REPRODUCED, see the correction below] the sittings between the stage's last goal purchase (sitting 6) and rung 5
+(sitting 8) offer nothing useful (the advice line names only binding levels); (7) the demolition partner's level lowers
+what the yard keeps at day 3 (-4.8 % mean, -7.6 % worst).
+
+CORRECTION (27 November, s2-fix-content; RULING2.md 22 E8, the economy attacker's runs/N0.txt, seeds 201, 203, 205,
+`--plates --walk2`). Three claims of this report do not stand as written; each is marked "before the lot fix" where it
+appears, and the full re-measurement is the confirm step's after the rules are fixed:
+  (a) "nothing useful to buy in sittings 7 to 8" and "the advice line names only binding levels": this report's own walk
+      shows level partner.plumbing +12.97 % (day 3) and +20 % (rung 4's entry), and the attacker measured +13.07 / +14.40 %
+      on day 3 and +21.86 / +20.45 % at rung 4's entry, all at a payback well inside tau_r: real best buys that neither
+      the advice line nor the goal card named, while the walk flagged only losses. The walk now prints them: a step whose
+      gain is over 5 % at a payback under tau_r that neither names is flagged HIDDEN BEST BUY (yard-bot.ts walk2Row,
+      section 9; the advice line's fix is E7's, the money owner's).
+  (b) "the hand's worth 2.0x the card manager": the lifetime earnings it compares are inflated wherever the endless lot
+      loop fired (X1 / E1: a cut while four lots wait dated the next at once; seed 202 from sitting 8 made 29 hours of I in
+      one sitting), and the normal hand stands at the pad far more than the manager. Not a measure until the lots are
+      fixed; the report now prints the lots cut a sitting under each run (section 1) so a loop shows.
+  (c) "no hard promise broke" is true of the hard promises, but the lot loop is an economic break no hard promise checks:
+      the report said "no break" of an economy that had one.
+  Reproduced by the attacker, and standing: rung 4 at sitting 4 and rung 5 at 8 (one seed at 9), the pattern of I/G,
+  the floor plates' gain of nothing over an absence, the baler's loss, the first loan at rung 4.
 
 1. THE AIMS, ONE BY ONE (the table's section in brackets; "met" on the seeds measured, never on fifteen)
    rung 4 at day 2 to 3 ............ met: day 2.0 on 5/5 normal, 3/3 brisk, slow 2.5, at the band's lower edge (T1).
@@ -83,7 +103,8 @@ only binding levels); (7) the demolition partner's level lowers what the yard ke
                                      price fell with the gain measured with fewer earlier plates owned: one more measuring
                                      round would raise both); never for the six floor plates and the crane (T8).
    which plate first meets the finance floor ... the shredder (§419,000 at rung 4); no rung-3 plate is offered finance.
-   the hand's worth: the working hand at least 1.2 x the card manager ... met: 2.0 at sitting 4, 2.1 at sitting 8 (T7).
+   the hand's worth: the working hand at least 1.2 x the card manager ... [BEFORE THE LOT FIX: not a measure, see the
+                                     correction (b)] 2.0 at sitting 4, 2.1 at sitting 8 (T7).
    no mechanism over three fifths of the gain ... NOT MEASURED (no per-mechanism split in the bots yet).
    E19, an hour away 0.3 to 0.8 of an hour played ... met at stage 2: median 0.46 at rungs 3 and 4 (single sittings range
                                      0.16 to 1.85: a 15-minute sitting is a noisy hour) (T5). The FIRST yard's 0.81 (ruling
@@ -106,7 +127,8 @@ only binding levels); (7) the demolition partner's level lowers what the yard ke
                                      (4 h ran, the cap), from rung 4's first return 1,799 ms (6 h). Engine step 4 owns it.
    tick against jump ................ met: 30 checks (a minute of ticks against one jump at sittings 1 to 5, 8) on 5 runs
                                      to rung 4 and beyond; 0 differ. Not "minute by minute on fifteen runs".
-   the hard promises ................ met on 65 runs (60 seeded + 5 unseen): shown = applied, money only by lot payments,
+   the hard promises ................ [BEFORE THE LOT FIX: the lot loop broke no hard promise but the economy, correction
+                                     (c)] met on 65 runs (60 seeded + 5 unseen): shown = applied, money only by lot payments,
                                      ads and grants, cash never negative, the away card's sum, nothing of money before the
                                      second session; presses refused are the bot's own (earmark 27, cash 4, nothing 10 by
                                      the card manager; one start-up the bot could not make at the shear's plot, s4 behind).
@@ -150,7 +172,8 @@ only binding levels); (7) the demolition partner's level lowers what the yard ke
       not help (the offer needs P > cash - reserve). Options: L5 read as "repaid within the next absence" (true on 4 of 4),
       or a rung-3 plate priced over the cash a rung-3 sitting holds.
    d. The lead cut: rung 5's range (9) or a ninth material without lead.
-   e. Sittings 7 to 8: something useful to buy after the goal list (the advice line names only binding levels).
+   e. [BEFORE THE LOT FIX; NOT REPRODUCED, correction (a)] Sittings 7 to 8: something useful to buy after the goal list
+      (the advice line names only binding levels): the partner levels were useful buys the line did not name (E7).
    f. The gates' numbers of 9.2 from this table (rung bands, I's band, the walk's bound) are the lead's to set.
    g. The I gate is printed at returns; if the lead wants the moment after a sitting's purchases, the bots need one more
       G measurement a sitting (about 3 s at rung 4).

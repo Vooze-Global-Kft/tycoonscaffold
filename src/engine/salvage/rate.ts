@@ -627,42 +627,64 @@ function rawTerms(c: Ctx['c'], s: Ctx['s'], key = assetKey(c, s)): RatedTerms {
  * terms returned are those of the replay that gives that I; the driver's ranks (`rank`) stay the state's own. A search,
  * not the full box (exponential): measured on the frozen stage-2 states and the bots' states (fixMoney.test.ts E6).
  */
-const ENVELOPE_ROUNDS = 3;
+const ENVELOPE_ROUNDS = 2;
+/** The effective levels a dimension of the envelope tries: top, top − 1, top − 2, top − 4, ... and 1 (a few, not every level: its cost). */
+function envelopeLevels(top: number): number[] {
+  const out: number[] = [top];
+  for (let k = 1; top - k > 1; k *= 2) out.push(top - k);
+  if (top > 1) out.push(1);
+  return out;
+}
 function envelope(c: Ctx['c'], s: Ctx['s'], raw: RatedTerms): RatedTerms {
-  type Dim = { top: number; at: (st: Ctx['s'], e: number) => Ctx['s']; now: number };
+  type Dim = { top: number; at: (st: Ctx['s'], e: number) => Ctx['s'] };
   const dims: Dim[] = [];
   for (const [id, p] of Object.entries(c.partners)) {
     const ps = s.partners[id];
     if (!ps || !(ps.open || s.owned.includes(p.opens)) || ps.level <= 1) continue;
-    dims.push({ top: ps.level, now: ps.level, at: (st, e) => ({ ...st, partners: { ...st.partners, [id]: { ...st.partners[id], level: e } } }) });
+    dims.push({ top: ps.level, at: (st, e) => ({ ...st, partners: { ...st.partners, [id]: { ...st.partners[id], level: e } } }) });
   }
   for (const m of s.crew) {
     if ((m.role !== 'driver' && m.role !== 'cutter') || m.level <= 1) continue;
-    dims.push({ top: m.level, now: m.level, at: (st, e) => ({ ...st, crew: st.crew.map((x) => (x.id === m.id ? { ...x, level: e } : x)) }) });
+    dims.push({ top: m.level, at: (st, e) => ({ ...st, crew: st.crew.map((x) => (x.id === m.id ? { ...x, level: e } : x)) }) });
   }
-  if (s.tier > 1) dims.push({ top: s.tier, now: s.tier, at: (st, e) => ({ ...st, tier: e }) });
+  if (s.tier > 1) dims.push({ top: s.tier, at: (st, e) => ({ ...st, tier: e }) });
   if (!dims.length) return copyTerms(raw);
-  let cur = s;
   let best = raw;
-  for (let round = 0; round < ENVELOPE_ROUNDS; round++) {
-    let moved = false;
-    for (const d of dims) {
-      let bestE = d.now;
-      for (let e = d.top; e >= 1; e--) {
-        if (e === d.now) continue;
-        const t = rawTerms(c, d.at(cur, e));
-        if (t.I > best.I + 1e-9) {
-          best = t;
-          bestE = e;
-        }
-      }
-      if (bestE !== d.now) {
-        d.now = bestE;
-        cur = d.at(cur, bestE);
-        moved = true;
-      }
+  // Two ascents: from the state's own assets, and from the LEAN start (every dimension at 1), so that the dimension a
+  // purchase adds (a cutter's first level, a better tool) cannot keep the search from what the yard had before it.
+  for (const lean of [false, true]) {
+    let cur = s;
+    const now = dims.map((d) => d.top);
+    if (lean) {
+      dims.forEach((d, k) => {
+        cur = d.at(cur, 1);
+        now[k] = 1;
+      });
+      const t = rawTerms(c, cur);
+      if (t.I > best.I + 1e-9) best = t;
     }
-    if (!moved) break;
+    for (let round = 0; round < ENVELOPE_ROUNDS; round++) {
+      let moved = false;
+      dims.forEach((d, k) => {
+        let bestE = now[k];
+        let here = rawTerms(c, cur).I;
+        for (const e of envelopeLevels(d.top)) {
+          if (e === now[k]) continue;
+          const t = rawTerms(c, d.at(cur, e));
+          if (t.I > best.I + 1e-9) best = t;
+          if (t.I > here + 1e-9) {
+            here = t.I;
+            bestE = e;
+          }
+        }
+        if (bestE !== now[k]) {
+          now[k] = bestE;
+          cur = d.at(cur, bestE);
+          moved = true;
+        }
+      });
+      if (!moved) break;
+    }
   }
   if (best === raw) return copyTerms(raw);
   const out = copyTerms(best);
@@ -1132,6 +1154,16 @@ export function loadRanks(c: Ctx['c'], s: Ctx['s']): Readonly<Record<string, num
   // s2c-fix-money (E6): the ranks are the state's own replay's (rawTerms), never the envelope's; the same values as before.
   const t = byKey.get(key) ?? rawTerms(c, s, key);
   return t.rank && Object.keys(t.rank).length ? t.rank : null;
+}
+
+/**
+ * The REPLAY's income for the assets as they are (s2c-fix-money): rated income before the envelope of E6 (the yard's
+ * capacity all in use). What a purchase's rated gain is read from (the advice line's payback, a partner level's price,
+ * the card's "not the bottleneck now": ladder.ts ratedGain), at one replay a state; I itself (packs, ads, the bank, the
+ * lots) is ratedIncome. The same as ratedIncome in the first yard.
+ */
+export function replayIncome(c: Ctx['c'], s: Ctx['s']): number {
+  return rawTerms(c, s).I;
 }
 
 /** I, § an hour (2.3; the facade's ratedIncome). */

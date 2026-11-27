@@ -9,13 +9,14 @@
  * entry, exactly as the build writes it at stage 2. Nothing else of the game changes.
  *
  *   shipped2Raw(raw?)     the raw game.json (a deep copy) as a stage-2 build would write it
- *   shipped2Config(raw?)  { mode, salvage (parsed with SalvageSchema at stage 2), monetization }: the light
+ *   shipped2Config(parse, raw?)  { mode, salvage (parsed with `parse`, SalvageSchema.parse, at stage 2), monetization }: the light
  *                         configuration the rules and the bots read (scripts/content/yard-bot.ts --stage 2)
  *
- * Default `raw`: the real games/scrap-yard/game.json.
+ * Default `raw`: the real games/scrap-yard/game.json. The parser is passed in (SalvageSchema.parse): this file is shared
+ * (scripts/lib/modes.js does not list it under the salvage mode), so it must not import the mode's schema itself
+ * (npm run check:bundle, shared-imports-mode).
  */
 import gameJson from '../../../games/scrap-yard/game.json';
-import { SalvageSchema } from '../../config/schema.salvage';
 import type { SalvageConfig } from '../salvage/types';
 
 type Raw = { salvage: Record<string, unknown> & { release?: { stage: number }; iap?: { products?: unknown[] } }; monetization: Record<string, unknown> & { iap?: Record<string, unknown> } };
@@ -34,7 +35,7 @@ export function shipped2Raw<T = typeof gameJson>(raw: unknown = gameJson): T {
 }
 
 /** The light stage-2 configuration of the shipped content (what the rules and the bots read). */
-export function shipped2Config(raw: unknown = gameJson): SalvageConfig {
+export function shipped2Config(parse: (salvage: unknown) => unknown, raw: unknown = gameJson): SalvageConfig {
   const g = shipped2Raw<Raw>(raw);
-  return { mode: 'salvage', salvage: SalvageSchema.parse(g.salvage), monetization: g.monetization } as unknown as SalvageConfig;
+  return { mode: 'salvage', salvage: parse(g.salvage), monetization: g.monetization } as unknown as SalvageConfig;
 }

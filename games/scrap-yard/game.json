@@ -2909,7 +2909,8 @@
       "yardV": 4,
       "bossYardV": 4.5,
       "bossHandle_s": 4,
-      "laneMaxF": 20
+      "laneMaxF": 20,
+      "fairAfter_trips": 4
     },
     "machines": {
       "hand_stripper": {
@@ -3400,7 +3401,17 @@
       ],
       "topRung": 5,
       "thetaShare": 0.01,
-      "thetaPerT": 1200
+      "thetaPerT": 1200,
+      "supply": {
+        "trips_h": 40,
+        "hours_h": [
+          null,
+          null,
+          null,
+          37,
+          49
+        ]
+      }
     },
     "ceilings_t_h": [
       6,
@@ -4596,12 +4607,13 @@
       "spotPerDay": 3,
       "maxDayShare": 0.04,
       "dayHours_h": [
-        null,
-        null,
+        5.3,
+        8.3,
         12.3,
         16.3,
         20.3
-      ]
+      ],
+      "minOffer_min": 2
     },
     "worksLayer": {
       "grades": {

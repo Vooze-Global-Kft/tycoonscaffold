@@ -10,8 +10,8 @@
  */
 import type { SalvageContent } from '../../config/schema.salvage';
 import { loanOffered, platePrice } from './bank';
-import { contentAt } from './layer';
-import { buyCheck, cashRefusal, crewKeys, gateRung, hireCheck, itemName, levelCheck, roleOfKey, shopItems } from './ladder';
+import { contentAt, worksOpened } from './layer';
+import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, levelled, ratedGain, roleOfKey, shopItems } from './ladder';
 import { roundMoney } from './money';
 import { incomeRate } from './tick';
 import type { Advice, CardRef, CrewRole, LevelTarget, MachineId, SalvageConfig, SalvageGame, ShopItem, TextKey, Txt } from './types';
@@ -152,8 +152,13 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
   return { cutter, hand, machines, partners, driver, plates };
 }
 
-/** Does a level of this target widen the bottleneck now (E13c, E19)? */
+/**
+ * Does a level of this target widen the bottleneck now (E13c, E19)? FROM THE WORKS' OPENING (s2c-fix-money E3 (b), E7):
+ * a level is "not the bottleneck now" only when its RATED GAIN is zero (I with the level less I now; rate.ts), whatever
+ * the stocks say. The first yard (the works not opened): the stocks' reading (binding), as merged.
+ */
 export function levelBinds(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, b = binding(cfg, g)): boolean {
+  if (worksOpened(g.salvage)) return target.kind !== 'reuse' && ratedGain(cfg, g, levelled(g, target)) > 1e-6;
   if (target.kind === 'machine') return b.machines.includes(target.machine);
   if (target.kind === 'partner') return b.partners.includes(target.partner);
   if (target.kind === 'plate') return b.plates.includes(target.plate);
@@ -271,12 +276,99 @@ function candidates(cfg0: SalvageConfig, g: SalvageGame): Advice[] {
 export function advice(cfg: SalvageConfig, g: SalvageGame, now: number): Advice | null {
   void now;
   const budget = g.cash + cfg.salvage.advice.minutes * incomeRate(cfg, g) - reserve(cfg, g);
-  const list = candidates(cfg, g).filter((a) => a.price <= budget + 1e-9);
-  list.sort((a, b) => a.price - b.price);
-  const a = list[0] ?? null;
+  // s2c-fix-money (E7, RULING2 22): from the works' opening the line advises by payback (paybackAdvice); the first yard's line below is as merged.
+  const a = worksOpened(g.salvage) ? paybackAdvice(cfg, g, budget) : cheapestUseful(cfg, g, budget);
   // 2.13, the bank's one sentence: the purchase is a financeable plate the finance card would offer (P > cash − reserve), the letter seen, no agreement open.
   if (a && a.action.act === 'buy' && a.open.kind === 'works' && !g.salvage.bank.agreement && loanOffered(cfg, g, a.action.item)) return { ...a, loanHint: true };
   return a;
+}
+
+/** The first yard's line (2.10): the cheapest useful purchase within the budget. */
+function cheapestUseful(cfg: SalvageConfig, g: SalvageGame, budget: number): Advice | null {
+  const list = candidates(cfg, g).filter((a) => a.price <= budget + 1e-9);
+  list.sort((a, b) => a.price - b.price);
+  return list[0] ?? null;
+}
+
+/**
+ * The state with a shop item owned, as rated income reads assets (rate.ts own(): the item in `owned`, a tool's tier, a
+ * better carrier, a first-yard machine on its pad, the truck); a works plate running at level 1 (and, a hall, poured
+ * once: what it earns once working). For the advice's rated gain only; nothing is applied.
+ */
+function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
+  const s = g.salvage;
+  if (c.works?.plates[item]) {
+    const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
+    return { ...g, salvage: { ...s, works: { ...s.works, [item]: w }, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
+  }
+  const n = { ...s, owned: s.owned.includes(item) ? s.owned : [...s.owned, item] };
+  const tool = c.tools[item];
+  if (tool) n.tier = Math.max(s.tier, tool.tier);
+  if (c.carriers[item] !== undefined && (c.carriers[item] ?? 0) > (c.carriers[s.carrier] ?? 0)) n.carrier = item;
+  if (item === 'stripper' || item === 'bench' || item === 'crucible') n.machines = { ...s.machines, [item]: { ...s.machines[item], owned: true, level: Math.max(1, s.machines[item].level) } };
+  if (item === 'truck') n.truck = { ...s.truck, owned: true };
+  return { ...g, salvage: n };
+}
+
+/**
+ * THE ADVICE LINE BY PAYBACK (s2c-fix-money E7, RULING2 22; from the works' opening). Among everything the player can buy
+ * now within the line's budget (2.10: cash + advice.minutes of income less E19's reserve): every plate for sale, every
+ * shop item, the next hire of each role, the next level of every crew member, first-yard machine, open partner and
+ * running plate, it names the one with the SHORTEST PAYBACK, price ÷ its rated gain an hour (rate.ts I with it less I
+ * now), when that payback is within tau_r (content tau_h of the yard's rung; a rung without one: no limit). "What binds"
+ * no longer decides. Equal paybacks: the cheaper first. Null when nothing pays back within tau_r: what the yard waits
+ * for then (ruling 21.5, the next rung's missing tonnes and materials) is the rung tile's and the goal card's, and needs
+ * a line of its own (a request to the words' owner and types.ts' Advice: requests.md, s2c-fix-money).
+ */
+function paybackAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Advice | null {
+  const cm = contentAt(cfg0.salvage, g.salvage);
+  const cfg = cm === cfg0.salvage ? cfg0 : { ...cfg0, salvage: cm };
+  const c = cfg.salvage;
+  const s = g.salvage;
+  const tau = c.tau_h?.[Math.floor(s.ladder.rung) - 1];
+  const limit = typeof tau === 'number' && tau > 0 ? tau : Infinity;
+  let best: { a: Advice; h: number } | null = null;
+  const offer = (a: Advice, after: SalvageGame) => {
+    if (!(a.price <= budget + 1e-9)) return;
+    const dI = ratedGain(cfg, g, after);
+    if (!(dI > 1e-6)) return;
+    const h = a.price / dI;
+    if (h > limit + 1e-9) return;
+    if (!best || h < best.h - 1e-9 || (Math.abs(h - best.h) <= 1e-9 && a.price < best.a.price)) best = { a, h };
+  };
+  const seenRole = new Set<CrewRole>();
+  for (const it of shopItems(c)) {
+    if (it.kind === 'works') {
+      const price = platePrice(cfg, g, it.key);
+      if (price === null || cashRefusal(g, price)?.key === 'earmark') continue;
+      offer({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, boughtState(c, g, it.key));
+      continue;
+    }
+    const role = roleOfKey(it.key);
+    if (role) {
+      if (seenRole.has(role)) continue;
+      seenRole.add(role);
+      const ch = hireCheck(cfg, g, role);
+      if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || !ch.key) continue;
+      const item = shopItems(c).find((x) => x.key === ch.key)!;
+      offer({ action: { act: 'hire', role, price: ch.price }, open: cardForItem(item), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(item.key) }, x: { money: ch.price } } } }, hiredState(g, role));
+      continue;
+    }
+    const ch = buyCheck(cfg, g, it.key);
+    if (ch.price === null || ch.state === 'locked' || ch.state === 'owned' || ch.state === 'arriving' || ch.state === 'info') continue;
+    offer({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, boughtState(c, g, it.key));
+  }
+  const targets: { t: LevelTarget; name: TextKey; open: CardRef; level: number }[] = [];
+  for (const m of s.crew) targets.push({ t: { kind: 'crew', id: m.id }, name: `role.${m.role}` as TextKey, open: { kind: 'office', tab: 'rota' }, level: m.level });
+  for (const id of ['stripper', 'bench', 'crucible'] as const) if (s.machines[id].owned) targets.push({ t: { kind: 'machine', machine: id }, name: itemName(id), open: { kind: 'office', tab: 'processBoard' }, level: s.machines[id].level });
+  for (const [pid, p] of Object.entries(s.partners)) if (p.open) targets.push({ t: { kind: 'partner', partner: pid }, name: 'item.skip', open: { kind: 'office', tab: 'partners' }, level: p.level });
+  for (const [pid, w] of Object.entries(s.works)) if (w.phase === 'running') targets.push({ t: { kind: 'plate', plate: pid }, name: `title.works.${pid}` as TextKey, open: { kind: 'works', plate: pid }, level: w.level ?? 1 });
+  for (const x of targets) {
+    const ch = levelCheck(cfg, g, x.t);
+    if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || ch.state === 'info') continue;
+    offer({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, levelled(g, x.t));
+  }
+  return (best as { a: Advice; h: number } | null)?.a ?? null;
 }
 
 /** The item of an advice as a { text } argument (goal.widen's {item}). */

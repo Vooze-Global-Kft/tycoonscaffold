@@ -385,6 +385,8 @@ def lint(s, sprites):
     for k, v in M['lane'].items():
         num(f'map.lane.{k}', v, True)
     num('map.detour', M['detour'], True)
+    # RULING2.md 21.6, 22 L2 and E4 (c): every rung's materials can be supplied, at a rate that reaches theta_r in its band
+    out.extend(supply_check(s)[0])
 
     # rivals: no two share a chip name; bounded growth
     names = s.get('names', {})
@@ -423,6 +425,133 @@ def lint(s, sprites):
             if r['n'] == n and (r['t'] != s['ladder'][k]['t'] or r['range'] != s['ladder'][k]['range']):
                 bad('ladder.rungs n %d (%s t, range %s) disagrees with ladder.%s (%s t, range %s)' % (n, r['t'], r['range'], k, s['ladder'][k]['t'], s['ladder'][k]['range']))
     return out
+
+
+# ------------------------------------------------------------------------------------------ the supply check
+# RULING2.md 21.6 and 22 L2 with E4 (c) (s2-fix-content): NO RUNG ASKS FOR WHAT THE YARD CANNOT SUPPLY. For each rung r
+# from 2 to the stage's top, the sources a yard working toward r has open (every shop item, plate and partner gated at
+# r - 1 or below; the works layer from rung 4, as the works open at rung 3) are walked to the materials they can end as:
+# a thing cut into its pieces (an assay grade once the analyser is open), sold whole, or fed whole to a plate; a grade
+# sold as it is (not an intermediate) or through every plate, recipe and first-yard machine that takes it (the bench,
+# the crucible, the strippers' cable yield), each material taking the routing that favours it (an upper bound on the
+# routing). Rates: each open partner's skips (its `grows` loads averaged in as the rotation takes them, every plate
+# owned) at the FAIR DRIVER'S guaranteed share, min(3600 / fill_s, ladder.supply.trips_h / (truck.fairAfter_trips + 1))
+# skips an hour (a lower bound on the driver), and the drop-off's mix every period. Zones, lots and the rack (the
+# boss's and the hands' stock) are not counted. REFUSED: (a) fewer materials with any supply than the rung's range
+# (the lead cut: eight against rung 5's nine); (b) where ladder.supply.hours_h names the rung, fewer materials whose
+# rate x hours reaches theta_r than its range (each short one named with its hours to theta).
+def gate_n(gt):
+    if gt is None: return 1
+    return int(str(gt).replace('rung', '') or 1)
+
+def supply_rates(s, r, trips_h, fair):  # noqa: C901
+    """§ at p̄ an hour, by material, that the sources open to a yard working toward rung r can supply at most."""
+    L = s.get('worksLayer') or {}
+    layer = r >= 4 and bool(L)
+    G = dict(s['grades']); O = dict(s['objects']); P = dict(s['partners'])
+    if layer:
+        G.update(L.get('grades') or {}); O.update(L.get('objects') or {}); P.update(L.get('partners') or {})
+    shop = {i['key']: i for i in s['shop'] + ((L.get('shop') or []) if layer else [])}
+    openk = {k for k, i in shop.items() if gate_n(i.get('gate')) <= r - 1}
+    plates = {k: p for k, p in ((s.get('works') or {}).get('plates') or {}).items() if layer and gate_n(p.get('gate')) <= r - 1}
+    edges = {}  # input id (grade or object) -> list of out lists [(grade, frac)]
+    def add(i, outs): edges.setdefault(i, []).append(outs)
+    for pid, p in plates.items():
+        for i, outs in (p.get('out') or {}).items(): add(i, [(g, f) for g, f in outs])
+        for rc in (p.get('recipes') or {}).values():
+            for i in rc['in']: add(i, [(g, f) for g, f in rc['out']])
+    M = s['machines']
+    if 'bench' in openk and M.get('bench', {}).get('out'): add('mot', [(g, f) for g, f in M['bench']['out']])
+    for rc in (M.get('crucible', {}).get('recipes') or {}).values():
+        ins = rc[0] if isinstance(rc[0], list) else [rc[0]]
+        for i in ins: add(i, [(rc[1], rc[2])])
+    add('cab', [('no2', s['cable']['yield_'])])  # the strippers (the hand stripper needs no purchase)
+    assay = 'analyser' in plates
+    memo = {}
+    def best(i, m, d=0):
+        """§ at p̄ per gram of i (grade or object) that can end as material m."""
+        k = (i, m)
+        if k in memo: return memo[k]
+        if d > 8: return 0.0
+        v = 0.0
+        gr = G.get(i)
+        if gr and gr.get('material') == m and gr.get('kind') != 'intermediate':
+            v = gr['pbar'] / 1000
+        for outs in edges.get(i, []):
+            v = max(v, sum(f * best(g, m, d + 1) for g, f in outs))
+        memo[k] = v
+        return v
+    def thing(o, m):
+        ob = O[o]
+        cut = 0.0
+        for pc in ob['pieces']:
+            b = best(pc[0], m)
+            if assay and len(pc) > 4 and pc[4]: b = max(b, best(pc[4], m))
+            cut += pc[1] * pc[2] * b
+        sh = ob.get('shell')
+        if sh and sh.get('grade'): cut += sh['g'] * best(sh['grade'], m)
+        whole = ob['gross_g'] * best(ob['whole'], m) if ob.get('whole') else 0.0
+        plate = ob['gross_g'] * best(o, m) if o in edges else 0.0
+        return max(cut, whole, plate)
+    mats = []
+    for g in G.values():
+        if g.get('material') and g['material'] not in mats: mats.append(g['material'])
+    R = {m: 0.0 for m in mats}
+    for pid, p in P.items():
+        if p.get('opens') not in openk: continue
+        rate = min(3600 / p['fill_s'], trips_h / (fair + 1)) if trips_h else 3600 / p['fill_s']
+        bodies = [gr for gr in (p.get('grows') or []) if gr['body'] != 'skip' and gr['needs'] in plates]
+        skip = dict(p['skip'])
+        for gr in p.get('grows') or []:
+            if gr['body'] == 'skip' and gr['needs'] in plates:
+                for o, n in gr['contents'].items(): skip[o] = skip.get(o, 0) + n
+        loads = [skip] + [gr['contents'] for gr in bodies]
+        for m in mats:
+            R[m] += rate / len(loads) * sum(n * thing(o, m) for ld in loads for o, n in ld.items() if o in O)
+    d = s['dropoff']
+    for m in mats:
+        R[m] += 3600 / d['period'] * sum(sh * thing(o, m) for o, sh in d['mix'] if o in O)
+    return R, mats
+
+def theta_of(s, r):
+    L = s['ladder']
+    if r <= 3 or not L.get('thetaShare'):
+        return L['theta']
+    T = next((x['t'] for x in L.get('rungs') or [] if x['n'] == r), 0)
+    return max(L['theta'], L['thetaShare'] * T * L.get('thetaPerT', 1200))
+
+
+def supply_check(s):
+    """The refusals of the supply check (above), and a table row a rung for the summary."""
+    out, rows = [], []
+    L = s['ladder']
+    sup = L.get('supply') or {}
+    trips = sup.get('trips_h')
+    fair = (s.get('truck') or {}).get('fairAfter_trips')
+    hours = sup.get('hours_h') or []
+    rungs = {x['n']: x for x in L.get('rungs') or []}
+    rungs.setdefault(2, {'n': 2, **L['rung2']})
+    rungs.setdefault(3, {'n': 3, **L['rung3']})
+    for r in range(2, (L.get('topRung') or 3) + 1):
+        want = rungs.get(r, {}).get('range', 0)
+        R, mats = supply_rates(s, r, trips if fair else None, fair or 0)
+        have = [m for m in mats if R[m] > 0]
+        if len(have) < want:
+            out.append('supply: rung %d asks for %d materials; the plates and partners open below it supply only %d (%s; none: %s) (RULING2.md 21.6, 22 L2)' % (
+                r, want, len(have), ', '.join(have), ', '.join(m for m in mats if R[m] <= 0) or '-'))
+            continue
+        h = hours[r - 1] if r - 1 < len(hours) else None
+        th = theta_of(s, r)
+        if h:
+            reach = [m for m in mats if R[m] * h >= th]
+            rows.append('rung %d: %d of %d materials reach theta %s within %s h (slowest %s)' % (r, len(reach), want, f'{th:,.0f}', h, ', '.join('%s %.1f h' % (m, th / R[m]) for m in sorted(have, key=lambda m: -th / R[m])[:2])))
+            if len(reach) < want:
+                short = sorted((m for m in mats if m not in reach), key=lambda m: R[m], reverse=True)
+                out.append('supply: rung %d asks for %d materials at theta §%s each within %s h of its band; at the fair driver\'s rate only %d reach it (short: %s) (RULING2.md 22 E4 (c))' % (
+                    r, want, f'{th:,.0f}', h, len(reach), ', '.join('%s §%.0f/h, %.0f h to theta' % (m, R[m], th / R[m] if R[m] else float('inf')) for m in short)))
+        else:
+            rows.append('rung %d: %d materials supplied, %d asked (rate not checked)' % (r, len(have), want))
+    return out, rows
 
 
 TEXT_KEYS = os.path.join(ROOT, 'src', 'engine', 'salvage', 'textKeys.ts')
@@ -493,6 +622,7 @@ def summary(s):
     rows.append('partners: ' + '; '.join('%s load %.0f kg §%s every %ds, trial §%s' % (p, d['skipMass_kg'], f'{d["skipPrice"]:,}', d['fill_s'], d['trialPrice']) for p, d in s['partners'].items()))
     rows.append('ladder: rung 2 at %s t, rung 3 at %s t; rivals %d; goals %d (+%d day one); names %d' % (
         s['ladder']['rung2']['t'], s['ladder']['rung3']['t'], len(s['rivals']['list']), len(s.get('goals', [])), len(s.get('dayOne', [])), len(s.get('names', {}))))
+    rows += ['supply ' + r for r in supply_check(s)[1]]
     return '\n'.join('  ' + r for r in rows)
 
 
@@ -534,6 +664,22 @@ def selftest():
     g1['salvage']['release'] = {'stage': 1}
     expect('M1: at release.stage 1 the build mirrors none; ads.initOn stays firstOffer',
            with_products(g1)['monetization']['iap']['products'] == [] and with_products(g1)['monetization']['ads']['initOn'] == 'firstOffer')
+    # L2 (RULING2.md 21.6, 22 L2 with E4 (c)): the supply check passes the shipped content and refuses the two dead ends
+    expect('L2: the shipped content passes the supply check', supply_check(s)[0] == [])
+    c = copy.deepcopy(s)
+    for k in ('breaker', 'smelter'):
+        del c['works']['plates'][k]
+    c['worksLayer']['shop'] = [i for i in c['worksLayer']['shop'] if i['key'] not in ('breaker', 'smelter')]
+    errs = supply_check(c)[0]
+    expect('L2: the lead cut (no breaker, no smelter) is refused: rung 5 asks for 9, 8 supplied, lead none',
+           any('rung 5 asks for 9 materials' in e and 'supply only 8' in e and 'lead' in e for e in errs))
+    c = copy.deepcopy(s)
+    c['ladder']['thetaShare'] = 0.1
+    errs = supply_check(c)[0]
+    expect('L2: theta_5 ten times higher is refused at the fair driver\'s rate (E4 (c))', any('rung 5 asks for 9 materials at theta' in e for e in errs))
+    c = copy.deepcopy(s)
+    c['truck']['fairAfter_trips'] = 1000
+    expect('L2: a driver who serves a partner once in a thousand trips cannot bring rung 5 in its band', any('rung 5' in e and 'E4 (c)' in e for e in supply_check(c)[0]))
     print('selftest: %d failed' % fails)
     return 1 if fails else 0
 
