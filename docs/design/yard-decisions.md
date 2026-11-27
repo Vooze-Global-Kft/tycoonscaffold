@@ -2888,3 +2888,35 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         earns: measured before it is ruled.
     (c) The first yard's strict bench reads 263 ms against its 250 on the old engine and the new
         alike: not this step's; the bench is restated to compare engines in one run.
+
+28.7 THE PRICE ROUND'S FIRST BATCHES (four seeds of fifteen, lasting gains by 28.4 a), and three
+    changes ruled before the table is run (so that the table is run once, on the stage as it will
+    be). What the batches show: the hook-lift about +11,800 an hour (a fifth of the yard's income
+    at its moment), the analyser about +3,700, the induction hall about +7,900 (7 to 9 %), the
+    rotary hall about +2,000 (at the entry rule's edge), THE SHREDDER LINE about +600 (0.6 %:
+    -200, 901, 2,250, -474), and THE PLASMA +9,984 and +9,563 at the first works return, -1,723
+    and -621 after the second cutter, +301 and -316 after the hook-lift, and "what it opens"
+    nothing (the heavy steel pieces already fill the pieces' size).
+    (a) THE PLASMA CUTTER BECOMES THE BOSS'S OWN TOOL. As a help to the cutters it is worth
+        nothing once a second cutter is hired for a twenty-fourth of its price. What only a plasma
+        can do is cut what a torch cannot: stainless, bronze, copper. So the pieces it opens are
+        allowed to be WORTH MORE than the steel pieces a torch cuts: a piece of a torch's tier may
+        be worth up to mu of rated income as today (15 minutes at rung 3, 18 above), a piece of
+        the plasma's tier up to 25 and 30 minutes. Its gain, and so its price, is what those
+        richer pieces bring an hour at the reference hand's pace (twice a day, cutting what
+        waits), measured over two sittings; the entry rule reads that. It is the stage's one
+        purchase that pays the player for coming back.
+    (b) THE SHREDDER LINE'S CARS COME BY THE GARAGE'S OWN RECOVERY TRUCK (D1's second form): with
+        the hook-lift fetching them, a car's trip costs the yard a skip worth about as much, and
+        the slower drop-off (28.3) took away the flood of light iron that had made the shredder
+        look good. From the line's start-up the garage sets a car on the bay's apron whenever it
+        is free, at most one a period (first value ten minutes), the yard paying the car's label
+        price as it lands (cash and reserve allowing; else the car waits at the garage: nothing
+        expires); the hook-lift fetches no car. The line is measured as one; failing the entry
+        rule in this form too, it waits for stage 3.
+    (c) THE COPPER HALL IS BUILT NOW (27.5), beside (a) and (b), so that the table is run on the
+        stage with its three halls.
+    (d) The measurement ENDS ITS STEP AFTER THE PRICE ROUND (fifteen seeds of lasting gains, the
+        plasma's three moments, the ladders' book, each item's gain in tonnes an hour beside its
+        money, each crew role's idle share by rung) and writes what it has; the table is run by
+        the next measurement, once (a), (b) and (c) are joined.
