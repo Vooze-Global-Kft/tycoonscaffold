@@ -3,12 +3,6 @@
  "$s2e": "s2e-content (27 Nov; yard-stage2-economy.md 2.7 to 2.9, RULING2.md 27.2 b and 27.6): the FIRST PRICES of the stage as built again are REPORT9's T8 gains (dE, unchanged: measured in the old goal order) times the new tau_h (12 / 36 / 48 h) to three figures: truckBridge §206,000, plasma §86,500, analyser §43,800, induction §339,000, shredder §136,000, rotary §107,000 (`price`, `tau_h`; the bots write the measured ones at the new planned moments). `E0`: the yard's income at the item's moment (T8's 'of E0', § an hour); build-yard.py's entry rule refuses a SOLD item whose dE is under 2 % of its E0. `sold`: false for what this stage does not sell (gated past the ladder; their rows are REPORT9's, kept as measured). `purse`: REPORT9's median cash on return at each rung's entry (R1.txt section 2, the normal hand, seeds 1 to 15, route A), the line build-yard.py --check prints the rung's bill against (ruling 27.8; it refuses nothing).",
  "seeds": [
   1,
-  10,
-  11,
-  12,
-  13,
-  14,
-  15,
   2,
   3,
   4,
@@ -16,7 +10,13 @@
   6,
   7,
   8,
-  9
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15
  ],
  "plates": {
   "crane": {
@@ -203,70 +203,116 @@
    "sold": false
   },
   "analyser": {
-   "dE": 3649,
-   "dGaway": 3925,
-   "dI": 0,
-   "I": 46811,
-   "G": 46285,
-   "at_h": 5,
+   "dE": 3162,
+   "se": 283,
+   "E0": 47245,
+   "sold": true,
+   "dGaway": 3157,
+   "dI": 4342,
+   "I": 42791,
+   "G": 45005,
+   "at_h": 7.3,
    "gate": 3,
    "tau_h": 12,
-   "price": 43800,
+   "price": 37900,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
-    2463,
-    5249,
-    3485,
-    4158,
-    4348,
-    1791,
-    6027,
-    4379,
-    5085,
-    4076,
-    2198,
-    3132,
-    1908,
-    2646,
-    3792
+    2865,
+    3498,
+    3979,
+    2842,
+    4043,
+    1177,
+    3643,
+    4039,
+    2722,
+    3423,
+    3284,
+    566,
+    4863,
+    2959,
+    3524
    ],
    "perSeedAway": [
-    2563,
-    5172,
-    3912,
-    4592,
-    3940,
-    1789,
-    5141,
-    3853,
-    4908,
-    5557,
-    2546,
-    3440,
-    3466,
-    3165,
-    4828
+    3710,
+    3351,
+    4195,
+    1648,
+    3825,
+    1242,
+    3637,
+    3945,
+    3624,
+    3475,
+    4096,
+    854,
+    3201,
+    2891,
+    3655
    ],
    "perSeedI": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    3553,
+    4721,
+    3912,
+    5792,
+    3850,
+    4062,
+    4273,
+    5057,
+    5391,
+    4346,
+    4342,
+    4063,
+    7938,
+    5795,
+    4273
    ],
-   "E0": 50832,
-   "sold": true
+   "perSeedE0": [
+    46737,
+    33387,
+    47813,
+    58410,
+    33504,
+    44818,
+    38332,
+    50272,
+    64343,
+    35852,
+    43765,
+    45099,
+    64622,
+    63484,
+    38238
+   ],
+   "measure": "28.4a",
+   "dT": 3750,
+   "seT": 273,
+   "dP": 6092,
+   "seP": 788,
+   "E0T": 50053,
+   "tW_h": 1,
+   "worked": 15,
+   "perSeedT": [
+    3554,
+    3300,
+    4306,
+    3052,
+    3834,
+    1988,
+    3901,
+    4563,
+    4869,
+    3711,
+    3708,
+    2058,
+    6327,
+    3442,
+    3635
+   ],
+   "tL": 0.008,
+   "seTL": 0.07,
+   "T0": 51.34
   },
   "depollution": {
    "dE": 41,
@@ -401,28 +447,116 @@
    "sold": false
   },
   "shredder": {
-   "dE": 18514,
-   "at_h": 23,
+   "dE": 10504,
+   "se": 1664,
+   "E0": 115111,
+   "sold": true,
+   "dGaway": 9086,
+   "dI": 8384,
+   "I": 149899,
+   "G": 112811,
+   "at_h": 28.3,
    "gate": 4,
    "tau_h": 36,
-   "price": 667000,
-   "seeds": 2,
-   "bought": 2,
+   "price": 378000,
+   "seeds": 15,
+   "bought": 15,
    "perSeed": [
+    4371,
+    10894,
+    5603,
+    32484,
+    9838,
+    10343,
+    9227,
     8910,
-    28117
+    7187,
+    9913,
+    10477,
+    8485,
+    8729,
+    7986,
+    13115
    ],
-   "E0": 111353,
-   "sold": true,
-   "se": 9604,
-   "dTonnes_h": 3.505,
-   "tonnesPerSeed": [
-    3.613,
-    3.396
+   "perSeedAway": [
+    4457,
+    11044,
+    9663,
+    8018,
+    10093,
+    10265,
+    9697,
+    8402,
+    8351,
+    10332,
+    10335,
+    8625,
+    9456,
+    7375,
+    10170
    ],
-   "E0tonnes_h": 69.706,
-   "carsAway_h": 6,
-   "$s2f": "s2f-plasma-cars (27 Nov; RULING2.md 28.7 b, 28.4 a): FIRST VALUES on 2 seeds. The line with its cars by the garage's own recovery truck (one a period, 600 s; the hook-lift fetches none), its lasting gain: from the return the normal hand bought it at (seed 1 sitting 5 with the induction hall first, seed 2 sitting 5), played an hour until it works (both plates running, the first car drained), then one capped absence (6 h), with and without; money 8,910 and 28,117 an hour (7.6 % and 26.8 % of E0), tonnes 3.61 and 3.40 t an hour more (on 65.8 and 73.6), 36 cars in each absence. The s.e. is over a quarter of the mean: more seeds before the price stands (27.8)."
+   "perSeedI": [
+    7976,
+    7155,
+    8384,
+    6718,
+    7341,
+    9006,
+    8985,
+    7708,
+    8390,
+    9692,
+    9197,
+    7522,
+    8511,
+    7106,
+    8992
+   ],
+   "perSeedE0": [
+    128747,
+    110554,
+    118493,
+    121261,
+    108691,
+    103344,
+    106469,
+    124154,
+    136169,
+    101390,
+    112715,
+    125840,
+    102791,
+    132482,
+    93558
+   ],
+   "measure": "28.4a",
+   "dT": 10626,
+   "seT": 1613,
+   "dP": 11360,
+   "seP": 1472,
+   "E0T": 129890,
+   "tW_h": 1,
+   "worked": 15,
+   "perSeedT": [
+    4782,
+    10276,
+    6140,
+    32139,
+    9459,
+    10260,
+    9110,
+    8711,
+    7579,
+    10084,
+    10707,
+    9285,
+    9134,
+    8864,
+    12867
+   ],
+   "tL": 3.496,
+   "seTL": 0.051,
+   "T0": 67.89
   },
   "eddy": {
    "dE": -469,
@@ -623,70 +757,116 @@
    "sold": true
   },
   "induction": {
-   "dE": 9407,
-   "dGaway": 10271,
-   "dI": 9042,
-   "I": 152259,
-   "G": 114360,
-   "at_h": 23.8,
+   "dE": 6555,
+   "se": 2245,
+   "E0": 106327,
+   "sold": true,
+   "dGaway": 4258,
+   "dI": 36411,
+   "I": 100987,
+   "G": 102005,
+   "at_h": 20,
    "gate": 4,
    "tau_h": 36,
-   "price": 339000,
+   "price": 236000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
-    10417,
-    11151,
-    8880,
-    9487,
-    9831,
-    9855,
-    9263,
-    8992,
-    7987,
-    6144,
-    10780,
-    10650,
-    9727,
-    10292,
-    7648
+    -972,
+    20904,
+    -583,
+    23196,
+    -3262,
+    -2018,
+    19443,
+    -1229,
+    5356,
+    4811,
+    5657,
+    7532,
+    8340,
+    11072,
+    84
    ],
    "perSeedAway": [
-    11120,
-    11094,
-    9307,
-    9683,
-    11243,
-    10201,
-    9739,
-    11087,
-    8489,
-    6906,
-    12338,
-    10815,
-    12725,
-    10795,
-    8530
+    -804,
+    16296,
+    12,
+    -1672,
+    -3077,
+    -1543,
+    3301,
+    -1155,
+    4334,
+    9953,
+    5744,
+    8052,
+    8838,
+    11049,
+    4548
    ],
    "perSeedI": [
-    9042,
-    9042,
-    11097,
-    9042,
-    9042,
-    9042,
-    9042,
-    11097,
-    9042,
-    9042,
-    9668,
-    10695,
-    14410,
-    9042,
-    9042
+    37860,
+    42109,
+    37570,
+    35040,
+    23932,
+    25206,
+    23227,
+    31927,
+    44183,
+    22487,
+    44790,
+    58027,
+    36411,
+    47887,
+    31574
    ],
-   "E0": 114254,
-   "sold": true
+   "perSeedE0": [
+    118968,
+    93904,
+    111751,
+    120647,
+    95372,
+    101104,
+    89303,
+    118316,
+    128806,
+    89809,
+    101686,
+    114993,
+    98499,
+    117889,
+    93853
+   ],
+   "measure": "28.4a",
+   "dT": 7280,
+   "seT": 2056,
+   "dP": 11619,
+   "seP": 2333,
+   "E0T": 110078,
+   "tW_h": 1,
+   "worked": 15,
+   "perSeedT": [
+    -750,
+    18969,
+    1660,
+    23088,
+    -2107,
+    -1081,
+    18054,
+    -600,
+    5114,
+    4872,
+    7716,
+    11231,
+    8740,
+    11631,
+    2666
+   ],
+   "tL": 0.623,
+   "seTL": 0.108,
+   "T0": 66.93
   },
   "copper": {
    "$first": "s2f-copper (27 Nov, RULING2.md 27.5, 28.7 c): A FIRST VALUE, NOT MEASURED: the copper refining hall's gain from arithmetic on the measured copper flow at rung 4 (the bots' states seed1-s5 and seed1-s6 of the joined build, one 4-hour absence each, nobody at the yard: copper supplied §102,319 and §97,891 an hour at p̄, 85 % of it No.2 by worth: about 2.5 t an hour; x (0.95 x 38.50 - 34.30 - 0.003) = §2.27 a kg); E0 the yard's income G over those absences (§92,492 and §95,091). The next measurement measures its LASTING gain on fifteen seeds (ruling 28.4 a) and writes dE, E0, perSeed and the price; it ships only at dE >= 2 % of E0 with no seed below -1 % (27.2 b).",
@@ -834,70 +1014,116 @@
  },
  "items": {
   "truckBridge": {
-   "dE": 17145,
-   "dGaway": 17689,
-   "dI": 19785,
-   "I": 30427,
-   "G": 32210,
-   "at_h": 5,
+   "dE": 16883,
+   "se": 2527,
+   "E0": 54224,
+   "sold": true,
+   "dGaway": 14877,
+   "dI": 14145,
+   "I": 53794,
+   "G": 53604,
+   "at_h": 13.5,
    "gate": 3,
    "tau_h": 12,
-   "price": 206000,
+   "price": 203000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
-    17166,
-    16051,
-    16341,
-    16600,
-    16372,
-    23498,
-    15708,
-    16809,
-    16043,
-    15017,
-    18797,
-    17960,
-    18535,
-    15857,
-    16426
+    9775,
+    22997,
+    10420,
+    12094,
+    15483,
+    16416,
+    14445,
+    8586,
+    19275,
+    12381,
+    49068,
+    17409,
+    14211,
+    19683,
+    10998
    ],
    "perSeedAway": [
-    18320,
-    16908,
-    16833,
-    17751,
-    17300,
-    21992,
-    16801,
-    18230,
-    16365,
-    15231,
-    18740,
-    18773,
-    18948,
-    16489,
-    16656
+    9629,
+    20430,
+    10219,
+    12325,
+    16140,
+    23570,
+    13530,
+    15286,
+    19125,
+    11637,
+    12664,
+    16523,
+    12416,
+    18921,
+    10739
    ],
    "perSeedI": [
-    18407,
-    20436,
-    19642,
-    20779,
-    20755,
-    20187,
-    19947,
-    21035,
-    20401,
-    19720,
-    15931,
-    18761,
-    17885,
-    19785,
-    18291
+    13827,
+    14859,
+    11189,
+    13009,
+    14010,
+    13726,
+    14145,
+    13901,
+    15871,
+    14145,
+    16640,
+    16645,
+    15539,
+    19062,
+    11870
    ],
-   "E0": 36530,
-   "sold": true
+   "perSeedE0": [
+    50736,
+    58066,
+    56633,
+    45493,
+    51648,
+    55319,
+    57083,
+    51905,
+    44734,
+    64741,
+    64944,
+    51171,
+    52954,
+    44640,
+    63288
+   ],
+   "measure": "28.4a",
+   "dT": 16523,
+   "seT": 2231,
+   "dP": 14726,
+   "seP": 1946,
+   "E0T": 59180,
+   "tW_h": 1,
+   "worked": 15,
+   "perSeedT": [
+    9665,
+    21376,
+    9856,
+    13091,
+    13504,
+    15027,
+    13720,
+    8860,
+    22172,
+    12141,
+    43632,
+    17804,
+    15223,
+    20893,
+    10883
+   ],
+   "tL": 0.236,
+   "seTL": 2.105,
+   "T0": 63.37
   },
   "pallet": {
    "dE": 323,
@@ -1032,70 +1258,116 @@
    "sold": false
   },
   "plasma": {
-   "dE": 7210,
-   "dGaway": 7798,
-   "dI": 8097,
-   "I": 50265,
-   "G": 52336,
-   "at_h": 5,
+   "dE": 2120,
+   "se": 268,
+   "E0": 84453,
+   "sold": true,
+   "dGaway": 0,
+   "dI": 0,
+   "I": 0,
+   "G": 0,
+   "at_h": 17.8,
    "gate": 3,
    "tau_h": 12,
-   "price": 86500,
+   "price": 25400,
    "seeds": 15,
    "bought": 0,
    "perSeed": [
-    6657,
-    4745,
-    13889,
-    9037,
-    11415,
-    8760,
-    5233,
-    11367,
-    4888,
-    4557,
-    9294,
-    1386,
-    5148,
-    2946,
-    8823
+    1492,
+    3008,
+    2291,
+    1316,
+    2454,
+    303,
+    2427,
+    3698,
+    1185,
+    1752,
+    3803,
+    1014,
+    2708,
+    1222,
+    3132
    ],
    "perSeedAway": [
-    8141,
-    4583,
-    15538,
-    9302,
-    11088,
-    10254,
-    6230,
-    10580,
-    5189,
-    5454,
-    9817,
-    1996,
-    6053,
-    3763,
-    8985
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
    ],
    "perSeedI": [
-    9956,
-    4456,
-    4948,
-    6712,
-    9146,
-    8097,
-    6034,
-    8097,
-    8859,
-    9502,
-    8097,
-    5053,
-    6017,
-    7852,
-    8097
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
    ],
-   "E0": 55975,
-   "sold": true
+   "perSeedE0": [
+    90155,
+    83801,
+    91074,
+    75052,
+    93018,
+    81740,
+    80560,
+    81243,
+    90330,
+    73445,
+    88062,
+    70623,
+    97129,
+    89716,
+    80853
+   ],
+   "measure": "28.4a",
+   "dT": 4255,
+   "seT": 620,
+   "dP": 4255,
+   "seP": 620,
+   "E0T": 84453,
+   "tW_h": 11.44,
+   "worked": 15,
+   "perSeedT": [
+    4082,
+    3582,
+    10343,
+    1468,
+    4906,
+    2959,
+    4997,
+    6624,
+    4883,
+    1996,
+    6723,
+    1500,
+    4502,
+    1496,
+    3761
+   ],
+   "tL": -0.594,
+   "seTL": 0.342,
+   "T0": 0
   }
  },
  "purse": {
@@ -1111,6 +1383,539 @@
    "min": 1017753,
    "max": 1716245,
    "sitting": "4 or 5 (h 18.0 to 26.3)"
+  }
+ },
+ "plasma284b": {
+  "$comment": "s2e-measure (RULING2.md 28.4 b): the plasma cutter's lasting gain at three moments from the first works return (m1 bare, m2 with the second cutter, m3 with the second cutter and the hook-lift), and the worth an hour of play of the oversize pieces cut (prepared value): for the lead; the plasma's price and its items row stand until he rules",
+  "m3 hand: hook-lift and analyser owned (the price, the lead 18:30)": {
+   "dL": 2120,
+   "tL": -0.594,
+   "se": 268,
+   "dT": 4255,
+   "dP": 4255,
+   "E0": 84453,
+   "lot4_h": 2120,
+   "lot3_h": 0,
+   "lot4With_h": 3916,
+   "lot3With_h": 0,
+   "lot3Without_h": 0,
+   "seeds": 15,
+   "perSeed": [
+    1492,
+    3008,
+    2291,
+    1316,
+    2454,
+    303,
+    2427,
+    3698,
+    1185,
+    1752,
+    3803,
+    1014,
+    2708,
+    1222,
+    3132
+   ]
+  }
+ },
+ "$s2eMeasure": "s2e-measure (27 Nov): the sold items measured at their planned moments in the NEW goal order by RULING2.md 28.4 (a): dE = THE LASTING GAIN, what the yard keeps an hour over one capped absence that begins once the item works (the run-up played by the reference bot buying nothing, at least an hour and until the item works; the branch without plays as long), nobody at the yard, with and without, the sitting's earlier purchases owned in both; dT (the run-up and the absence together, ruling 21.1's measure where the run-up is the hour) and dP (the run-up alone) beside it, pricing nothing; E0 the absence's income without the item; book: the steps measured the same way (an hour played, then the absence alone).",
+ "$s2eBots": "s2e-bots (27 Nov): the sold items measured at their planned moments in the NEW goal order (ruling 21.1's measure), with `se` (the standard error of the mean over seeds) and `E0` (the yard's income at that moment, the branch without the item); `book`: the level ladders' three steps g1 and d (g(L) = g1 x d^(L-1)) at each ladder's planned moment.",
+ "book": {
+  "driver": {
+   "g1": 4793,
+   "d": 1,
+   "at": "r4entry",
+   "gains": [
+    4793,
+    7948,
+    -1028
+   ],
+   "gainsT": [
+    4996,
+    7585,
+    -225
+   ],
+   "se": 501,
+   "L0": 5.4,
+   "seeds": 15,
+   "calc": 4249,
+   "ratio": 0.8865011475067808,
+   "fails": false,
+   "I": 114062,
+   "perSeed": [
+    [
+     7023,
+     24654,
+     -17727
+    ],
+    [
+     1112,
+     5436,
+     4464
+    ],
+    [
+     6987,
+     -82,
+     8444
+    ],
+    [
+     5951,
+     27411,
+     -19501
+    ],
+    [
+     4733,
+     4809,
+     2269
+    ],
+    [
+     3072,
+     2678,
+     3407
+    ],
+    [
+     5706,
+     -6685,
+     13721
+    ],
+    [
+     6939,
+     2442,
+     4388
+    ],
+    [
+     3495,
+     33461,
+     -32641
+    ],
+    [
+     6065,
+     4323,
+     335
+    ],
+    [
+     4003,
+     4247,
+     2435
+    ],
+    [
+     7404,
+     2672,
+     3219
+    ],
+    [
+     2595,
+     1304,
+     2162
+    ],
+    [
+     3127,
+     5831,
+     3292
+    ],
+    [
+     3688,
+     6722,
+     6319
+    ]
+   ]
+  },
+  "cutter": {
+   "g1": 4000,
+   "d": 0.714,
+   "at": "r3s1",
+   "gains": [
+    2444,
+    2149,
+    1246
+   ],
+   "gainsT": [
+    2038,
+    1780,
+    1009
+   ],
+   "se": 414,
+   "L0": 2.5,
+   "seeds": 15,
+   "calc": 2745,
+   "ratio": 1.1231587561374796,
+   "fails": false,
+   "I": 36170,
+   "perSeed": [
+    [
+     1101,
+     1019,
+     563
+    ],
+    [
+     3516,
+     4160,
+     2899
+    ],
+    [
+     3341,
+     3077,
+     2295
+    ],
+    [
+     661,
+     -11,
+     103
+    ],
+    [
+     3462,
+     3417,
+     2627
+    ],
+    [
+     -524,
+     484,
+     42
+    ],
+    [
+     3828,
+     2499,
+     828
+    ],
+    [
+     705,
+     -85,
+     -243
+    ],
+    [
+     365,
+     973,
+     -313
+    ],
+    [
+     4222,
+     2504,
+     -868
+    ],
+    [
+     3674,
+     3697,
+     3243
+    ],
+    [
+     3539,
+     3579,
+     2814
+    ],
+    [
+     1475,
+     1264,
+     194
+    ],
+    [
+     3293,
+     3104,
+     3642
+    ],
+    [
+     3999,
+     2559,
+     870
+    ]
+   ]
+  },
+  "partner.plumbing": {
+   "g1": 5852,
+   "d": 0.881,
+   "at": "r4entry",
+   "gains": [
+    4298,
+    3712,
+    3338
+   ],
+   "gainsT": [
+    3803,
+    4508,
+    2538
+   ],
+   "se": 735,
+   "L0": 4,
+   "seeds": 15,
+   "calc": 4248,
+   "ratio": 0.9883666821777571,
+   "fails": false,
+   "I": 114062,
+   "perSeed": [
+    [
+     2389,
+     2079,
+     2057
+    ],
+    [
+     6507,
+     1251,
+     4376
+    ],
+    [
+     2692,
+     2915,
+     2859
+    ],
+    [
+     1255,
+     839,
+     1658
+    ],
+    [
+     4881,
+     4946,
+     3263
+    ],
+    [
+     4985,
+     3668,
+     3705
+    ],
+    [
+     10414,
+     6623,
+     4130
+    ],
+    [
+     2285,
+     2549,
+     2126
+    ],
+    [
+     1464,
+     -646,
+     976
+    ],
+    [
+     7132,
+     5962,
+     6538
+    ],
+    [
+     -1017,
+     8822,
+     3925
+    ],
+    [
+     5560,
+     3549,
+     2712
+    ],
+    [
+     5730,
+     4834,
+     4419
+    ],
+    [
+     4184,
+     2875,
+     2844
+    ],
+    [
+     6003,
+     5421,
+     4482
+    ]
+   ]
+  },
+  "hand": {
+   "g1": 2396,
+   "d": 0.626,
+   "at": "r3s1",
+   "gains": [
+    493,
+    363,
+    193
+   ],
+   "gainsT": [
+    452,
+    275,
+    137
+   ],
+   "se": 154,
+   "L0": 4.2,
+   "seeds": 15,
+   "calc": 443,
+   "ratio": 0.8985801217038539,
+   "fails": false,
+   "I": 36170,
+   "perSeed": [
+    [
+     265,
+     458,
+     -24
+    ],
+    [
+     900,
+     -44,
+     12
+    ],
+    [
+     400,
+     382,
+     33
+    ],
+    [
+     31,
+     573,
+     445
+    ],
+    [
+     131,
+     550,
+     -245
+    ],
+    [
+     1889,
+     1264,
+     263
+    ],
+    [
+     -137,
+     474,
+     846
+    ],
+    [
+     918,
+     917,
+     341
+    ],
+    [
+     383,
+     195,
+     107
+    ],
+    [
+     139,
+     231,
+     391
+    ],
+    [
+     70,
+     18,
+     -46
+    ],
+    [
+     938,
+     -85,
+     238
+    ],
+    [
+     1447,
+     238,
+     -12
+    ],
+    [
+     64,
+     -99,
+     40
+    ],
+    [
+     -44,
+     377,
+     506
+    ]
+   ]
+  },
+  "partner.garage": {
+   "g1": 4209,
+   "d": 0.739,
+   "at": "r4entry",
+   "gains": [
+    2879,
+    2201,
+    1572
+   ],
+   "gainsT": [
+    1872,
+    2840,
+    1522
+   ],
+   "se": 595,
+   "L0": 2.1,
+   "seeds": 15,
+   "calc": 3021,
+   "ratio": 1.0493226814866272,
+   "fails": false,
+   "I": 114062,
+   "perSeed": [
+    [
+     1122,
+     735,
+     747
+    ],
+    [
+     4143,
+     -1528,
+     2070
+    ],
+    [
+     2475,
+     2097,
+     2074
+    ],
+    [
+     935,
+     1534,
+     1040
+    ],
+    [
+     3689,
+     2480,
+     2087
+    ],
+    [
+     2973,
+     2958,
+     2484
+    ],
+    [
+     9224,
+     9105,
+     4910
+    ],
+    [
+     1253,
+     1062,
+     802
+    ],
+    [
+     573,
+     79,
+     -2131
+    ],
+    [
+     1043,
+     998,
+     1097
+    ],
+    [
+     3530,
+     2682,
+     2353
+    ],
+    [
+     5135,
+     1849,
+     1739
+    ],
+    [
+     4140,
+     5669,
+     3609
+    ],
+    [
+     2561,
+     2654,
+     763
+    ],
+    [
+     388,
+     637,
+     -62
+    ]
+   ]
   }
  }
 }

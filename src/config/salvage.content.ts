@@ -78,7 +78,7 @@ const PLATES: Plates = {
     // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
-  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 43800, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 37900, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   // s2e-line (yard-stage2-economy.md 2.7 to 2.9, 3.1; RULING2.md 27.3 D1): the depollution bay is PART OF THE SHREDDER LINE (the
   // shredder's `with`): no shop item on sale of its own (gate past the ladder), ordered, set down and started up with the shredder.
   // Its plot stands beside the shredder in the back field; the hook-lift sets each car down on its own apron (feedBy "truck": no
@@ -100,7 +100,7 @@ const PLATES: Plates = {
   // s2e-line: THE SHREDDER LINE, one purchase (the shredder's shop item, price and card; the depollution bay comes `with` it). First
   // price 137,000 (T8's shredder gain, measured with the bay owned and cars arriving, x tau_4 36 h; the bots measure the line as one).
   shredder: {
-    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 667000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
+    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 378000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
@@ -125,7 +125,7 @@ const PLATES: Plates = {
     lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   induction: {
-    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 339000, financeable: true, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    row: "melt", slot: 1, plot: "induction", gate: "rung4", needs: null, price: 236000, financeable: true, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
     batch: { kg: 500, s: 480, start_share: 0.4, start_idle: 60 },
     // its filter's zinc oxide dust is the one sellable dust (T3)
     recipes: {
@@ -398,13 +398,13 @@ const WORKS_LAYER: WorksLayerInput = {
   },
   // 2.9 vehicles and tools, and the plates (2.6.2: a plate is a scrip shop item bought on its plot's card); prices first values (content2) until the payback rule's
   shop: [
-    { key: "truckBridge", kind: "vehicle", place: "park", price: 206000, gate: "rung3", financeable: true, deliver_s: 30, arrive: "truck" },
+    { key: "truckBridge", kind: "vehicle", place: "park", price: 203000, gate: "rung3", financeable: true, deliver_s: 30, arrive: "truck" },
     { key: "pallet", kind: "carry", place: "rack", price: 3000, gate: DARK, deliver_s: 6, arrive: "van" },
     { key: "forklift", kind: "vehicle", place: "forklift", price: 3000, gate: DARK, deliver_s: 30, arrive: "machineFlatbed" },
     // s2f-plasma-cars (RULING2.md 28.7 a): the price STANDS (86,500): the hand's measure of the boss's own tool on 2 seeds is
     // §802 an hour, 1.8 % of E0, UNDER the entry rule's 2 % (build-yard.py refuses it): for the lead (notes/s2f-plasma-cars.md).
     // The shredder line's price (667,000) is tau_4 x its lasting gain with the recovery truck's cars (2 seeds), a FIRST VALUE.
-    { key: "plasma", kind: "tool", place: "rack", price: 86500, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "plasma", kind: "tool", place: "rack", price: 25400, gate: "rung3", deliver_s: 6, arrive: "van" },
     ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
   ],
   // the plasma cutter: tier 4, P 60, on every material (B4, T8)
@@ -434,6 +434,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
     "s2f-plasma-cars (27 Nov, RULING2.md 28.7 a and b): lots.mu_min_tier { 4: [-, -, 25, 30, 30] } (a piece only the plasma cuts may be worth up to its own mu of I, and the richest kind within its own cap comes); the garage's flatrack load removed (the hook-lift fetches no car) and partners.garage.recovery { needs shredder, obj elv, period_s 600 } (the garage's own recovery truck sets a car on the bay's apron, paid at its label price as it lands); the shredder line 137,000 -> 667,000 (FIRST VALUE: tau_4 x its lasting gain with those cars, 2 seeds, plates.json); the plasma's price stands at 86,500 (its hand measure, 1.8 % of E0 on 2 seeds, is under the entry rule: for the lead)",
+    "s2e-measure (27 Nov, the full measurement on a13a006, RULING2.md 28.4 a and 28.8, the lead's line of 18:30; scripts/content/bots/plates.json, docs/design/yard-bots3.md): ONE price round, fifteen seeds of the normal hand, the LASTING gain (one capped absence once the item works, with and without): the hook-lift 206,000 -> 203,000 (gain 16,883 an hour, 31 % of E0), the analyser 43,800 -> 37,900 (3,162, 6.7 %), the shredder line 667,000 -> 378,000 (10,504, 9.1 %), the induction hall 339,000 -> 236,000 (6,555, 6.2 %), the plasma cutter 86,500 -> 25,400 (what its oversize pieces bring an hour at the reference hand's pace with the hook-lift and the analyser owned: 2,120, 2.5 %; the lead's line); NOT changed: the rotary hall 107,000 (0.3 % of E0: under the entry rule; the lead rules) and the copper hall 202,000 (1.6 %: under the entry rule; the lead rules on its switch); works.rungs n 5 3,600 -> 2,900 t (rung 5 came at sittings 9 to 11, 4 to 5 sittings after the last machine; ruling 28.4 e: 8 to 9); levels.book stays {} (every ladder within 0.7 to 1.4 on 15 seeds); rate.kappa stays 1 (rung 3 measured 1.00; rung 4 0.84, outside the band: a term, for the lead)",
     "s2f-copper (27 Nov, RULING2.md 27.5 and 28.7 c): THE COPPER REFINING HALL (plate copper, melt row slot 2, gate rung 4 by the one switch COPPER_GATE; DARK keeps it defined and unsold, its plot undrawn, its goals unwritten): a tilting furnace that fire-refines No.2 copper (yield 0.95), copper cylinders (0.90) and thin cable chopped to granules inside it (0.3325; the granulator stays dark) into the new grade cui, fire-refined copper ingot, p̄ 38.50 (No.2 at 0.89 of it), under a bag-house filter; slag and dust to the licensed carrier; silica flux 0.02 kg a kg at 0.15; 2,000 kg a heat in 1,800 s; bare bright is not charged. Financeable; its plot, apron and filter west of the induction hall; goals buyCopper and pourCopper after pourRotary. FIRST PRICE 202,000 = tau_4 36 h x a first gain of 5,600 an hour (arithmetic on the measured copper flow, bots/plates.json copper marked first): the next measurement measures its lasting gain on fifteen seeds and writes the price; it ships only by the entry rule",
     "s2e-content (27 Nov, RULING2.md 27; yard-stage2-economy.md packages 2 and 3): THE STAGE'S ECONOMY BUILT AGAIN. Sold at stage 2: the three-axle hook-lift 154,000 -> 206,000 (financeable), the plasma cutter 64,900 -> 86,500, the analyser 32,800 -> 43,800, the induction hall 207,000 -> 339,000, the shredder 83,200 -> 136,000, the rotary hall 65,100 -> 107,000 (REPORT9's T8 gain x the new tau, three figures; financeable marked on the hook-lift and the machines). DARK (gate past the ladder, defined, never sold): the crane, baler, shear, granulator, depollution bay, eddy current, sensor sorter, battery breaker, lead smelter, forklift, pallet truck (twitch leaves the rotary's inputs with the sorter). tau_h 9/22/45 -> 12/36/48; works.maxLevel 10 -> 1; reuse.levels 3 -> 0; works.rungs (the stage's own rung 5 range 8; the first yard's ladder keeps 9); bank.maxF_h 2 -> 6, maxF_tau 0.15 -> 0.5; the 10- and 20-hour packs off; levels.minShareI 0.01 and levels.book {}; group.aheadWorks false; reuse.shareI_r [12.5, 62.5, 62.5 per mille]; rate.kappa 1; lots: the boiler drum, press frame and transformer core (real masses), lots.lorry_kg 20,000. The stage as REPORT9 measured it is frozen in src/engine/fixtures/salvage-report9.json",
     "content2-bots (27 Nov, REPORT9 round 1, RULING2.md 21.1 and 19.1): the plates', vehicles' and tools' prices from the gain measured over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one capped absence, a rate an hour of yard time, mean of seeds 1 to 15, from each item's planned moment with the sitting's earlier purchases owned; price = max(works.floor, tau_r x dE) to three figures (scripts/content/bots/plates.json): shear 3,000 -> 5,180, analyser 29,100 -> 32,800, shredder 419,000 -> 83,200, rotary 77,600 -> 65,100, induction 171,000 -> 207,000, breaker 38,100 -> 3,000 (its measured gain is NEGATIVE: a finding, REPORT9), smelter 27,500 -> 17,700; truckBridge 12,000 -> 154,000, plasma 8,000 -> 64,900, pallet 2,500 -> 3,000, forklift 15,000 -> 3,000; crane, baler, depollution, granulator, eddy, sorter stay at the floor 3,000 (measured gain under the floor's worth)",
@@ -1675,7 +1676,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // first yard's ladder.rungs (shown padlocked) keeps its own values.
   // `dropoffPeriod_s` (s2e-dropoff; RULING2.md 28.3): from the works' opening the public drop-off brings at most one arrival a
   // period, however fast the hands are (by rung, null below rung 3; first value the first yard's own dropoff.period, 50 s; tune).
-  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 1, floor: 3000, plates: PLATES, rungs: [{ n: 4, t: 1000, range: 8 }, { n: 5, t: 3600, range: 8 }], dropoffPeriod_s: [null, null, 50, 50, 50] },
+  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 1, floor: 3000, plates: PLATES, rungs: [{ n: 4, t: 1000, range: 8 }, { n: 5, t: 2900, range: 8 }], dropoffPeriod_s: [null, null, 50, 50, 50] },
   // The magnet crane (2.7; T1, T24): never a car before depollution, a battery, or copper, brass, bronze, aluminium, lead or stainless.
   crane: { rate: 50, reach_m: 9, load_kg: 1500, never: ["copper", "brass", "bronze", "alu", "lead", "stainless"], neverObjects: ["elv", "pbb"] },
   shear: { P: 15 },
