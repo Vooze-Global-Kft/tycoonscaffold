@@ -2951,3 +2951,68 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         change; rated income's first computation stored by the app across a start. Fewer instants
         is a rule decision and is not taken now.
     (d) Ruling 20.3 stands: stage 2 goes to no phone before (a) and (b).
+
+### 29. The bots' third measurement: REPORT10 (27 November, about 20:30; `docs/design/yard-bots3.md`)
+
+One price round on fifteen seeds and one table of 71 runs, on the stage as rebuilt and joined
+(rulings 26 to 28). WHAT IT SHOWS: no promise broken; rung 4 at sittings 4 to 5 and rung 5 at 8 to 9
+on 20 of 20 normal seeds and 15 of 15 on the other route; the bank's first loan offered at rung 3's
+first sitting on every seed and repaid before rung 4; both packs fitting the player's own cash at
+rung 4 on 15 of 15 (REPORT9: at none of 150 moments); 0 to 2 sittings a seed with nothing worth
+buying before rung 5 (REPORT9: 63 of 139); the last machine and rung 5 at most 3 sittings apart; an
+oversize piece cut in every sitting; an hour away 0.40 and 0.53 of an hour played; rated income
+within one per cent of measured income up to rung 4's entry; every level ladder's calculated gain
+within 0.89 to 1.12 of its measured first step (no gain book needed); at each rung's entry the
+things worth buying cost 3 to 9 times the purse. THE STAGE HANGS TOGETHER. Prices from the lasting
+gains: the hook-lift 203,000 (+31 % of the yard's income), the shredder line 378,000 (+9 %), the
+induction hall 236,000 (+6 %), the analyser 37,900 (+7 %), the plasma 25,400 (+2.5 %, the hand's
+measure with the analyser owned); rung 5 at 2,900 t.
+
+29.1 A HALL CHOOSES ITS OWN RECIPE (the trap beneath the halls' large negative seeds). Taken apart
+    on two seeds: the yard with a new hall kept 136,000 and 145,000 less over six hours, not
+    because of the new hall but because the INDUCTION hall stood on its first recipe, brass, for
+    the whole absence in that branch (the first yard's crucible already melts the brass; the
+    bronze was sold unrefined), and on bronze in the other. A recipe is the player's single tap
+    and holds through a twelve-hour absence: a yard that buys the induction hall and never taps
+    earns LESS than without it (the hall reads at or below zero on 5 of 15 seeds). That is a
+    purchase that can make the yard poorer (ruling 17). RULED: from the works' opening a hall
+    with several recipes charges, at each heat's start, the recipe that adds the most worth for
+    that heat from what its bays hold; a recipe the player taps is pinned until he hands the
+    choice back ("the hall chooses" is the default and is said on its card). The lead's guess
+    (hands taken from richer work by charging the halls) was refuted: the halls charge from the
+    bays, and the hands cut more with a hall, not less.
+29.2 THE ROTARY HALL AND THE COPPER HALL read 0.3 and 1.6 % on the lasting gain with standard
+    errors larger than their means, because of 29.1's branches; on twelve and eleven seeds of
+    fifteen they read +1,100 to +6,100 and +2,500 to +9,600. They stand, sold, and ARE MEASURED
+    AGAIN on fifteen seeds once 29.1 is built; the entry rule then decides.
+29.3 THE ENTRY RULE'S FORM on the lasting gain: the mean at least 2 % of the yard's income AND at
+    least two standard errors above zero. The clause "no seed below -1 %" cannot be read on a
+    measure whose branches part (27.2 b is amended so).
+29.4 RATED INCOME STILL OVER-READS FROM DAY 3 (1.22 to 1.27; on every board and habit): the
+    halls' term counts what a hall could charge, not what the yard's bays receive (the induction
+    hall's rated gain is 4.6 times its measured one). The term is made right (what the replay's
+    bays receive by grade, the crucible's claim on brass first); no factor is written outside
+    0.85 to 1.15. Ruling 25.1 stands: no pack is offered in a store build before the band holds.
+29.5 THE GOALS: the analyser stands before the plasma in the list (the plasma's bronze pieces
+    need it); and the stage's goals show past a first-yard goal that is not met (the card-only
+    player's goal card read "cut a car" from hour 3 to hour 60).
+29.6 GATES RESTATED BY WHAT WAS LEARNT: G3's bands are counted in SITTINGS for the once-a-day
+    hand (his sittings are days: rung 4 on his 5th, rung 5 on his 9th to 10th; a stage of four
+    to five sittings to rung 4 is so for every hand); G15 reads "the goal's purchase, its
+    start-up and the pieces within a quarter of an hour" (met on 5 of 5: the bill at rung 4's
+    entry is 2.5 times the purse, which is the point); G11's first day may reach 8 % (the van's
+    first visit is the Yard sale's lesson: 6.7 % measured), days 2 on stay within 2 to 5 %
+    (5.0, 4.8, 4.0 measured).
+29.7 THE BORROWER IS RICHER AND SLOWER, AND BORED: the always-finance bot has the hook-lift two
+    sittings sooner, repays before rung 4, and then reaches rung 4 a sitting later and rung 5 one
+    to two sittings later than the hand that never borrows (14.6 % later on the median), with
+    nothing worth buying for five of its ten sittings while its cash grows to 2.7M: every level
+    reads under 1 % of rated income, and the rung waits for tonnes that money cannot buy. The
+    loan must not make a player's evenings emptier. NOT RULED YET: first the numbers (each
+    level's gain in money and in tonnes on that yard at its third and fourth sitting, and what
+    buying them does to the rung), then the rule (a level worth having for its tonnes as well as
+    for its money, priced by the larger share; or a lower bar than 1 %).
+29.8 The cutters stand idle two fifths of rungs 4 and 5 beside about fifty old things in the first
+    yard's zones: noted for the screens' phase (what a player sees); no rule now.
+29.9 ORDER: one pass (29.1 with 29.5; 29.4), then the halls measured again with the bands and
+    the borrower's numbers (29.2, 29.7), then the three attacks, then the specification.
