@@ -792,6 +792,7 @@ export const TEXT = {
   'goal.pourInduction': 'Pour at the induction furnace', // done poured:induction
   // s2e-advice (yard-stage2-economy.md 1.3): the repeating goal after the list when the advice line names nothing
   'goal.rungToGo': 'Rung {n}: {t} to go', // n: the next rung; t: { tonnes_g } still to supply (adviceWait)
+  'goal.buyShredderLine': 'Buy the shredder line', // s2e-fix1 (RULING2 28.5 c): the line is one purchase (the bay and the shredder); goal.buyShredder stays for old contents
   // s2e-advice (RULING2 28.2 (d)): Help's scrip page says what an hour of the yard's earnings is (its own row, after help.packsBody)
   'help.packsHourBody': 'An hour of the yard’s own earnings is what it makes in an hour with nobody in it, at today’s prices.',
   // s2e-advice (yard-stage2-economy.md 2.6.2; RULING2 27.3 D6): words for Phase C. A plot whose item opens at the next rung shows

@@ -43,7 +43,7 @@ import { contentAt, worksOpened } from './layer';
 import { financeKind, financeTerms, loanOffered, shownOf } from './bank';
 import { adPaid, quotePack, setAgeBand, signFinance } from './actionsMoney';
 import { setPlateRecipe, setRoute, stepOutForklift } from './actionsWorks';
-import { grantProduct, packProducts, packsShown, quoteCheck, secondSession, shopReachable } from './shop';
+import { ageDue, grantProduct, packProducts, packsShown, quoteCheck, secondSession, shopReachable } from './shop';
 import { adOffer, adsAllowed, sellNow } from './ads';
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { CardAction, CrewRole, LevelTarget, Piece, SalvageConfig, SalvageEvent, SalvageGame, ShopKey, ThingState } from './types';
@@ -1663,7 +1663,8 @@ export function financeHabit(b: Bot, plate: string): boolean {
 function packHabit(b: Bot): void {
   const ctx = { country: 'US' };
   const now = b.now;
-  if (!packsShown(b.cfg, b.g, ctx) && b.g.salvage.iap.ageBand === null && shopReachable(b.g)) {
+  // s2e-fix1 (RULING2 28.2 a): the age question is due from the second session's start (shop.ts ageDue), not at a pack row.
+  if (ageDue(b.cfg, b.g, ctx)) {
     b.g = setAgeBand(b.cfg, b.g, 1985, now, b.g.salvage.t, b.ev);
   }
   if (!packsShown(b.cfg, b.g, ctx)) return;

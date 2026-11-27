@@ -71,5 +71,5 @@ export const salvageEngineMode: EngineMode = {
   // SAME object when nothing changes (a game of another mode is handed back as it is).
   grantProduct: (cfg, state, arrival) => (R.isSalvage(cfg) ? R.grantProduct(cfg, state as R.SalvageGame, arrival) : state),
   afterListing: (cfg, state, listing, now) => (R.isSalvage(cfg) ? R.afterListing(cfg, state as R.SalvageGame, listing, now) : state),
-  adAudience: (cfg, state) => (R.isSalvage(cfg) && (state as Partial<R.SalvageGame>).salvage ? R.adAudience(state as R.SalvageGame) : null),
+  adAudience: (cfg, state) => (R.isSalvage(cfg) && (state as Partial<R.SalvageGame>).salvage ? R.adAudience(state as R.SalvageGame, cfg as R.SalvageConfig) : null),
 };

@@ -56,7 +56,7 @@
     { "id": "walkBackfield", "text": "goal.walkBackfield", "target": "backfield", "via": null, "done": "at:backfield", "buy": null, "optional": true, "stall": "chevron" },
     { "id": "buyInduction", "text": "goal.buyInduction", "target": "induction", "via": null, "done": "plate:induction", "buy": "induction", "optional": false, "stall": null },
     { "id": "pourInduction", "text": "goal.pourInduction", "target": "induction.apron", "via": null, "done": "poured:induction", "buy": null, "optional": false, "stall": null },
-    { "id": "buyShredder", "text": "goal.buyShredder", "target": "shredder", "via": null, "done": "plate:shredder", "buy": "shredder", "optional": false, "stall": null },
+    { "id": "buyShredder", "text": "goal.buyShredderLine", "target": "shredder", "via": null, "done": "plate:shredder", "buy": "shredder", "optional": false, "stall": null },
     { "id": "buyRotary", "text": "goal.buyRotary", "target": "rotary", "via": null, "done": "plate:rotary", "buy": "rotary", "optional": false, "stall": null },
     { "id": "pourRotary", "text": "goal.pourRotary", "target": "rotary.apron", "via": null, "done": "poured:rotary", "buy": null, "optional": false, "stall": null },
     { "id": "supplyRung5", "text": "goal.supplyRung5", "target": null, "via": null, "done": "rung:5", "buy": null, "optional": false, "stall": null },

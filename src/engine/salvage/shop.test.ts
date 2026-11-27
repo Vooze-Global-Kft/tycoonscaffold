@@ -15,7 +15,7 @@ import { quotePack, setAgeBand, setPacksHidden, settleQuote } from './actionsMon
 import { cardOf } from './cards';
 import { noteSeen } from './actions';
 import { reconcileSalvage } from './save';
-import { ageBandOf, codeHash, EXPIRE_MS, expireState, headroomU, HOUR_MS, packHours, packS, quoteFn, settleState, standingS, WAIT_MS } from './shop';
+import { ageBandOf, ageDue, codeHash, EXPIRE_MS, expireState, headroomU, HOUR_MS, packHours, packS, quoteFn, settleState, standingS, WAIT_MS } from './shop';
 import type { GameConfig } from '../../config/schema';
 import type { GameState } from '../types';
 import type { ProductArrival, QuoteOutcome, SalvageEvent, SalvageGame } from './types';
@@ -341,10 +341,12 @@ describe('who sees packs (2.15.2, 2.15.3; P1, P8, P13, P17)', () => {
     expect(shop(hidden, 'US').packs).toBeNull();
   });
 
-  it('the age question is due the first time a pack row would show (no band kept); it keeps a band, never the year; asked once', () => {
+  it('the age question is due from the second session in every country (s2e-fix1, RULING2 28.2 a: no band kept, no shop data until one is); it keeps a band, never the year; asked once', () => {
     const noBand = shopGame({ ageBand: null, cash: 0 });
-    expect(cardOf(cfg, noBand, { kind: 'shop' }, T0, US).shop!).toMatchObject({ askAge: true, packs: null });
-    expect(cardOf(cfg, noBand, { kind: 'shop' }, T0, { country: 'DE' }).shop!.askAge).toBe(false);
+    for (const country of ['US', 'DE', null]) {
+      expect(ageDue(cfg, noBand, { country }), String(country)).toBe(true);
+      expect(cardOf(cfg, noBand, { kind: 'shop' }, T0, { country }).shop, String(country)).toBeUndefined();
+    }
     expect(cardOf(cfg, noBand, { kind: 'ageQuestion' }, T0, US).ageQuestion).toEqual({ minYear: 1900, maxYear: 2026 });
     const ev: SalvageEvent[] = [];
     const a = setAgeBand(cfg, noBand, 1990, T0, 0, ev);
@@ -352,6 +354,8 @@ describe('who sees packs (2.15.2, 2.15.3; P1, P8, P13, P17)', () => {
     expect(JSON.stringify(a.salvage.iap)).not.toContain('1990');
     expect(ev).toEqual([{ type: 'ageAsked' }]);
     expect(setAgeBand(cfg, a, 2020, T0, 0)).toBe(a);
+    expect(ageDue(cfg, a, US)).toBe(false);
+    expect(cardOf(cfg, a, { kind: 'shop' }, T0, US).shop).toBeDefined();
     const bad: SalvageEvent[] = [];
     expect(setAgeBand(cfg, noBand, 1899, T0, 0, bad)).toBe(noBand);
     expect(setAgeBand(cfg, noBand, 2027, T0, 0, bad)).toBe(noBand);

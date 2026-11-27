@@ -3572,7 +3572,8 @@
           "lev": 0,
           "maxLevel": 1,
           "inbuf": 0,
-          "tray": 0
+          "tray": 0,
+          "gain_h": 3649
         },
         "depollution": {
           "row": "shredder",
@@ -3722,7 +3723,8 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 2000,
-          "tray": 0
+          "tray": 0,
+          "gain_h": 3782
         },
         "eddy": {
           "row": "shredder",
@@ -3865,7 +3867,8 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 2000,
-          "tray": 0
+          "tray": 0,
+          "gain_h": 2959
         },
         "induction": {
           "row": "melt",
@@ -3928,7 +3931,8 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 500,
-          "tray": 0
+          "tray": 0,
+          "gain_h": 9407
         },
         "breaker": {
           "row": "lead",
@@ -5364,7 +5368,8 @@
           "gate": "rung3",
           "financeable": true,
           "deliver_s": 30,
-          "arrive": "truck"
+          "arrive": "truck",
+          "gain_h": 17145
         },
         {
           "key": "pallet",
@@ -5391,7 +5396,8 @@
           "price": 86500,
           "gate": "rung3",
           "deliver_s": 6,
-          "arrive": "van"
+          "arrive": "van",
+          "gain_h": 7210
         },
         {
           "key": "crane",
@@ -6563,7 +6569,7 @@
       },
       {
         "id": "buyShredder",
-        "text": "goal.buyShredder",
+        "text": "goal.buyShredderLine",
         "target": "shredder",
         "via": null,
         "done": "plate:shredder",

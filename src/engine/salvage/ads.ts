@@ -68,9 +68,13 @@ function rolled(c: SalvageContent, g: SalvageGame): AdsState {
   return a.day === d ? a : { ...a, day: d, awayUsed: 0, spotUsed: 0 };
 }
 
-/** Any ad button may exist (4.1.4): from the second session only. */
+/**
+ * Any ad button may exist (4.1.4): from the second session only; s2e-fix1 (RULING2 28.2 b) NEVER FOR THE AGE BAND 'u13' (no away
+ * bonus video, no spot buyer, as there is no shop). With no band yet (the age question due) ads may stand, their requests
+ * child-treated (shop.ts adAudience); the screen asks the question before the first ad button.
+ */
 export function adsAllowed(cfg: SalvageConfig, g: SalvageGame): boolean {
-  return !!adsDef(cfg.salvage) && secondSession(g);
+  return !!adsDef(cfg.salvage) && secondSession(g) && g.salvage.iap.ageBand !== 'u13';
 }
 
 /** No ad videos is owned (entitlements.skipRewarded): every reward at once, same limits. */

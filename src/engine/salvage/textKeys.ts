@@ -243,6 +243,8 @@ export const TEXT_KEYS = {
     'goal.pourInduction',
     // s2e-advice (yard-stage2-economy.md 1.3): the repeating goal when the advice line names nothing
     'goal.rungToGo',
+    // s2e-fix1 (RULING2 28.5 c): the purchase is the line (the depollution bay and the shredder); keys are append-only, so a new key
+    'goal.buyShredderLine',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
   /**

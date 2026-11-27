@@ -691,12 +691,17 @@ export function rungTiles(cfg: SalvageConfig, g: SalvageGame): RungTile[] {
  * The state with a shop item owned, as rated income reads assets (rate.ts own(): the item in `owned`, a tool's tier, a
  * better carrier, a first-yard machine on its pad, the truck); a works plate running at level 1 (and, a hall, poured
  * once: what it earns once working). For the advice's rated gain only; nothing is applied.
+ * s2e-fix1 (RULING2 28.5 b): A LINE IS ONE PURCHASE here too: the plates that come `with` it (the shredder line's depollution
+ * bay; works.ts orderPlate orders and starts them together) run beside its first plate, so the line is counted with its cars.
  */
 export function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
   const s = g.salvage;
-  if (c.works?.plates[item]) {
-    const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
-    return { ...g, salvage: { ...s, works: { ...s.works, [item]: w }, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
+  const d = c.works?.plates[item];
+  if (d) {
+    const run = () => ({ phase: 'running', level: 1 }) as unknown as (typeof s.works)[string];
+    const works = { ...s.works, [item]: run() };
+    for (const q of d.with ?? []) if (c.works?.plates[q] && !s.works[q]) works[q] = run();
+    return { ...g, salvage: { ...s, works, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
   }
   const n = { ...s, owned: s.owned.includes(item) ? s.owned : [...s.owned, item] };
   const tool = c.tools[item];
@@ -705,4 +710,27 @@ export function boughtState(c: SalvageContent, g: SalvageGame, item: string): Sa
   if (item === 'stripper' || item === 'bench' || item === 'crucible') n.machines = { ...s.machines, [item]: { ...s.machines[item], owned: true, level: Math.max(1, s.machines[item].level) } };
   if (item === 'truck') n.truck = { ...s.truck, owned: true };
   return { ...g, salvage: n };
+}
+
+/**
+ * s2e-fix1 (RULING2 28.5 b, "one measure for machines too"): THE MEASURED GAIN a sold machine's, vehicle's or tool's price is
+ * made of, § an hour: content `gain_h` on its works plate (a plate) or on its works-layer shop item (a vehicle, a tool), which
+ * build-yard.py writes from bots/plates.json `dE` beside the price (price = max(works.floor, tau_r x gain_h) to its rounding).
+ * `c` is the content the state reads (layer.ts contentAt: the works layer's items joined). Null where the content names none
+ * (a level, a hire, a first-yard item, a content written before this pass): the reader then keeps the replay's gain.
+ */
+export function measuredGain(c: SalvageContent, item: string): number | null {
+  const p = c.works?.plates[item];
+  if (p) return typeof p.gain_h === 'number' && Number.isFinite(p.gain_h) ? p.gain_h : null;
+  const it = shopItems(c).find((i) => i.key === item);
+  return it && it.kind !== 'works' && typeof it.gain_h === 'number' && Number.isFinite(it.gain_h) ? it.gain_h : null;
+}
+
+/**
+ * s2e-fix1: the gain the advice line and the headroom read for buying `item` now (from the works' opening): its measured gain
+ * where the content holds one (28.5 b), else the replay's calculated gain of the bought state (ratedGain of boughtState).
+ */
+export function buyGain(cfg: SalvageConfig, g: SalvageGame, item: string): number {
+  const c = contentAt(cfg.salvage, g.salvage);
+  return measuredGain(c, item) ?? ratedGain(cfg, g, boughtState(c, g, item));
 }

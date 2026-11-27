@@ -13,7 +13,7 @@ import { awayCapS } from './away';
 import { loanHintDue, loanOffered, platePrice, saveUpSeconds } from './bank';
 import { goalBuyNow, goalSpecs } from './goals';
 import { contentAt, worksOpened } from './layer';
-import { boughtState, buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
+import { boughtState, buyCheck, buyGain, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
 import { roundMoney } from './money';
 import { levelGain, levelGainCfg, ratedIncome } from './rate';
 import { incomeRate } from './tick';
@@ -323,7 +323,8 @@ const bestOf = (list: Cand[]): Cand | null => list.reduce<Cand | null>((b, x) =>
  * shop item its check prices (not owned, arriving, locked or info), the next hire of each role, the next level of every crew
  * member, first-yard machine, open partner and running plate that its check sells (s2e-levels: a level not worth having is
  * refused `notLimit`, state locked, so never named). Gains: a level's is rate.ts levelGain (the gain book where it has the
- * ladder); a purchase's is the replay with it bought less now (ladder.ts ratedGain). A level whose gain is under
+ * ladder); a purchase's is its MEASURED gain, the one its price is made of (content gain_h, ladder.ts buyGain; s2e-fix1,
+ * RULING2 28.5 b), else the replay with it bought less now (ladder.ts ratedGain); a hire's the replay. A level whose gain is under
  * `levels.minShareI` x I is not named either (27.2 c). Never a product of the store, a pack or the shop: those are not shop
  * items (2.13 (f)).
  */
@@ -340,7 +341,7 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
     if (it.kind === 'works') {
       const price = platePrice(cfg, g, it.key);
       if (price === null || cashRefusal(g, price)?.key === 'earmark') continue;
-      add({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)), it.key);
+      add({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, buyGain(cfg, g, it.key), it.key);
       continue;
     }
     const role = roleOfKey(it.key);
@@ -355,7 +356,7 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
     }
     const ch = buyCheck(cfg, g, it.key);
     if (ch.price === null || ch.state === 'locked' || ch.state === 'owned' || ch.state === 'arriving' || ch.state === 'info') continue;
-    add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)), it.key);
+    add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, buyGain(cfg, g, it.key), it.key);
   }
   const minShare = (c.levels as { minShareI?: number }).minShareI ?? 0;
   const I = minShare > 0 ? Math.max(0, ratedIncome(c, s)) : 0;

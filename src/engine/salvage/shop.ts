@@ -17,8 +17,8 @@
  *   value H hours; S = roundMoney(H × I), I the rated income on the state's content (ratedI, as bank.ts ratedIG).
  * - Packs show (2.15.3) only when: the second session has begun (`iap.sessions2At`), the age band is 'a18',
  *   the rung is at least `iap.packsFromRung`, the store country is known and not in `iap.packsOff`, and the
- *   packs are not hidden in Settings, and no Bank loan is open (RULING2 28.2 c). The age question is due when all
- *   but the band hold and no band is kept (the loan does not count there).
+ *   packs are not hidden in Settings, and no Bank loan is open (RULING2 28.2 c). The age question is due (s2e-fix1,
+ *   RULING2 28.2 a) from the second session's start in every country while no band is kept; until then no shop row.
  * - The quote refuses, in order: `packOff` (not a pack, or packs not shown, a Bank loan open among them), `packPending`
  *   (`iap.maxStanding` quotes of the product stand, or a WAITING one with 0 ≤ now − atMs < 24 h), `packHeadroom` (S ≤ 0, or cash
  *   + Σ S of every standing quote + S > U), `quoteUpdated` (the S shown is not the S now; event quoteUpdated
@@ -30,7 +30,7 @@
  */
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
 import { begin, credit, finish } from './clock';
-import { boughtState, buyCheck, hireCheck, hiredState, levelCheck, levelCheckAt, levelled, levelQuote, ratedGain, shopItems, worksTauH } from './ladder';
+import { buyCheck, buyGain, hireCheck, hiredState, levelCheck, levelCheckAt, levelled, levelQuote, ratedGain, shopItems, worksTauH } from './ladder';
 import { contentAt, worksOpened } from './layer';
 import { roundMoney } from './money';
 import { ratedTerms } from './rate';
@@ -95,9 +95,14 @@ export function secondSession(g: SalvageGame): boolean {
   return g.salvage.iap.sessions2At !== null;
 }
 
-/** The shop can be reached (a Rota row, a Settings row): from the second session, never for the age band 'u13' (P8). */
+/**
+ * The shop can be reached (a Rota row, a Settings row): from the second session, never for the age band 'u13' (P8), and
+ * (s2e-fix1, RULING2 28.2 a) NEVER WHILE NO BAND IS KNOWN: until the age question is answered no card has a shop row or
+ * shop data (the question is due from the second session's first instant, ageDue).
+ */
 export function shopReachable(g: SalvageGame): boolean {
-  return secondSession(g) && g.salvage.iap.ageBand !== 'u13';
+  const band = g.salvage.iap.ageBand;
+  return secondSession(g) && band !== null && band !== 'u13';
 }
 
 /** The store country's switch (2.15.3): on only for a KNOWN country not in `iap.packsOff`; unknown (null) means off. */
@@ -123,9 +128,16 @@ export function packsShown(cfg: SalvageConfig, g: SalvageGame, ctx?: CardContext
   return packsBarBand(cfg, g, ctx) && g.salvage.iap.ageBand === 'a18' && !g.salvage.bank.agreement;
 }
 
-/** The age question is due (4.8): the first time a pack row would show and no band is kept. */
+/**
+ * THE AGE QUESTION IS DUE (s2e-fix1; RULING2 28.2 a, which replaces 4.8's "the first time a pack row would show"): from the
+ * instant the second session begins (`iap.sessions2At` set), IN EVERY COUNTRY (packs on or off, the store country known or
+ * not, whatever the rung), while no band is kept, on a content with a shop (`iap`; release.stage 1 has none, so never there).
+ * The screen asks it before any ad button, consent prompt or shop row; until it is answered ad requests are child-treated
+ * (adAudience) and no card has a shop row (shopReachable). `ctx` is not read (kept for the callers' shape).
+ */
 export function ageDue(cfg: SalvageConfig, g: SalvageGame, ctx?: CardContext): boolean {
-  return packsBarBand(cfg, g, ctx) && g.salvage.iap.ageBand === null;
+  void ctx;
+  return !!iapDef(cfg.salvage) && secondSession(g) && g.salvage.iap.ageBand === null;
 }
 
 /**
@@ -222,7 +234,9 @@ const sells = (st: string, price: number | null): price is number => price !== n
  * - every check is the one the card applies (buyCheck, plateBuyCheck, hireCheck, levelCheck), whose ceiling comes BEFORE the
  *   money from the works' opening, so U never depends on the cash: a step greyed for the cash counts, a step the ceiling
  *   refuses (or gated, dark, owned, arriving, at its top) counts nothing;
- * - a step's gain: a shop item's or a plate's rated gain bought (ladder.ts ratedGain on the bought state: the replay), a
+ * - a step's gain: a sold machine's, vehicle's or tool's MEASURED gain, the one its price is made of (content gain_h, ladder.ts
+ *   buyGain; s2e-fix1, RULING2 28.5 b: its payback is then tau_r, inside the window while it is sold and unbought), else a shop
+ *   item's or a plate's rated gain bought (ladder.ts ratedGain on the bought state: the replay), a
  *   hire's on the hired state, a level's `levelGain` (levelQuote: the one measure its price is made of);
  * - a step counts only while price ≤ window × gain (no item counts above what it earns; a zero gain counts nothing);
  * - EACH LADDER IS COUNTED UP while each step pays: the next hire of a role on the state with the last one hired, the next
@@ -243,7 +257,7 @@ export function headroomWorks(cfg: SalvageConfig, g: SalvageGame): number {
     if (it.kind === 'crew') continue;
     const ch = it.kind === 'works' ? plateBuyCheck(cfg, g, it.key) : buyCheck(cfg, g, it.key);
     if (!sells(ch.state, ch.price)) continue;
-    if (pays(ch.price, ratedGain(cfg, g, boughtState(c, g, it.key)))) u += ch.price;
+    if (pays(ch.price, buyGain(cfg, g, it.key))) u += ch.price;
   }
   for (const role of ROLES) {
     let h = g;
@@ -486,8 +500,14 @@ export function afterListing(cfg: SalvageConfig, g: SalvageGame, listing: Produc
   return expireState(cfg, g, listing, now);
 }
 
-/** EngineMode.adAudience (P8): 'child' for the band 'u13', 'teen' for 't13', else null. */
-export function adAudience(g: SalvageGame): 'child' | 'teen' | null {
+/**
+ * EngineMode.adAudience (P8): 'child' for the band 'u13', 'teen' for 't13', else null. s2e-fix1 (RULING2 28.2 a): from the
+ * second session's start UNTIL A BAND IS KNOWN, 'child' too (child-directed, non-personalised requests, no tracking question).
+ * Before the second session (and so always at release.stage 1, where `iap.sessions2At` is never set) nothing changes: null.
+ * With `cfg`, a content without a shop (`iap`) keeps null whatever the state says.
+ */
+export function adAudience(g: SalvageGame, cfg?: SalvageConfig): 'child' | 'teen' | null {
   const b = g.salvage.iap?.ageBand ?? null;
+  if (b === null) return g.salvage.iap && secondSession(g) && (!cfg || !!iapDef(cfg.salvage)) ? 'child' : null;
   return b === 'u13' ? 'child' : b === 't13' ? 'teen' : null;
 }

@@ -585,6 +585,13 @@ export const ShopItemSchema = z.object({
   needsItem: id.optional(),
   /** STAGE 2 (s2e-content; yard-stage2-economy.md 2.14.2): a vehicle that earns may be financed by the bank (the three-axle hook-lift); never a tool, a carrier or crew. */
   financeable: z.boolean().optional(),
+  /**
+   * STAGE 2 (s2e-fix1; RULING2 28.5 b): a works-layer vehicle's or tool's MEASURED GAIN, § an hour, the gain its price is made
+   * of (bots/plates.json `items.<key>.dE`, written by build-yard.py for every item SOLD at this stage; never on a first-yard
+   * item). Read from the works' opening by the advice line and the headroom (ladder.ts measuredGain). It lives only in
+   * `worksLayer.shop`, which stageView strips at release.stage 1.
+   */
+  gain_h: z.number().optional(),
   /** The prototype's measures (checks, never rules). */
   addsPerMin: z.number().optional(),
   incomeNow: z.number().optional(),
@@ -831,6 +838,14 @@ export const PlateSchema = z.object({
   tray: z.number().nonnegative(),
   financeable: z.boolean().optional(),
   permit: z.string().optional(),
+  /**
+   * s2e-fix1 (RULING2 28.5 b, "one measure for machines too"): THE MEASURED GAIN its price is made of, § an hour (the bots'
+   * lasting gain, bots/plates.json `dE`, written here by build-yard.py for every plate SOLD at this stage; price =
+   * max(works.floor, tau_r x gain_h) to its rounding, refused otherwise by build-yard.py --check). From the works' opening the
+   * advice line and the headroom read it for the plate while it is sold and unbought (ladder.ts measuredGain). Absent: the
+   * replay's gain of the bought state, as before. In the works block, so stageView strips it at release.stage 1.
+   */
+  gain_h: z.number().optional(),
 });
 export type PlateDef = z.infer<typeof PlateSchema>;
 
@@ -1356,6 +1371,9 @@ export function lintStage2(s0: SalvageContent): string[] {
     ] as const)
       for (const k of Object.keys(b)) if (k in a) out.push(`worksLayer.${fam}.${k} repeats a first-layer ${fam} id (the layer adds, it never replaces)`);
     const keys = new Set([...s0.shop, ...s0.dayOneList].map((i) => i.key));
+    // s2e-fix1 (RULING2 28.5 b): a measured gain lives only on a plate or a works-layer item (a first-yard item's stays unread).
+    for (const i of [...s0.shop, ...s0.dayOneList]) if (i.gain_h !== undefined) out.push(`shop.${i.key}.gain_h: a measured gain belongs to a works plate or a worksLayer.shop item only`);
+    for (const i of L.shop) if (i.kind === 'works' && i.gain_h !== undefined) out.push(`worksLayer.shop.${i.key}.gain_h: a plate's measured gain lives on works.plates.${i.key}`);
     for (const i of L.shop) {
       if (keys.has(i.key)) out.push(`worksLayer.shop "${i.key}" repeats a shop key`);
       keys.add(i.key);

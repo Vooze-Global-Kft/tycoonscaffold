@@ -201,10 +201,13 @@ export function packSheetCard(cfg: SalvageConfig, g: SalvageGame, product: strin
   return { ...base, lead: [{ key: 'card.packSheet.amount', args: { x: { money: row.S } } }, { key: 'card.packSheet.save' }], packSheet: { product, S: row.S, H: row.H, buy, notNow }, foot: [buy, notNow] };
 }
 
-/** The age question (4.8): four digits, no default; OK only for a year in [1900, this year]. Its data only while it is due to be asked (no band kept, the shop reachable). */
-export function ageQuestionCard(g: SalvageGame, now: number): CardData {
+/**
+ * The age question (4.8): four digits, no default; OK only for a year in [1900, this year]. Its data only while it is due to be
+ * asked (s2e-fix1, RULING2 28.2 a: shop.ts ageDue, from the second session's start in every country while no band is kept).
+ */
+export function ageQuestionCard(cfg: SalvageConfig, g: SalvageGame, now: number): CardData {
   const base: CardData = { kind: 'ageQuestion', shape: 'centred', title: { key: 'title.ageQuestion' }, lead: [], rows: [], foot: [], showsDebt: false };
-  if (g.salvage.iap.ageBand !== null || !shopReachable(g)) return base;
+  if (!ageDue(cfg, g)) return base;
   return { ...base, ageQuestion: { minYear: MIN_YEAR, maxYear: yearOf(now) } };
 }
 
@@ -357,7 +360,7 @@ export function cardOfMoney(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
     case 'packSheet':
       return packSheetCard(cfg, g, ref.product, now, ctx);
     case 'ageQuestion':
-      return ageQuestionCard(g, now);
+      return ageQuestionCard(cfg, g, now);
     case 'packCode':
       return packCodeCard(cfg, g, ref.mode, ctx);
     case 'awayBonus':

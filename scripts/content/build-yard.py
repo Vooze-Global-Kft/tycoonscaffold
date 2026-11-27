@@ -160,7 +160,24 @@ def build():
     game['salvage'] = s
     game = yard_top.apply(game)
     game = with_products(game)
+    with_gains(game["salvage"])
     return game, manifest_ids()
+
+
+# s2e-fix1 (RULING2.md 28.5 b, "one measure for machines too"): THE MEASURED GAIN each SOLD plate's, vehicle's and tool's price is
+# made of is written into the content BESIDE ITS PRICE, as `gain_h` (§ an hour): bots/plates.json `plates.<id>.dE` onto
+# works.plates.<id>, `items.<key>.dE` onto the worksLayer.shop item (never a works-kind shop item: a plate's lives on its plate).
+# Both blocks are stage 2's (stageView strips works and worksLayer at release.stage 1). The engine's advice line and headroom read
+# it (ladder.ts measuredGain); check (3) refuses a price that is not max(works.floor, tau_r x gain_h) to its rounding. A dark item
+# gets none. Without bots/plates.json nothing is written (the replay's gain stands in the engine).
+def with_gains(s):
+    if not os.path.exists(PLATES_TABLE) or not (s.get('works') or {}).get('plates'):
+        return
+    tab = load(PLATES_TABLE)
+    for kind, key, item, row in sold_items(s, tab):
+        gain = None if not row else row.get('dE')
+        if gain is not None:
+            item['gain_h'] = gain
 
 
 # STAGE 2 (2.15.1, B5, P9; content2-bots; s2-fix-content M1, rulings 19.9, 21.8 and 22 M1): the sixteen products are
@@ -681,10 +698,14 @@ def warnings(s, game):
             if gain is None:
                 out.append('(3) bots/plates.json has no dE for %s %s' % (kind, key))
                 continue
+            # s2e-fix1 (ruling 28.5 b): the gain the price is made of is IN THE CONTENT beside it (gain_h, with_gains), and is
+            # plates.json's; the price is checked against THAT gain
+            if item.get('gain_h') != gain:
+                out.append('(3) %s %s: the content\'s measured gain gain_h %s is not bots/plates.json\'s dE %s (build-yard.py writes it)' % (kind, key, item.get('gain_h'), gain))
             t_r = tau[r - 1] if r - 1 < len(tau) else None
-            want = max(W['floor'], (t_r or 0) * gain)
+            want = max(W['floor'], (t_r or 0) * item.get('gain_h', gain))
             if abs(item['price'] - want) > max(1, 0.01 * want):
-                out.append('(3) %s %s: price §%s is not max(works.floor, tau_%d x dE) = §%.0f' % (kind, key, item['price'], r, want))
+                out.append('(3) %s %s: price §%s is not max(works.floor, tau_%d x gain_h) = §%.0f' % (kind, key, item['price'], r, want))
             e0 = row.get('E0')
             if not e0:
                 out.append('(3) ENTRY: bots/plates.json has no E0 (the yard\'s income at its moment) for %s %s' % (kind, key))
@@ -775,6 +796,16 @@ def selftest():
     c['worksLayer']['shop'] = [dict(i, gate='rung3', price=3000) if i['key'] == 'forklift' else i for i in c['worksLayer']['shop']]
     expect('ENTRY: the forklift sold (a negative gain) is refused', any(w.startswith('(3) ENTRY') and 'forklift' in w for w in warnings(c, game)))
     expect('ENTRY: the shipped content passes', not any(w.startswith('(3)') for w in warnings(s, game)))
+    # s2e-fix1 (ruling 28.5 b): every sold item carries the measured gain its price is made of; nothing dark carries one
+    rows = {key: (item, row) for kind, key, item, row in sold_items(s, tab)}
+    expect('28.5 b: every sold plate, vehicle and tool carries gain_h = plates.json dE', bool(rows) and all(item.get('gain_h') == row['dE'] for item, row in rows.values()))
+    expect('28.5 b: no dark plate or item carries gain_h', not any('gain_h' in p for k, p in pl.items() if k not in sold) and not any('gain_h' in i for k, i in shop.items() if k not in rows))
+    c = copy.deepcopy(s)
+    c['works']['plates']['induction']['price'] = round(c['works']['plates']['induction']['price'] * 1.05)
+    expect('28.5 b: a price 5 % off tau_r x gain_h is refused', any(w.startswith('(3) plate induction: price') for w in warnings(c, game)))
+    c = copy.deepcopy(s)
+    c['worksLayer']['shop'] = [dict(i, gain_h=i['gain_h'] + 1) if i['key'] == 'plasma' else i for i in c['worksLayer']['shop']]
+    expect('28.5 b: a gain_h that is not plates.json\'s is refused', any(w.startswith('(3) tool plasma: the content') for w in warnings(c, game)))
     expect('the rung bill is printed for rungs 3 and 4 (it refuses nothing)', sum(1 for r in entry_rows(s) if r.startswith('the rung-')) == 2 and bool(tab.get('purse')))
     ws = warnings(s, game)
     expect('(3) warns while bots/plates.json is missing', os.path.exists(PLATES_TABLE) or any(w.startswith('(3)') for w in ws))

@@ -6,8 +6,9 @@
  * before the top rung while something is to be bought, and names the three-axle truck (or the save-up for it) with a
  * "For now" purchase. Owner: s2e-advice.
  *
- * - (a) the best buy: shortest payback within 1.25 tau_r, the gain the one measure (levelGain for a level; the replay with
- *   the item bought less now for a purchase), printed as the calculated number;
+ * - (a) the best buy: shortest payback within 1.25 tau_r, the gain the one measure (levelGain for a level; for a purchase the
+ *   measured gain its price is made of, content gain_h (s2e-fix1, RULING2 28.5 b), else the replay with the item bought less
+ *   now), printed as that number;
  * - (b) the target: what costs more than the cash less the reserve is saved for, with its time, and a "For now" purchase the
  *   cash pays that keeps the target within the next return or pays for itself before it; the bank's sentence exactly where
  *   bank.ts loanHintDue says so;
@@ -29,7 +30,7 @@ import { awayCapS } from './away';
 import { loanHintDue } from './bank';
 import { away, newBot, newSitting, playUntil, seededCfg, startGame } from './bot';
 import { goalBuyNow, goalSpecs, nextGoal } from './goals';
-import { hireCheck, hiredState, levelCheck, ratedGain, shopItems, topRungOf } from './ladder';
+import { hireCheck, hiredState, levelCheck, measuredGain, ratedGain, shopItems, topRungOf } from './ladder';
 import { contentAt, worksOpened } from './layer';
 import { roundMoney } from './money';
 import { levelGainCfg, ratedIncomeCfg } from './rate';
@@ -48,11 +49,15 @@ const tauOf = (cfg: SalvageConfig, g: SalvageGame) => {
   return typeof t === 'number' && t > 0 ? t : Infinity;
 };
 
-/** The one measure of the advice's action, recomputed from the public rules (levelGain; the replay with the item bought or hired). */
+/**
+ * The one measure of the advice's action, recomputed from the public rules (levelGain; the replay with the item hired; for a
+ * purchase, s2e-fix1 (RULING2 28.5 b): the measured gain its price is made of where the content holds one (gain_h), else the
+ * replay with the item bought).
+ */
 function gainOf(cfg: SalvageConfig, g: SalvageGame, a: NonNullable<ReturnType<typeof advice>>['action']): number {
   if (a.act === 'level') return levelGainCfg(cfg, g, a.target);
   if (a.act === 'hire') return ratedGain(cfg, g, hiredState(g, a.role));
-  return ratedGain(cfg, g, boughtState(C(cfg, g), g, a.item));
+  return measuredGain(C(cfg, g), a.item) ?? ratedGain(cfg, g, boughtState(C(cfg, g), g, a.item));
 }
 
 /** Every hire and crew/partner level sold now with its gain (an independent list for the "shortest payback" check). */

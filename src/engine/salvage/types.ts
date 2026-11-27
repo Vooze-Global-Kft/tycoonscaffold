@@ -2307,7 +2307,11 @@ export interface ShopCard {
   packs: PackRow[] | null;
   /** The store country read at this opening (`storefrontCountry()`, unknown = null = packs off). */
   country: string | null;
-  /** rules-money wave 2 (2.15.3, 4.8): the age question is due (the first time a pack row would show and no band is kept): the screen opens `{kind: 'ageQuestion'}` before the shop. */
+  /**
+   * rules-money wave 2 (2.15.3, 4.8): the age question is due: the screen opens `{kind: 'ageQuestion'}` before the shop.
+   * s2e-fix1 (RULING2 28.2 a): it is due from the second session's start in every country (shop.ts ageDue), and the shop has no
+   * data at all until a band is kept, so on a shop card this is always false; the screen reads `ageDue` itself.
+   */
   askAge?: boolean;
   /** rules-money wave 2 (15.11 f): "A purchase that was waiting never arrived. Nothing was added." until the card is closed. */
   expired?: boolean;
