@@ -586,6 +586,7 @@ export const TEXT = {
   // s2e-levels (economy 2.11, RULING2 27.3 D5): a level's row from the works' opening; x: { money } = levelGain as applied, t: { secs } = price ÷ gain
   'card.levelEarns': '+{x} an hour on your yard', // s2e-advice (the build's words): the same words as the advice line's gain (advice.gain)
   'card.levelPays': 'Pays for itself in about {t}', // t: { secs } = price ÷ gain, the yard's running hours
+  'card.works.carPrice': 'A car from the garage · {x}', // s2f-plasma-cars (RULING2 28.7 b): x: { money } = the label price its landing pays today
   'refusal.notLimit': 'Not the limit now · +{x} an hour', // x: { money } = levelGain; no Buy
 
   // --- the bank (2.14, 4.5; RULING2 9.7, 11.4). {share}: { text: 'share.fifth' } while content bank.share is 0.2

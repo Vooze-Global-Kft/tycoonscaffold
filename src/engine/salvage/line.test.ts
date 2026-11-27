@@ -285,6 +285,8 @@ describe('s2e-line: the shipped stage 2 (its shape, no tuned number)', () => {
       if (!soldItem(p.opens) && !(p.opens in m.machines) && rung((m.shop.find((i) => i.key === p.opens) ?? m.dayOneList.find((i) => i.key === p.opens))?.gate) > top) continue;
       for (const ld of [p.trial, p.skip, ...(p.grows ?? []).filter((x) => soldPlate(x.needs) || soldItem(x.needs)).map((x) => x.contents)]) for (const o of Object.keys(ld ?? {})) things.add(o);
       if (p.reuseBatch) things.add(p.reuseBatch.obj);
+      // s2f-plasma-cars (RULING2.md 28.7 b): the car the partner's own recovery truck sets on the line's apron
+      if (p.recovery && (soldPlate(p.recovery.needs) || soldItem(p.recovery.needs))) things.add(p.recovery.obj);
     }
     for (const k of m.lots!.kinds) if (k.line.every((l) => soldPlate(l) || soldItem(l))) things.add(k.obj);
     for (const z of Object.values(m.zones)) for (const o of Object.keys(z.things)) things.add(o);
@@ -326,6 +328,7 @@ describe('s2e-line: the shipped stage 2 (its shape, no tuned number)', () => {
     }
     expect(why).toEqual([]);
     // The drained car's battery is sold whole and closed as it is: its grade has a bay (the battery box) and a price.
+    expect(things.has('elv')).toBe(true);
     expect(grades.has('pbb')).toBe(true);
     expect(m.grades.pbb.pbar).toBeGreaterThan(0);
   });

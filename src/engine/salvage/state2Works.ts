@@ -92,6 +92,11 @@ function worksOf(id: string, v: unknown, t: number): WorksState | null {
     const c = obj(w.car);
     out.car = str(c.thing, 128) && fin(c.t0) && fin(c.end) && c.end >= c.t0 ? { thing: c.thing, t0: c.t0, end: Math.max(c.end, t) } : null;
   }
+  // s2f-plasma-cars: the recovery truck's last landing is a past date (never after the save's clock: a car is never kept back by it)
+  if (w.carLandedAt !== undefined) {
+    if (fin(w.carLandedAt)) out.carLandedAt = Math.min(w.carLandedAt, t);
+    else delete out.carLandedAt;
+  }
   if (w.course !== undefined) {
     const c = obj(w.course);
     if (fin(c.t0) && c.t0 <= t && str(c.from) && str(c.to)) out.course = { t0: c.t0, from: c.from, to: c.to };

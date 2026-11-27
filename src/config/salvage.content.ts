@@ -91,7 +91,7 @@ const PLATES: Plates = {
   // s2e-line: THE SHREDDER LINE, one purchase (the shredder's shop item, price and card; the depollution bay comes `with` it). First
   // price 137,000 (T8's shredder gain, measured with the bay owned and cars arriving, x tau_4 36 h; the bots measure the line as one).
   shredder: {
-    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 137000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
+    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 667000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
@@ -314,11 +314,15 @@ const WORKS_LAYER: WorksLayerInput = {
       trialMass_kg: 138, trialPrice: 150, trialPrepared: 349.2,
       skipMass_kg: 241, skipPrice: 390, skipPrepared: 540.4, skipAsFound: 459.4,
       grows: [
-        // s2e-line: cars come only once the shredder line (its item: the shredder) is owned
-        { needs: "shredder", body: "flatrack", contents: { elv: 1 } },
+        // s2f-plasma-cars (RULING2.md 28.7 b): the garage's rotation has NO flatrack: the hook-lift fetches no car (s2e-line's
+        // flatrack load, `{ needs: "shredder", body: "flatrack", contents: { elv: 1 } }`, stays in the frozen fixtures only)
         { needs: "breaker", body: "batteryBox", contents: { pbb: 40 } },
         { needs: "induction", body: "skip", contents: { bushing: 20 } },
       ],
+      // s2f-plasma-cars (RULING2.md 28.7 b): THE GARAGE'S OWN RECOVERY TRUCK: once the shredder line runs, it sets a car on the
+      // depollution bay's apron whenever the apron is free, at most one a period (first value 600 s, the ruling's ten minutes;
+      // tune), the yard paying the car's label price (k x as found) as it lands, cash less the driver's reserve allowing.
+      recovery: { needs: "shredder", obj: "elv", period_s: 600 },
     },
     "partner.plumbing": {
       comment: "register: Tap Street Plumbing; contact plumbingContact",
@@ -336,6 +340,9 @@ const WORKS_LAYER: WorksLayerInput = {
     { key: "truckBridge", kind: "vehicle", place: "park", price: 206000, gate: "rung3", financeable: true, deliver_s: 30, arrive: "truck" },
     { key: "pallet", kind: "carry", place: "rack", price: 3000, gate: DARK, deliver_s: 6, arrive: "van" },
     { key: "forklift", kind: "vehicle", place: "forklift", price: 3000, gate: DARK, deliver_s: 30, arrive: "machineFlatbed" },
+    // s2f-plasma-cars (RULING2.md 28.7 a): the price STANDS (86,500): the hand's measure of the boss's own tool on 2 seeds is
+    // §802 an hour, 1.8 % of E0, UNDER the entry rule's 2 % (build-yard.py refuses it): for the lead (notes/s2f-plasma-cars.md).
+    // The shredder line's price (667,000) is tau_4 x its lasting gain with the recovery truck's cars (2 seeds), a FIRST VALUE.
     { key: "plasma", kind: "tool", place: "rack", price: 86500, gate: "rung3", deliver_s: 6, arrive: "van" },
     ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
   ],
@@ -365,6 +372,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   version: "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
+    "s2f-plasma-cars (27 Nov, RULING2.md 28.7 a and b): lots.mu_min_tier { 4: [-, -, 25, 30, 30] } (a piece only the plasma cuts may be worth up to its own mu of I, and the richest kind within its own cap comes); the garage's flatrack load removed (the hook-lift fetches no car) and partners.garage.recovery { needs shredder, obj elv, period_s 600 } (the garage's own recovery truck sets a car on the bay's apron, paid at its label price as it lands); the shredder line 137,000 -> 667,000 (FIRST VALUE: tau_4 x its lasting gain with those cars, 2 seeds, plates.json); the plasma's price stands at 86,500 (its hand measure, 1.8 % of E0 on 2 seeds, is under the entry rule: for the lead)",
     "s2e-content (27 Nov, RULING2.md 27; yard-stage2-economy.md packages 2 and 3): THE STAGE'S ECONOMY BUILT AGAIN. Sold at stage 2: the three-axle hook-lift 154,000 -> 206,000 (financeable), the plasma cutter 64,900 -> 86,500, the analyser 32,800 -> 43,800, the induction hall 207,000 -> 339,000, the shredder 83,200 -> 136,000, the rotary hall 65,100 -> 107,000 (REPORT9's T8 gain x the new tau, three figures; financeable marked on the hook-lift and the machines). DARK (gate past the ladder, defined, never sold): the crane, baler, shear, granulator, depollution bay, eddy current, sensor sorter, battery breaker, lead smelter, forklift, pallet truck (twitch leaves the rotary's inputs with the sorter). tau_h 9/22/45 -> 12/36/48; works.maxLevel 10 -> 1; reuse.levels 3 -> 0; works.rungs (the stage's own rung 5 range 8; the first yard's ladder keeps 9); bank.maxF_h 2 -> 6, maxF_tau 0.15 -> 0.5; the 10- and 20-hour packs off; levels.minShareI 0.01 and levels.book {}; group.aheadWorks false; reuse.shareI_r [12.5, 62.5, 62.5 per mille]; rate.kappa 1; lots: the boiler drum, press frame and transformer core (real masses), lots.lorry_kg 20,000. The stage as REPORT9 measured it is frozen in src/engine/fixtures/salvage-report9.json",
     "content2-bots (27 Nov, REPORT9 round 1, RULING2.md 21.1 and 19.1): the plates', vehicles' and tools' prices from the gain measured over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one capped absence, a rate an hour of yard time, mean of seeds 1 to 15, from each item's planned moment with the sitting's earlier purchases owned; price = max(works.floor, tau_r x dE) to three figures (scripts/content/bots/plates.json): shear 3,000 -> 5,180, analyser 29,100 -> 32,800, shredder 419,000 -> 83,200, rotary 77,600 -> 65,100, induction 171,000 -> 207,000, breaker 38,100 -> 3,000 (its measured gain is NEGATIVE: a finding, REPORT9), smelter 27,500 -> 17,700; truckBridge 12,000 -> 154,000, plasma 8,000 -> 64,900, pallet 2,500 -> 3,000, forklift 15,000 -> 3,000; crane, baler, depollution, granulator, eddy, sorter stay at the floor 3,000 (measured gain under the floor's worth)",
     "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
@@ -1616,6 +1624,10 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     period_s: 10800,
     max: 4,
     mu_min: [null, null, 15, 18, 18],
+    // s2f-plasma-cars (RULING2.md 28.7 a: the plasma cutter is the boss's own tool): a piece of a kind only the plasma cuts
+    // (tier 4: the transformer core, bronze, stainless, cast aluminium) may be worth up to these minutes of I (a torch's kind:
+    // mu_min above), and the richest kind within its own cap comes. First values (the ruling's 25 at rung 3, 30 above; tune).
+    mu_min_tier: { "4": [null, null, 25, 30, 30] },
     cut_s: [4, 10],
     kinds: [
       // the line that brings a kind (decision 9; the analyser is stainless's line); first values, content2
@@ -1624,7 +1636,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
       // a pallet crate of bronze bushings 200 to 1,000, a catering table 60 to 120 (it stays a table), a bronze propeller 400
       // to 3,000 (a workboat's to a coaster's). The heavier kinds for rungs 4 and 5 come with the stage's screens (Phase C).
       { obj: "casing", from: "partner.garage", line: ["crucible", "rotary"], cut_s: 7, mass_kg: [80, 300] },
-      { obj: "bushingCrate", from: "partner.plumbing", line: ["induction"], cut_s: 7, mass_kg: [200, 1000] },
+      // the lead (27 Nov, RULING2.md 28.8): the crate comes from rung 3 once the analyser names bronze (bronze solids sell there as
+      // they are), so that the plasma has a piece of its own size at rung 3; the induction hall still counts as its line.
+      { obj: "bushingCrate", from: "partner.plumbing", line: ["analyser", "induction"], cut_s: 7, mass_kg: [200, 1000] },
       { obj: "cateringTable", from: "partner.plumbing", line: ["analyser"], cut_s: 4, mass_kg: [60, 120] },
       { obj: "propeller", from: "partner.boatyard", line: ["induction"], cut_s: 10, mass_kg: [400, 3000] },
       // s2e-content (yard-stage2-economy.md 2.10; RULING2.md 27.3 D12): the three heavy kinds, from the works' opening with no

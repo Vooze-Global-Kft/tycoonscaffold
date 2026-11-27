@@ -15,6 +15,7 @@ import { hallBusy } from './halls';
 import { contentAt } from './layer';
 import { begin, dayAt } from './clock';
 import { lotValue } from './lots';
+import { carLabelPrice, recoveryOf } from './works';
 import { preparedLines, rackCap } from './reuse';
 import { roundMoney } from './money';
 import type { CardButton, CardContext, CardData, CardRef, CrateCard, LotCard, SalvageConfig, SalvageGame, TextKey, WorksCard, YardSaleCard } from './types';
@@ -135,6 +136,13 @@ export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
       if (wc.bank) card.showsDebt = true;
       const btns = [wc.foot.buy, wc.foot.loan].filter((b): b is CardButton => !!b);
       card.foot = btns;
+      // s2f-plasma-cars (RULING2.md 28.7 b; shown equals applied): the truck-fed bay's card says what a car from the partner's
+      // recovery truck costs today, the price its landing pays (works.ts carLabelPrice, the same function).
+      if (recoveryOf(contentAt(cfg.salvage, g.salvage), ref.plate)) {
+        const x = begin(cfg, g, [], false);
+        const p = carLabelPrice(x, ref.plate, x.s.t);
+        if (p !== null) card.rows.push({ id: 'carPrice', name: { key: 'card.works.carPrice' as TextKey, args: { x: { money: p } } }, line: null, button: null, icon: null, state: 'info' });
+      }
     }
   }
   return card;

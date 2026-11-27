@@ -298,6 +298,8 @@ export const TEXT_KEYS = {
     // ('refusal.notLimit' is in the derived `refusal` group: refusals.ts lists 'notLimit', s2e-join.)
     'card.levelEarns',
     'card.levelPays',
+    // s2f-plasma-cars (RULING2.md 28.7 b): the truck-fed bay's card: what a car from the garage's recovery truck costs today
+    'card.works.carPrice',
   ],
   /** 2.14, 4.5: the lender's letter, the finance card, the Agreements page; the bank's share in words (`share.*`, see strings.ts). */
   bank: [
