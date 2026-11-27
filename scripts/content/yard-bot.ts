@@ -45,6 +45,7 @@ import * as R from '../../src/engine/salvage';
 import { away, newBot, newSitting, playTo, playUntil, ratedCapacity, resumeBot, seededCfg, snapBot, startGame, tickJumpGate, type Bot, type BotOptions, type BotSnap } from '../../src/engine/salvage/bot';
 import { contentAt, worksOpened } from '../../src/engine/salvage/layer';
 import { awayPass } from '../../src/engine/salvage/away';
+import { idleWhyOf } from '../../src/engine/salvage/crew';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck } from '../../src/engine/salvage/ladder';
 import { levelGainCfg, own } from '../../src/engine/salvage/rate';
@@ -514,7 +515,9 @@ function gAt(cfg: R.SalvageConfig, g0: R.SalvageGame): { G: number; h: number } 
 // s2e-bots: superseded by soldItems (the stage as built); kept for the record of REPORT9's measure.
 const MEASURED_ITEMS = ['truckBridge', 'pallet', 'forklift', 'plasma'];
 void MEASURED_ITEMS;
-type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[] };
+type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[]; dT?: number; dP?: number; E0T?: number; tW_h?: number; worked?: boolean };
+/** s2e-measure (28.4 b): the plasma's lasting gain at one of its three moments. */
+type Plasma3 = { at: string; at_h: number; dL: number; dT: number; dP: number; E0: number; tW_h: number; lot4: number; lot3: number; lotA: { cut4: number; cut3: number }; lotB: { cut4: number; cut3: number } };
 
 /**
  * RULING2.md 21.1: what the yard earns from g over AN HOUR OF PLAY by the reference bot (the normal hand, the goal habit,
@@ -531,6 +534,96 @@ function playedE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions): { 
   away(b, S2_AWAY_S);
   const bank = b.g.salvage.away?.bank ?? 0;
   return { E: b.g.cash - g.cash + bank + stockAt(cfg, b.g) - v0, h: (b.g.salvage.t - t0) / 3600, hold: b.g.salvage.away?.seconds ?? 0 };
+}
+
+/**
+ * s2e-measure (RULING2.md 28.4 (a)): THE LASTING GAIN's branch. From g (the item already bought, or not), the reference bot
+ * (the normal hand, buying nothing) plays at least an hour and, where `key` names the item measured, on until the item WORKS
+ * (worksNow: set down and started; a hall after its first heat; the line after its first car; the hook-lift after both
+ * bridge partners' first loads; at most 3 h); `playS` instead plays exactly that long (the branch without the item plays as
+ * long as the branch with it did). Then ONE CAPPED ABSENCE, nobody at the yard. Ep / hp: what the yard kept over the play
+ * (cash moved and stock at usual prices, prices flat); Ea / ha: the same over the absence alone (the bank's share added
+ * back); tW: the seconds played; worked: the item worked before the absence began; cut4 / cut3: the worth (prepared value)
+ * of the tier-4 and the tier-3 oversize pieces cut in the play.
+ */
+type LastE = { Ep: number; hp: number; Ea: number; ha: number; tW: number; worked: boolean; cut4: number; cut3: number };
+function worksNow(cfg: R.SalvageConfig, g: R.SalvageGame, key: string, c0: Record<string, number>): boolean {
+  const s = g.salvage;
+  const W = contentAt(cfg.salvage, s).works;
+  if (W?.plates[key]) {
+    const w = s.works[key];
+    if (!w || w.phase !== 'running') return false;
+    if (w.heat && !w.heat.firstPoured) return false;
+    // the line: its `with` plates running too, and its first car drained
+    const withs = ((W.plates[key] as { with?: string[] }).with ?? []);
+    if (withs.some((q) => s.works[q]?.phase !== 'running')) return false;
+    if (key === 'shredder' && (s.counts?.depolluted ?? 0) <= (c0.depolluted ?? 0)) return false;
+    return true;
+  }
+  if (s.arriving.some((a) => a.item === key)) return false;
+  if (!s.owned.includes(key as never)) return false;
+  if (key === 'truckBridge') {
+    const ps = Object.entries(contentAt(cfg.salvage, s).partners).filter(([, p]) => (p as { opens?: string }).opens === 'truckBridge').map(([id]) => id);
+    return ps.every((id) => s.partners[id]?.trialUsed) && !s.truck.trip && !s.truck.skip;
+  }
+  return true;
+}
+function lotWorth(cfg: R.SalvageConfig, g: R.SalvageGame, c0: Record<string, number>): { cut4: number; cut3: number } {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const kinds = new Set(((c.lots?.kinds ?? []) as { obj: string }[]).map((k) => k.obj));
+  let cut4 = 0;
+  let cut3 = 0;
+  for (const obj of kinds) {
+    const n = (g.salvage.counts?.[`cut:${obj}`] ?? 0) - (c0[`cut:${obj}`] ?? 0);
+    const o = c.objects[obj] as { tier?: number; preparedValue?: number } | undefined;
+    if (!n || !o) continue;
+    if ((o.tier ?? 0) >= 4) cut4 += n * (o.preparedValue ?? 0);
+    else cut3 += n * (o.preparedValue ?? 0);
+  }
+  return { cut4, cut3 };
+}
+function lastingE(cfg0: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, key: string | null, playS?: number): LastE {
+  const cfg = cfg0.salvage.board.a === 0 ? cfg0 : ({ ...cfg0, salvage: { ...cfg0.salvage, board: { ...cfg0.salvage.board, a: 0 } } } as R.SalvageConfig);
+  const g = { ...g0, cash: 1e7, salvage: { ...g0.salvage, away: null } } as R.SalvageGame;
+  const b = newBot(cfg, g, g.salvage.clock.highMs, { ...opts, noBuy: true, gate2: false });
+  const c0 = { ...(g.salvage.counts ?? {}) } as Record<string, number>;
+  const v0 = stockAt(cfg, g);
+  const t0 = g.salvage.t;
+  if (playS !== undefined) playTo(b, t0 + playS);
+  else {
+    playTo(b, t0 + 3600);
+    while (key && !worksNow(cfg, b.g, key, c0) && b.g.salvage.t < t0 + 3 * 3600) playTo(b, b.g.salvage.t + 60);
+  }
+  const worked = key ? worksNow(cfg, b.g, key, c0) : true;
+  const tW = b.g.salvage.t - t0;
+  const cash1 = b.g.cash;
+  const v1 = stockAt(cfg, b.g);
+  const lw = lotWorth(cfg, b.g, c0);
+  away(b, S2_AWAY_S);
+  const bank = b.g.salvage.away?.bank ?? 0;
+  const ha = (b.g.salvage.away?.seconds ?? 0) / 3600;
+  return { Ep: cash1 - g.cash + v1 - v0, hp: tW / 3600, Ea: b.g.cash - cash1 + bank + stockAt(cfg, b.g) - v1, ha, tW, worked, ...lw };
+}
+/** The lasting gain and its two companions from a branch with the item (A) and one without (B). */
+function lastingGain(A: LastE, B: LastE) {
+  const ha = (A.ha + B.ha) / 2;
+  const hT = (A.hp + A.ha + B.hp + B.ha) / 2;
+  return {
+    // the price's measure (28.4 a): the capped absence that begins once the item works
+    dL: (A.Ea - B.Ea) / Math.max(1e-9, ha),
+    // the played run-up and the absence together (ruling 21.1's measure where the run-up is the hour)
+    dT: (A.Ep + A.Ea - B.Ep - B.Ea) / Math.max(1e-9, hT),
+    // the played run-up alone
+    dP: (A.Ep - B.Ep) / Math.max(1e-9, (A.hp + B.hp) / 2),
+    E0: B.Ea / Math.max(1e-9, B.ha),
+    E0T: (B.Ep + B.Ea) / Math.max(1e-9, B.hp + B.ha),
+    tW_h: A.tW / 3600,
+    worked: A.worked,
+    lot4: (A.cut4 - B.cut4) / Math.max(1e-9, A.hp),
+    lot3: (A.cut3 - B.cut3) / Math.max(1e-9, A.hp),
+    lotA: { cut4: A.cut4 / Math.max(1e-9, A.hp), cut3: A.cut3 / Math.max(1e-9, A.hp) },
+    lotB: { cut4: B.cut4 / Math.max(1e-9, B.hp), cut3: B.cut3 / Math.max(1e-9, B.hp) },
+  };
 }
 
 interface Sitting2 {
@@ -577,6 +670,8 @@ interface Sitting2 {
   lotsWait?: number;
   lotMassBad?: string[];
   tier?: number;
+  /** s2e-measure: the drop-off's arrivals so far (dropoff.n) at the sitting's end (28.3 d's pair). */
+  drop?: number;
 }
 
 // ============================================================================================ s2e-bots: the new economy's measures
@@ -642,10 +737,13 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
   { ladder: 'driver', at: 'r4entry', role: 'driver' },
   { ladder: 'cutter', at: 'r3s1', role: 'cutter' },
   { ladder: 'partner.plumbing', at: 'r4entry', partner: 'partner.plumbing' },
+  // s2e-measure (28.4 c: EVERY ladder that fails its check): the yard hand's and the garage's ladders too
+  { ladder: 'hand', at: 'r3s1', role: 'hand' },
+  { ladder: 'partner.garage', at: 'r4entry', partner: 'partner.garage' },
 ];
 /** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
 const BOOK_FAILING = ['driver'];
-type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; E0: number; calc: number; I: number; price: number | null };
+type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; gainsT?: number[]; E0: number; calc: number; I: number; price: number | null };
 
 function ladderTarget(g: R.SalvageGame, L: (typeof LADDERS)[number]): LevelTarget | null {
   if (L.partner) return g.salvage.partners[L.partner]?.open ? ({ kind: 'partner', partner: L.partner } as LevelTarget) : null;
@@ -750,6 +848,35 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const returns: { g: R.SalvageGame; bought: string[] }[] = [];
   const walk2: ReturnType<typeof walk2Row>[] = [];
   let personSnap: BotSnap | null = null;
+  // s2e-measure (RULING2.md 28.5 (e)): each crew role's idle share by rung, away (5-minute samples of a probe absence from each
+  // return, over the absence's own running hours) and played (a sample a minute of the sitting), with the reasons the rules
+  // give (crew.ts idleWhyOf); the old stock standing in the first yard's zones at each return; the drop-off's arrivals.
+  const idle: Record<string, Record<string, { n: number; idle: number; why: Record<string, number> }>> = {};
+  const oldStock: { n: number; rung: number; things: number; byZone: Record<string, number>; objs: Record<string, number> }[] = [];
+  const idleOn = which === 'normal' || which === 'freeDrop';
+  const zones1 = new Set(Object.keys(base0.salvage.zones ?? {}));
+  const sampleCrew = (g: R.SalvageGame, mode: 'away' | 'play') => {
+    const c = contentAt(cfg.salvage, g.salvage);
+    for (const m of g.salvage.crew) {
+      const k = `r${g.salvage.ladder.rung} ${mode}`;
+      const row = ((idle[k] ??= {})[m.role] ??= { n: 0, idle: 0, why: {} });
+      row.n += 1;
+      if (m.job === 'idle') {
+        row.idle += 1;
+        let w = 'none';
+        try { w = idleWhyOf(c as never, g.salvage as never, m, mode === 'play')?.why ?? 'none'; } catch { w = 'err'; }
+        row.why[w] = (row.why[w] ?? 0) + 1;
+      }
+    }
+  };
+  const awayProbe = (g0: R.SalvageGame, hours: number) => {
+    let g = { ...g0, cash: Math.max(1e7, g0.cash), lastSavedAt: g0.salvage.clock.highMs, salvage: { ...g0.salvage, away: null } } as R.SalvageGame;
+    for (let k = 0; k < Math.ceil(hours * 12); k++) {
+      g = awayPass(cfg, g, g.salvage.clock.highMs + 300_000);
+      g = { ...g, lastSavedAt: g.salvage.clock.highMs, salvage: { ...g.salvage, away: null } } as R.SalvageGame;
+      sampleCrew(g, 'away');
+    }
+  };
   for (let k = 1; k <= S2_SITTINGS && b.g.salvage.ladder.rung < 5; k++) {
     newSitting(b);
     const cash0 = b.g.cash;
@@ -766,17 +893,24 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     // G15 (--person): the person-paced sitting is played from the normal hand's FIRST return at rung 4, as it stood.
     if (arg('person') && which === 'normal' && !personSnap && gBack.salvage.ladder.rung >= 4) personSnap = snapBot(b);
     const back = MEASURES_G.has(which) && worksOpened(gBack.salvage) ? returnLook(cfg, gBack) : null;
+    if (idleOn && worksOpened(gBack.salvage)) {
+      awayProbe(gBack, Math.min(card ? card.seconds / 3600 : 0, 12));
+      const byZone: Record<string, number> = {};
+      const objs: Record<string, number> = {};
+      for (const th of gBack.salvage.things) if (th.at.at === 'zone' && zones1.has(th.at.zone)) { byZone[th.at.zone] = (byZone[th.at.zone] ?? 0) + 1; objs[th.obj] = (objs[th.obj] ?? 0) + 1; }
+      oldStock.push({ n: k, rung: gBack.salvage.ladder.rung, things: Object.values(byZone).reduce((a, v) => a + v, 0), byZone, objs });
+    }
     if (which === 'bridgeLevels') levelBridge(b);
-    playTo(b, b.g.salvage.t + S2_PLAY_S);
+    playTo(b, b.g.salvage.t + S2_PLAY_S, idleOn && worksOpened(gBack.salvage) ? (bb) => sampleCrew(bb.g, 'play') : undefined);
     if (which === 'bridgeLevels') levelBridge(b);
     const ps = b.rec.purchases.slice(n0);
     if (which === 'normal' && worksOpened(gBack.salvage)) returns.push({ g: gBack, bought: ps.filter((p) => p.kind === 'buy').map((p) => p.key) });
     n0 = b.rec.purchases.length;
     const s = b.g.salvage;
     const gm = MEASURES_G.has(which) ? gAt(cfg, gBack) : null;
-    if (arg('walk2') && which === 'normal' && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
+    if (arg('walk2') && (which === 'normal' || which === 'freeDrop') && (k === 1 || k === 6 || (gBack.salvage.ladder.rung >= 4 && !walk2.some((w) => w.rung >= 4)))) walk2.push(walk2Row(base, spec.seed, gBack, k === 1 ? 'r3s1' : k === 6 ? 'day3' : 'r4entry'));
     const end = back ? endLook(cfg, b.g) : null;
-    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
+    sittings.push({ ...(back ?? {}), ...(end ?? {}), keys: ps.map((p) => ({ k: p.key, p: Math.round(p.price), ...(p.via ? { via: p.via } : {}), ...(p.payback_h !== undefined ? { pb: p.payback_h } : {}) })), offers: b.rec.s2.offers.length - off0, loans: b.rec.s2.loans.slice(ln0).map((l) => `${l.plate} P${l.P} F${l.F} T${l.T}`), loanLeft: Math.round(agreementLeft(b.g) ?? 0), n: k, h: +(s.t / 3600).toFixed(2), rung: s.ladder.rung, t: +(s.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), cashBack: Math.round(cashBack), awayNet: Math.round(cashBack - cash0), awayBank: Math.round(card?.bank ?? 0), awayMs: Math.round(awayMs), I: Math.round(incomeAt(cfg, b.g)), bought: ps.length, spent: Math.round(ps.reduce((x, p) => x + p.price, 0)), goal: R.nextGoal(cfg, b.g)?.id ?? null, works: Object.entries(s.works).map(([id, w]) => `${id}:${w.phase[0]}${w.level}`).join(','), Lback: Math.round(gBack.lifetimeEarnings), Lend: Math.round(b.g.lifetimeEarnings), ranH: +((card?.seconds ?? 0) / 3600).toFixed(3), mats: R.rungProgress(cfg, b.g).materials ?? 0, rack: Math.round(card?.rack?.money ?? 0), van: Math.round(card?.van?.money ?? 0), lotsCut: (s.counts?.lotOpened ?? 0) - cut0, lotsCame: (s.lots?.n ?? 0) - came0, drop: s.dropoff.n, ...(gm ? { G: Math.round(gm.G), Iback: Math.round(incomeAt(cfg, gBack)), Uback: Math.round(R.headroomU(cfg, gBack)), Uend: Math.round(R.headroomU(cfg, b.g)) } : {}), bridge: [s.partners['partner.garage']?.level ?? 0, s.partners['partner.plumbing']?.level ?? 0] });
     // REPORT8: a minute of ticks against one jump at every sitting to rung 4 (and one past it), then at 8 and 12.
     if (spec.gate && (k <= 5 || [8, 12].includes(k))) {
       const d = tickJumpGate(cfg, b.g, b.now, 60);
@@ -809,27 +943,45 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // normal bot bought it (else the last return at which its gate was met): I a jump of deliver + selfCommission later
   // with the plate bought and started by itself, against the same jump without it (cash enough for both).
   const plates: Record<string, PlateRow> = {};
+  const plasma3: Plasma3[] = [];
   if (arg('plates') && which === 'normal') {
     const W = contentAt(cfg.salvage, returns[0]?.g.salvage ?? b.g.salvage).works;
     // RULING2.md 21.1 (and 19.1): every plate AND the stage's vehicles and tools (2.9, payback-priced) at its planned moment.
     // s2e-bots (27.2 b, 27.6): every SOLD machine, vehicle and tool of the stage as built (the line as `shredder`), at its
     // planned moment in the new goal order; what is dark is not measured again (its REPORT9 row stays in plates.json).
     const items = soldItems(cfg).map((i) => i.key);
-    // one played branch per (return, purchases made first): a chain of one sitting shares its branches
-    const memo = new Map<string, { E: number; h: number; hold: number } | null>();
-    const branch = (ri: number, keys: string[]) => {
-      const key = `${ri}|${keys.join(',')}`;
-      if (memo.has(key)) return memo.get(key)!;
-      let g = { ...returns[ri].g, cash: 1e12 } as R.SalvageGame;
-      let ok = true;
+    // one played branch per (return, purchases made first, the item measured, the play's length): s2e-measure (28.4 a)
+    const memo = new Map<string, LastE | null>();
+    const stateWith = (g0: R.SalvageGame, keys: string[]): R.SalvageGame | null => {
+      let g = { ...g0, cash: 1e12 } as R.SalvageGame;
       for (const q of keys) {
+        if (q.startsWith('hire:')) {
+          const role = q.slice(5) as 'hand' | 'cutter' | 'driver';
+          const ch = hireCheck(cfg, g, role);
+          if (ch.price === null || ch.refusal) return null;
+          g = { ...R.hire(cfg, g, role, ch.price, g.salvage.t), cash: 1e12 } as R.SalvageGame;
+          continue;
+        }
         const cq = buyCheck(cfg, g, q as never);
-        if (cq.price === null || cq.refusal) { ok = false; break; }
+        if (cq.price === null || cq.refusal) return null;
         g = { ...R.buy(cfg, g, q as never, cq.price, g.salvage.t), cash: 1e12 } as R.SalvageGame;
       }
-      const r = ok ? playedE(cfg, g, opts) : null;
-      memo.set(key, r);
+      return g;
+    };
+    const branchAt = (tag: string, g0: R.SalvageGame, keys: string[], key: string | null, playS?: number) => {
+      const mk = `${tag}|${keys.join(',')}|${key ?? '-'}|${playS ?? '-'}`;
+      if (memo.has(mk)) return memo.get(mk)!;
+      const g = stateWith(g0, keys);
+      const r = g ? lastingE(cfg, g, opts, key, playS) : null;
+      memo.set(mk, r);
       return r;
+    };
+    const branch = (ri: number, keys: string[], key: string | null, playS?: number) => branchAt(`r${ri}`, returns[ri].g, keys, key, playS);
+    // with the item (played until it works) and without it (played as long)
+    const pair = (tag: string, g0: R.SalvageGame, pre: string[], pid: string) => {
+      const A = branchAt(tag, g0, [...pre, pid], pid);
+      const B = A ? branchAt(tag, g0, pre, null, A.tW) : null;
+      return A && B ? lastingGain(A, B) : null;
     };
     for (const pid of items) {
       let ri = returns.findIndex((x) => x.bought.includes(pid));
@@ -860,18 +1012,30 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const before = R.jump(cfg, g, g.salvage.t + span);
       const I0 = incomeAt(cfg, before);
       const G0 = gAt(cfg, before).G;
-      // RULING2.md 21.1: the gain over AN HOUR OF PLAY by the reference bot and then one absence at the cap, as a rate an
-      // hour of yard time (what the yard earned: cash moved and stock at usual prices; the item's own price left out)
-      const A = branch(ri, [...pre, pid]);
-      const B = branch(ri, pre);
-      const dE = A && B ? (A.E - B.E) / ((A.h + B.h) / 2) : null;
-      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(dE !== null ? { dE: Math.round(dE), E0: Math.round(B!.E / B!.h), hE: +(((A!.h + B!.h) / 2).toFixed(2)) } : {}), pre };
+      // s2e-measure (RULING2.md 28.4 (a), amending 21.1): THE LASTING GAIN prices: what the yard keeps an hour over one capped
+      // absence that begins once the item works, with and without it (the run-up played by the reference bot, buying
+      // nothing, at least an hour and until the item works; the branch without plays as long). dT (the run-up and the
+      // absence together: 21.1's measure where the run-up is the hour) and dP (the run-up alone) are printed beside it.
+      void branch;
+      const q = pair(`r${ri}`, returns[ri].g, pre, pid);
+      plates[pid] = { at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, I: Math.round(I0), dI: Math.round(incomeAt(cfg, after) - I0), bought, price: ck.price, G: Math.round(G0), dG: Math.round(gAt(cfg, after).G - G0), ...(q ? { dE: Math.round(q.dL), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), E0T: Math.round(q.E0T), tW_h: +q.tW_h.toFixed(2), worked: q.worked } : {}), pre };
+    }
+    // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
+    // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
+    // pieces it opens are worth an hour over those that come without it (tier-4 and tier-3 pieces cut in the run-up).
+    if (returns[0] && items.includes('plasma') && !returns[0].g.salvage.owned.includes('plasma' as never)) {
+      const g0 = returns[0].g;
+      const moments: [string, string[]][] = [['m1 first works return', []], ['m2 after the second cutter', ['hire:cutter']], ['m3 after the hook-lift', ['hire:cutter', 'truckBridge']]];
+      for (const [name, pre] of moments) {
+        const q = pair('p0', g0, pre, 'plasma');
+        if (q) plasma3.push({ at: name, at_h: +(g0.salvage.t / 3600).toFixed(1), dL: Math.round(q.dL), dT: Math.round(q.dT), dP: Math.round(q.dP), E0: Math.round(q.E0), tW_h: +q.tW_h.toFixed(2), lot4: Math.round(q.lot4), lot3: Math.round(q.lot3), lotA: q.lotA, lotB: q.lotB });
+      }
     }
   }
   // s2e-bots: the level ladders' three steps (--book), normal hand only.
   const book: BookRow[] = [];
   if (arg('book') && which === 'normal') {
-    const memoB = new Map<string, { E: number; h: number } | null>();
+    const memoB = new Map<string, LastE | null>();
     for (const L of LADDERS) {
       const ri = L.at === 'r3s1' ? 0 : returns.findIndex((x) => x.g.salvage.ladder.rung >= 4);
       if (ri < 0 || !returns[ri]) continue;
@@ -890,15 +1054,18 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
         if (!nx) break;
         states.push(nx);
       }
+      // s2e-measure: the steps measured as the machines are (28.4 a): an hour played, then the capped absence alone (the
+      // calculated gain beside it is rated income's, the yard with nobody in it); the hour and the absence together beside.
       const E = states.map((st, k) => {
         const key = `${ri}|${k === 0 ? 'base' : `${L.ladder}${k}`}`;
-        if (!memoB.has(key)) memoB.set(key, playedE(cfg, st, opts));
+        if (!memoB.has(key)) memoB.set(key, lastingE(cfg, st, opts, null, 3600));
         return memoB.get(key)!;
       });
-      const gains = E.slice(1).map((e, k) => (e && E[k] ? (e.E - E[k]!.E) / ((e.h + E[k]!.h) / 2) : NaN)).map((v) => Math.round(v));
+      const gains = E.slice(1).map((e, k) => (e && E[k] ? (e.Ea - E[k]!.Ea) / ((e.ha + E[k]!.ha) / 2) : NaN)).map((v) => Math.round(v));
+      const gainsT = E.slice(1).map((e, k) => (e && E[k] ? (e.Ep + e.Ea - E[k]!.Ep - E[k]!.Ea) / ((e.hp + e.ha + E[k]!.hp + E[k]!.ha) / 2) : NaN)).map((v) => Math.round(v));
       const calc = levelGainCfg(cfg, g, t);
       const q = levelCheck(cfg, g, t);
-      book.push({ ladder: L.ladder, at: L.at, at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, L0: levelOf(g, t), gains, E0: Math.round(E[0] ? E[0].E / E[0].h : NaN), calc: Math.round(calc), I: Math.round(incomeAt(cfg, g)), price: q.refusal ? null : q.price });
+      book.push({ ladder: L.ladder, at: L.at, at_h: +(g.salvage.t / 3600).toFixed(1), rung: g.salvage.ladder.rung, L0: levelOf(g, t), gains, gainsT, E0: Math.round(E[0] ? E[0].Ea / E[0].ha : NaN), calc: Math.round(calc), I: Math.round(incomeAt(cfg, g)), price: q.refusal ? null : q.price });
     }
   }
   // G15 (--person): the person-paced rung-4 entry sitting (yard-stage2-economy.md G15).
@@ -906,7 +1073,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -1291,7 +1458,7 @@ function reportS2e(all: Summary[], tauH: (number | null)[], platesLines: string[
   const bt = bookTable(all);
   if (Object.keys(bt).length) {
     L.push('   M2. THE LEVEL LADDERS\' THREE STEPS (the gain book g(L) = g1 x d^(L-1); ruling 27.4): the measured gain of each step (§ an hour, mean of seeds), g1, d, and the calculated gain (rate.ts levelGain) beside g1 (G2 R: within 0.7 to 1.4)');
-    for (const [k, v] of Object.entries(bt)) L.push(`     ${k.padEnd(17)} at ${v.at.padEnd(8)} n ${v.seeds}  steps §${v.gains.join(' / §')}  g1 §${v.g1}  d ${v.d}  calculated §${v.calc}  calc/measured ${v.g1 > 0 ? f2(v.calc / v.g1) : '-'}  per seed ${v.perSeed.map((q) => q.join('/')).join(' | ')}${BOOK_FAILING.includes(k) ? '  (failing the check by s2e-rate: written to levels.book by --book write)' : ''}`);
+    for (const [k, v] of Object.entries(bt)) L.push(`     ${k.padEnd(17)} at ${v.at.padEnd(8)} n ${v.seeds}  steps §${v.gains.join(' / §')}  g1 §${v.g1}  d ${v.d}  calculated §${v.calc}  calc/measured first step ${f2(v.ratio)}  per seed ${v.perSeed.map((q) => q.join('/')).join(' | ')}  s.e. §${v.se}  L0 ${v.L0}  over the hour and the absence together §${v.gainsT.join(' / §')}${v.fails ? '  FAILS ITS CHECK: written to levels.book by --book write' : '  passes its check'}`);
   }
   L.push('   M3. THE RUNG\'S BILL AGAINST THE PURSE at each rung\'s entry return (yard-stage2-economy.md section 0; ruling 27.8; it refuses nothing): the purse on return, U (every sold step with payback within 1.5 tau_r: the bill of section 0) and the sold machines\' bill alone');
   for (const r of runs) {
@@ -1363,7 +1530,7 @@ function gatesTable(runs: Summary[], tauH: (number | null)[], platesLines: strin
   const bt = bookTable(runs);
   const drv = bt.driver;
   const kappa = (contentAtRunsKappa ?? []).map((v) => (v === null ? '-' : String(v))).join('/');
-  row('G2', 'Rated income', 'medians 0.91 1.31 1.46 1.44 1.38 1.44; driver level dI 0', `normal board medians ${ig.map((x) => `${x.n} ${f2(x.m)}`).join(', ')}; kappa ${kappa}; G2 R (driver, r4 entry) ${drv ? `calculated §${drv.calc} / measured g1 §${drv.g1} = ${drv.g1 > 0 ? f2(drv.calc / drv.g1) : 'no measured gain'}` : 'not measured (--book)'}${few(ns, 15)}; off the fitted board: see T2's GATED rows`, ns ? igOk && !!drv && drv.g1 > 0 && drv.calc / drv.g1 >= 0.7 && drv.calc / drv.g1 <= 1.4 : null);
+  row('G2', 'Rated income', 'medians 0.91 1.31 1.46 1.44 1.38 1.44; driver level dI 0', `normal board medians ${ig.map((x) => `${x.n} ${f2(x.m)}`).join(', ')}; kappa ${kappa}; G2 R (driver, r4 entry) ${drv ? `calculated §${drv.calc} / measured first step §${drv.gains[0]} = ${f2(drv.ratio)}` : 'not measured (--book)'}; every ladder: ${Object.entries(bt).map(([k, v]) => `${k} ${f2(v.ratio)}${v.fails ? ' FAILS (book)' : ''}`).join(', ') || '-'}${few(ns, 15)}; off the fitted board: see T2's GATED rows`, ns ? igOk && !!drv && drv.ratio >= 0.7 && drv.ratio <= 1.4 : null);
   // G3
   const pace = (rs: Summary[], daily: boolean) => rs.map((r) => ({ s: r.spec.seed, r4: sitAt(r, 4), r5: sitAt(r, 5) })).map((q) => ({ ...q, ok: daily ? q.r4 !== null && q.r4 >= 2 && q.r4 <= 3 && q.r5 !== null && q.r5 >= 4 && q.r5 <= 6 : q.r4 !== null && q.r4 >= 4 && q.r4 <= 6 && q.r5 !== null && q.r5 >= 8 && q.r5 <= 12 }));
   const pN = pace(nrm, false);
@@ -1476,14 +1643,26 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const E0s = xs.map((x) => x.E0 ?? NaN).filter(Number.isFinite);
     const E0 = E0s.length ? Math.round(E0s.reduce((a, v) => a + v, 0) / E0s.length) : null;
     const price = Math.round(raw / p10) * p10;
-    const row = { dE, se: se === null ? null : Math.round(se), E0, sold: true, dGaway: Math.round(dGs.reduce((a, v) => a + v, 0) / dGs.length), dI, I: med(xs.map((x) => x.I)), G: med(xs.map((x) => x.G ?? 0)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price, seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: dEs, perSeedAway: dGs, perSeedI: xs.map((x) => x.dI), perSeedE0: xs.map((x) => x.E0 ?? null) };
-    (isPlate ? rows : items)[pid] = row;
+    const row: Record<string, unknown> = { dE, se: se === null ? null : Math.round(se), E0, sold: true, dGaway: Math.round(dGs.reduce((a, v) => a + v, 0) / dGs.length), dI, I: med(xs.map((x) => x.I)), G: med(xs.map((x) => x.G ?? 0)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price, seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: dEs, perSeedAway: dGs, perSeedI: xs.map((x) => x.dI), perSeedE0: xs.map((x) => x.E0 ?? null) };
+    // s2e-measure (28.4 a): the hour and the absence together (dT) and the run-up alone (dP) beside the lasting gain, each
+    // with its standard error; the run-up's hours; a third's difference between dT and the lasting gain is flagged
+    const stat = (v: number[]) => { const f = v.filter(Number.isFinite); const m0 = f.reduce((a, x) => a + x, 0) / Math.max(1, f.length); return { m: Math.round(m0), se: f.length > 1 ? Math.round(Math.sqrt(f.reduce((a, x) => a + (x - m0) ** 2, 0) / (f.length - 1) / f.length)) : null }; };
+    const T = stat(xs.map((x) => x.dT ?? NaN));
+    const P = stat(xs.map((x) => x.dP ?? NaN));
+    const E0T = stat(xs.map((x) => x.E0T ?? NaN)).m;
+    Object.assign(row, { measure: '28.4a', dT: T.m, seT: T.se, dP: P.m, seP: P.se, E0T, tW_h: +(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length).toFixed(2), worked: xs.filter((x) => x.worked).length, perSeedT: xs.map((x) => x.dT ?? null) });
+    const third = dE !== 0 && Math.abs(T.m - dE) > Math.abs(dE) / 3;
+    // the plasma's price stands until the lead rules (28.4 b): its table row is not written, its figures are printed
+    const keep = pid === 'plasma';
+    if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
     const moved = Math.abs(price - old);
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
     lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
+    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? '  (THE PLASMA: printed only; its price and its row stand until the lead rules, 28.4 b)' : ''}`);
+    lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
   // s2e-bots: --platesOut file writes there instead of the repository's table (a try on one or two seeds must not move the
@@ -1494,7 +1673,19 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
   const out = target && target !== 'true' ? path.resolve(target) : write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : path.join(os.tmpdir(), `yard-plates-${process.pid}.json`));
   const base = JSON.parse(fs.readFileSync(fs.existsSync(out) && write ? out : path.join(ROOT, 'scripts/content/bots/plates.json'), 'utf8')) as Record<string, unknown> & { plates: Record<string, unknown>; items: Record<string, unknown> };
   const bookRows = bookTable(all);
-  const merged = { ...base, $s2eBots: 's2e-bots (27 Nov): the sold items measured at their planned moments in the NEW goal order (ruling 21.1\'s measure), with `se` (the standard error of the mean over seeds) and `E0` (the yard\'s income at that moment, the branch without the item); `book`: the level ladders\' three steps g1 and d (g(L) = g1 x d^(L-1)) at each ladder\'s planned moment.', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: { ...base.plates, ...rows }, items: { ...base.items, ...items }, ...(Object.keys(bookRows).length ? { book: bookRows } : {}) };
+  // s2e-measure (28.4 b): the plasma's three moments, for the lead (its price stands)
+  const p3 = all.flatMap((r) => ((r.extra.plasma3 as Plasma3[] | undefined) ?? []).map((q) => ({ ...q, seed: r.spec.seed })));
+  const plasmaB: Record<string, unknown> = {};
+  for (const at of [...new Set(p3.map((q) => q.at))]) {
+    const xs = p3.filter((q) => q.at === at);
+    const mn = (f: (q: (typeof xs)[number]) => number) => Math.round(xs.reduce((a, q) => a + f(q), 0) / xs.length);
+    const dl = xs.map((q) => q.dL);
+    const m0 = dl.reduce((a, v) => a + v, 0) / dl.length;
+    const se = dl.length > 1 ? Math.round(Math.sqrt(dl.reduce((a, v) => a + (v - m0) ** 2, 0) / (dl.length - 1) / dl.length)) : null;
+    plasmaB[at] = { dL: Math.round(m0), se, dT: mn((q) => q.dT), dP: mn((q) => q.dP), E0: mn((q) => q.E0), lot4_h: mn((q) => q.lot4), lot3_h: mn((q) => q.lot3), lot4With_h: mn((q) => q.lotA.cut4), lot3With_h: mn((q) => q.lotA.cut3), lot3Without_h: mn((q) => q.lotB.cut3), seeds: xs.length, perSeed: dl };
+    lines.push(`   PLASMA ${at.padEnd(28)} n ${pad(xs.length, 2)}  lasting §${Math.round(m0)} (s.e. ${se ?? '-'}) of E0 §${mn((q) => q.E0)} = ${(100 * m0 / Math.max(1, mn((q) => q.E0))).toFixed(1)} %  together §${mn((q) => q.dT)}  run-up §${mn((q) => q.dP)}  |  oversize pieces cut an hour of play: with it tier 4 §${mn((q) => q.lotA.cut4)} + tier 3 §${mn((q) => q.lotA.cut3)}; without it tier 3 §${mn((q) => q.lotB.cut3)}: what it opens §${mn((q) => q.lot4)} an hour (tier 3 moves §${mn((q) => q.lot3)})`);
+  }
+  const merged = { ...base, ...(p3.length ? { plasma284b: { $comment: 's2e-measure (RULING2.md 28.4 b): the plasma cutter\'s lasting gain at three moments from the first works return (m1 bare, m2 with the second cutter, m3 with the second cutter and the hook-lift), and the worth an hour of play of the oversize pieces cut (prepared value): for the lead; the plasma\'s price and its items row stand until he rules', ...plasmaB } } : {}), $s2eMeasure: 's2e-measure (27 Nov): the sold items measured at their planned moments in the NEW goal order by RULING2.md 28.4 (a): dE = THE LASTING GAIN, what the yard keeps an hour over one capped absence that begins once the item works (the run-up played by the reference bot buying nothing, at least an hour and until the item works; the branch without plays as long), nobody at the yard, with and without, the sitting\'s earlier purchases owned in both; dT (the run-up and the absence together, ruling 21.1\'s measure where the run-up is the hour) and dP (the run-up alone) beside it, pricing nothing; E0 the absence\'s income without the item; book: the steps measured the same way (an hour played, then the absence alone).', $s2eBots: 's2e-bots (27 Nov): the sold items measured at their planned moments in the NEW goal order (ruling 21.1\'s measure), with `se` (the standard error of the mean over seeds) and `E0` (the yard\'s income at that moment, the branch without the item); `book`: the level ladders\' three steps g1 and d (g(L) = g1 x d^(L-1)) at each ladder\'s planned moment.', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: { ...base.plates, ...rows }, items: { ...base.items, ...items }, ...(Object.keys(bookRows).length ? { book: bookRows } : {}) };
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${JSON.stringify(merged, null, 1)}\n`);
   process.stderr.write(`wrote ${out}\n`);
@@ -1502,17 +1693,27 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
 }
 
 /** The level ladders' three steps over the runs (--book): per ladder g1 (mean of the first step's gain), g2, g3 and d = sqrt(g3 / g1) within (0, 1]. */
-function bookTable(all: Summary[]): Record<string, { g1: number; d: number; at: string; gains: number[]; seeds: number; calc: number; perSeed: number[][] }> {
-  const out: Record<string, { g1: number; d: number; at: string; gains: number[]; seeds: number; calc: number; perSeed: number[][] }> = {};
+type BookT = { g1: number; d: number; at: string; gains: number[]; gainsT: number[]; se: number; L0: number; seeds: number; calc: number; ratio: number; fails: boolean; perSeed: number[][] };
+function bookTable(all: Summary[]): Record<string, BookT> {
+  const out: Record<string, BookT> = {};
   const rows = all.flatMap((r) => ((r.extra.book as BookRow[] | undefined) ?? []));
   for (const L of LADDERS) {
     const xs = rows.filter((q) => q.ladder === L.ladder && q.gains.length);
     if (!xs.length) continue;
-    const m = (k: number) => { const v = xs.map((q) => q.gains[k]).filter(Number.isFinite); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : NaN; };
+    const m = (k: number, f: (q: BookRow) => number[] | undefined = (q) => q.gains) => { const v = xs.map((q) => f(q)?.[k] ?? NaN).filter(Number.isFinite); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : NaN; };
     const gains = [m(0), m(1), m(2)].map((v) => Math.round(v));
-    const g1 = Math.max(0, gains[0]);
-    const d = g1 > 0 && gains[2] > 0 ? Math.min(1, Math.max(0.01, Math.sqrt(gains[2] / g1))) : g1 > 0 && gains[1] > 0 ? Math.min(1, Math.max(0.01, gains[1] / g1)) : 1;
-    out[L.ladder] = { g1, d: +d.toFixed(3), at: L.at, gains, seeds: xs.length, calc: Math.round(xs.reduce((a, q) => a + q.calc, 0) / xs.length), perSeed: xs.map((q) => q.gains) };
+    const gainsT = [m(0, (q) => q.gainsT), m(1, (q) => q.gainsT), m(2, (q) => q.gainsT)].map((v) => Math.round(v));
+    const s0 = xs.map((q) => q.gains[0]).filter(Number.isFinite);
+    const se = s0.length > 1 ? Math.sqrt(s0.reduce((a, v) => a + (v - gains[0]) ** 2, 0) / (s0.length - 1) / s0.length) : NaN;
+    const gL0 = Math.max(0, gains[0]);
+    const d = gL0 > 0 && gains[2] > 0 ? Math.min(1, Math.max(0.01, Math.sqrt(gains[2] / gL0))) : gL0 > 0 && gains[1] > 0 ? Math.min(1, Math.max(0.01, gains[1] / gL0)) : 1;
+    // s2e-measure: the book reads g1 x d^(L-1) at the ABSOLUTE level L (rate.ts levelGain): the measured first step is the
+    // step from L0 (the level held at the moment), so g1 = that step / d^(L0-1), per seed, then the mean.
+    const g1s = xs.map((q) => (Number.isFinite(q.gains[0]) ? Math.max(0, q.gains[0]) / d ** (Math.max(1, q.L0) - 1) : NaN)).filter(Number.isFinite);
+    const g1 = Math.round(g1s.reduce((a, v) => a + v, 0) / Math.max(1, g1s.length));
+    const calc = Math.round(xs.reduce((a, q) => a + q.calc, 0) / xs.length);
+    const ratio = gL0 > 0 ? calc / gL0 : NaN;
+    out[L.ladder] = { g1, d: +d.toFixed(3), at: L.at, gains, gainsT, se: Math.round(se), L0: +(xs.reduce((a, q) => a + q.L0, 0) / xs.length).toFixed(1), seeds: xs.length, calc, ratio, fails: !(ratio >= 0.7 && ratio <= 1.4), perSeed: xs.map((q) => q.gains) };
   }
   return out;
 }
@@ -1524,7 +1725,10 @@ function bookTable(all: Summary[]): Record<string, { g1: number; d: number; at: 
  */
 function writeBook(all: Summary[]): string[] {
   const t = bookTable(all);
-  const want = Object.fromEntries(Object.entries(t).filter(([k]) => BOOK_FAILING.includes(k)).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
+  // s2e-measure (28.4 c): EVERY ladder whose calculated gain is outside 0.7 to 1.4 of its measured first step (and a book
+  // entry kept where the measurement has no row)
+  void BOOK_FAILING;
+  const want = Object.fromEntries(Object.entries(t).filter(([, v]) => v.fails && v.g1 > 0).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
   const file = path.join(ROOT, 'src/config/salvage.content.ts');
   const src = fs.readFileSync(file, 'utf8');
   const re = /\n    book: \{[^\n]*\},\n/;
