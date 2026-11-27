@@ -13,11 +13,22 @@ import { describe, expect, it } from 'vitest';
 import { SalvageSchema, lintSalvage, lintStage2, partnerLoads, sourcesByRung, withWorksLayer, type SalvageContent } from '../../config/schema.salvage';
 import gameJson from '../../../games/scrap-yard/game.json';
 import { SALVAGE_TEST, SALVAGE_TEST_RAW } from '../fixtures/salvage';
+import { report9Config } from '../fixtures/report9';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const RAW = (gameJson as unknown as { salvage: Record<string, unknown> }).salvage;
 // owner1 S1: the checks of 5.2 read the whole content: parsed as release.stage 2 (the shipped release keeps stage 2 dark).
 const shipped = (): SalvageContent => SalvageSchema.parse({ ...structuredClone(RAW), release: { stage: 2 } });
+/**
+ * s2e-content (ruling 27.7): the stage as REPORT9 measured it (the frozen fixture), for the checks of what this build makes dark
+ * (the shear, the lead line) or reads from the stage's own rungs (works.rungs).
+ */
+const frozen = (): SalvageContent => report9Config((x) => SalvageSchema.parse(x)).salvage as SalvageContent;
+const afterFrozen = (f: (c: SalvageContent) => void): string[] => {
+  const c = frozen();
+  f(c);
+  return lintSalvage(c);
+};
 /** lintSalvage's findings after one change to the shipped content (already parsed: the rules' shapes). */
 const after = (f: (c: SalvageContent) => void): string[] => {
   const c = shipped();
@@ -47,23 +58,24 @@ describe('the shipped content and the frozen test content', () => {
     expect(withWorksLayer(SALVAGE_TEST)).toBe(SALVAGE_TEST);
   });
   it('every plate input has a source open at its gate; lead ingot comes by rung 4', () => {
-    const at = sourcesByRung(withWorksLayer(shipped()));
+    // s2e-content (ruling 27.7): the lead line is dark in the shipped stage; the frozen stage REPORT9 measured still has it
+    const at = sourcesByRung(withWorksLayer(frozen()));
     expect(at.get('pbi')).toBe(4);
     expect(at.get('ss')).toBe(3);
   });
 });
 
 describe('5.2: each check refuses a broken content', () => {
-  const refuses = (name: string, f: (c: SalvageContent) => void, want: string | RegExp) =>
+  const refuses = (name: string, f: (c: SalvageContent) => void, want: string | RegExp, on: 'shipped' | 'frozen' = 'shipped') =>
     it(`refuses ${name}`, () => {
-      const errs = after(f);
+      const errs = (on === 'frozen' ? afterFrozen : after)(f);
       expect(errs.some((e) => (typeof want === 'string' ? e.includes(want) : want.test(e))), errs.join('\n')).toBe(true);
     });
   // (1) mass
   refuses('(1) a plate whose out and waste do not add up to 1 + reagents', (c) => (plate(c, 'baler').out.li = [['lib', 0.9]]), 'mass is kept');
   refuses('(1) a recipe that loses its reagent in the balance', (c) => (plate(c, 'smelter').recipes.lead.waste = [['carrier', 0.06]]), 'smelter.recipes.lead: input pbp: out + waste');
   // (2)
-  refuses('(2) a plate input no source of its gate brings', (c) => plate(c, 'shear').in.push('plough') && (plate(c, 'shear').out.plough = [['hms', 1]]), 'which no source open by rung 3 brings');
+  refuses('(2) a plate input no source of its gate brings', (c) => plate(c, 'shear').in.push('plough') && (plate(c, 'shear').out.plough = [['hms', 1]]), 'which no source open by rung 3 brings', 'frozen'); // s2e-content: the shear is dark in the shipped stage
   refuses('(2) a feeds chain out of order', (c) => (plate(c, 'eddy').slot = 0), 'a feeds chain out of order');
   refuses('(2) a needs cycle', (c) => (plate(c, 'shredder').needs = 'sorter'), 'a needs cycle');
   refuses('(2) a hands-fed plate in the back field', (c) => (plate(c, 'sorter').feedBy = 'hands'), 'fed by hands but its plot sorter');
@@ -124,10 +136,13 @@ describe('5.2: each check refuses a broken content', () => {
   // (13)
   refuses('(13) an oversize piece no tool owned by then can cut', (c) => (layer(c).shop = layer(c).shop.filter((i: Any) => i.key !== 'plasma')), 'lots.kinds.propeller needs tool tier 4');
   // B4, 5.2 (4)
-  refuses('(4) a rung-4 range the sources cannot reach', (c) => (c.ladder.rungs.find((r) => r.n === 4)!.range = 10), 'rung 4 asks a range of 10');
+  // s2e-content: the shipped stage plays its own rung 4 (works.rungs); the frozen stage reads the ladder's
+  refuses('(4) a rung-4 range the sources cannot reach', (c) => (c.ladder.rungs.find((r) => r.n === 4)!.range = 10), 'rung 4 asks a range of 10', 'frozen');
   // the layer and the words
   refuses('a works-layer id that repeats the first layer', (c) => (layer(c).grades.li = { ...c.grades.li }), 'worksLayer.grades.li repeats');
-  refuses('a financeable flag that is not derived', (c) => (plate(c, 'crane').financeable = true), 'it is derived');
+  // s2e-content (yard-stage2-economy.md 2.14.2): financeable is the content's mark, no longer derived; refused on what is not sold or on a tool
+  refuses('a financeable mark on a plate the stage does not sell', (c) => (plate(c, 'crane').financeable = true), 'is marked financeable but is not sold at this stage');
+  refuses('a financeable mark on a tool', (c) => (layer(c).shop.find((i: Any) => i.key === 'plasma').financeable = true), 'only a vehicle or a machine may be');
   refuses('the bank\'s words not saying its share', (c) => ((c.bank as Any).share = 0.25), 'bank.shareWords');
   it('(14) refuses per-rung lists not of length ladder.topRung, and tau not null at rungs 1 and 2', () => {
     const raw = { ...structuredClone(RAW), release: { stage: 2 } } as Any;

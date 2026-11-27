@@ -106,15 +106,16 @@ afterEach(async () => {
 });
 
 describe('M1: the real game.json at release.stage 1 sells nothing and asks the store for nothing', () => {
-  it('the shipped content is at release.stage 1; the shared list is empty; the mode holds the sixteen; ads.initOn firstOffer', () => {
+  // s2e-content (RULING2.md 27.3 D8): the mode holds fourteen: the looks, No ad videos, and the 2- and 5-hour packs (10 and 20 h off the list)
+  it('the shipped content is at release.stage 1; the shared list is empty; the mode holds the fourteen; ads.initOn firstOffer', () => {
     expect(RAW.salvage.release.stage).toBe(1);
     expect(RAW.monetization.iap.products).toEqual([]);
     expect(RAW.monetization.ads.initOn).toBe('firstOffer');
     const prods = RAW.salvage.iap.products as { id: string; kind: string; value?: number }[];
-    expect(prods).toHaveLength(16);
+    expect(prods).toHaveLength(14);
     expect(prods.filter((p) => p.kind === 'cosmetic')).toHaveLength(11);
     expect(prods.filter((p) => p.kind === 'skipAds').map((p) => p.id)).toEqual(['yard_skipAds']);
-    expect(prods.filter((p) => p.kind === 'hoursOfIncome').map((p) => p.value)).toEqual([2, 5, 10, 20]);
+    expect(prods.filter((p) => p.kind === 'hoursOfIncome').map((p) => p.value)).toEqual([2, 5]);
     expect(prods.every((p) => p.id.startsWith('yard_'))).toBe(true);
   });
 
@@ -142,8 +143,8 @@ describe('M1: the real game.json at release.stage 1 sells nothing and asks the s
     const shop = await import('../salvage/shop');
     const { SalvageSchema } = await import('../../config/schema.salvage');
     const c2 = shipped2Config((x) => SalvageSchema.parse(x), RAW);
-    expect(shop.productsOf(c2)).toHaveLength(16);
-    expect(shop.packHours(c2, 'yard_pack20')).toBe(20);
+    expect(shop.productsOf(c2)).toHaveLength(14);
+    expect(shop.packHours(c2, 'yard_pack5')).toBe(5);
     expect(shop.noAdsProduct(c2)).toBe('yard_skipAds');
     const b = await boot(raw2);
     expect(b.M.grantsHoursOfIncome(b.useGame.getState().cfg)).toBe(true);

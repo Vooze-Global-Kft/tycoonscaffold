@@ -780,6 +780,10 @@ export const TEXT = {
   'goal.buySmelter': 'Buy the lead smelter',
   'goal.pourLead': 'Pour a lead ingot', // done poured:smelter
   'goal.supplyRung5': 'Supply {t} ({r} metals)',
+  // s2e-content (yard-stage2-economy.md 1.3; RULING2.md 27): the new goal list's three new goals
+  'goal.buyPlasma': 'Buy the plasma cutter', // before "Cut an oversize piece" (the stainless and bronze kinds need it)
+  'goal.startAnalyser': 'Start up the analyser', // the start-up the baler taught moves to the analyser; done commissioned:analyser
+  'goal.pourInduction': 'Pour at the induction furnace', // done poured:induction
   'advice.loanHint': 'A loan suits a machine that earns.', // 2.13: the bank's one sentence, under its four conditions
   // s2-fix-small (R3, 21.5): what the yard waits for when nothing is left to buy (advice.ts AdviceWait). The line and,
   // under it, who brings the material: each one line of the opened goal card at font scale 1.3 (check.ts goalMore).

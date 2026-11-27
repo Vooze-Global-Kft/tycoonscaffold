@@ -233,6 +233,10 @@ export const TEXT_KEYS = {
     'goal.buySmelter',
     'goal.pourLead',
     'goal.supplyRung5',
+    // s2e-content (yard-stage2-economy.md 1.3; RULING2.md 27): the new goal list's three new goals
+    'goal.buyPlasma',
+    'goal.startAnalyser',
+    'goal.pourInduction',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
   /**

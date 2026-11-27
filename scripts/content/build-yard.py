@@ -52,6 +52,14 @@ WARNINGS here, listed for Phase B (they never refuse until their inputs exist):
        works-layer grade or thing without its words in text.json (strings2's, Phase B);
   (11) a plate's ΔI at its planned moment (the bots).
     python3 scripts/content/build-yard.py --selftest   the tests of these checks (the map's: yard_map.py --selftest)
+
+s2e-content (27 November; yard-stage2-economy.md, RULING2.md 27): (3) covers every SOLD plate, vehicle and tool (a gate within the
+stage's top; a gate past the ladder is dark: defined, never sold) and adds THE ENTRY RULE, a refusal: a sold item whose plates.json
+gain (dE) is under 2 % of the yard's income E0 at its moment (plates.json `E0`) is refused (2.6.4; ruling 27.2 b). The summary
+prints each sold item's share, what is dark, and THE RUNG'S BILL for rungs 3 and 4 (the sold items' prices against REPORT9's
+median purse at the rung's entry return, plates.json `purse`; section 0, ruling 27.8): a line for the lead that refuses nothing.
+`financeable` is the content's mark (no longer derived); the products are fourteen (10- and 20-hour packs off, ruling 27.3 D8); the
+supply check reads the stage's own rungs (works.rungs: rung 5's range 8, lead waits for stage 3).
 """
 import json
 import math
@@ -144,11 +152,9 @@ def build():
             s[k] = goals[k]
     for fam, extra in (src['pending'] or {}).items():
         s.setdefault(fam, {}).update(extra)
-    # STAGE 2 (2.5.3): a plate's `financeable` is derived, never written by hand: its out holds a sellable grade
-    grades = {**s['grades'], **(s.get('worksLayer') or {}).get('grades', {})}
-    for p in ((s.get('works') or {}).get('plates') or {}).values():
-        outs = [x for sh in (p.get('out') or {}).values() for x in sh] + [x for r in (p.get('recipes') or {}).values() for x in r['out']]
-        p['financeable'] = any(g in grades for g, _ in outs)
+    # s2e-content (yard-stage2-economy.md 2.14.2): a plate's or a vehicle's `financeable` is a MARK of the content (a machine or
+    # vehicle that earns: the hook-lift and the five machines of the line and the halls), no longer derived from its out (the
+    # analyser earns with no out of its own); lintStage2 refuses a mark on a tool or on what the stage does not sell.
     old = load(GAME)
     game = dict(old)
     game['salvage'] = s
@@ -166,14 +172,22 @@ def build():
 # at both stages (ruling 13.7; the first yard makes no offer, so the ad SDK never starts). Everything else of
 # monetization (ad unit ids, banner switches) is kept as it is. Tests and bots that need stage 2 build their
 # configuration with src/engine/fixtures/stage2.ts, which mirrors the same block the same way.
+PRODUCTS_N = 14
+PACKS_LISTED_H = (2, 5)
+
+
 def with_products(game):
     reg = load(os.path.join(ROOT, 'scripts', 'content', 'yard', 'names.json'))
     by = {e.get('productId'): e for e in reg.get('names', []) if isinstance(e, dict) and str(e.get('id', '')).startswith('product.')}
     s = game['salvage']
     iap = s.get('iap') or {}
     items = iap.get('products') or []
-    if len(items) != 16:
-        raise SystemExit('salvage.iap.products holds %d products, 2.15.1 has sixteen' % len(items))
+    # s2e-content (RULING2.md 27.3 D8): fourteen products: the looks, No ad videos, and the 2- and 5-hour packs (10 and 20 h off the list)
+    if len(items) != PRODUCTS_N:
+        raise SystemExit('salvage.iap.products holds %d products; the list has %d (2.15.1 less the 10- and 20-hour packs, ruling 27.3 D8)' % (len(items), PRODUCTS_N))
+    hours = sorted(it.get('value') for it in items if it.get('kind') == 'hoursOfIncome')
+    if hours != list(PACKS_LISTED_H):
+        raise SystemExit('salvage.iap.products lists packs of %s hours; ruling 27.3 D8 lists %s' % (hours, list(PACKS_LISTED_H)))
     out = []
     for it in items:
         pid = it['id'].split('_', 1)[1]
@@ -535,11 +549,23 @@ def supply_rates(s, r, trips_h, fair):  # noqa: C901
         R[m] += 3600 / d['period'] * sum(sh * thing(o, m) for o, sh in d['mix'] if o in O)
     return R, mats
 
+def stage_rungs(s):
+    """The rungs a yard at stage 2 plays, by number: ladder.rungs (and rung2/rung3) with the stage's own (works.rungs, read
+    from the works' opening, schema.salvage.ts withWorksLayer) in place of the same numbers (s2e-content)."""
+    L = s['ladder']
+    rungs = {x['n']: dict(x) for x in L.get('rungs') or []}
+    rungs.setdefault(2, {'n': 2, **L['rung2']})
+    rungs.setdefault(3, {'n': 3, **L['rung3']})
+    for x in ((s.get('works') or {}).get('rungs') or []):
+        rungs[x['n']] = {**rungs.get(x['n'], {}), **x}
+    return rungs
+
+
 def theta_of(s, r):
     L = s['ladder']
     if r <= 3 or not L.get('thetaShare'):
         return L['theta']
-    T = next((x['t'] for x in L.get('rungs') or [] if x['n'] == r), 0)
+    T = stage_rungs(s).get(r, {}).get('t', 0)
     return max(L['theta'], L['thetaShare'] * T * L.get('thetaPerT', 1200))
 
 
@@ -551,9 +577,7 @@ def supply_check(s):
     trips = sup.get('trips_h')
     fair = (s.get('truck') or {}).get('fairAfter_trips')
     hours = sup.get('hours_h') or []
-    rungs = {x['n']: x for x in L.get('rungs') or []}
-    rungs.setdefault(2, {'n': 2, **L['rung2']})
-    rungs.setdefault(3, {'n': 3, **L['rung3']})
+    rungs = stage_rungs(s)  # s2e-content: the stage's own rungs 4 and 5 (works.rungs: rung 5's range 8, lead waits for stage 3)
     for r in range(2, (L.get('topRung') or 3) + 1):
         want = rungs.get(r, {}).get('range', 0)
         R, mats = supply_rates(s, r, trips if fair else None, fair or 0)
@@ -580,6 +604,58 @@ TEXT_KEYS = os.path.join(ROOT, 'src', 'engine', 'salvage', 'textKeys.ts')
 PLATES_TABLE = os.path.join(ROOT, 'scripts', 'content', 'bots', 'plates.json')
 
 
+ENTRY_SHARE = 0.02   # yard-stage2-economy.md 2.6.4, RULING2.md 27.2 (b): a sold item's measured gain is at least 2 % of the yard's income
+ENTRY_SEED = -0.01   # ... and no seed below -1 % (printed by entry_rows: plates.json holds the yard's E0 as a mean only)
+DARK_PAST = 9        # a gate past the ladder's nine rungs: not sold at this stage (salvage.content.ts DARK)
+
+
+def sold_items(s, tab):
+    """(kind, key, the content's item, its plates.json row) of every plate and works-layer shop item SOLD at this stage: its gate
+    a rung within the stage's top (a gate past the ladder is dark: defined, never sold; s2e-content)."""
+    top = s['ladder'].get('topRung') or 3
+    out = []
+    for pid, p in ((s.get('works') or {}).get('plates') or {}).items():
+        if gate_n(p.get('gate')) <= top:
+            out.append(('plate', pid, p, (tab.get('plates') or {}).get(pid)))
+    for it in ((s.get('worksLayer') or {}).get('shop') or []):
+        if it.get('kind') != 'works' and gate_n(it.get('gate')) <= top:
+            out.append((it['kind'], it['key'], it, (tab.get('items') or {}).get(it['key'])))
+    return out
+
+
+def entry_rows(s):
+    """What the build check prints for the lead (s2e-content): each sold item's gain against its E0 (the entry rule; the seed clause
+    is printed, not refused, as plates.json holds E0 as a mean), what is dark, and THE RUNG'S BILL (yard-stage2-economy.md section 0;
+    ruling 27.8): for rungs 3 and 4 the sum of the sold machines', vehicles' and tools' prices against REPORT9's median purse at the
+    rung's entry return (plates.json `purse`). It refuses nothing: it is the lead's line. Levels are not in the bill (they are priced
+    on the player's own state, not by the content)."""
+    if not os.path.exists(PLATES_TABLE):
+        return []
+    tab = load(PLATES_TABLE)
+    rows = []
+    sold = sold_items(s, tab)
+    for kind, key, item, row in sold:
+        if not row or not row.get('E0'):
+            continue
+        per = row.get('perSeed') or []
+        low = min(per) if per else None
+        flag = '' if low is None or low >= ENTRY_SEED * row['E0'] else '  (a seed at %.2f %%: under the design\'s -1 %% seed clause, for the lead)' % (100 * low / row['E0'])
+        rows.append('entry %s %s: dE §%s = %.2f %% of E0 §%s (at least 2 %%); price §%s%s' % (kind, key, f'{row["dE"]:,}', 100 * row['dE'] / row['E0'], f'{row["E0"]:,}', f'{item["price"]:,}', flag))
+    top = s['ladder'].get('topRung') or 3
+    dark = [k for k, p in ((s.get('works') or {}).get('plates') or {}).items() if gate_n(p.get('gate')) > top]
+    dark += [i['key'] for i in ((s.get('worksLayer') or {}).get('shop') or []) if i.get('kind') != 'works' and gate_n(i.get('gate')) > top]
+    rows.append('dark (defined, gated past the ladder, never sold): ' + (', '.join(dark) or '-'))
+    purse = tab.get('purse') or {}
+    for r in (3, 4):
+        its = [(key, item['price']) for kind, key, item, row in sold if gate_n(item.get('gate')) == r]
+        bill = sum(p for _, p in its)
+        pr = (purse.get('r%d' % r) or {}).get('median')
+        rows.append('the rung-%d bill: §%s (%s) against REPORT9\'s median purse at the rung\'s entry return §%s: %s' % (
+            r, f'{bill:,}', ' + '.join('%s §%s' % (k, f'{p:,}') for k, p in its) or '-', f'{pr:,}' if pr else '?',
+            ('%.2f x the purse' % (bill / pr)) if pr else 'no purse in plates.json'))
+    return rows
+
+
 def warnings(s, game):
     """5.2's checks whose inputs do not exist yet (see the head of this file): findings, never refusals."""
     out = []
@@ -588,20 +664,26 @@ def warnings(s, game):
     if not plates:
         return out
     tau = s.get('tau_h') or []
-    # (3) the payback rule's prices
+    # (3) the payback rule's prices; s2e-content: of every SOLD plate, vehicle and tool (a sold machine, vehicle or tool),
+    # and (ENTRY) its measured gain against 2 % of the yard's income at its moment (yard-stage2-economy.md 2.6.4; ruling 27.2 b)
     if os.path.exists(PLATES_TABLE):
         tab = load(PLATES_TABLE)
-        for pid, p in plates.items():
-            row = (tab.get('plates') or tab).get(pid)
-            r = int(str(p['gate']).replace('rung', '') or 3)
+        for kind, key, item, row in sold_items(s, tab):
+            r = gate_n(item.get('gate'))
             # RULING2.md 19.1: the measured gain dE (what the yard earns more an hour), else the old ΔI
             gain = None if not row else row.get('dE', row.get('dI'))
             if gain is None:
-                out.append('(3) bots/plates.json has no dE for plate %s' % pid)
+                out.append('(3) bots/plates.json has no dE for %s %s' % (kind, key))
                 continue
-            want = max(W['floor'], (tau[r - 1] or 0) * gain)
-            if abs(p['price'] - want) > max(1, 0.01 * want):
-                out.append('(3) works.plates.%s.price §%s is not max(works.floor, tau_%d x dE) = §%.0f' % (pid, p['price'], r, want))
+            t_r = tau[r - 1] if r - 1 < len(tau) else None
+            want = max(W['floor'], (t_r or 0) * gain)
+            if abs(item['price'] - want) > max(1, 0.01 * want):
+                out.append('(3) %s %s: price §%s is not max(works.floor, tau_%d x dE) = §%.0f' % (kind, key, item['price'], r, want))
+            e0 = row.get('E0')
+            if not e0:
+                out.append('(3) ENTRY: bots/plates.json has no E0 (the yard\'s income at its moment) for %s %s' % (kind, key))
+            elif gain < ENTRY_SHARE * e0:
+                out.append('(3) ENTRY: %s %s is sold, but its measured gain §%s an hour is %.2f %% of the yard\'s E0 §%s at its moment (at least %d %%, yard-stage2-economy.md 2.6.4, ruling 27.2 b)' % (kind, key, gain, 100 * gain / e0, e0, round(100 * ENTRY_SHARE)))
     else:
         out.append('(3) plate prices not checked: bots/plates.json (the payback rule\'s table, 2.6.4) does not exist yet: %d plates at first values' % len(plates))
     # (14) for the away caps: now a refusal of the schema (s2a-fix: away.ts runLongerOf stops at the stage's top rung)
@@ -645,6 +727,7 @@ def summary(s):
     rows.append('ladder: rung 2 at %s t, rung 3 at %s t; rivals %d; goals %d (+%d day one); names %d' % (
         s['ladder']['rung2']['t'], s['ladder']['rung3']['t'], len(s['rivals']['list']), len(s.get('goals', [])), len(s.get('dayOne', [])), len(s.get('names', {}))))
     rows += ['supply ' + r for r in supply_check(s)[1]]
+    rows += entry_rows(s)
     return '\n'.join('  ' + r for r in rows)
 
 
@@ -661,8 +744,25 @@ def selftest():
         print('%s %s' % ('ok  ' if ok else 'FAIL', name))
         fails += 0 if ok else 1
     pl = s['works']['plates']
-    expect('the baler is financeable (its out holds lib)', pl['baler']['financeable'] is True)
-    expect('the analyser and the crane are not', pl['analyser']['financeable'] is False and pl['crane']['financeable'] is False)
+    # s2e-content (2.14.2): financeable is the content's mark: the hook-lift and the machines sold that earn; never a tool, never a dark plate
+    sold = {k for k, p in pl.items() if gate_n(p['gate']) <= (s['ladder'].get('topRung') or 3)}
+    expect('the analyser, the shredder and the two halls are marked financeable', all(pl[k].get('financeable') is True for k in ('analyser', 'shredder', 'induction', 'rotary')))
+    expect('no dark plate is marked financeable', not any(p.get('financeable') for k, p in pl.items() if k not in sold))
+    shop = {i['key']: i for i in s['worksLayer']['shop']}
+    expect('the three-axle hook-lift is financeable, the plasma cutter (a tool) is not', shop['truckBridge'].get('financeable') is True and not shop['plasma'].get('financeable'))
+    # s2e-content (2.6.4, 2.7 to 2.9; ruling 27.2 b, 27.3 D1, D2): what is sold, and what is dark
+    expect('sold at stage 2: the analyser, shredder, induction and rotary; the hook-lift and the plasma',
+           sold == {'analyser', 'shredder', 'induction', 'rotary'} and {k for k, i in shop.items() if i['kind'] != 'works' and gate_n(i['gate']) <= 5} == {'truckBridge', 'plasma'})
+    tab = load(PLATES_TABLE)
+    c = copy.deepcopy(s)
+    c['works']['plates']['baler']['gate'] = 'rung3'
+    c['works']['plates']['baler']['price'] = 3000
+    expect('ENTRY: the baler sold (gain 0.6 % of E0) is refused', any(w.startswith('(3) ENTRY') and 'baler' in w for w in warnings(c, game)))
+    c = copy.deepcopy(s)
+    c['worksLayer']['shop'] = [dict(i, gate='rung3', price=3000) if i['key'] == 'forklift' else i for i in c['worksLayer']['shop']]
+    expect('ENTRY: the forklift sold (a negative gain) is refused', any(w.startswith('(3) ENTRY') and 'forklift' in w for w in warnings(c, game)))
+    expect('ENTRY: the shipped content passes', not any(w.startswith('(3)') for w in warnings(s, game)))
+    expect('the rung bill is printed for rungs 3 and 4 (it refuses nothing)', sum(1 for r in entry_rows(s) if r.startswith('the rung-')) == 2 and bool(tab.get('purse')))
     ws = warnings(s, game)
     expect('(3) warns while bots/plates.json is missing', os.path.exists(PLATES_TABLE) or any(w.startswith('(3)') for w in ws))
     c = copy.deepcopy(s)
@@ -672,8 +772,8 @@ def selftest():
     c['worksLayer']['grades']['zzz'] = dict(c['worksLayer']['grades']['ss'])
     expect('(10) warns on a works-layer grade without words', any('zzz' in w for w in warnings(c, game)))
     c = copy.deepcopy(s)
-    c['iap']['products'] = [{'id': 'yard_pack30', 'kind': 'hoursOfIncome', 'value': 30, 'fallbackPrice': '$9.99'}]
-    expect('(7) warns on a pack of 30 h against tau_4 22 h', any('pack30' in w for w in warnings(c, game)))
+    c['iap']['products'] = [{'id': 'yard_pack40', 'kind': 'hoursOfIncome', 'value': 40, 'fallbackPrice': '$9.99'}]
+    expect('(7) warns on a pack of 40 h against tau_4 36 h', any('pack40' in w for w in warnings(c, game)))
     # M1 (rulings 19.9, 21.8, 22 M1): the shared list is empty at release.stage 1 and mirrors the mode's block at stage 2
     mon = (game.get('monetization') or {}).get('iap') or {}
     stage = (s.get('release') or {}).get('stage', 2)
@@ -682,23 +782,25 @@ def selftest():
     g1 = copy.deepcopy(game)
     g1['salvage']['release'] = {'stage': 2}
     g1['monetization']['iap']['products'] = []
-    expect('M1: at release.stage 2 the build mirrors the sixteen products', with_products(g1)['monetization']['iap']['products'] == s['iap']['products'])
+    expect('M1: at release.stage 2 the build mirrors the fourteen products', with_products(g1)['monetization']['iap']['products'] == s['iap']['products'])
+    expect('D8: the 2- and 5-hour packs are listed, the 10- and 20-hour ones are not', sorted(p.get('value') for p in s['iap']['products'] if p['kind'] == 'hoursOfIncome') == [2, 5])
     g1['salvage']['release'] = {'stage': 1}
     expect('M1: at release.stage 1 the build mirrors none; ads.initOn stays firstOffer',
            with_products(g1)['monetization']['iap']['products'] == [] and with_products(g1)['monetization']['ads']['initOn'] == 'firstOffer')
     # L2 (RULING2.md 21.6, 22 L2 with E4 (c)): the supply check passes the shipped content and refuses the two dead ends
     expect('L2: the shipped content passes the supply check', supply_check(s)[0] == [])
+    # s2e-content: the breaker and the smelter are dark (lead waits for stage 3), and the stage's own rung 5 asks for 8 (works.rungs);
+    # with the first yard's ladder range 9 read in its place, the lead cut is refused as before
     c = copy.deepcopy(s)
-    for k in ('breaker', 'smelter'):
-        del c['works']['plates'][k]
-    c['worksLayer']['shop'] = [i for i in c['worksLayer']['shop'] if i['key'] not in ('breaker', 'smelter')]
+    c['works']['rungs'] = [r for r in c['works']['rungs'] if r['n'] != 5]
     errs = supply_check(c)[0]
-    expect('L2: the lead cut (no breaker, no smelter) is refused: rung 5 asks for 9, 8 supplied, lead none',
+    expect('L2: rung 5 at the ladder\'s range 9 with lead dark is refused: 8 supplied, lead none',
            any('rung 5 asks for 9 materials' in e and 'supply only 8' in e and 'lead' in e for e in errs))
+    expect('the stage\'s rung 5 asks for 8 (works.rungs), the first yard\'s ladder keeps 9', stage_rungs(s)[5]['range'] == 8 and next(r for r in s['ladder']['rungs'] if r['n'] == 5)['range'] == 9)
     c = copy.deepcopy(s)
     c['ladder']['thetaShare'] = 0.1
     errs = supply_check(c)[0]
-    expect('L2: theta_5 ten times higher is refused at the fair driver\'s rate (E4 (c))', any('rung 5 asks for 9 materials at theta' in e for e in errs))
+    expect('L2: theta_5 ten times higher is refused at the fair driver\'s rate (E4 (c))', any('rung 5 asks for 8 materials at theta' in e for e in errs))
     c = copy.deepcopy(s)
     c['truck']['fairAfter_trips'] = 1000
     expect('L2: a driver who serves a partner once in a thousand trips cannot bring rung 5 in its band', any('rung 5' in e and 'E4 (c)' in e for e in supply_check(c)[0]))
@@ -726,7 +828,7 @@ def main(argv):
     ws = warnings(s, game)
     priced = [w for w in ws if w.startswith('(3) ')] if os.path.exists(PLATES_TABLE) else []
     if priced:
-        print('REFUSED: %d plate price(s) off the payback rule (5.2 (3), bots/plates.json):' % len(priced))
+        print('REFUSED: %d price(s) off the payback rule or sold under the entry rule (5.2 (3), bots/plates.json; yard-stage2-economy.md 2.6.4):' % len(priced))
         for w in priced:
             print('  [lint] ' + w)
         return 1

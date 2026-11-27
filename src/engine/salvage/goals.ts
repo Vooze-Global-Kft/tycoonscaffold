@@ -17,6 +17,7 @@ import { advice, adviceWait, cardForItem } from './advice';
 import { gateRung, roleOfKey, rungGrams, rungsOf, shopItem } from './ladder';
 import { pointOf, siteRect, skipZone, stopOf } from './positions';
 import { owner1Rules } from './content';
+import { contentAt } from './layer';
 import { rivalDay, rivalGrams } from './rivals';
 import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
 
@@ -292,6 +293,9 @@ export function goalText(cfg: SalvageConfig, g: SalvageGame, d: GoalSpec): Txt {
   const c = cfg.salvage;
   const parts = d.done.split(':');
   if (parts[0] === 'rung') {
+    // s2e-content: the rung's tonnes and range as the state reads them (layer.ts contentAt: the stage's own rungs, works.rungs,
+    // once the works opened; the base content itself before), so the card prints the range the ladder applies.
+    const c = contentAt(cfg.salvage, g.salvage);
     const n = Number(parts[1]) || 2;
     const r = rungsOf(c).find((x) => x.n === n);
     return { key: d.text as TextKey, args: { t: { tonnes_g: rungGrams(c, n) }, r: { n: r?.range ?? 0 } } };

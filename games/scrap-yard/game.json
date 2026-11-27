@@ -83,6 +83,7 @@
     "version": "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
     "units": "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
     "$changes": [
+      "s2e-content (27 Nov, RULING2.md 27; yard-stage2-economy.md packages 2 and 3): THE STAGE'S ECONOMY BUILT AGAIN. Sold at stage 2: the three-axle hook-lift 154,000 -> 206,000 (financeable), the plasma cutter 64,900 -> 86,500, the analyser 32,800 -> 43,800, the induction hall 207,000 -> 339,000, the shredder 83,200 -> 136,000, the rotary hall 65,100 -> 107,000 (REPORT9's T8 gain x the new tau, three figures; financeable marked on the hook-lift and the machines). DARK (gate past the ladder, defined, never sold): the crane, baler, shear, granulator, depollution bay, eddy current, sensor sorter, battery breaker, lead smelter, forklift, pallet truck (twitch leaves the rotary's inputs with the sorter). tau_h 9/22/45 -> 12/36/48; works.maxLevel 10 -> 1; reuse.levels 3 -> 0; works.rungs (the stage's own rung 5 range 8; the first yard's ladder keeps 9); bank.maxF_h 2 -> 6, maxF_tau 0.15 -> 0.5; the 10- and 20-hour packs off; levels.minShareI 0.01 and levels.book {}; group.aheadWorks false; reuse.shareI_r [12.5, 62.5, 62.5 per mille]; rate.kappa 1; lots: the boiler drum, press frame and transformer core (real masses), lots.lorry_kg 20,000. The stage as REPORT9 measured it is frozen in src/engine/fixtures/salvage-report9.json",
       "content2-bots (27 Nov, REPORT9 round 1, RULING2.md 21.1 and 19.1): the plates', vehicles' and tools' prices from the gain measured over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one capped absence, a rate an hour of yard time, mean of seeds 1 to 15, from each item's planned moment with the sitting's earlier purchases owned; price = max(works.floor, tau_r x dE) to three figures (scripts/content/bots/plates.json): shear 3,000 -> 5,180, analyser 29,100 -> 32,800, shredder 419,000 -> 83,200, rotary 77,600 -> 65,100, induction 171,000 -> 207,000, breaker 38,100 -> 3,000 (its measured gain is NEGATIVE: a finding, REPORT9), smelter 27,500 -> 17,700; truckBridge 12,000 -> 154,000, plasma 8,000 -> 64,900, pallet 2,500 -> 3,000, forklift 15,000 -> 3,000; crane, baler, depollution, granulator, eddy, sorter stay at the floor 3,000 (measured gain under the floor's worth)",
       "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",
       "content2-bots (26 Nov, REPORT8 round 2, RULING2.md 19.1): works plate prices from the measured gain, price = max(works.floor, tau_r x dE), dE the mean over seeds 1 to 5 of what the yard keeps more an hour (G at usual prices, a capped absence) with the plate bought at its planned moment on the normal hand, every earlier plate of that sitting owned (scripts/content/bots/plates.json): crane 30,000 -> 3,000, shear 40,000 -> 3,000, baler 9,000 -> 3,000, analyser 6,000 -> 29,100, depollution 80,000 -> 3,000, granulator 24,000 -> 3,000, shredder 600,000 -> 419,000, eddy 250,000 -> 3,000, sorter 300,000 -> 3,000, rotary 450,000 -> 77,600, induction 350,000 -> 171,000, breaker 200,000 -> 38,100, smelter 400,000 -> 27,500",
@@ -3342,6 +3343,8 @@
         "partnerFarm": "partner level L: L skips at the site, each full fill_s after it was hooked (E26)",
         "partnerDemolition": "partner level L: L skips at the site, each full fill_s after it was hooked (E26)"
       },
+      "minShareI": 0.01,
+      "book": {},
       "floor": 1100,
       "floorGrowth": 1.25
     },
@@ -3426,9 +3429,9 @@
     "tau_h": [
       null,
       null,
-      9,
-      22,
-      45
+      12,
+      36,
+      48
     ],
     "awayCapByRung_h": [
       0.5,
@@ -3660,7 +3663,8 @@
       "fromRung": 3,
       "handRun_s": 30,
       "cutRun_s": 120,
-      "ahead": true
+      "ahead": true,
+      "aheadWorks": false
     },
     "advice": {
       "minutes": 3,
@@ -3692,14 +3696,14 @@
       "commission_s": 5,
       "selfCommission_s": 1200,
       "lev": 0.15,
-      "maxLevel": 10,
+      "maxLevel": 1,
       "floor": 3000,
       "plates": {
         "crane": {
           "row": "yard",
           "slot": 0,
           "plot": "crane",
-          "gate": "rung3",
+          "gate": "rung99",
           "needs": null,
           "price": 3000,
           "deliver_s": 30,
@@ -3709,14 +3713,13 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 0,
-          "tray": 0,
-          "financeable": false
+          "tray": 0
         },
         "shear": {
           "row": "yard",
           "slot": 1,
           "plot": "shear",
-          "gate": "rung3",
+          "gate": "rung99",
           "needs": null,
           "price": 5180,
           "deliver_s": 30,
@@ -3750,14 +3753,13 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 1500,
-          "tray": 2000,
-          "financeable": true
+          "tray": 2000
         },
         "baler": {
           "row": "yard",
           "slot": 2,
           "plot": "baler",
-          "gate": "rung3",
+          "gate": "rung99",
           "needs": null,
           "price": 3000,
           "deliver_s": 30,
@@ -3778,8 +3780,7 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 500,
-          "tray": 2000,
-          "financeable": true
+          "tray": 2000
         },
         "analyser": {
           "row": "yard",
@@ -3787,7 +3788,8 @@
           "plot": "scalehouse",
           "gate": "rung3",
           "needs": null,
-          "price": 32800,
+          "price": 43800,
+          "financeable": true,
           "deliver_s": 6,
           "kind": "assay",
           "in": [],
@@ -3795,14 +3797,13 @@
           "lev": 0,
           "maxLevel": 1,
           "inbuf": 0,
-          "tray": 0,
-          "financeable": false
+          "tray": 0
         },
         "depollution": {
           "row": "yard",
           "slot": 4,
           "plot": "depollution",
-          "gate": "rung3",
+          "gate": "rung99",
           "needs": null,
           "price": 3000,
           "deliver_s": 30,
@@ -3847,14 +3848,13 @@
           "maxLevel": 10,
           "inbuf": 1000,
           "tray": 2000,
-          "permit": "card.rota.permitElv",
-          "financeable": true
+          "permit": "card.rota.permitElv"
         },
         "granulator": {
           "row": "yard",
           "slot": 5,
           "plot": "granulator",
-          "gate": "rung3",
+          "gate": "rung99",
           "needs": null,
           "price": 3000,
           "deliver_s": 30,
@@ -3883,8 +3883,7 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 200,
-          "tray": 500,
-          "financeable": true
+          "tray": 500
         },
         "shredder": {
           "row": "shredder",
@@ -3892,7 +3891,8 @@
           "plot": "shredder",
           "gate": "rung4",
           "needs": null,
-          "price": 83200,
+          "price": 136000,
+          "financeable": true,
           "deliver_s": 60,
           "kind": "rate",
           "in": [
@@ -3944,14 +3944,13 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 2000,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         },
         "eddy": {
           "row": "shredder",
           "slot": 1,
           "plot": "eddy",
-          "gate": "rung4",
+          "gate": "rung99",
           "needs": "shredder",
           "price": 3000,
           "deliver_s": 60,
@@ -3979,14 +3978,13 @@
           "lev": 0,
           "maxLevel": 1,
           "inbuf": 0,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         },
         "sorter": {
           "row": "shredder",
           "slot": 2,
           "plot": "sorter",
-          "gate": "rung4",
+          "gate": "rung99",
           "needs": "eddy",
           "price": 3000,
           "deliver_s": 60,
@@ -4031,8 +4029,7 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 500,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         },
         "rotary": {
           "row": "melt",
@@ -4040,7 +4037,8 @@
           "plot": "rotary",
           "gate": "rung4",
           "needs": null,
-          "price": 65100,
+          "price": 107000,
+          "financeable": true,
           "deliver_s": 60,
           "kind": "batch",
           "in": [],
@@ -4055,8 +4053,7 @@
             "alu": {
               "in": [
                 "alw",
-                "alcast",
-                "twitch"
+                "alcast"
               ],
               "out": [
                 [
@@ -4090,8 +4087,7 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 2000,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         },
         "induction": {
           "row": "melt",
@@ -4099,7 +4095,8 @@
           "plot": "induction",
           "gate": "rung4",
           "needs": null,
-          "price": 207000,
+          "price": 339000,
+          "financeable": true,
           "deliver_s": 60,
           "kind": "batch",
           "in": [],
@@ -4153,14 +4150,13 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 500,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         },
         "breaker": {
           "row": "lead",
           "slot": 0,
           "plot": "breaker",
-          "gate": "rung4",
+          "gate": "rung99",
           "needs": null,
           "price": 3000,
           "deliver_s": 60,
@@ -4201,14 +4197,13 @@
           "maxLevel": 10,
           "inbuf": 1000,
           "tray": 0,
-          "permit": "card.rota.permitLead",
-          "financeable": true
+          "permit": "card.rota.permitLead"
         },
         "smelter": {
           "row": "lead",
           "slot": 1,
           "plot": "smelter",
-          "gate": "rung4",
+          "gate": "rung99",
           "needs": "breaker",
           "price": 17700,
           "deliver_s": 60,
@@ -4250,10 +4245,21 @@
           "lev": 0.15,
           "maxLevel": 10,
           "inbuf": 1000,
-          "tray": 0,
-          "financeable": true
+          "tray": 0
         }
-      }
+      },
+      "rungs": [
+        {
+          "n": 4,
+          "t": 1000,
+          "range": 8
+        },
+        {
+          "n": 5,
+          "t": 3600,
+          "range": 8
+        }
+      ]
     },
     "crane": {
       "rate": 50,
@@ -4345,8 +4351,39 @@
             400,
             3000
           ]
+        },
+        {
+          "obj": "boilerDrum",
+          "from": "partnerDemolition",
+          "line": [],
+          "cut_s": 8,
+          "mass_kg": [
+            2000,
+            12000
+          ]
+        },
+        {
+          "obj": "pressFrame",
+          "from": "partnerDemolition",
+          "line": [],
+          "cut_s": 10,
+          "mass_kg": [
+            4000,
+            20000
+          ]
+        },
+        {
+          "obj": "transformerCore",
+          "from": "partnerDemolition",
+          "line": [],
+          "cut_s": 7,
+          "mass_kg": [
+            1500,
+            6000
+          ]
         }
-      ]
+      ],
+      "lorry_kg": 20000
     },
     "crate": {
       "share": 0.15,
@@ -4357,7 +4394,7 @@
     "reuse": {
       "slots": 6,
       "levelSlots": 2,
-      "levels": 3,
+      "levels": 0,
       "share": 0.25,
       "kinds": {
         "bath": {},
@@ -4392,6 +4429,13 @@
         0.025,
         0.025
       ],
+      "shareI_r": [
+        null,
+        null,
+        0.0125,
+        0.0625,
+        0.0625
+      ],
       "floorI": 2000,
       "period_s": 240,
       "firstVisitor_s": 30,
@@ -4404,8 +4448,8 @@
       "shareWords": "A fifth",
       "charge": 0.08,
       "maxShare": 0.8,
-      "maxF_h": 2,
-      "maxF_tau": 0.15,
+      "maxF_h": 6,
+      "maxF_tau": 0.5,
       "minPrice_h": 0.5,
       "maxAgreements": 1
     },
@@ -4597,22 +4641,6 @@
           "description": "Scrip: about 5 hours of your yard's earnings",
           "fallbackPrice": "$4.99",
           "value": 5
-        },
-        {
-          "id": "yard_pack10",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 10 hours' earnings",
-          "description": "Scrip: about 10 hours of your yard's earnings",
-          "fallbackPrice": "$9.99",
-          "value": 10
-        },
-        {
-          "id": "yard_pack20",
-          "kind": "hoursOfIncome",
-          "title": "Scrip: 20 hours' earnings",
-          "description": "Scrip: about 20 hours of your yard's earnings",
-          "fallbackPrice": "$19.99",
-          "value": 20
         }
       ]
     },
@@ -4633,6 +4661,15 @@
         20.3
       ],
       "minOffer_min": 2
+    },
+    "rate": {
+      "kappa": [
+        null,
+        null,
+        1,
+        1,
+        1
+      ]
     },
     "worksLayer": {
       "grades": {
@@ -5367,6 +5404,84 @@
             "h": 0.8
           },
           "long": "Crate of bronze bushings"
+        },
+        "boilerDrum": {
+          "name": "Boiler drum",
+          "tier": 3,
+          "h": 2.5,
+          "pieces": [
+            [
+              "hms",
+              1500000,
+              4
+            ]
+          ],
+          "waste_g": 0,
+          "whole": null,
+          "gross_g": 6000000,
+          "preparedValue": 7200,
+          "asFoundValue": 5112,
+          "certifiedEmpty": true,
+          "tags": [
+            "vessel"
+          ],
+          "size": {
+            "w": 3.6,
+            "d": 1.8,
+            "h": 1.8
+          },
+          "long": "A boiler's steel drum, certified empty"
+        },
+        "pressFrame": {
+          "name": "Press frame",
+          "tier": 3,
+          "h": 3,
+          "pieces": [
+            [
+              "hms",
+              2500000,
+              4
+            ]
+          ],
+          "waste_g": 0,
+          "whole": null,
+          "gross_g": 10000000,
+          "preparedValue": 12000,
+          "asFoundValue": 8520,
+          "size": {
+            "w": 3,
+            "d": 2,
+            "h": 2.6
+          },
+          "long": "A scrapped press's steel frame"
+        },
+        "transformerCore": {
+          "name": "Transformer core",
+          "tier": 4,
+          "h": 2.5,
+          "pieces": [
+            [
+              "hms",
+              525000,
+              4
+            ],
+            [
+              "no2",
+              187500,
+              4
+            ]
+          ],
+          "waste_g": 150000,
+          "whole": null,
+          "gross_g": 3000000,
+          "preparedValue": 28245,
+          "asFoundValue": 24427.2,
+          "size": {
+            "w": 1.6,
+            "d": 1.1,
+            "h": 1.8
+          },
+          "long": "A transformer's steel core and copper windings"
         }
       },
       "partners": {
@@ -5460,8 +5575,9 @@
           "key": "truckBridge",
           "kind": "vehicle",
           "place": "park",
-          "price": 154000,
+          "price": 206000,
           "gate": "rung3",
+          "financeable": true,
           "deliver_s": 30,
           "arrive": "truck"
         },
@@ -5470,7 +5586,7 @@
           "kind": "carry",
           "place": "rack",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 6,
           "arrive": "van"
         },
@@ -5479,7 +5595,7 @@
           "kind": "vehicle",
           "place": "forklift",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5487,7 +5603,7 @@
           "key": "plasma",
           "kind": "tool",
           "place": "rack",
-          "price": 64900,
+          "price": 86500,
           "gate": "rung3",
           "deliver_s": 6,
           "arrive": "van"
@@ -5497,7 +5613,7 @@
           "kind": "works",
           "place": "crane",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5506,7 +5622,7 @@
           "kind": "works",
           "place": "shear",
           "price": 5180,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5515,7 +5631,7 @@
           "kind": "works",
           "place": "baler",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5523,7 +5639,7 @@
           "key": "analyser",
           "kind": "works",
           "place": "scalehouse",
-          "price": 32800,
+          "price": 43800,
           "gate": "rung3",
           "deliver_s": 6,
           "arrive": "machineFlatbed"
@@ -5533,7 +5649,7 @@
           "kind": "works",
           "place": "depollution",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5542,7 +5658,7 @@
           "kind": "works",
           "place": "granulator",
           "price": 3000,
-          "gate": "rung3",
+          "gate": "rung99",
           "deliver_s": 30,
           "arrive": "machineFlatbed"
         },
@@ -5550,7 +5666,7 @@
           "key": "shredder",
           "kind": "works",
           "place": "shredder",
-          "price": 83200,
+          "price": 136000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5560,7 +5676,7 @@
           "kind": "works",
           "place": "eddy",
           "price": 3000,
-          "gate": "rung4",
+          "gate": "rung99",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
           "needsItem": "shredder"
@@ -5570,7 +5686,7 @@
           "kind": "works",
           "place": "sorter",
           "price": 3000,
-          "gate": "rung4",
+          "gate": "rung99",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
           "needsItem": "eddy"
@@ -5579,7 +5695,7 @@
           "key": "rotary",
           "kind": "works",
           "place": "rotary",
-          "price": 65100,
+          "price": 107000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5588,7 +5704,7 @@
           "key": "induction",
           "kind": "works",
           "place": "induction",
-          "price": 207000,
+          "price": 339000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -5598,7 +5714,7 @@
           "kind": "works",
           "place": "breaker",
           "price": 3000,
-          "gate": "rung4",
+          "gate": "rung99",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
         },
@@ -5607,7 +5723,7 @@
           "kind": "works",
           "place": "smelter",
           "price": 17700,
-          "gate": "rung4",
+          "gate": "rung99",
           "deliver_s": 60,
           "arrive": "machineFlatbed",
           "needsItem": "breaker"
@@ -6541,46 +6657,6 @@
         "stall": "chevron"
       },
       {
-        "id": "buyBaler",
-        "text": "goal.buyBaler",
-        "target": "baler",
-        "via": null,
-        "done": "plate:baler",
-        "buy": "baler",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "startBaler",
-        "text": "goal.startBaler",
-        "target": "baler",
-        "via": null,
-        "done": "commissioned:baler",
-        "buy": null,
-        "optional": false,
-        "stall": "stand"
-      },
-      {
-        "id": "buyAnalyser",
-        "text": "goal.buyAnalyser",
-        "target": "scalehouse",
-        "via": null,
-        "done": "plate:analyser",
-        "buy": "analyser",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "buyShear",
-        "text": "goal.buyShear",
-        "target": "shear",
-        "via": null,
-        "done": "plate:shear",
-        "buy": "shear",
-        "optional": false,
-        "stall": null
-      },
-      {
         "id": "buyTruckBridge",
         "text": "goal.buyTruckBridge",
         "target": "park",
@@ -6611,6 +6687,36 @@
         "stall": null
       },
       {
+        "id": "buyPlasma",
+        "text": "goal.buyPlasma",
+        "target": "rack",
+        "via": null,
+        "done": "owned:plasma",
+        "buy": "plasma",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "buyAnalyser",
+        "text": "goal.buyAnalyser",
+        "target": "scalehouse",
+        "via": null,
+        "done": "plate:analyser",
+        "buy": "analyser",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "startAnalyser",
+        "text": "goal.startAnalyser",
+        "target": "scalehouse",
+        "via": null,
+        "done": "commissioned:analyser",
+        "buy": null,
+        "optional": false,
+        "stall": "stand"
+      },
+      {
         "id": "cutLot",
         "text": "goal.cutLot",
         "target": "oversize",
@@ -6631,43 +6737,12 @@
         "stall": "stand"
       },
       {
-        "id": "buyDepollution",
-        "text": "goal.buyDepollution",
-        "target": "depollution",
-        "via": null,
-        "done": "plate:depollution",
-        "buy": "depollution",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "widen4",
-        "text": "goal.widen",
-        "target": "advice",
-        "via": null,
-        "done": "repeat",
-        "buy": null,
-        "optional": false,
-        "repeat": true,
-        "stall": null
-      },
-      {
         "id": "supplyRung4",
         "text": "goal.supplyRung4",
         "target": null,
         "via": null,
         "done": "rung:4",
         "buy": null,
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "buyCrane",
-        "text": "goal.buyCrane",
-        "target": "crane",
-        "via": null,
-        "done": "plate:crane",
-        "buy": "crane",
         "optional": false,
         "stall": null
       },
@@ -6680,6 +6755,26 @@
         "buy": null,
         "optional": true,
         "stall": "chevron"
+      },
+      {
+        "id": "buyInduction",
+        "text": "goal.buyInduction",
+        "target": "induction",
+        "via": null,
+        "done": "plate:induction",
+        "buy": "induction",
+        "optional": false,
+        "stall": null
+      },
+      {
+        "id": "pourInduction",
+        "text": "goal.pourInduction",
+        "target": "induction.apron",
+        "via": null,
+        "done": "poured:induction",
+        "buy": null,
+        "optional": false,
+        "stall": null
       },
       {
         "id": "buyShredder",
@@ -6709,57 +6804,6 @@
         "done": "poured:rotary",
         "buy": null,
         "optional": false,
-        "stall": null
-      },
-      {
-        "id": "buyInduction",
-        "text": "goal.buyInduction",
-        "target": "induction",
-        "via": null,
-        "done": "plate:induction",
-        "buy": "induction",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "buyBreaker",
-        "text": "goal.buyBreaker",
-        "target": "breaker",
-        "via": null,
-        "done": "plate:breaker",
-        "buy": "breaker",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "buySmelter",
-        "text": "goal.buySmelter",
-        "target": "smelter",
-        "via": null,
-        "done": "plate:smelter",
-        "buy": "smelter",
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "pourLead",
-        "text": "goal.pourLead",
-        "target": "smelter.apron",
-        "via": null,
-        "done": "poured:smelter",
-        "buy": null,
-        "optional": false,
-        "stall": null
-      },
-      {
-        "id": "widen5",
-        "text": "goal.widen",
-        "target": "advice",
-        "via": null,
-        "done": "repeat",
-        "buy": null,
-        "optional": false,
-        "repeat": true,
         "stall": null
       },
       {

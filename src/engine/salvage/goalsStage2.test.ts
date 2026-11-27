@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import { GoalSchema, withWorksLayer } from '../../config/schema.salvage';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { STAGE2_NAMES, stage2Cfg, stage2Content, stage2Game, type Stage2Name } from '../fixtures/salvage';
+import { report9Frozen } from '../fixtures/report9';
 import { checkGoals, conditionMet, nextGoal } from './goals';
 import { TEXT_KEYS } from './types';
 import type { SalvageConfig, SalvageGame } from './types';
@@ -27,7 +28,9 @@ type Spec = { id: string; text: string; target: string | null; via: string | nul
 
 const FILE = join(__dirname, '../../../scripts/content/yard/goals.json');
 const json = JSON.parse(readFileSync(FILE, 'utf8')) as { goals: Spec[]; dayOne: Spec[]; stage2: Spec[] };
-const LIST = json.stage2;
+// s2e-content (ruling 27.7): the 22-goal list this file holds is the stage as REPORT9 measured it, frozen in
+// src/engine/fixtures/salvage-report9.json; the shipped list of the stage built again is held by goalsStage2e.test.ts.
+const LIST = (report9Frozen().salvage as unknown as { stage2: Spec[] }).stage2;
 const isRepeat = (d: Spec) => !!d.repeat || d.done === 'repeat';
 
 /** 1.3's 22 goals, by id, in the storyboard's order (strings2's keys, requests.md [strings2] goals2). */

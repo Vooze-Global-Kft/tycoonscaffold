@@ -1,5 +1,6 @@
 {
  "$comment": "yard-stage2.md 2.6.4: the payback rule's table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dE (RULING2.md 19.1 and 21.1): § an hour of yard time the yard earns more at usual prices with the plate than without, over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one absence at the cap, from its planned moment on the normal bots' yards with the sitting's earlier purchases owned, mean of seeds; price: max(works.floor, tau_r x dE) to three figures; dGaway the gain over the capped absence alone (REPORT8's measure), dI the rated gain (not read); items: the stage's vehicles and tools (2.9), the same measure.",
+ "$s2e": "s2e-content (27 Nov; yard-stage2-economy.md 2.7 to 2.9, RULING2.md 27.2 b and 27.6): the FIRST PRICES of the stage as built again are REPORT9's T8 gains (dE, unchanged: measured in the old goal order) times the new tau_h (12 / 36 / 48 h) to three figures: truckBridge §206,000, plasma §86,500, analyser §43,800, induction §339,000, shredder §136,000, rotary §107,000 (`price`, `tau_h`; the bots write the measured ones at the new planned moments). `E0`: the yard's income at the item's moment (T8's 'of E0', § an hour); build-yard.py's entry rule refuses a SOLD item whose dE is under 2 % of its E0. `sold`: false for what this stage does not sell (gated past the ladder; their rows are REPORT9's, kept as measured). `purse`: REPORT9's median cash on return at each rung's entry (R1.txt section 2, the normal hand, seeds 1 to 15, route A), the line build-yard.py --check prints the rung's bill against (ruling 27.8; it refuses nothing).",
  "seeds": [
   1,
   10,
@@ -80,7 +81,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 107770,
+   "sold": false
   },
   "shear": {
    "dE": 576,
@@ -144,7 +147,9 @@
     2069,
     168,
     3324
-   ]
+   ],
+   "E0": 54810,
+   "sold": false
   },
   "baler": {
    "dE": 205,
@@ -193,7 +198,9 @@
     697,
     697,
     1010
-   ]
+   ],
+   "E0": 34612,
+   "sold": false
   },
   "analyser": {
    "dE": 3649,
@@ -203,8 +210,8 @@
    "G": 46285,
    "at_h": 5,
    "gate": 3,
-   "tau_h": 9,
-   "price": 32800,
+   "tau_h": 12,
+   "price": 43800,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
@@ -257,7 +264,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 50832,
+   "sold": true
   },
   "depollution": {
    "dE": 41,
@@ -321,7 +330,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 56947,
+   "sold": false
   },
   "granulator": {
    "dE": -17,
@@ -385,7 +396,9 @@
     147,
     89,
     89
-   ]
+   ],
+   "E0": 58806,
+   "sold": false
   },
   "shredder": {
    "dE": 3782,
@@ -395,8 +408,8 @@
    "G": 105890,
    "at_h": 23.8,
    "gate": 4,
-   "tau_h": 22,
-   "price": 83200,
+   "tau_h": 36,
+   "price": 136000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
@@ -449,7 +462,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 107553,
+   "sold": true
   },
   "eddy": {
    "dE": -469,
@@ -513,7 +528,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 124638,
+   "sold": false
   },
   "sorter": {
    "dE": 0,
@@ -577,7 +594,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 124638,
+   "sold": false
   },
   "rotary": {
    "dE": 2959,
@@ -587,8 +606,8 @@
    "G": 110383,
    "at_h": 23.8,
    "gate": 4,
-   "tau_h": 22,
-   "price": 65100,
+   "tau_h": 36,
+   "price": 107000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
@@ -641,7 +660,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 111488,
+   "sold": true
   },
   "induction": {
    "dE": 9407,
@@ -651,8 +672,8 @@
    "G": 114360,
    "at_h": 23.8,
    "gate": 4,
-   "tau_h": 22,
-   "price": 207000,
+   "tau_h": 36,
+   "price": 339000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
@@ -705,7 +726,9 @@
     14410,
     9042,
     9042
-   ]
+   ],
+   "E0": 114254,
+   "sold": true
   },
   "breaker": {
    "dE": -4476,
@@ -769,7 +792,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 126689,
+   "sold": false
   },
   "smelter": {
    "dE": 805,
@@ -833,7 +858,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 121967,
+   "sold": false
   }
  },
  "items": {
@@ -845,8 +872,8 @@
    "G": 32210,
    "at_h": 5,
    "gate": 3,
-   "tau_h": 9,
-   "price": 154000,
+   "tau_h": 12,
+   "price": 206000,
    "seeds": 15,
    "bought": 15,
    "perSeed": [
@@ -899,7 +926,9 @@
     17885,
     19785,
     18291
-   ]
+   ],
+   "E0": 36530,
+   "sold": true
   },
   "pallet": {
    "dE": 323,
@@ -963,7 +992,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 55975,
+   "sold": false
   },
   "forklift": {
    "dE": -72,
@@ -1027,7 +1058,9 @@
     0,
     0,
     0
-   ]
+   ],
+   "E0": 55975,
+   "sold": false
   },
   "plasma": {
    "dE": 7210,
@@ -1037,8 +1070,8 @@
    "G": 52336,
    "at_h": 5,
    "gate": 3,
-   "tau_h": 9,
-   "price": 64900,
+   "tau_h": 12,
+   "price": 86500,
    "seeds": 15,
    "bought": 0,
    "perSeed": [
@@ -1091,7 +1124,24 @@
     6017,
     7852,
     8097
-   ]
+   ],
+   "E0": 55975,
+   "sold": true
+  }
+ },
+ "purse": {
+  "from": "REPORT9 (docs/design/yard-bots2.md), scratchpad yard/bots/s4/R1.txt section 2: the first sitting at the rung, cash on return, median of the normal hand seeds 1 to 15 (route A)",
+  "r3": {
+   "median": 116062,
+   "min": 50378,
+   "max": 137058,
+   "sitting": "1 (h 3.3 to 5.3)"
+  },
+  "r4": {
+   "median": 1290060,
+   "min": 1017753,
+   "max": 1716245,
+   "sitting": "4 or 5 (h 18.0 to 26.3)"
   }
  }
 }

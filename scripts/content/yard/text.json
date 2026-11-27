@@ -78,7 +78,10 @@
     "propeller": { "name": "Bronze propeller", "long": "A boat's bronze propeller" },
     "casing": { "name": "Engine casing", "long": "Aluminium engine casing" },
     "cateringTable": { "name": "Catering table", "long": "Stainless catering table" },
-    "bushingCrate": { "name": "Crate of bushings", "long": "Crate of bronze bushings" }
+    "bushingCrate": { "name": "Crate of bushings", "long": "Crate of bronze bushings" },
+    "boilerDrum": { "name": "Boiler drum", "long": "A boiler's steel drum, certified empty" },
+    "pressFrame": { "name": "Press frame", "long": "A scrapped press's steel frame" },
+    "transformerCore": { "name": "Transformer core", "long": "A transformer's steel core and copper windings" }
   },
   "lessons": {
     "li": { "ticket": "lesson.li", "help": "Light iron is thin steel: the panels of appliances, bicycle frames, gates and sheet. It is the most common grade in a yard and pays the least." },

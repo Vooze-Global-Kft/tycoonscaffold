@@ -9,10 +9,16 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stage2Cfg, stage2Game } from '../fixtures/salvage';
+import { report9Frozen } from '../fixtures/report9';
 import { checkGoals, chevronOf, conditionMet, goalListOf, nextGoal } from './goals';
 import type { SalvageConfig, SalvageGame } from './types';
 
-const LIST = (JSON.parse(readFileSync(join(__dirname, '../../../scripts/content/yard/goals.json'), 'utf8')) as { stage2: unknown[] }).stage2;
+// s2e-content (ruling 27.7): the lead's rule below is held on the list as REPORT9 measured it (a repeating goal before each
+// supply goal), frozen in src/engine/fixtures/salvage-report9.json; the shipped list of the stage built again has one repeating
+// goal, at the stage's top (goalsStage2e.test.ts walks it).
+void readFileSync;
+void join;
+const LIST = (report9Frozen().salvage as unknown as { stage2: unknown[] }).stage2;
 const base = stage2Cfg('r3');
 const cfg = { ...base, salvage: { ...base.salvage, stage2: LIST } } as unknown as SalvageConfig;
 const g0 = stage2Game('r3');

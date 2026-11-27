@@ -1660,9 +1660,12 @@ export function lintStage2More(s0: SalvageContent, s: SalvageContent): string[] 
       for (const pc of o.pieces) if (G[pc[0]]?.family === 'pm' && o.source?.type !== 'partner') out.push(`objects.${i} gives a converter whose source is not a partner's (2.7: a test refuses any other)`);
     }
   }
-  // (f)
-  const rungs = [...s.ladder.rungs].sort((a, b) => a.n - b.n);
-  for (let k = 1; k < rungs.length; k++) if (!(rungs[k].t > rungs[k - 1].t)) out.push(`ladder.rungs: rung ${rungs[k].n}'s ${rungs[k].t} t is not above rung ${rungs[k - 1].n}'s ${rungs[k - 1].t} t`);
+  // (f) (s2e-content: the first yard's ladder as shown AND the stage's own rungs as played from the works' opening, works.rungs)
+  for (const [view, where] of [[s0, 'ladder.rungs'], [s, 'the stage\'s rungs (works.rungs over ladder.rungs)']] as const) {
+    if (view !== s0 && !s0.works?.rungs?.length) continue;
+    const rungs = [...view.ladder.rungs].sort((a, b) => a.n - b.n);
+    for (let k = 1; k < rungs.length; k++) if (!(rungs[k].t > rungs[k - 1].t)) out.push(`${where}: rung ${rungs[k].n}'s ${rungs[k].t} t is not above rung ${rungs[k - 1].n}'s ${rungs[k - 1].t} t`);
+  }
   for (let k = 1; k < s.ceilings_t_h.length; k++) if (!(s.ceilings_t_h[k] >= s.ceilings_t_h[k - 1])) out.push(`ceilings_t_h[${k}] (rung ${k + 1}) ${s.ceilings_t_h[k]} t/h falls below rung ${k}'s ${s.ceilings_t_h[k - 1]}`);
   // 5.2 (14) for the away caps (s2a-fix): away.ts runLongerOf stops at the stage's top rung, so the list has one a rung.
   if (s.ladder.topRung !== undefined && s.awayCapByRung_h.length !== s.ladder.topRung) out.push(`awayCapByRung_h has ${s.awayCapByRung_h.length} entries; ladder.topRung ${s.ladder.topRung} wants one a rung (5.2 (14), B18)`);
