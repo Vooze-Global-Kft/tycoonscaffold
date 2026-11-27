@@ -2920,3 +2920,34 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
         plasma's three moments, the ladders' book, each item's gain in tonnes an hour beside its
         money, each crew role's idle share by rung) and writes what it has; the table is run by
         the next measurement, once (a), (b) and (c) are joined.
+
+28.8 THE THREE CHANGES OF 28.7, built in their own working copies and joined there (`notes/s2f-
+    copper.md`, `notes/s2f-plasma-cars.md`; 98 test files, 1,131 tests; the first yard unchanged).
+    (a) THE SHREDDER LINE with the garage's own recovery truck (a car on the bay's apron whenever
+        it is free, at most one every ten minutes, paid as it lands): +8,910 and +28,117 an hour
+        on two seeds (7.6 and 26.8 % of the yard's income) and +5 % tonnes. ADOPTED; its price is
+        the fifteen seeds'.
+    (b) THE COPPER HALL: +9,275 and +2,719 an hour (5.3 % of the yard's income; the worse seed
+        2.4 %). ADOPTED as sold, behind its one switch; the fifteen seeds decide whether the
+        switch stays on. With it rung 4's machines cost about twice the purse at rung 4's entry:
+        the stage has, at last, a rung where not everything can be had at once.
+    (c) THE PLASMA as the boss's own tool read 1.8 % (under the entry rule) for want of a piece
+        its own size at rung 3: the lightest transformer core is too rich for rung 3's cap and
+        the bronze kinds waited for the induction hall. The crate of bronze bushings now comes
+        from rung 3 once the analyser names bronze (bronze solids sell there as they are). The
+        fifteen seeds decide: under 2 % in this form too, the plasma and its goal leave the stage.
+28.9 ENGINE STEP 6 (`notes/engine6.md`; merged as 3251cb6; 425 operations, 0 differences). Without
+    the compiler an 8-hour pass at rung 4 went from 7.1 to 6.4 s and at rung 5 from 6.7 to 5.9 s:
+    9 to 13 % cheaper, and three times the aim. The experiment of 28.6 b 3 is closed: hands
+    already carry 9 to 30 loose things a trip on the floor; nothing to gain there. Where the time
+    is: about 42,800 instants a pass at about 140 microseconds each without the compiler. Ruled:
+    (a) THE PHONE'S OWN NUMBER IS MEASURED BEFORE MORE IS BUILT ON A STAND-IN: the dev panel gets
+        a row that counts a stored rung-4 state's eight hours on the device and shows the seconds
+        (the screens' phase, its first item for the owner's phone).
+    (b) The return counts in passes with its progress on the card (28.6 b 1 stands).
+    (c) ENGINE STEP 7, if the phone's number asks for it, is the engineer's list in his order: a
+        kept queue of dated events instead of two scans an instant; each kind of departure asked
+        only when something it reads has changed; the floor's free loose things kept as they
+        change; rated income's first computation stored by the app across a start. Fewer instants
+        is a rule decision and is not taken now.
+    (d) Ruling 20.3 stands: stage 2 goes to no phone before (a) and (b).
