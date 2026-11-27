@@ -100,10 +100,16 @@ function firstEvent(x: Ctx): QEvent | null {
   bSet = false;
   bMin = s.t - EPS;
   consider(s.act.endsAt, 'act', '');
-  for (const m of s.crew) if (m.run) consider(m.run.end, 'crewLeg', m.id);
-  else if (m.phase !== 'wait' && m.t1 > m.t0) consider(m.t1, 'crewLeg', m.id);
+  // engine6: a candidate later than the earliest so far by more than consider's tie window is not offered at all (consider
+  // would keep the earliest as it is: `at - bAt > 1e-9` is the negation of both of its tests, computed the same way).
+  const crew = s.crew;
+  for (let i = 0; i < crew.length; i++) {
+    const m = crew[i];
+    const at = m.run ? m.run.end : m.phase !== 'wait' && m.t1 > m.t0 ? m.t1 : undefined;
+    if (at !== undefined && (!bSet || !(at - bAt > 1e-9))) consider(at, 'crewLeg', m.id);
+  }
   if (s.truck.trip) consider(tripEndsAt(s.truck.trip), 'driverLeg', s.truck.trip.partner);
-  for (const id of RATE_MACHINES) consider(workEndsAt(s.machines[id]), 'machine', id);
+  for (let i = 0; i < RATE_MACHINES.length; i++) consider(workEndsAt(s.machines[RATE_MACHINES[i]]), 'machine', RATE_MACHINES[i]);
   // Stage 2's dated ends, each from its feature's stub (works.ts, lots.ts, reuse.ts).
   worksDated(x, consider);
   consider(lotsDated(x), 'lot', '');
@@ -115,9 +121,13 @@ function firstEvent(x: Ctx): QEvent | null {
   for (const pid in s.partners) {
     const p = s.partners[pid];
     // The ref is built only when the skip can be the earliest (it decides ties only).
-    if (p.open) for (const sk of p.skips) if (sk.phase === 'filling' && (!bSet || sk.fullAt <= bAt + 1e-9)) consider(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
+    if (p.open)
+      for (let i = 0; i < p.skips.length; i++) {
+        const sk = p.skips[i];
+        if (sk.phase === 'filling' && (!bSet || sk.fullAt <= bAt + 1e-9)) consider(sk.fullAt, 'skipFull', `${pid}.${sk.slot}`);
+      }
   }
-  for (const a of s.arriving) consider(a.at, 'arrival', a.item);
+  for (const a of s.arriving) if (!bSet || !(a.at - bAt > 1e-9)) consider(a.at, 'arrival', a.item);
   consider(nextDayAt(x), 'day', '');
   consider(boostEndsAt(x), 'boostEnd', '');
   return bSet ? { at: bAt, kind: bKind, ref: bRef } : null;
@@ -223,7 +233,7 @@ export function advance(x: Ctx, T: number): void {
     // The rate stocks are brought to this instant BEFORE anything reads them (a yard hand claiming a tray
     // at his departure): the cumulative rule makes this free of path, so ticking and jumping see the same
     // trays (the 17:30 gate case, bots/gate5-state.json: a stale tray claimed 45 g where the tick had 285 g).
-    for (const id of RATE_MACHINES) credit(x, id, tt);
+    for (let i = 0; i < RATE_MACHINES.length; i++) credit(x, RATE_MACHINES[i], tt);
     worksCredit(x, tt);
     let inner = 0;
     for (let e2: QEvent | null = e; e2 && e2.at <= tt + EPS; e2 = firstEvent(x)) {

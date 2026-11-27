@@ -547,16 +547,43 @@ export function fullerFirst(fullAt: number, best: { fullAt: number } | null): bo
  * then full longest, then the id), or `{ wait: id }` when that one waits only for the floor's room; null: nothing to take.
  */
 export function fairPick(waiting: readonly { id: string; r: number; fullAt: number; fits: boolean }[], best: string | null): string | null | { wait: string } {
-  const inTime = (taken: string | null): boolean => {
-    const left = waiting.filter((w) => w.id !== taken).map((w) => w.r - (taken === null ? 0 : 1)).sort((a, b) => a - b);
-    return left.every((r, j) => r >= j);
-  };
+  const inTime = (taken: string | null): boolean => inTimeOf(waiting, taken);
   if (inTime(best)) return best;
   let top: (typeof waiting)[number] | null = null;
   for (const w of waiting) if (!top || w.r < top.r || (w.r === top.r && (w.fullAt < top.fullAt || (w.fullAt === top.fullAt && w.id < top.id)))) top = w;
   if (!top) return best;
   if (!top.fits) return { wait: top.id };
   return top.id;
+}
+
+/**
+ * engine6: fairPick's test, without the copies: the waiting partners but `taken`, each r less one when something is taken,
+ * in ascending order, every one at least its place (`left.every((r, j) => r >= j)` of the list sorted by (a, b) => a - b):
+ * the same numbers sorted by an insertion into one kept buffer (numbers sort to one sequence, whatever the method). A
+ * NaN (whose place a comparison sort leaves to the engine) takes the copies' own path.
+ */
+const FAIR_BUF: number[] = [];
+function inTimeOf(waiting: readonly { id: string; r: number }[], taken: string | null): boolean {
+  const d = taken === null ? 0 : 1;
+  const a = FAIR_BUF;
+  let n = 0;
+  for (let i = 0; i < waiting.length; i++) {
+    const w = waiting[i];
+    if (w.id === taken) continue;
+    const r = w.r - d;
+    if (r !== r) {
+      const left = waiting.filter((q) => q.id !== taken).map((q) => q.r - d).sort((p, q) => p - q);
+      return left.every((v, j) => v >= j);
+    }
+    let j = n++;
+    while (j > 0 && a[j - 1] > r) {
+      a[j] = a[j - 1];
+      j--;
+    }
+    a[j] = r;
+  }
+  for (let j = 0; j < n; j++) if (!(a[j] >= j)) return false;
+  return true;
 }
 
 /** fairCount's rule for one partner at a departure for `taken`: its trips waited, one more while its full skip waited for the driver and it was not taken, else 0. */

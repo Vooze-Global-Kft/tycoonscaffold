@@ -68,6 +68,7 @@ import { boostFactor } from './clock';
 import { legM } from './content';
 import type { Spot } from './types';
 import { pushThing, spliceThing, thingsAt, thingsAtWhere, thingsUnique } from './lookup';
+import { MEMO_CHECK, memoMismatch } from './memo';
 
 // A yard hand's leg and rest (works.ts handLeg / handIdle's rule, crew.ts's own: the same speed, handling and event),
 // written here so that reuse.ts does not import works.ts at run time (works.ts imports this file).
@@ -131,7 +132,24 @@ export function tagged(x: Pick<Ctx, 'c' | 's'>, th: ThingState): boolean {
   if (th.cut !== 0 || th.shell || th.sender !== undefined) return false;
   const at = th.at.at;
   if (at !== 'floor' && at !== 'dropoff' && at !== 'zone' && at !== 'canopy') return false;
-  return tagUid(x.c, th.uid, th.obj);
+  return tagKept(x.c, th);
+}
+
+/**
+ * engine6: tagUid of a thing, its "no" kept on the thing for the content object (tagUid is a pure function of the content,
+ * the thing's uid and its object, and neither is ever written on a thing: grep). The crew ask it of every candidate on the
+ * tipping floor at each departure (about a million times in an 8-hour pass at the works), and the hash is dear without a
+ * compiler. Verify mode (memo.ts): every kept answer recomputed and compared.
+ */
+const TAG_NO = new WeakMap<ThingState, object>();
+function tagKept(c: Ctx['c'], th: ThingState): boolean {
+  if (TAG_NO.get(th) === c) {
+    if (MEMO_CHECK.verify && tagUid(c, th.uid, th.obj)) memoMismatch('tagUid', false, true);
+    return false;
+  }
+  const v = tagUid(c, th.uid, th.obj);
+  if (!v) TAG_NO.set(th, c);
+  return v;
 }
 
 /** A carried whole piece that is a tagged thing on its way to the rack. */
@@ -188,6 +206,8 @@ const handLifts = (x: Ctx, th: ThingState): boolean => (x.c.objects[th.obj]?.gro
 export function rackChoice(x: Ctx, who: 'boss' | CrewMember, t: number, th: ThingState | null): boolean {
   if (!x.c.reuse || !opened(x)) return false;
   if (th) {
+    // engine6: a thing the content never tags (tagKept's kept "no") is never tagged(): answered at once.
+    if (TAG_NO.get(th) === x.c && !MEMO_CHECK.verify) return false;
     // Keep off (a cutter, a yard hand's other picks): the first thing always; else a tagged thing while a place is free
     // and the boss sees it or a yard hand can lift it. No place free, or too heavy and out of sight: cut as any other.
     if (!tagged(x, th)) return false;

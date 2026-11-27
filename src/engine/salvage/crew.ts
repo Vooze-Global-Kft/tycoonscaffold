@@ -14,7 +14,8 @@ import { rackChoice } from './reuse';
 import { plateDoubles, plateFeed, stationTrays, worksLegEnd, worksTrayTrip } from './works';
 import { piecePos, pointOf, spotPos, thingPos } from './positions';
 import { weighIn } from './scales';
-import { pieceById, pieceClaimed, piecesOn, piecesUnique, removePieces, thingsAt, thingsAtWhere } from './lookup';
+import { MEMO_CHECK, memoMismatch } from './memo';
+import { lastWhereSorted, pieceById, pieceClaimed, piecesOn, piecesUnique, removePieces, thingsAt, thingsAtWhere } from './lookup';
 import { countOf, cutOff, dropAllOnPile, dropOnPile, floorMass_g, remainingG, specAt, thingGone, thingOf, dropoffCount } from './things';
 import type { CrewJob, CrewMember, CrewPhase, GroundPiece, MachineId, Piece, RunCourse, RunCut, RunKind, RunLoad, Spot, ThingState } from './types';
 
@@ -649,6 +650,9 @@ function floorWholeDest(x: Ctx, th: ThingState): MachineId | 'scale' {
   return 'scale';
 }
 
+/** engine6: the floor run's order of things (by uid: the shorter first, then as strings), one function (lookup.ts keeps a sub-list's order by it). */
+const BY_UID = (a: ThingState, b: ThingState): number => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
+
 /** Grams still in a thing (its pieces not yet off, and its waste). */
 function thingLeft_g(x: Ctx, th: ThingState): number {
   return remainingG(x.c, th.obj, th.cut);
@@ -659,7 +663,34 @@ function thingLeft_g(x: Ctx, th: ThingState): number {
  * goes; more things for the same place join it while they fit his load (and the hopper's room); `waiting_g`
  * is all such things' grams (the heap the floor's pieces are weighed against). Null when none waits.
  */
-function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null {
+type FloorTrip = { things: ThingState[]; dest: MachineId | 'scale'; g: number; waiting_g: number } | null;
+/**
+ * engine6: one departure's floor run asked twice on one state (departHand: nextHand's sameAgain of a floor run whose next
+ * trip would end past the run's window, then handDepart's floorStep for the same hand at the same instant). Between the
+ * two nothing is written: nextHand returns false before its take; every step of handDepart's order before floorStep
+ * writes only when it sets him off and then returns true (handRack, feedStep, plateFeed, the circles, trayStep and
+ * worksTrayTrip, handDepartRest's drop-off steps: read for it), and departHand's own `delete m.course` is not read here.
+ * So the second answer is the first. Armed by departHand around those two calls only; verify mode recomputes each hit.
+ */
+let FWT_ARM = false;
+let FWT: { x: Ctx; m: CrewMember; t: number; cap: number; r: FloorTrip } | null = null;
+function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): FloorTrip {
+  if (!FWT_ARM) return floorWholeTripNow(x, m, t, cap);
+  const k = FWT;
+  if (k && k.x === x && k.m === m && k.t === t && k.cap === cap) {
+    if (MEMO_CHECK.verify) {
+      const f = floorWholeTripNow(x, m, t, cap);
+      const a = k.r;
+      const same = a === null ? f === null : f !== null && a.dest === f.dest && Object.is(a.g, f.g) && Object.is(a.waiting_g, f.waiting_g) && a.things.length === f.things.length && a.things.every((th, i) => th === f.things[i]);
+      if (!same) memoMismatch('floorWholeTrip', a && { dest: a.dest, g: a.g, n: a.things.length }, f && { dest: f.dest, g: f.g, n: f.things.length });
+    }
+    return k.r;
+  }
+  const r = floorWholeTripNow(x, m, t, cap);
+  FWT = { x, m, t, cap, r };
+  return r;
+}
+function floorWholeTripNow(x: Ctx, m: CrewMember, t: number, cap: number): FloorTrip {
   let cands: ThingState[] = [];
   // engine5: each candidate's grams left (thingLeft_g, a pure function of its object and cut, neither of which changes
   // inside this function) read once and kept beside it, in the candidates' order (`ws[i]` is cands[i]'s).
@@ -667,9 +698,16 @@ function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things
   // A thing the Yard sale takes is kept off (reuse.ts rackChoice, s2a-fix; the stub never keeps one off).
   // engine5: the floor's things whose object needs no cutting (tier 0: a fact of the thing's object and the content), from
   // lookup.ts's kept sub-list (the floor's list less the things the tier test refuses, in the same order).
-  for (const th of thingsAtWhere(x.s.things, 'floor', x.c, 'loose.floor', looseObj(x.c))) {
+  // engine6: the sub-list kept with its order by uid (BY_UID): when lookup.ts knows it in that order, so is every list of
+  // its items in the same order (cands below), and the check is not made.
+  const list = thingsAtWhere(x.s.things, 'floor', x.c, 'loose.floor', looseObj(x.c), BY_UID);
+  const known = lastWhereSorted();
+  const c = x.c;
+  for (let i = 0; i < list.length; i++) {
+    const th = list[i];
     if (!(th.at.at === 'floor' && !th.by && !th.shell)) continue;
-    const w = thingLeft_g(x, th);
+    // engine6: thingLeft_g's own read (remainingG), called directly.
+    const w = remainingG(c, th.obj, th.cut);
     if (w <= cap && !rackChoice(x, m, t, th)) {
       cands.push(th);
       ws.push(w);
@@ -678,9 +716,9 @@ function floorWholeTrip(x: Ctx, m: CrewMember, t: number, cap: number): { things
   if (!cands.length) return null;
   // engine4: the sort skipped when the things already stand in its order (the usual case: tipped things are pushed in
   // the order of their f-numbers); sorting a sorted list by a consistent comparison leaves it as it is.
-  const byUid = (a: ThingState, b: ThingState) => (a.uid.length - b.uid.length) || (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0);
+  const byUid = BY_UID;
   let sorted = true;
-  for (let i = 1; i < cands.length && sorted; i++) if (byUid(cands[i - 1], cands[i]) > 0) sorted = false;
+  if (!known) for (let i = 1; i < cands.length && sorted; i++) if (byUid(cands[i - 1], cands[i]) > 0) sorted = false;
   if (!sorted) {
     // engine5: the positions sorted by the same comparison of their things (a stable sort: the same order as cands.sort(byUid)), both lists reordered by it.
     const order = cands.map((_, i) => i).sort((i, j) => byUid(cands[i], cands[j]));
@@ -1374,7 +1412,8 @@ function bestCut(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P
   // engine5: only the things whose object a cutter cuts at all (tier >= 1: a fact of the thing's object and the content)
   // are walked, from lookup.ts's kept sub-list (the same things in the same order as the place's list less those the
   // test below refuses first); the floor holds mostly tier-0 things at the works (130 to 220), never a cutter's.
-  for (const th of thingsAtWhere(s.things, where, x.c, `cuts.${where}`, cutsObj(x.c))) {
+  // engine6: the slot's name a constant (no string built at each of the cutters' offers).
+  for (const th of thingsAtWhere(s.things, where, x.c, where === 'dropoff' ? 'cuts.dropoff' : 'cuts.floor', cutsObj(x.c))) {
     if (!(th.at.at === where && !th.by && !th.shell && (x.c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(x.c, th) <= s.tier)) continue;
     const v = (x.c.objects[th.obj]?.preparedValue ?? 0) / Math.max(1e-6, cutLeftKept(x, th, P));
     if (best && (v < bestV || (v === bestV && th.uid > best.uid))) continue;
@@ -1384,6 +1423,32 @@ function bestCut(x: Ctx, m: CrewMember, t: number, where: 'dropoff' | 'floor', P
     bestV = v;
   }
   return best ? [best] : [];
+}
+
+/**
+ * engine6: true when bestCut would find nothing at the drop-off and on the floor: no thing of the two kept sub-lists
+ * (things a cutter cuts at all) passes bestCut's own tests before rackChoice (at its place, unclaimed, no shell, its tier
+ * at most the tool's). Only from the works' opening with planning ahead off (cutCands reads bestCut there); else false.
+ * rackChoice is asked by bestCut only of a thing that passed those tests, so when none does nothing else is read.
+ */
+function cutterDepartNone(x: Ctx, m: CrewMember, t: number): boolean {
+  const r = cutterDepart(x, m, t);
+  if (r) memoMismatch('cutterNone', true, false);
+  return r;
+}
+function cutterNone(x: Ctx): boolean {
+  const s = x.s;
+  if (planAhead(x) || !worksOpened(s)) return false;
+  const c = x.c;
+  const f = cutsObj(c);
+  for (const where of ['dropoff', 'floor'] as const) {
+    const l = thingsAtWhere(s.things, where, c, where === 'dropoff' ? 'cuts.dropoff' : 'cuts.floor', f);
+    for (let i = 0; i < l.length; i++) {
+      const th = l[i];
+      if (th.at.at === where && !th.by && !th.shell && (c.objects[th.obj]?.tier ?? 0) >= 1 && tierOf(c, th) <= s.tier) return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -1540,7 +1605,25 @@ export function crewLegEnd(x: Ctx, m: CrewMember, t: number): void {
  * that leg; one with nothing to do walks to his waiting place (an ordinary dated leg) and waits there.
  */
 export function crewDepart(x: Ctx, t: number): void {
-  for (const m of x.s.crew) if (m.role === 'cutter' && m.job === 'idle' && !m.run) offer(x, m, t, cutterDepart);
+  // engine6: with nothing at either place that a cutter may cut (cutterNone), his offer is answered without the search:
+  // cutterDepart would find no candidate at the run's place nor at either place of the first yard's order, change nothing
+  // but drop his course, and return false; offer then walks a standing cutter to his waiting place (walkToWait, as before)
+  // and leaves a walking one on his leg as it was (its fields restored; `carries` set to null as idle() sets it).
+  // About four in five of the cutters' offers at the works (33,772 of 38,701 in an 8-hour pass at rung 4).
+  let none: boolean | null = null;
+  for (const m of x.s.crew) {
+    if (m.role !== 'cutter' || m.job !== 'idle' || m.run) continue;
+    if ((none ??= cutterNone(x)) && !MEMO_CHECK.verify) {
+      if (m.course) delete m.course;
+      if (m.phase === 'wait') walkToWait(x, m, t);
+      else m.carries = null;
+      continue;
+    }
+    // Verify mode (memo.ts): the offer made in full, and a departure where cutterNone said none throws.
+    offer(x, m, t, none ? cutterDepartNone : cutterDepart);
+    // A cutter who sets out changes what the next one sees (a claim): asked again for the next.
+    none = null;
+  }
   for (const m of x.s.crew) if (m.role === 'hand' && m.job === 'idle' && !m.run) offer(x, m, t, departHand);
 }
 
@@ -1635,9 +1718,19 @@ function departHand(x: Ctx, m: CrewMember, t: number): boolean {
     delete m.course;
     return true;
   }
-  if (c && c.kind.k !== 'cut' && nextHand(x, m, t, start, c, c.kind)) return true;
-  if (c) delete m.course;
-  if (!handDepart(x, m, t)) return false;
+  // engine6: floorWholeTrip's one-departure memo armed from nextHand to the end of handDepart (see FWT).
+  FWT_ARM = true;
+  FWT = null;
+  let went: boolean;
+  try {
+    if (c && c.kind.k !== 'cut' && nextHand(x, m, t, start, c, c.kind)) return true;
+    if (c) delete m.course;
+    went = handDepart(x, m, t);
+  } finally {
+    FWT_ARM = false;
+    FWT = null;
+  }
+  if (!went) return false;
   const kind = PLAN as HandKind | null;
   PLAN = null;
   if (kind) {
@@ -1669,6 +1762,9 @@ function nextHand(x: Ctx, m: CrewMember, t: number, start: { x: number; y: numbe
   const pickAt = t + Math.max(1e-3, legM(x.c, start, sp) / v + h);
   const dropAt = pickAt + Math.max(1e-3, legM(x.c, sp, posOf(x, destSpotOf(dest))) / v + h);
   if (dropAt - c.t0 > groupCfg(x.c).handRun_s + RUN_EPS) return false;
+  // engine6: he sets off: from here the state changes (the take, groupHand's plan), so the departure's memo is off.
+  FWT_ARM = false;
+  FWT = null;
   m.claims = cand.take();
   if (kind.k === 'feed' || kind.k === 'floorWhole') m.cut = null;
   leg(x, m, c.job, 'walkTo', cand.spot, t, h);

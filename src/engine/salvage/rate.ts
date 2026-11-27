@@ -1180,8 +1180,9 @@ function shippedRound(c: Ctx['c'], partner: string, L: number, driverLevel: numb
 }
 
 /** s2e-rate: for each part (index k), the index of its skip full longest at `clock` (truck.ts fullestSkip: earliest fullAt, then the lower slot), or -1. */
-function fullestOf(skips: readonly { k: number; fullAt: number }[], clock: number, n: number): number[] {
-  const out: number[] = new Array(n).fill(-1);
+function fullestOf(skips: readonly { k: number; fullAt: number }[], clock: number, n: number, buf?: number[]): number[] {
+  // engine6: into `buf` (n long) when given, every entry set to -1 first: the same entries as a new array.
+  const out: number[] = buf ? buf.fill(-1) : new Array(n).fill(-1);
   for (let i = 0; i < skips.length; i++) {
     const sk = skips[i];
     if (sk.fullAt > clock + 1e-9) continue;
@@ -1189,6 +1190,12 @@ function fullestOf(skips: readonly { k: number; fullAt: number }[], clock: numbe
     if (j < 0 || sk.fullAt < skips[j].fullAt) out[sk.k] = i;
   }
   return out;
+}
+
+/** engine6: parts.findIndex((p) => p.id === id), without a closure. */
+function partIndex(parts: readonly { id: string }[], id: string): number {
+  for (let k = 0; k < parts.length; k++) if (parts[k].id === id) return k;
+  return -1;
 }
 
 interface QueueResult {
@@ -1226,15 +1233,27 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
   const floor: { k: number; at: number; rem: number }[] = []; // loads tipped (or to be tipped at `at`), FIFO
   let clock = 0;
   let workedTo = 0;
+  // engine6: each part's test `work > 0 && finite` and its mass read once for the replay (constants of it), the floor walked
+  // by index: the same terms added in the same order.
+  const workOn = work.map((w) => w > 0 && Number.isFinite(w));
+  const massOf = parts.map((p) => p.mass);
   const massNow = () => {
     let m = 0;
-    for (const L of floor) if (L.at <= clock + 1e-9) m += work[L.k] > 0 && Number.isFinite(work[L.k]) ? parts[L.k].mass * (L.rem / work[L.k]) : parts[L.k].mass;
+    const lim = clock + 1e-9;
+    for (let j = 0; j < floor.length; j++) {
+      const L = floor[j];
+      if (L.at <= lim) {
+        const k = L.k;
+        m += workOn[k] ? massOf[k] * (L.rem / work[k]) : massOf[k];
+      }
+    }
     return m;
   };
   const clearTo = (t: number) => {
     // FIFO: the head load is worked; the next starts when it is done (and tipped).
     let now = workedTo;
-    for (const L of floor) {
+    for (let j = 0; j < floor.length; j++) {
+      const L = floor[j];
       if (now >= t) break;
       if (L.rem <= 0) continue;
       const start = Math.max(now, L.at);
@@ -1247,6 +1266,11 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
     while (floor.length && floor[0].rem <= 1e-9) floor.shift();
   };
   const H = 3 * 3600;
+  // engine6: the fair rule's kept buffers (see the step below).
+  const fullBuf: number[] = new Array(parts.length).fill(-1);
+  const waitBuf: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+  const waitRows: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+  const bestRow = { k: 0, fullAt: 0 };
   const n = parts.map(() => 0);
   const fairW = parts.map(() => 0);
   let busy = 0;
@@ -1289,21 +1313,35 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
       // own choice is the one full longest that fits (fullerFirst, in the partners' order); the fair rule may take a more
       // urgent one instead, or wait for the floor's room for it (fairPick); at the departure every other waiting partner
       // counts a trip more (fairWaitNext).
-      const full = fullestOf(skips, clock, parts.length);
+      // engine6: the same choice without new objects at each step (the replay takes about 900 steps, 268 replays at a
+      // rung-5 yard's first absence): `full`, `waiting` and its rows and the best so far are kept for the whole replay.
+      const full = fullestOf(skips, clock, parts.length, fullBuf);
       let best: { k: number; fullAt: number } | null = null;
-      const waiting: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+      const waiting = waitBuf;
+      waiting.length = 0;
       for (let k = 0; k < parts.length; k++) {
         const i = full[k];
         if (i < 0) continue;
         const fits = m + parts[k].mass <= room + 1e-9;
-        if (fits && fullerFirst(skips[i].fullAt, best)) best = { k, fullAt: skips[i].fullAt };
-        if (parts[k].mass <= room + 1e-9) waiting.push({ id: parts[k].id, r: fairN - fairW[k], fullAt: skips[i].fullAt, fits });
+        if (fits && fullerFirst(skips[i].fullAt, best)) {
+          bestRow.k = k;
+          bestRow.fullAt = skips[i].fullAt;
+          best = bestRow;
+        }
+        if (parts[k].mass <= room + 1e-9) {
+          const row = waitRows[waiting.length] ?? (waitRows[waiting.length] = { id: '', r: 0, fullAt: 0, fits: false });
+          row.id = parts[k].id;
+          row.r = fairN - fairW[k];
+          row.fullAt = skips[i].fullAt;
+          row.fits = fits;
+          waiting.push(row);
+        }
       }
       const f = fairPick(waiting, best ? parts[best.k].id : null);
       if (f !== null && typeof f === 'object') {
-        wantMass = parts[parts.findIndex((p) => p.id === f.wait)].mass;
+        wantMass = parts[partIndex(parts, f.wait)].mass;
       } else if (f !== null) {
-        const k = parts.findIndex((p) => p.id === f);
+        const k = partIndex(parts, f);
         pick = full[k];
         for (let j = 0; j < parts.length; j++) fairW[j] = fairWaitNext(parts[j].id, f, fairW[j], full[j] >= 0 && parts[j].mass <= room + 1e-9);
       }
@@ -1317,7 +1355,8 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
       // Wait for the next skip to fill, or for the floor to clear room for the lightest full skip.
       let next = Infinity;
       let lightest = Infinity;
-      for (const sk of skips) {
+      for (let i = 0; i < skips.length; i++) {
+        const sk = skips[i];
         if (sk.fullAt > clock + 1e-9) next = Math.min(next, sk.fullAt);
         else lightest = Math.min(lightest, parts[sk.k].mass);
       }
