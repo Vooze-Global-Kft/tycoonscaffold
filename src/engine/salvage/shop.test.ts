@@ -383,7 +383,7 @@ describe('who sees packs (2.15.2, 2.15.3; P1, P8, P13, P17)', () => {
     expect(rows(g0(), null)).toEqual(['money.shop']);
     expect(rows(shopGame({ ageBand: 't13' }), 'US')).toEqual(['money.shop']);
     expect(rows(u13Game(), 'US')).toEqual([]);
-    expect(rows(g0(), 'US', 'help')).toEqual(['money.packs', 'money.code', 'money.packLost']);
+    expect(rows(g0(), 'US', 'help')).toEqual(['money.packs', 'money.packsHour', 'money.code', 'money.packLost']);
     expect(rows(g0(), 'DE', 'help')).toEqual([]);
     expect(rows(g0(), null, 'help')).toEqual([]);
     expect(rows(u13Game(), 'US', 'help')).toEqual([]);

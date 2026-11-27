@@ -30,7 +30,7 @@
  */
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
 import { begin, credit, finish } from './clock';
-import { buyCheck, hireCheck, hiredState, levelCheck, levelCheckAt, levelled, levelQuote, ratedGain, shopItems, worksTauH } from './ladder';
+import { boughtState, buyCheck, hireCheck, hiredState, levelCheck, levelCheckAt, levelled, levelQuote, ratedGain, shopItems, worksTauH } from './ladder';
 import { contentAt, worksOpened } from './layer';
 import { roundMoney } from './money';
 import { ratedTerms } from './rate';
@@ -212,25 +212,6 @@ export function headroomU(cfg0: SalvageConfig, g: SalvageGame): number {
  */
 export const HEADROOM_TAU = 1.5;
 
-/**
- * The state with a shop item owned, as rated income reads assets (advice.ts boughtState's rule, copied: that function is not
- * exported and advice.ts is not this package's; requests.md): the item in `owned`, a tool's tier, a better carrier, a
- * first-yard machine on its pad, the truck; a works plate running at level 1 and, a hall, poured once.
- */
-function boughtFor(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
-  const s = g.salvage;
-  if (c.works?.plates[item]) {
-    const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
-    return { ...g, salvage: { ...s, works: { ...s.works, [item]: w }, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
-  }
-  const n = { ...s, owned: s.owned.includes(item) ? s.owned : [...s.owned, item] };
-  const tool = c.tools[item];
-  if (tool) n.tier = Math.max(s.tier, tool.tier);
-  if (c.carriers[item] !== undefined && (c.carriers[item] ?? 0) > (c.carriers[s.carrier] ?? 0)) n.carrier = item;
-  if (item === 'stripper' || item === 'bench' || item === 'crucible') n.machines = { ...s.machines, [item]: { ...s.machines[item], owned: true, level: Math.max(1, s.machines[item].level) } };
-  if (item === 'truck') n.truck = { ...s.truck, owned: true };
-  return { ...g, salvage: n };
-}
 
 /** A check's price counts toward U (a state that sells: Buy, or greyed for the cash or the earmark; never locked, top, owned, arriving or info). */
 const sells = (st: string, price: number | null): price is number => price !== null && (st === 'buy' || st === 'cantAfford');
@@ -262,7 +243,7 @@ export function headroomWorks(cfg: SalvageConfig, g: SalvageGame): number {
     if (it.kind === 'crew') continue;
     const ch = it.kind === 'works' ? plateBuyCheck(cfg, g, it.key) : buyCheck(cfg, g, it.key);
     if (!sells(ch.state, ch.price)) continue;
-    if (pays(ch.price, ratedGain(cfg, g, boughtFor(c, g, it.key)))) u += ch.price;
+    if (pays(ch.price, ratedGain(cfg, g, boughtState(c, g, it.key)))) u += ch.price;
   }
   for (const role of ROLES) {
     let h = g;

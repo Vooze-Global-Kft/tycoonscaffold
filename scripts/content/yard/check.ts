@@ -433,6 +433,16 @@ const WIDEN_ITEM = ['item.skip', 'item.stripper', 'item.bench', 'item.crucible',
   .map((k) => ({ ...TEXT, ...TEXT_PENDING } as Record<string, string>)[k])
   .reduce((a, b) => (measure(b, 12) > measure(a, 12) ? b : a), '');
 
+/**
+ * s2e-join (s2e-advice's request; yard-stage2-economy.md 2.13): what the works' advice line can name while saving
+ * ("Save up: {item}", "For now: {item}"): the first yard's kinds plus the works' machines, the hook-lift, the plasma and
+ * the Night watch; the widest of them at the line's size.
+ */
+const WORKS_ITEM = [...['item.skip', 'item.stripper', 'item.bench', 'item.crucible', 'item.alu', 'role.hand', 'role.cutter', 'role.driver', 'item.truckBridge', 'item.plasma', 'item.night'],
+  ...Object.keys({ ...TEXT, ...TEXT_PENDING }).filter((k) => k.startsWith('title.works.'))]
+  .map((k) => ({ ...TEXT, ...TEXT_PENDING } as Record<string, string>)[k] ?? '')
+  .reduce((a, b) => (measure(b, 12) > measure(a, 12) ? b : a), '');
+
 /** Per-key holes whose kind differs from the default (a duration where {t} is usually tonnes). */
 const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.poursIn': { t: '59 m 59 s' },
@@ -451,6 +461,9 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'goal.widenLevel': { item: WIDEN_ITEM },
   'advice.buy': { item: WIDEN_ITEM },
   'advice.level': { item: WIDEN_ITEM, n: '9' },
+  'advice.saveFor': { item: WORKS_ITEM },
+  'advice.meanwhile': { item: WORKS_ITEM },
+  'advice.saveTime': { t: '99 h 59 m' },
   'refusal.filling': { t: '59 m 59 s' },
   'card.drivesRate': { t: '59 m 59 s' },
   'board.head': { t: '23 h 59 m' },
@@ -563,6 +576,21 @@ export function widest(key: string, text: string, inp: Inputs, args: Record<stri
 export const BANNED = ['bet', 'bets', 'betting', 'stake', 'stakes', 'odds', 'invest', 'investing', 'investment', 'tips', 'returns', 'jackpot', 'win', 'wins', 'winning', 'prize', 'prizes', 'ticker', 'share price', 'order book', 'order', 'orders', 'shift', 'shifts', 'freight', 'cargo', 'contract', 'contracts', 'salvage', 'haul', 'hauls', 'hauling', 'ore', 'ores', 'fleet', 'logistics', 'eco', 'green', 'save the planet', 'learn to trade', 'district',
   // stage 2 (yard-stage2.md 5.3): money words that may never be said ("Bank loan", "You repay", "left" instead of a debt's words)
   'invest', 'invests', 'invested', 'shares', 'dividend', 'dividends', 'cash out', 'get rich', 'best value', 'buy now', 'cosmetic only', 'daily', 'missed', 'calm week', 'credited', 'ahead', 'loan shark', 'interest', 'APR', 'overdue', 'due date', 'late fee', 'debt', 'debts', 'lucky', 'chance', 'chances'];
+/**
+ * s2e-join (RULING2 28.2 e; yard-stage2-economy.md 2.13 f): words refused only in some texts, by key. A loan card never
+ * prints a yearly rate ("% a year", "interest rate": a loan with no term has none, and a rate invites the real-loan
+ * reading; "APR" and "interest" are banned everywhere above). The advice line, a goal, a refusal, the away report and a
+ * debt's card never say "stock" (nor invest, returns, shares or dividend, banned everywhere above).
+ */
+export const SCOPED_BANNED: { keys: RegExp; words: RegExp; why: string }[] = [
+  { keys: /^(card\.finance\.|card\.letter\.|card\.agreements\.|money\.bank\.|money\.loan\.|away\.bank|away\.loanLeft|ticket\.bankSplit|help\.bank)/, words: /%\s*a\s+year|\bper\s+(year|annum)\b|\binterest\s+rate\b|\ba\s+year\b/i, why: 'a yearly rate on a loan card (RULING2 28.2 e)' },
+  { keys: /^(advice\.|goal\.|refusal\.|away\.|card\.agreements\.|money\.bank\.|card\.finance\.|card\.letter\.)/, words: /(?<![\p{L}\p{N}])stocks?(?![\p{L}\p{N}])/iu, why: '"stock" in the advice line, a goal, a refusal, the away report or a debt\'s card (2.13 f)' },
+];
+export function scopedFindings(where: string, key: string, text: string): Finding[] {
+  const plain = text.replace(HOLE, ' ');
+  return SCOPED_BANNED.filter((r) => r.keys.test(key) && r.words.test(plain)).map((r) => ({ rule: 'banned' as const, where, text, reason: r.why }));
+}
+
 /** A text that promises an update, a date or a future feature. */
 export const PROMISE = /\b(coming soon|soon|coming|in the future|future|an update|updates|next version|later stage|will be (added|available|built|here)|stay tuned|not yet available|in a later)\b/i;
 /** A fixed price multiple written as a number (a computed {n} is fine). */
@@ -792,6 +820,7 @@ export function runAll(): Report {
 
   const check = (where: string, key: string, text: string, box: Box) => {
     findings.push(...wordFindings(where, text, wopts));
+    findings.push(...scopedFindings(where, key, text));
     const { out, unknown } = widest(key, text, inp, args);
     for (const h of unknown) findings.push({ rule: 'name', where, text, reason: `{${h}} is neither an argument this check knows nor a register id in names.json byId` });
     findings.push(...fitFindings(where, out, box, layout));

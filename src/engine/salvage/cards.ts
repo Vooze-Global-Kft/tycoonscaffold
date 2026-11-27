@@ -727,7 +727,9 @@ export function topBarOf(cfg: SalvageConfig, g: SalvageGame): TopBar {
 
 /** Facade `topBar`. */
 export function topBar(cfg: SalvageConfig, g: SalvageGame): TopBar {
-  return topBarOf(cfg, g);
+  // s2e-join: the content the state reads (contentAt; the same config until the works open), as cardOfCfg does.
+  const c = contentAt(cfg.salvage, g.salvage);
+  return topBarOf(c === cfg.salvage ? cfg : { ...cfg, salvage: c }, g);
 }
 
 /** Facade `processBoard`. */

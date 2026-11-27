@@ -6,6 +6,7 @@
  * (1 − 0.03 k) of the player's tonnes, and every printed figure differs from its neighbours'.
  */
 import type { SalvageContent } from '../../config/schema.salvage';
+import { contentAt } from './layer';
 import { rangeChips, rungsOf } from './ladder';
 import { tonnesStep_g } from './money';
 import type { IndustryTable, RivalId, SalvageConfig, SalvageGame, TableRow } from './types';
@@ -112,7 +113,10 @@ export function tableOf(c: SalvageContent, g: SalvageGame): IndustryTable {
 
 /** Facade `industryTable(cfg, g)`. */
 export function industryTable(cfg: SalvageConfig, g: SalvageGame): IndustryTable {
-  return tableOf(cfg.salvage, g);
+  // s2e-join (s2e-content's request): the content the state reads (layer.ts contentAt), so from the works' opening the
+  // rungs are the stage's own (rung 5's range 8, works.rungs) and the range chips hold the works' materials. Before the
+  // works open contentAt is the base content itself: the first yard's table is unchanged.
+  return tableOf(contentAt(cfg.salvage, g.salvage), g);
 }
 
 /** The rival passed last (for "25th of 26 · passed {rival}"), or null. */

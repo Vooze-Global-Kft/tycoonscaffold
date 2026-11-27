@@ -13,7 +13,7 @@ import { awayCapS } from './away';
 import { loanHintDue, loanOffered, platePrice, saveUpSeconds } from './bank';
 import { goalBuyNow, goalSpecs } from './goals';
 import { contentAt, worksOpened } from './layer';
-import { buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
+import { boughtState, buyCheck, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
 import { roundMoney } from './money';
 import { levelGain, levelGainCfg, ratedIncome } from './rate';
 import { incomeRate } from './tick';
@@ -297,25 +297,8 @@ function cheapestUseful(cfg: SalvageConfig, g: SalvageGame, budget: number): Adv
   return list[0] ?? null;
 }
 
-/**
- * The state with a shop item owned, as rated income reads assets (rate.ts own(): the item in `owned`, a tool's tier, a
- * better carrier, a first-yard machine on its pad, the truck); a works plate running at level 1 (and, a hall, poured
- * once: what it earns once working). For the advice's rated gain only; nothing is applied.
- */
-export function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
-  const s = g.salvage;
-  if (c.works?.plates[item]) {
-    const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
-    return { ...g, salvage: { ...s, works: { ...s.works, [item]: w }, counts: { ...(s.counts ?? {}), [`poured:${item}`]: Math.max(1, s.counts?.[`poured:${item}`] ?? 0) } } };
-  }
-  const n = { ...s, owned: s.owned.includes(item) ? s.owned : [...s.owned, item] };
-  const tool = c.tools[item];
-  if (tool) n.tier = Math.max(s.tier, tool.tier);
-  if (c.carriers[item] !== undefined && (c.carriers[item] ?? 0) > (c.carriers[s.carrier] ?? 0)) n.carrier = item;
-  if (item === 'stripper' || item === 'bench' || item === 'crucible') n.machines = { ...s.machines, [item]: { ...s.machines[item], owned: true, level: Math.max(1, s.machines[item].level) } };
-  if (item === 'truck') n.truck = { ...s.truck, owned: true };
-  return { ...g, salvage: n };
-}
+/** The state with a shop item or plate owned, as I reads assets: one function, ladder.ts `boughtState` (s2e-join). */
+export { boughtState };
 
 /** s2e-join: the stage-2 fields now live in types.ts (`Advice.works`, `AdviceWait.next`); these names stay for their readers. */
 export type { AdviceWorks };
