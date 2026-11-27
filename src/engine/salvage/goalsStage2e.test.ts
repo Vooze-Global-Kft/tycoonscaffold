@@ -79,7 +79,7 @@ describe('goals.json stage2 as shipped (1.3; ruling 27)', () => {
 /** The one thing a goal names, done to a copy of the state. */
 function witness(c: SalvageContent, g0: SalvageGame, d: Spec): SalvageGame {
   const g = structuredClone(g0) as SalvageGame;
-  const s = g.salvage as SalvageGame['salvage'] & { works: Record<string, unknown> };
+  const s = g.salvage as Omit<SalvageGame['salvage'], 'works'> & { works: Record<string, unknown> };
   const counts = (s.counts = { ...(s.counts ?? {}) });
   const [kind, a, b] = d.done.split(':');
   const n = Math.max(1, Number(kind === 'fetched' ? b : a) || 1);
