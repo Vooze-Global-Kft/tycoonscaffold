@@ -460,6 +460,12 @@ def lint(s, sprites):
             bad('lots.kinds[%d] (%s).mass_kg: min %s kg is under a tenth of the object\'s own %s kg' % (i, kd['obj'], lo, o['gross_g'] / 1000))
         if lorry is not None and hi > lorry:
             bad('lots.kinds[%d] (%s).mass_kg: max %s kg is over what its partner\'s lorry brings (lots.lorry_kg %s)' % (i, kd['obj'], hi, lorry))
+    # s2e-rate (yard-stage2-economy.md 2.3 item 3; RULING2.md 27.4): rated income's one bounded factor a rung. A kappa outside
+    # 0.85 to 1.15 means a term of I is wrong: the term is fixed in rate.ts, never hidden by the factor (refused here as in
+    # the schema's superRefine, so that the script's own check names it even where the schema is not run).
+    for i, k in enumerate(((s.get('rate') or {}).get('kappa')) or []):
+        if i >= 2 and (not isinstance(k, (int, float)) or isinstance(k, bool) or not (0.85 <= k <= 1.15)):
+            bad('rate.kappa[%d] (rung %d): %r is outside 0.85 to 1.15: a term of rated income is wrong; fix the term (rate.ts), not the factor (ruling 27.4)' % (i, i + 1, k))
     return out
 
 
@@ -753,6 +759,13 @@ def selftest():
     # s2e-content (2.6.4, 2.7 to 2.9; ruling 27.2 b, 27.3 D1, D2): what is sold, and what is dark
     expect('sold at stage 2: the analyser, shredder, induction and rotary; the hook-lift and the plasma',
            sold == {'analyser', 'shredder', 'induction', 'rotary'} and {k for k, i in shop.items() if i['kind'] != 'works' and gate_n(i['gate']) <= 5} == {'truckBridge', 'plasma'})
+    # s2e-rate (ruling 27.4): a rung's kappa outside 0.85 to 1.15 is refused by this script's lint; the shipped kappas pass
+    k = copy.deepcopy(s)
+    expect('rate.kappa: the shipped factors pass', not any(e.startswith('rate.kappa') for e in lint(k, [])))
+    k['rate']['kappa'][3] = 1.2
+    expect('rate.kappa: a rung-4 kappa of 1.2 is refused', any(e.startswith('rate.kappa[3]') for e in lint(k, [])))
+    k['rate']['kappa'][3] = 0.84
+    expect('rate.kappa: a rung-4 kappa of 0.84 is refused', any(e.startswith('rate.kappa[3]') for e in lint(k, [])))
     tab = load(PLATES_TABLE)
     c = copy.deepcopy(s)
     c['works']['plates']['baler']['gate'] = 'rung3'

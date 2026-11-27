@@ -4,7 +4,7 @@
  * rungs, rivals passed, the deal offer, partners opening, goals by id. Owner: rules-sim.
  */
 import { checkGoals } from './goals';
-import { rungReached } from './ladder';
+import { levelled, rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
 import { assayOf, convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP } from './content';
@@ -22,7 +22,7 @@ import { shareIAt } from './reuse';
 import { floorSlots, pointOf, thingPos } from './positions';
 import { contentAt } from './layer';
 import { driverRoundS, fairPick, fairTripsOf, fairWaitNext, fullerFirst } from './truck';
-import type { MachineId, SalvageConfig, SalvageGame } from './types';
+import type { LevelTarget, MachineId, SalvageConfig, SalvageGame } from './types';
 
 /**
  * R, t/h (2.11, 2.12; the prototype's rated_R, proto/yard4.py): the yard's throughput at full feed with no
@@ -463,7 +463,8 @@ function assetKey(c: Ctx['c'], s: Ctx['s']): string {
 function worksKey(c: Ctx['c'], s: Ctx['s']): string {
   if (!c.works || s.counts?.bathSet === undefined) return '';
   let k = `|r${s.ladder.rung}`;
-  for (const [id, w] of Object.entries(s.works ?? {})) if (w.phase === 'running') k += `,${id}${w.level}${(s.counts?.[`poured:${id}`] ?? 0) > 0 ? 'p' : ''}`;
+  // s2e-rate: every plate the yard has, whatever its phase (a skip's `grows` read its presence: skipContents, carTerm).
+  for (const [id, w] of Object.entries(s.works ?? {})) k += `,${id}${w.phase === 'running' ? `${w.level}${(s.counts?.[`poured:${id}`] ?? 0) > 0 ? 'p' : ''}` : w.phase[0]}`;
   return k;
 }
 
@@ -1424,6 +1425,11 @@ export function replayIncome(c: Ctx['c'], s: Ctx['s']): number {
   return rawTerms(c, s).I;
 }
 
+/** The REPLAY's terms for the assets as they are (replayIncome's, before E6's envelope; a copy): the loads the shipped driver takes, what binds (s2e-rate). */
+export function replayTerms(c: Ctx['c'], s: Ctx['s']): RatedTerms {
+  return copyTerms(rawTerms(c, s));
+}
+
 /** I, § an hour (2.3; the facade's ratedIncome). */
 export function ratedIncome(c: Ctx['c'], s: Ctx['s']): number {
   return ratedTerms(c, s).I;
@@ -1449,4 +1455,54 @@ export function ratedTermsCfg(cfg: SalvageConfig, g: SalvageGame): RatedTerms {
 /** Facade `stockValue(cfg, g)`: unsold stock at usual prices, § (the gate's G, 2.3.3). */
 export function stockValueCfg(cfg: SalvageConfig, g: SalvageGame): number {
   return stockValue(contentAt(cfg.salvage, g.salvage), g.salvage);
+}
+
+// ---------------------------------------------------------------------------------------- a level's gain (RULING2.md 27.4)
+
+/**
+ * The id of a level's LADDER in the content's gain book (`levels.book`, s2e-content's schema: "a crew role, a partner,
+ * `driver`, ..."): a crew member's role (`cutter`, `hand`, `driver`), a first-yard machine's id, a partner's id, a works
+ * plate's id, `reuse` for the Yard sale's rack.
+ */
+export function levelLadderOf(s: Ctx['s'], target: LevelTarget): string {
+  if (target.kind === 'crew') return s.crew.find((m) => m.id === target.id)?.role ?? target.id;
+  if (target.kind === 'machine') return target.machine;
+  if (target.kind === 'partner') return target.partner;
+  if (target.kind === 'plate') return target.plate;
+  return 'reuse';
+}
+
+/** The level a target stands at now (the step bought takes it from L to L + 1), or null when it has none. */
+function levelOf(s: Ctx['s'], target: LevelTarget): number | null {
+  if (target.kind === 'crew') return s.crew.find((m) => m.id === target.id)?.level ?? null;
+  if (target.kind === 'machine') return s.machines[target.machine]?.level ?? null;
+  if (target.kind === 'partner') return s.partners[target.partner]?.level ?? null;
+  if (target.kind === 'plate') return s.works?.[target.plate]?.level ?? null;
+  return s.reuse?.level ?? null;
+}
+
+/**
+ * THE ONE MEASURE OF A LEVEL'S GAIN (RULING2.md 27.2 d and 27.4; yard-stage2-economy.md 2.3, 2.11, 2.13), § an hour: what
+ * every level's price, its card ("+§x an hour on your yard's figures") and the advice line read from the works' opening.
+ * - THE GAIN BOOK, for a ladder with an entry in the content's `levels.book` ({g1, d}, written by the bots where the
+ *   driver-level check of G2 R fails for that ladder): the measured ladder g1 x d^(L-1), L the level now (the first step
+ *   bought, 1 to 2, gains g1).
+ * - ELSE THE CALCULATED GAIN on the player's own state: rated income's replay (replayIncome: the yard's assets all in use,
+ *   before E6's envelope; kappa_r included) with the level one step up less now, never below 0.
+ * A pure function of the content and the state's assets. Below the works' opening no first-yard rule reads it (the first
+ * yard prices its levels by levels.margin_per_kg, ladder.ts levelPrice, pinned); the book is stripped at release.stage 1.
+ */
+export function levelGain(c: Ctx['c'], s: Ctx['s'], target: LevelTarget): number {
+  const L = levelOf(s, target);
+  if (L === null) return 0;
+  const book = (c.levels as { book?: Record<string, { g1: number; d: number }> }).book;
+  const e = book?.[levelLadderOf(s, target)];
+  if (e && Number.isFinite(e.g1) && e.d > 0) return Math.max(0, e.g1 * e.d ** (Math.max(1, L) - 1));
+  const up = levelled({ salvage: s } as unknown as SalvageGame, target).salvage;
+  return Math.max(0, replayIncome(c, up) - replayIncome(c, s));
+}
+
+/** Facade `levelGain(cfg, g, target)`: the content at the state (layer.ts contentAt). */
+export function levelGainCfg(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number {
+  return levelGain(contentAt(cfg.salvage, g.salvage), g.salvage, target);
 }
