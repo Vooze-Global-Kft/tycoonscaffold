@@ -36,7 +36,7 @@ import { hallApply, hallCheckReady, hallFromBays, hallsDated } from './halls';
 import { mergedContent } from './layer';
 import { MEMO_CHECK, memoMismatch, ROUTES, routesChanged } from './memo';
 import { roundMoney } from './money';
-import { nearPlace, placeGap, spotPos } from './positions';
+import { nearPlace, placeGap, pointOf, spotPos } from './positions';
 import { lotAct, lotActEnd, lotActHolds, lotsOpen } from './lots';
 import { crateAct, crateActEnd, crateActHolds } from './crate';
 import { rackActEnd, rackActHolds, rackLegEnd, reuseOpen } from './reuse';
@@ -889,6 +889,45 @@ function gapOf(c: SalvageContent, a: string, b: string): number {
   return v;
 }
 
+/**
+ * E5 (RULING2 21.2 and 22: THE CRANE NEVER LEAVES THE YARD POORER). The smallest example (the economy attacker's
+ * normal-201-3, rung 3, four hours away at usual prices): with the crane the yard keeps §53,898 an hour, without it
+ * §81,912 (-34 %). The crane lifted the floor's light iron into the baler (baler 1,161 pieces against 90), and the yard
+ * hands, who bind there, then carried the baler's tray from its plot 26 m from the scale instead of the same iron from
+ * the floor 12 m from it (their time: 122 samples of 240 on tray trips against 11); the floor filled with the things
+ * only they carry, the hook waited for room, the cutters stood with nothing to cut (161 against 84) and every cut
+ * count halved. The baler adds §0.12 a kg (+24 %), the walk costs more than twice the hands' time.
+ * THE RULE AS BUILT: the crane takes an input key into a plate only when what the plate makes of a kilogram, carried
+ * from the plate's plot to the platform scale, is worth at least as much a second of a yard hand's carrying as the
+ * same kilogram carried from the tipping floor as the yard would carry it without the crane (a loose piece at its own
+ * grade's p̄; a whole thing as a cutter would cut it: its prepared value a kilogram): out(key) / T(plot) ≥ in(key) /
+ * T(floor), T(place) = 2 × (legM(place, scale) / hand.v + hand.handle_s) (a yard hand's round from there to the scale
+ * and back). A pure function of the content (memoised per content), so the crane does the same work present and
+ * away and a tick equals a jump. Where the hands do not bind this forgoes a small gain; it never loses one.
+ */
+const CRANE_WORTH = new WeakMap<object, Map<string, boolean>>();
+function craneWorth(c: SalvageContent, to: string, key: string): boolean {
+  let m = CRANE_WORTH.get(c);
+  if (!m) CRANE_WORTH.set(c, (m = new Map()));
+  const k = `${to}|${key}`;
+  let v = m.get(k);
+  if (v === undefined) m.set(k, (v = craneWorthNow(c, to, key)));
+  return v;
+}
+function craneWorthNow(c: SalvageContent, to: string, key: string): boolean {
+  const d = plateDef(c, to);
+  if (!d) return false;
+  const pbar = (g: string) => c.grades[g]?.pbar ?? 0;
+  let out = 0;
+  for (const [g, sh] of plateOut(c, to, key)) if (g !== 'stream') out += sh * pbar(g);
+  const o = c.objects[key];
+  const vin = o ? (o.gross_g > 0 ? ((o.preparedValue ?? 0) * 1000) / o.gross_g : 0) : pbar(key);
+  const hand = c.crew.hand;
+  const scale = pointOf(c, 'scale');
+  const T = (place: string) => 2 * (legM(c, pointOf(c, place), scale) / Math.max(1e-9, hand.v) + hand.handle_s);
+  return out * T('floor') >= vin * T(d.plot);
+}
+
 /** May the crane lift this grade or thing (crane.never by material, crane.neverObjects by object)? */
 function craneMayLift(x: Ctx, grade: string, obj?: string): boolean {
   const k = x.c.crane;
@@ -981,7 +1020,7 @@ function craneTargets(x: Ctx, id: string): { targets: { to: string; gmin: number
     if (!running(tw) || td.kind !== 'rate' || td.feedBy !== 'hands' || gapOf(x.c, d.plot, td.plot) > k.reach_m) continue;
     const keyRoute = (grade: string, whole: string | undefined): boolean => {
       const key = whole && td.in.includes(whole) ? whole : td.in.includes(grade) ? grade : null;
-      if (key === null) return false;
+      if (key === null || !craneWorth(x.c, to, key)) return false;
       if (key !== grade) return true;
       routed = true;
       return routeOf(x, grade) === to;
@@ -1077,7 +1116,7 @@ function craneDepartNow(x: Ctx, id: string, w: WorksState, t: number): boolean {
     if (room <= 0) continue;
     const accepts = (grade: string, whole: string | undefined, g0: number): boolean => {
       const key = whole && td.in.includes(whole) ? whole : td.in.includes(grade) ? grade : null;
-      if (key === null) return false;
+      if (key === null || !craneWorth(x.c, to, key)) return false;
       if (key === grade && routeTo(grade) !== to) return false;
       return roomTo >= g0;
     };

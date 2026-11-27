@@ -1394,10 +1394,13 @@ export const useGame = create<Store>((set, get, api) => {
     },
 
     async reset() {
+      // The game the player had: a mode may keep what was paid for across the restart (EngineMode.onReset).
+      const old = get().game;
       await AsyncStorage.removeItem(saveKey());
       const now = Date.now();
       const { cfg } = get();
       let fresh = E.createInitialState(cfg, now);
+      fresh = safe('engine.onReset', () => engineFor(cfg)?.onReset?.(cfg, old, fresh) ?? fresh, fresh);
       fresh = safe('meta.registerSession', () => M.registerSession(fresh, now), fresh);
       fresh = safe('meta.startFreeChestTimer', () => M.startFreeChestTimer(cfg, fresh, now), fresh);
       fresh = refreshMeta(cfg, fresh, now);

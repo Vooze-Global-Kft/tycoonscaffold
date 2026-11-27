@@ -275,7 +275,243 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   // Lifetime counters (goals.ts) survive as they are; a save without them gets none.
   const counts = (raw as { counts?: Record<string, unknown> }).counts;
   if (counts && typeof counts === 'object') (s as unknown as { counts: Record<string, number> }).counts = Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, Math.max(0, Math.floor(num(v)))]));
+  // s2-fix-loop (X6): a save that has seen stage 2 is kept and frozen by a build at release.stage 1, and put back by a build at stage 2.
+  if ((c.release?.stage ?? 2) < 2) {
+    if (obj<Record<string, unknown>>(raw.counts).bathSet !== undefined) freezeStage2(c, raw, s, fresh2);
+    else if (frozenOf(raw)) s.stage2Frozen = JSON.parse(JSON.stringify(frozenOf(raw)));
+  } else if (frozenOf(raw)) thawStage2(c, raw, s, fresh2);
   return s;
+}
+
+// ------------------------------------------------------------------------------------------------ X6: kept and frozen
+
+/** The first yard's own places of a whole thing (types.ts ThingAt); every other is stage 2's. */
+const FIRST_AT = new Set(['zone', 'dropoff', 'floor']);
+/** A first yard's pile key (types.ts PileKey). */
+const firstPile = (p: unknown): boolean => typeof p === 'string' && (p === 'dropoff' || p === 'floor' || p.startsWith('beside.') || p.startsWith('zone.') || p.startsWith('circle.'));
+/** The first yard's boss acts (types.ts ActKind). */
+const FIRST_ACTS = new Set(['none', 'work', 'pickup', 'weigh', 'feed', 'strip', 'circle', 'hook', 'tip', 'drive']);
+
+function frozenOf(raw: Partial<SalvageState>): SalvageState['stage2Frozen'] | null {
+  const f = (raw as { stage2Frozen?: unknown }).stage2Frozen;
+  return f && typeof f === 'object' && !Array.isArray(f) && (f as { v?: unknown }).v === 1 ? (f as SalvageState['stage2Frozen']) : null;
+}
+
+const copy = <T>(v: T): T => (v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T));
+
+/**
+ * RULING2.md 22 X6: a save that has seen stage 2 (counts.bathSet), loaded by a build at release.stage 1. Everything the
+ * first yard does not own goes into `stage2Frozen` untouched: the stage-2 fields AS SAVED, counts.bathSet, the rung and the
+ * tool tier as saved, the things the first yard cannot hold (the works layer's objects, the stage's places), the pieces
+ * and bays of the works layer's grades and the pieces on the stage's piles, the bridge partners, the works layer's shop
+ * keys, a bridge skip on the truck, a first-yard partner's skip things of the works layer. The running state is the
+ * first yard's: the stage-2 fields fresh (nothing of stage 2 dates, pays or shows), no bathSet (the first yard's rules
+ * and content), the rung at most the first yard's top. A crew member on the stage's work stops where he is (idle); what
+ * he carried is put down on the tipping floor (the first yard's to weigh in; a works-layer grade goes aside); the boss's
+ * stage-2 act ends.
+ */
+function freezeStage2(c: SalvageContent, raw: Partial<SalvageState>, s: SalvageState, fresh2: Stage2Fields): void {
+  const known = (gr: unknown) => typeof gr === 'string' && !!c.grades[gr];
+  const knownObj = (o: unknown) => typeof o === 'string' && !!c.objects[o];
+  const shopKeys = new Set([...c.shop, ...c.dayOneList].map((i) => i.key));
+  const t = s.t;
+  const F: Record<string, unknown> & { v: 1 } = { v: 1 };
+  F.fields = copy(Object.fromEntries(STAGE2_KEYS.map((k) => [k, (raw as Record<string, unknown>)[k]])));
+  Object.assign(s, copy(fresh2));
+  const counts = (s.counts ??= {});
+  F.bathSet = counts.bathSet;
+  delete counts.bathSet;
+  F.rung = s.ladder.rung;
+  s.ladder = { ...s.ladder, rung: Math.min(s.ladder.rung, (c.ladder as { topRung?: number }).topRung ?? 3) };
+  F.tier = Math.floor(num(raw.tier, 1));
+  // The yard second it froze: a build at stage 2 moves every stage-2 date on by the time the first yard ran since (thawStage2).
+  F.t = t;
+  // Whole things: the works layer's objects (save.ts dropped them above) and the stage's places.
+  const rawThings = arr<SalvageState['things'][number]>(raw.things);
+  const aside = rawThings.filter((th) => th && th.at && typeof th.uid === 'string' && (!knownObj(th.obj) || !FIRST_AT.has(th.at.at)));
+  const gone = new Set(aside.map((th) => th.uid));
+  s.things = s.things.filter((th) => !gone.has(th.uid));
+  F.things = copy(aside);
+  // Pieces: the works layer's grades (dropped above) and the stage's piles.
+  F.pieces = copy(arr<SalvageState['pieces'][number]>(raw.pieces).filter((p) => p && grams(p.g) > 0 && (!known(p.grade) || !firstPile(p.pile))));
+  s.pieces = s.pieces.filter((p) => firstPile(p.pile));
+  F.bays = copy(Object.fromEntries(Object.entries(obj<Record<string, BayState>>(raw.bays)).filter(([gr]) => !known(gr))));
+  F.load = copy(arr<SalvageState['load'][number]>(raw.load).filter((p) => !known(p?.grade) && grams(p?.g) > 0));
+  const rawP = obj<Record<string, PartnerState>>(raw.partners);
+  F.partners = copy(Object.fromEntries(Object.entries(rawP).filter(([id]) => !c.partners[id])));
+  F.owned = copy(arr<string>(raw.owned).filter((k) => !shopKeys.has(k)));
+  F.arriving = copy(arr<SalvageState['arriving'][number]>(raw.arriving).filter((a) => !shopKeys.has(a?.item)));
+  F.lessonsSeen = copy(arr<string>(raw.lessonsSeen).filter((g) => !known(g)));
+  // Machines' hoppers and trays of the works layer's grades.
+  const mach: Record<string, { hopper: unknown[]; tray_g: Record<string, number | undefined> }> = {};
+  for (const [id, m] of Object.entries(obj<Record<string, SalvageState['machines'][MachineId]>>(raw.machines))) {
+    if (!m || typeof m !== 'object') continue;
+    const hopper = arr<SalvageState['load'][number]>(m.hopper).filter((p) => !known(p?.grade));
+    const tray_g = Object.fromEntries(Object.entries(obj<Record<string, number>>(m.tray_g)).filter(([gr]) => !known(gr)));
+    if (hopper.length || Object.keys(tray_g).length) mach[id] = copy({ hopper, tray_g });
+  }
+  F.machines = mach;
+  // A first-yard partner's waiting skip may hold the works layer's things (2.9's grows): they wait aside, by slot and fullAt.
+  const skipExtra: Record<string, { slot: number; fullAt: number; contents: Record<string, number> }[]> = {};
+  for (const [id, ps] of Object.entries(s.partners)) {
+    for (const sk of ps.skips) {
+      const extra = Object.fromEntries(Object.entries(sk.contents ?? {}).filter(([o]) => !knownObj(o)));
+      if (!Object.keys(extra).length) continue;
+      (skipExtra[id] ??= []).push({ slot: sk.slot, fullAt: sk.fullAt, contents: extra });
+      sk.contents = Object.fromEntries(Object.entries(sk.contents).filter(([o]) => knownObj(o)));
+    }
+  }
+  F.skipExtra = skipExtra;
+  // The truck on a bridge trip, or with a skip of the stage's things on it: the trip ends, the skip (paid) waits aside.
+  const tr = s.truck;
+  const bridgeTrip = !!tr.trip && !c.partners[tr.trip.partner];
+  const skipAside = !!tr.skip && (!c.partners[tr.skip.partner] || Object.keys(tr.skip.contents).some((o) => !knownObj(o)));
+  if (bridgeTrip || skipAside) {
+    if (tr.skip) F.truckSkip = copy(tr.skip);
+    s.truck = { ...tr, trip: null, skip: null, earmark: null, by: null };
+    for (const m of s.crew) if (m.role === 'driver' && m.job === 'drive') idle(m, t);
+  }
+  // Crew on the stage's work: stopped where they are; what they carried is put down on the tipping floor.
+  const first = new Set<string>(['scale', ...Object.keys(s.machines)]);
+  const onStage2 = (m: CrewMember) => m.job === 'rack' || (typeof m.dest === 'string' && !first.has(m.dest)) || (!!m.run && typeof m.run.dest === 'string' && !first.has(m.run.dest));
+  let k = s.pieces.reduce((a, p) => (p.pile === 'floor' ? Math.max(a, p.k + 1) : a), 0);
+  for (const m of s.crew) {
+    if (!onStage2(m)) continue;
+    for (const p of arr<SalvageState['load'][number]>(m.load)) {
+      if (known(p.grade)) s.pieces.push({ ...p, pile: 'floor', k: k++, claim: null });
+      else (F.pieces as unknown[]).push(copy({ ...p, pile: 'floor', k: -1, claim: null }));
+    }
+    for (const p of s.pieces) if (p.claim === m.id) p.claim = null;
+    for (const th of s.things) if (th.by === m.id) th.by = null;
+    idle(m, t);
+  }
+  // The boss's act of the stage (commission, rack, lot, crate) ends; nothing of the stage stays claimed by him.
+  if (!FIRST_ACTS.has(s.act.kind)) s.act = { kind: 'none', target: null, since: t, endsAt: null };
+  // The boss may have stood in the back field (west of the old fence): he goes back to a point of the first yard's map.
+  if (!inYard(c, s.presence.x, s.presence.y)) s.presence = { ...freshSalvage(c, 0).presence };
+  // In the forklift (stage 2's) he is on foot now: the first yard has no forklift.
+  if (obj<{ by?: unknown }>(raw.forklift).by === 'boss' && s.truck.by !== 'boss') s.presence = { ...s.presence, driving: false };
+  s.stage2Frozen = F;
+}
+
+/** The yard-second dates of what freezeStage2 set aside, moved on by `d` (the works' plates, the lots, the Yard sale, the stage's things, the bridge partners' skips, what was arriving). */
+function shiftDates(F: Record<string, unknown>, d: number): void {
+  if (!(d > 0)) return;
+  const on = (o: Record<string, unknown> | null | undefined, ...keys: string[]) => {
+    if (!o || typeof o !== 'object') return;
+    for (const key of keys) if (fin(o[key])) o[key] = (o[key] as number) + d;
+  };
+  const f = obj<Record<string, Record<string, unknown>>>(F.fields);
+  for (const w of Object.values(obj<Record<string, Record<string, unknown>>>(f.works))) {
+    if (!w || typeof w !== 'object') continue;
+    on(w, 'since', 'commissionAt', 'segStart');
+    on(w.work as Record<string, unknown>, 'startAt');
+    const h = w.heat as Record<string, unknown> | undefined;
+    on(h, 'phaseSince', 'endsAt', 'lastFeedAt');
+    on(h?.cooling as Record<string, unknown>, 'since', 'until');
+    on(w.car as Record<string, unknown>, 't0', 'end');
+    const mv = w.move as Record<string, unknown> | undefined;
+    on(mv, 't0', 'end');
+    for (const q of arr<Record<string, unknown>>(mv?.planned)) on(q, 'end');
+    on(w.course as Record<string, unknown>, 't0');
+  }
+  on(f.lots, 'nextAt');
+  on(f.reuse, 'nextAt', 'vanAt');
+  for (const th of arr<{ at: Record<string, unknown> }>(F.things)) on(th?.at, 'since');
+  for (const p of Object.values(obj<Record<string, { skips?: unknown }>>(F.partners))) for (const sk of arr<Record<string, unknown>>(p?.skips)) on(sk, 'setAt', 'fullAt');
+  for (const a of arr<Record<string, unknown>>(F.arriving)) on(a, 'at');
+}
+
+function idle(m: CrewMember, t: number): void {
+  const at: [number, number] = m.from && 'xy' in m.from ? [m.from.xy[0], m.from.xy[1]] : [0, 0];
+  delete m.run;
+  delete m.dest;
+  delete m.course;
+  Object.assign(m, { job: 'idle', phase: 'wait', from: { xy: at }, to: { xy: at }, t0: t, t1: t, carries: null, load: [], claims: [], cut: null });
+}
+
+/**
+ * RULING2.md 22 X6, the other way: a frozen save loaded by a build at stage 2 goes on from where it was. The stage-2
+ * fields come back as saved (repaired as any layout-3 save's), with counts.bathSet, the rung (never lower than the first
+ * yard reached meanwhile), the tool tier, the things and pieces set aside (a uid or a pile place taken meanwhile gets the
+ * next free one; nothing of them stays claimed), the bays, partners, shop keys, the machines' works-layer grades; a
+ * bridge skip waits on the truck when the truck is free (else it stays aside for the next load); a first-yard partner's
+ * skip things of the works layer go back to the skip they came from while it still waits there.
+ */
+function thawStage2(c: SalvageContent, raw: Partial<SalvageState>, s: SalvageState, fresh2: Stage2Fields): void {
+  const F = copy(frozenOf(raw)!) as Record<string, unknown>;
+  const k = mergedContent(c);
+  const t = s.t;
+  // Stage 2 goes on from where it was: every date of what was set aside moves on by the yard time the first yard ran meanwhile.
+  shiftDates(F, Math.max(0, t - num(F.t, t)));
+  Object.assign(s, repairStage2({ ...raw, ...obj<Partial<SalvageState>>(F.fields) } as Partial<SalvageState>, fresh2, t));
+  const plates = c.works?.plates;
+  if (plates) for (const id of Object.keys(s.works)) if (!plates[id]) delete s.works[id];
+  // Nobody sits in the forklift on a load (the boss is where the first yard left him).
+  if (s.forklift && s.forklift.by === 'boss' && !s.presence.driving) s.forklift = { ...s.forklift, by: null };
+  if (F.bathSet !== undefined) (s.counts ??= {}).bathSet = Math.max(0, Math.floor(num(F.bathSet)));
+  s.ladder = { ...s.ladder, rung: Math.max(s.ladder.rung, Math.max(1, Math.min(9, Math.floor(num(F.rung, 1))))) };
+  s.tier = Math.max(s.tier, Math.max(1, Math.min(topToolTier(k), Math.floor(num(F.tier, 1)))));
+  const knownGrade = (gr: unknown) => typeof gr === 'string' && !!k.grades[gr];
+  const knownObj = (o: unknown) => typeof o === 'string' && !!k.objects[o];
+  const uids = new Set([...s.things.map((th) => th.uid), ...s.pieces.map((p) => p.uid)]);
+  let n = 0;
+  const fresh = (u: string) => {
+    if (!uids.has(u)) return u;
+    let v = `${u}~${n++}`;
+    while (uids.has(v)) v = `${u}~${n++}`;
+    return v;
+  };
+  for (const th of arr<SalvageState['things'][number]>(F.things)) {
+    if (!th || !knownObj(th.obj) || !th.at) continue;
+    const uid = fresh(th.uid);
+    uids.add(uid);
+    s.things.push({ ...th, uid, by: null });
+  }
+  const pileTop = new Map<string, Set<number>>();
+  for (const p of s.pieces) (pileTop.get(p.pile) ?? pileTop.set(p.pile, new Set()).get(p.pile)!).add(p.k);
+  for (const p of arr<SalvageState['pieces'][number]>(F.pieces)) {
+    if (!p || !knownGrade(p.grade) || !(grams(p.g) > 0) || typeof p.pile !== 'string') continue;
+    const used = pileTop.get(p.pile) ?? pileTop.set(p.pile, new Set()).get(p.pile)!;
+    let pk = Number.isInteger(p.k) && p.k >= 0 ? p.k : 0;
+    while (used.has(pk)) pk++;
+    used.add(pk);
+    const uid = fresh(p.uid);
+    uids.add(uid);
+    s.pieces.push({ ...p, uid, k: pk, claim: null });
+  }
+  for (const [gr, b] of Object.entries(obj<Record<string, BayState>>(F.bays))) {
+    if (!knownGrade(gr)) continue;
+    const had = s.bays[gr];
+    const add = bayOf(c, obj<BayState>(b));
+    s.bays[gr] = had ? { ...had, g: had.g + add.g, n: had.n + add.n, aside: [...had.aside, ...add.aside] } : add;
+  }
+  s.load = [...s.load, ...arr<SalvageState['load'][number]>(F.load).filter((p) => knownGrade(p?.grade))];
+  for (const [id, p] of Object.entries(obj<Record<string, PartnerState>>(F.partners))) if (k.partners[id] && p && typeof p === 'object' && Array.isArray(p.skips)) s.partners[id] = { ...p, skips: arr(p.skips) };
+  const shopKeys = new Set([...k.shop, ...k.dayOneList].map((i) => i.key));
+  s.owned = [...new Set([...s.owned, ...arr<string>(F.owned).filter((key) => shopKeys.has(key))])];
+  s.arriving = [...s.arriving, ...arr<SalvageState['arriving'][number]>(F.arriving).filter((a) => shopKeys.has(a?.item) && Number.isFinite(a.at)).map((a) => ({ ...a, at: Math.max(a.at, t) }))];
+  s.lessonsSeen = [...new Set([...s.lessonsSeen, ...arr<string>(F.lessonsSeen).filter(knownGrade)])];
+  for (const [id, m] of Object.entries(obj<Record<string, { hopper: SalvageState['load']; tray_g: Record<string, number> }>>(F.machines))) {
+    const mm = (s.machines as Record<string, SalvageState['machines'][MachineId]>)[id];
+    if (!mm || !m) continue;
+    mm.hopper = [...mm.hopper, ...arr<SalvageState['load'][number]>(m.hopper).filter((p) => knownGrade(p?.grade))];
+    for (const [gr, x] of Object.entries(obj<Record<string, number>>(m.tray_g))) if (knownGrade(gr)) mm.tray_g[gr] = (mm.tray_g[gr] ?? 0) + grams(x);
+  }
+  for (const [id, list] of Object.entries(obj<Record<string, { slot: number; fullAt: number; contents: Record<string, number> }[]>>(F.skipExtra))) {
+    const ps = s.partners[id];
+    if (!ps) continue;
+    for (const e of arr<{ slot: number; fullAt: number; contents: Record<string, number> }>(list)) {
+      const sk = ps.skips.find((q) => q.slot === e.slot && q.fullAt === e.fullAt);
+      if (sk) for (const [o, cnt] of Object.entries(obj<Record<string, number>>(e.contents))) if (knownObj(o)) sk.contents[o] = (sk.contents[o] ?? 0) + Math.max(0, Math.floor(num(cnt)));
+    }
+  }
+  delete s.stage2Frozen;
+  const skip = F.truckSkip as SalvageState['truck']['skip'] | undefined;
+  if (skip) {
+    if (!s.truck.skip && !s.truck.trip && s.truck.by === null) s.truck = { ...s.truck, skip };
+    else s.stage2Frozen = { v: 1, truckSkip: skip };
+  }
 }
 
 /** A loaded save repaired against the content; never throws for readable input (salvageMode catches the rest). */

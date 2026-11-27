@@ -182,6 +182,13 @@ export interface EngineMode {
    * (decree: 0, every absence follows the away rules). Unset: the store's own 300 s, exactly as before.
    */
   catchUpSeconds?: number;
+  /**
+   * "Start again" (the store's reset): what of the game before the restart a fresh one keeps (things paid
+   * for, a parent's answers; salvage: yard-decisions.md part 6, section 22, M3). The store calls it right after
+   * it has built the fresh game, with the game the player had. Unset (sim, classic, haul, merge, decree): the
+   * fresh game as built, exactly as before. Pure; the store guards a throw (the fresh game then stands).
+   */
+  onReset?(cfg: GameConfig, old: GameState, fresh: GameState): GameState;
 }
 
 let installed: EngineMode | null = null;

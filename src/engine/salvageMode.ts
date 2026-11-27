@@ -15,6 +15,7 @@ import type { GameConfig } from '../config/schema';
 import { SalvageSchema } from '../config/schema.salvage';
 import type { EngineMode } from './mode';
 import * as R from './salvage';
+import { restartKeeps } from './salvage/state2Money';
 import type { GameState } from './types';
 
 /**
@@ -36,6 +37,8 @@ export const salvageEngineMode: EngineMode = {
   saveTag: R.SAVE_TAG,
   config: withSalvageContent,
   create: (cfg, base) => (R.isSalvage(cfg) ? R.createSalvage(cfg, base, base.lastSavedAt || 0) : base),
+  // "Start the yard again" keeps what was paid for and what a parent answered (state2Money.ts restartKeeps; M3).
+  onReset: (cfg, old, fresh) => (R.isSalvage(cfg) ? (restartKeeps(old as never, fresh as never) as GameState) : fresh),
   reconcile: (cfg, base, raw) => {
     if (!R.isSalvage(cfg)) return base;
     try {

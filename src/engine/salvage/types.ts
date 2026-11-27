@@ -724,6 +724,14 @@ export interface SalvageState {
    * is not kept), so that the newer build can take it back. Absent on every other save; no rule reads it.
    */
   newerSave?: { v: number; raw: unknown };
+  /**
+   * ADDED (s2-fix-loop, RULING2.md 22 X6): a save that has seen stage 2, loaded by a build at release.stage 1, is KEPT
+   * AND FROZEN: what the first yard does not own (the stage-2 fields as saved, counts.bathSet, the rung above the first
+   * yard's top, the tool tier above it, the works layer's things, pieces, bays, partners, shop keys, a bridge skip on the
+   * truck) is set aside here untouched, and the first yard's rules run on the rest. A build at stage 2 puts it back
+   * (save.ts). Absent on every other save; no rule reads it.
+   */
+  stage2Frozen?: { v: 1; [k: string]: unknown };
 
   // ---------------------------------------------------------------- v3: stage 2 (2.18). Made fresh by ./state2.ts.
   /** Every works plate bought (absent until bought), by plate id. The first yard's `machines` stay as they are; both are read through `station(s, id)` (2.5.3). */

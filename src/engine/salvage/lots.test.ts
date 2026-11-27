@@ -18,6 +18,9 @@ import { lineAmount, roundMoney } from './money';
 import { thingPos } from './positions';
 import { ratedIncome } from './rate';
 import { advance, advanceSalvage, jump } from './tick';
+import { frameCfg } from './frame';
+import { forkliftBlocks } from './frameWorks';
+import { stepOutForklift } from './actionsWorks';
 import { hashString } from '../rng';
 import type { SalvageContent } from '../../config/schema.salvage';
 import type { SalvageEvent, SalvageGame, SalvageState } from './types';
@@ -287,6 +290,60 @@ describe('2.10.1 oversize pieces', () => {
     expect(arrivals).toBeLessThanOrEqual(3);
     expect(ev.filter((e) => e.type === 'lotOpened').length).toBeLessThanOrEqual(4 + 3);
   }, 300_000);
+});
+
+// E2 (RULING2 22): on seed 201 at rung 5 the bot took 'cut lot17' 284 times and never cut it. Found (27 Nov, the
+// economy attacker's snapshot normal-201-12): the boss sat in the FORKLIFT (entered by walking past it, a drained car
+// on its forks), where his acts are the forklift's: lotAct was never asked. The rules' side: the frame says so.
+describe('E2: a boss standing where the frame draws the lot cuts it; in the forklift he cannot and the frame says why', () => {
+  const spotOf = (g: SalvageGame, uid: string) => {
+    const f = frameCfg(cfg, g);
+    const ft = f.things.find((t) => t.uid === uid)!;
+    expect(ft).toBeDefined();
+    const o = contentAt(cfg.salvage, g.salvage).objects[ft.obj];
+    // In front of the lot as drawn (its south edge, half a metre off): within reach.work of its footprint.
+    return { x: ft.x, y: ft.y + o.size.d / 2 + 0.5, moving: false, standingFor: 2, driving: false, heading: 0 } as never;
+  };
+  // The picking table empty (at the pad its sorting comes first, crate.ts: a choice of order, not this finding's).
+  const padOnly = (): SalvageGame => {
+    const g = quiet(lots4());
+    return { ...g, salvage: { ...g.salvage, things: g.salvage.things.filter((t) => t.at.at !== 'crate') } };
+  };
+  const stand = (g: SalvageGame, p: never, secs: number, ev: SalvageEvent[]) => {
+    let a = setPresence(cfg, g, p, g.salvage.t, ev);
+    for (let k = 0; k < secs * 2; k++) {
+      const x = begin(cfg, setPresence(cfg, a, p, a.salvage.t, ev), ev, true);
+      advance(x, a.salvage.t + 0.5);
+      a = finish(a, x);
+    }
+    return a;
+  };
+  it('on foot at the frame\'s own point for the lot: the cut finishes in its cut_s', () => {
+    const g = padOnly();
+    const ev: SalvageEvent[] = [];
+    const cut = C().lots!.kinds.find((k) => k.obj === 'casing')!.cut_s ?? C().lots!.cut_s[0];
+    stand(g, spotOf(g, 'lot2'), cut + 2, ev);
+    expect(ev.filter((e) => e.type === 'lotOpened').map((e) => (e as { thing: string }).thing)).toEqual(['lot2']);
+  });
+  it('in the forklift at the same point: nothing is cut, the one button is Step out and the frame knows why; stepped out, he cuts it', () => {
+    const g0 = padOnly();
+    const p = spotOf(g0, 'lot2');
+    const s = structuredClone(g0.salvage) as SalvageState;
+    s.forklift = { x: (p as { x: number }).x, y: (p as { y: number }).y, heading: 0, by: 'boss', load: [] };
+    const g = { ...g0, salvage: s };
+    const ev: SalvageEvent[] = [];
+    const cut = C().lots!.kinds.find((k) => k.obj === 'casing')!.cut_s ?? C().lots!.cut_s[0];
+    const a = stand(g, p, cut + 2, ev);
+    expect(ev.some((e) => e.type === 'lotOpened')).toBe(false);
+    expect(a.salvage.act.kind).toBe('none');
+    const f = frameCfg(cfg, a);
+    expect(f.boss.button).toBe('stepOut');
+    expect(forkliftBlocks(contentAt(cfg.salvage, a.salvage), a)).toBe(true);
+    const out = stepOutForklift(cfg, a, a.salvage.t, ev);
+    expect(out.salvage.forklift!.by).toBeNull();
+    stand(out, p, cut + 2, ev);
+    expect(ev.filter((e) => e.type === 'lotOpened').map((e) => (e as { thing: string }).thing)).toEqual(['lot2']);
+  });
 });
 
 describe('2.10.2 the picking table', () => {
