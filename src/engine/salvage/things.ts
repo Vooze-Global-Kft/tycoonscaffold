@@ -7,7 +7,9 @@ import { heard, printTicket, ticketBase, type Ctx } from './clock';
 import { pieceCount, pieceSpec } from './content';
 import { floorKept, pieceById, pileKs, piecesOn, pushPiece, pushThing, spliceThing, splicePiece, thingById, thingCut, thingsAt } from './lookup';
 import { weighIn } from './scales';
-import type { GroundPiece, Piece, PileKey, ThingState } from './types';
+import { worksOpened } from './layer';
+import type { GroundPiece, Piece, PileKey, SalvageState, ThingState } from './types';
+import type { SalvageContent } from '../../config/schema.salvage';
 
 /** Put a whole piece on a pile at the first free index (a pile's pieces keep their k when others leave). */
 export function dropOnPile(x: Ctx, p: Piece, pile: PileKey): GroundPiece {
@@ -201,7 +203,38 @@ export function thingGone(x: Ctx, th: ThingState, by: string, t: number, carried
     const gp = dropOnPile(x, p, home);
     gp.claim = q.claim;
   }
-  if (th.at.at === 'dropoff' && x.s.dropoff.nextAt < 0) x.s.dropoff.nextAt = t;
+  if (th.at.at === 'dropoff' && x.s.dropoff.nextAt < 0) {
+    // s2e-dropoff (RULING2.md 28.3): from the works' opening with works.dropoffPeriod_s, a thing taken from a FULL drop-off
+    // is replaced no earlier than one period after the last arrival; below it (and with the key absent) at this instant,
+    // the first yard's rule bit for bit.
+    const P = worksDropoffPeriod(x.c, x.s);
+    x.s.dropoff.nextAt = P === null ? t : Math.max(t, lastArrivalAt(x.s) + P);
+  }
+}
+
+/**
+ * s2e-dropoff (RULING2.md 28.3): the works' drop-off period (s) for state s, or null where today's rule holds: below the
+ * works' opening (the first yard, bit for bit) and wherever `works.dropoffPeriod_s` is absent (frozen fixtures, old contents).
+ * A list is read by rung (a rung past it reads its last value, a rung before its first value reads that first value).
+ * rate.ts's replay reads the same bound.
+ */
+export function worksDropoffPeriod(c: Pick<SalvageContent, 'works'>, s: Pick<SalvageState, 'counts' | 'ladder'>): number | null {
+  if (!worksOpened(s)) return null;
+  const p = c.works?.dropoffPeriod_s;
+  if (p === undefined) return null;
+  if (typeof p === 'number') return p;
+  for (let r = Math.min(Math.max(1, s.ladder.rung), p.length); r >= 1; r--) {
+    const v = p[r - 1];
+    if (typeof v === 'number' && v > 0) return v;
+  }
+  for (const v of p) if (typeof v === 'number' && v > 0) return v;
+  return null;
+}
+
+/** The drop-off's last arrival (s2e-dropoff): `dropoff.lastAt`, or long ago where absent (a save made before it, the first yard). */
+function lastArrivalAt(s: SalvageState): number {
+  const v = s.dropoff.lastAt;
+  return typeof v === 'number' && Number.isFinite(v) ? v : -Infinity;
 }
 
 /** How many things wait at the drop-off. */
@@ -244,7 +277,11 @@ export function dropoffArrive(x: Ctx, t: number): void {
   const ticket = printTicket(x, { ...ticketBase(x, t), kind: 'dropOffSlip', thing: obj });
   x.ev.push({ type: 'arrival', kind: 'dropoff', what: obj });
   x.ev.push({ type: 'dropOffSlip', thing: obj, ticket });
-  d.nextAt = dropoffCount(x) >= c.dropoff.places ? -1 : t + c.dropoff.period;
+  // s2e-dropoff (RULING2.md 28.3): from the works' opening with works.dropoffPeriod_s the arrival is dated (lastAt) and the
+  // next is never earlier than one works period after it; below it (and with the key absent) nothing is written: today's rule.
+  const P = worksDropoffPeriod(c, x.s);
+  if (P !== null) d.lastAt = t;
+  d.nextAt = dropoffCount(x) >= c.dropoff.places ? -1 : t + (P === null ? c.dropoff.period : Math.max(c.dropoff.period, P));
 }
 
 /** The next free tipping-floor slot. */

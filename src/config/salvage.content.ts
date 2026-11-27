@@ -1603,7 +1603,9 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   // `rungs` (s2e-content; 1.4 and 2.11; ruling 27.3 D2): THE STAGE'S OWN rungs 4 and 5, read ONLY from the works' opening (the
   // merged view, schema.salvage.ts withWorksLayer, lays them over ladder.rungs): rung 5's range 8 (lead waits for stage 3). The
   // first yard's ladder.rungs (shown padlocked) keeps its own values.
-  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 1, floor: 3000, plates: PLATES, rungs: [{ n: 4, t: 1000, range: 8 }, { n: 5, t: 3600, range: 8 }] },
+  // `dropoffPeriod_s` (s2e-dropoff; RULING2.md 28.3): from the works' opening the public drop-off brings at most one arrival a
+  // period, however fast the hands are (by rung, null below rung 3; first value the first yard's own dropoff.period, 50 s; tune).
+  works: { commission_s: 5, selfCommission_s: 1200, lev: 0.15, maxLevel: 1, floor: 3000, plates: PLATES, rungs: [{ n: 4, t: 1000, range: 8 }, { n: 5, t: 3600, range: 8 }], dropoffPeriod_s: [null, null, 50, 50, 50] },
   // The magnet crane (2.7; T1, T24): never a car before depollution, a battery, or copper, brass, bronze, aluminium, lead or stainless.
   crane: { rate: 50, reach_m: 9, load_kg: 1500, never: ["copper", "brass", "bronze", "alu", "lead", "stainless"], neverObjects: ["elv", "pbb"] },
   shear: { P: 15 },

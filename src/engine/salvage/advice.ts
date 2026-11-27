@@ -302,7 +302,7 @@ function cheapestUseful(cfg: SalvageConfig, g: SalvageGame, budget: number): Adv
  * better carrier, a first-yard machine on its pad, the truck); a works plate running at level 1 (and, a hall, poured
  * once: what it earns once working). For the advice's rated gain only; nothing is applied.
  */
-function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
+export function boughtState(c: SalvageContent, g: SalvageGame, item: string): SalvageGame {
   const s = g.salvage;
   if (c.works?.plates[item]) {
     const w = { phase: 'running', level: 1 } as unknown as (typeof s.works)[string];
@@ -329,11 +329,11 @@ export interface AdviceWorks {
   gain: Txt;
   /** Payback, hours: price ÷ gain_h. */
   payback_h: number;
-  /** (b) THE TARGET: the item costs more than the cash less the driver's reserve. `line` then reads "Save up for {item}" (advice.saveFor) and `save` "Cash for it in about {t}" (advice.saveTime) with this time (bank.ts saveUpSeconds, the card's closed form; while only the reserve stands in the way, the reserve's part). Null when the line names a purchase the cash pays now (a). */
+  /** (b) THE TARGET: the item costs more than the cash less the driver's reserve. `line` then reads "Save up: {item}" (advice.saveFor) and `save` "Cash for it in about {t}" (advice.saveTime) with this time (bank.ts saveUpSeconds, the card's closed form; while only the reserve stands in the way, the reserve's part). Null when the line names a purchase the cash pays now (a). */
   saveUp_s: number | null;
   /** The save-up time's line (advice.saveTime), or null when not saving. */
   save: Txt | null;
-  /** (b) the second line "Meanwhile: {item}" (advice.meanwhile) and its purchase: the largest-gain item the cash can buy that still leaves the target affordable on return; null when none, or when not saving. */
+  /** (b) the second line "For now: {item}" (advice.meanwhile; the design's "Meanwhile") and its purchase: the largest-gain item the cash can buy that still leaves the target affordable on return; null when none, or when not saving. */
   meanwhile: { action: Advice['action']; open: CardRef; price: number; gain_h: number; line: Txt } | null;
 }
 
@@ -348,6 +348,8 @@ interface Cand {
   a: Advice;
   gain: number;
   h: number;
+  /** The shop key bought or hired (a goal's `buy`), null for a level. */
+  key: string | null;
 }
 
 /** Shorter payback first; equal paybacks: the larger gain (2.13 (a)). */
@@ -367,16 +369,16 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
   const c = cfg.salvage;
   const s = g.salvage;
   const out: Cand[] = [];
-  const add = (a: Advice, gain: number) => {
+  const add = (a: Advice, gain: number, key: string | null) => {
     if (!(gain > 1e-6) || !(a.price > 0)) return;
-    out.push({ a, gain, h: a.price / gain });
+    out.push({ a, gain, h: a.price / gain, key });
   };
   const seenRole = new Set<CrewRole>();
   for (const it of shopItems(c)) {
     if (it.kind === 'works') {
       const price = platePrice(cfg, g, it.key);
       if (price === null || cashRefusal(g, price)?.key === 'earmark') continue;
-      add({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)));
+      add({ action: { act: 'buy', item: it.key, price }, open: { kind: 'works', plate: it.key }, price, line: { key: 'advice.buy', args: { item: { text: `title.works.${it.key}` as TextKey }, x: { money: price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)), it.key);
       continue;
     }
     const role = roleOfKey(it.key);
@@ -386,12 +388,12 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
       const ch = hireCheck(cfg, g, role);
       if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || !ch.key) continue;
       const item = shopItems(c).find((x) => x.key === ch.key)!;
-      add({ action: { act: 'hire', role, price: ch.price }, open: cardForItem(item), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(item.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, hiredState(g, role)));
+      add({ action: { act: 'hire', role, price: ch.price }, open: cardForItem(item), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(item.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, hiredState(g, role)), ch.key);
       continue;
     }
     const ch = buyCheck(cfg, g, it.key);
     if (ch.price === null || ch.state === 'locked' || ch.state === 'owned' || ch.state === 'arriving' || ch.state === 'info') continue;
-    add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)));
+    add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, ratedGain(cfg, g, boughtState(c, g, it.key)), it.key);
   }
   const minShare = (c.levels as { minShareI?: number }).minShareI ?? 0;
   const I = minShare > 0 ? Math.max(0, ratedIncome(c, s)) : 0;
@@ -405,7 +407,7 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
     if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || ch.state === 'info') continue;
     const gain = levelGain(c, s, x.t);
     if (minShare > 0 && gain < minShare * I - 1e-9) continue;
-    add({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, gain);
+    add({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, gain, null);
   }
   return out;
 }
@@ -423,10 +425,10 @@ const itemArg = (a: Advice): TxtArgs => ({ item: a.line.args?.item ?? { text: 'i
  *     buys one (any payback: the goal list is the stage's order; this is what makes the card manager reach rungs 4 and 5);
  *     else the best buy of (a) when the cash will reach it at the next return (cash less reserve plus I x the away cap), else
  *     the best buy within the line's budget (cash + advice.minutes of income less the reserve), else the best buy however far
- *     (the line is never null while something sold pays back within the window). The line reads "Save up for {item}" (advice.saveFor)
+ *     (the line is never null while something sold pays back within the window). The line reads "Save up: {item}" (advice.saveFor)
  *     over "Cash for it in about {t}" (works.save, advice.saveTime); `loanHint` ("A loan suits a machine that earns.") ONLY where bank.ts loanHintDue holds for the
  *     target with its own gain (the letter seen, the loan offered, no agreement open, gain x save-up time > the charge).
- *     `works.meanwhile` ("Meanwhile: {item}", advice.meanwhile): of the items in the window the cash less the reserve pays
+ *     `works.meanwhile` ("For now: {item}", advice.meanwhile): of the items in the window the cash less the reserve pays
  *     now, the largest gain (ties: the shorter payback) that still leaves the target affordable on return (cash - p + I x
  *     the away cap >= the target's price) or that pays for itself before the target is reached (p ÷ its gain <= the
  *     save-up time: it does not delay the target); null when none.
@@ -449,7 +451,7 @@ function worksAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Advic
   const capH = awayCapS(cfg, g) / 3600;
   const reach = room + I * capH;
   const goalKey = goalBuyNow(cfg0, g);
-  const goalC = goalKey ? all.find((x) => x.a.action.act === 'buy' && x.a.action.item === goalKey) ?? null : null;
+  const goalC = goalKey ? all.find((x) => x.key === goalKey) ?? null : null;
   const best = bestOf(inWin);
   let target: Cand | null = null;
   if (goalC && goalC.a.price > room + 1e-9) target = goalC;

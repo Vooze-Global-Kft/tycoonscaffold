@@ -4037,6 +4037,13 @@
           "t": 3600,
           "range": 8
         }
+      ],
+      "dropoffPeriod_s": [
+        null,
+        null,
+        50,
+        50,
+        50
       ]
     },
     "crane": {

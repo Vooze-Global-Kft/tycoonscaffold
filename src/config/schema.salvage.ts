@@ -848,6 +848,15 @@ export const WorksSchema = z.object({
    * yard's `ladder.rungs` (shown padlocked) keeps its own values. Absent: the ladder's.
    */
   rungs: z.array(z.object({ n: z.number().int().min(4).max(9), t: z.number().nonnegative(), range: z.number().int().nonnegative() })).optional(),
+  /**
+   * s2e-dropoff (RULING2.md 28.3): FROM THE WORKS' OPENING the public drop-off brings AT MOST ONE ARRIVAL A PERIOD, s (things.ts
+   * worksDropoffPeriod): a thing taken from a full drop-off is replaced no earlier than this long after the last arrival (where
+   * today it is replaced at that instant). A number, or a list by rung (length ladder.topRung, null below rung 3; a rung past
+   * the list reads its last value, a rung before its first value reads that first value). Absent: today's rule everywhere
+   * (the frozen fixtures and old contents play as they did). Read only from the works' opening; stageView strips it at
+   * release.stage 1 (the works block).
+   */
+  dropoffPeriod_s: z.union([z.number().positive(), z.array(z.number().positive().nullable()).min(1)]).optional(),
 });
 export type WorksDef = z.infer<typeof WorksSchema>;
 

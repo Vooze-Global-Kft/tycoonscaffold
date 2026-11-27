@@ -534,6 +534,12 @@ export interface DropoffState {
   nextAt: number;
   /** Arrivals so far (the counter of the drawn mix; the first come from `dropoff.initial`). */
   n: number;
+  /**
+   * s2e-dropoff (RULING2.md 28.3): yard second of the last arrival, written ONLY from the works' opening with
+   * `works.dropoffPeriod_s` (things.ts dropoffArrive); absent (every first-yard state, a save made before it) reads as
+   * "long ago". The next arrival is never dated earlier than one works period after it.
+   */
+  lastAt?: number;
 }
 
 export interface DealState {

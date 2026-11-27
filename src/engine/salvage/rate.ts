@@ -22,6 +22,7 @@ import { shareIAt } from './reuse';
 import { floorSlots, pointOf, thingPos } from './positions';
 import { contentAt } from './layer';
 import { driverRoundS, fairPick, fairTripsOf, fairWaitNext, fullerFirst } from './truck';
+import { worksDropoffPeriod } from './things';
 import type { LevelTarget, MachineId, SalvageConfig, SalvageGame } from './types';
 
 /**
@@ -720,7 +721,8 @@ const copyTerms = (t: RatedTerms): RatedTerms => ({
  * FROM THE WORKS' OPENING (s2e-rate; yard-stage2-economy.md 2.3, RULING2.md 27.4; below it every term is the first yard's,
  * bit for bit): the replay plays the driver the yard ships (truck.ts fullerFirst, fairPick, fairWaitNext) over the truck's
  * round as dated (truck.ts driverRoundS); a skip carries its grown contents; the analyser's assay grades at the weigh-in;
- * the drop-off takes every second the loads leave (a full drop-off refills the instant a thing is taken); the Yard sale's
+ * the drop-off takes every second the loads leave (a full drop-off refills the instant a thing is taken; with
+ * works.dropoffPeriod_s, s2e-dropoff, RULING2.md 28.3, at most one arrival a works period, as the yard); the Yard sale's
  * racking takes the hands' seconds first; the shredder line's cars (carTerm), the halls taking the crucible's metal where
  * they pay more (plateTerms), the Yard sale (yardSaleTerm) and the van (vanTerm); all of it times kappa_r (rate.kappa).
  */
@@ -1068,7 +1070,12 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
   // the loads first, I ran 13 % (flat board) to 19 % (normal board) under G on both rules, the replay buying the
   // demolition loads the cutters had no seconds for).
   const rules = s.ladder.rung >= pickFromRung(c) || s.ladder.rung >= orderFromRung(c);
-  const fCut = rules ? Math.min(1, share(drop.cut, cutHave)) : 1;
+  // s2e-dropoff (RULING2.md 28.3): with works.dropoffPeriod_s, from the works' opening, the drop-off brings at most one arrival
+  // a works period (things.ts worksDropoffPeriod): f (arrivals an hour over 3600 / dropoff.period) is at most dropCap, and the
+  // cutters' seconds kept for the drop-off's things first are kept for no more than it brings. Key absent: Infinity (as built).
+  const dropP = works ? worksDropoffPeriod(c, s) : null;
+  const dropCap = dropP === null ? Infinity : c.dropoff.period / dropP;
+  const fCut = rules ? Math.min(1, dropCap, share(drop.cut, cutHave)) : 1;
   const cutForLoads = rules ? Math.max(0, cutHave - fCut * drop.cut) : cutHave;
   const play = (): { q: QueueResult; f: number } => {
     // s2c-fix-money (E6, RULING2 22): from the works' opening the VALUATION ranks the partners' loads by net per truck-second
@@ -1085,7 +1092,10 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s'], racked = 0): RatedTerms {
     // hands busy 100 %): a full drop-off takes its next thing the instant one is taken (things.ts: nextAt = t), so from the
     // works' opening the drop-off is not bounded by its period: it takes every second the loads leave the hands and the
     // cutters, and a level that brings more loads displaces drop-off work (what the yard itself does).
-    if (works) return { q, f: Math.min(share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
+    // s2e-dropoff (RULING2.md 28.3): with works.dropoffPeriod_s the yard's drop-off brings at most one arrival a works period
+    // (things.ts worksDropoffPeriod), so the replay reads the same bound: at most 3600 / P arrivals an hour (f x per). Key
+    // absent: unbounded, as above.
+    if (works) return { q, f: Math.min(dropCap, share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
     return { q, f: rules ? Math.min(fCut, share(dCarry, carryLeft)) : Math.min(1, share(drop.cut, cutLeft), share(dCarry, carryLeft)) };
   };
   let r = play();

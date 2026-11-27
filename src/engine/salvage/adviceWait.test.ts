@@ -22,9 +22,19 @@ const wcfg = worksCfg();
 /** The same content with tau_r so short that no purchase pays back within it (advice() null: "nothing is left to buy"). */
 const none = { ...wcfg, salvage: { ...wcfg.salvage, tau_h: [1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9] } } as SalvageConfig;
 
+/**
+ * s2e-advice: every goal done, so that no goal asks to buy anything (from the works' opening the current goal's item is the
+ * line's target to save for, whatever its payback: advice.ts worksAdvice (b)).
+ */
+function goalsDone(g: SalvageGame): SalvageGame {
+  const sp = contentAt(wcfg.salvage, g.salvage) as unknown as { goals: { id: string }[]; dayOne?: { id: string }[]; stage2?: { id: string }[] };
+  g.salvage.goals = { ...g.salvage.goals, done: [...sp.goals, ...(sp.dayOne ?? []), ...(sp.stage2 ?? [])].map((d) => d.id), skipped: [] };
+  return g;
+}
+
 /** r3Works with no cash (nothing within the line's budget: advice null) and the range of rung 4 short by exactly one material, `near` nearest. */
 function shortOf(near: string, others = 0): SalvageGame {
-  const g = structuredClone(r3Works());
+  const g = goalsDone(structuredClone(r3Works()));
   const c = contentAt(wcfg.salvage, g.salvage);
   const r4 = rungsOf(c).find((r) => r.n === 4)!;
   const th = thetaOf(c, 4);
@@ -38,7 +48,7 @@ function shortOf(near: string, others = 0): SalvageGame {
 
 describe('R3: adviceWait from the works\' opening', () => {
   it('nothing to buy, the range met: the tonnes still to supply for the next rung', () => {
-    const g = structuredClone(r3Works());
+    const g = goalsDone(structuredClone(r3Works()));
     const c = contentAt(wcfg.salvage, g.salvage);
     const th = thetaOf(c, 4);
     g.salvage.ladder = { ...g.salvage.ladder, worth: Object.fromEntries(materialsOf(c).map((m) => [m, th])) };
@@ -48,7 +58,7 @@ describe('R3: adviceWait from the works\' opening', () => {
     expect(w && 'kind' in w ? w.kind : null).toBe('waiting');
     const want = rungGrams(c, 4) - h.salvage.ladder.supplied_g;
     expect(want).toBeGreaterThan(0);
-    expect(w).toEqual({ kind: 'waiting', rung: 4, missing_g: want, material: null, grade: null, from: null, line: { key: 'advice.waitTonnes', args: { n: { n: 4 }, t: { tonnes_g: want } } }, source: null, open: null });
+    expect(w).toEqual({ kind: 'waiting', rung: 4, missing_g: want, material: null, grade: null, from: null, line: { key: 'advice.waitTonnes', args: { n: { n: 4 }, t: { tonnes_g: want } } }, source: null, open: null, next: null });
   });
 
   it('a state short of one material (light iron): the line names it and the open partner that brings most of it', () => {
