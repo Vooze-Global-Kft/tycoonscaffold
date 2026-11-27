@@ -2717,3 +2717,22 @@ days, -0.7 and -4.6 % on day-3 states); the driver's rule stays as shipped.
     the confirm by engineers who wrote none of it, the copper hall in its own working copy, and
     the specification brought into step. The first yard at `release.stage` 1 is unchanged at
     every step: every new rule is read only once the works have opened.
+
+### 28. The build of the new economy: rulings as the packages hand back (27 November, from about 08:50)
+
+28.1 THE CREWS AT THE WORKS (package 9; `notes/s2e-crew.md`). Trip by trip from the works' opening is
+    built (`group.aheadWorks`, read only once the works have opened; the first yard's 30 recorded
+    states unchanged bit for bit). ITS BENCH MISSED: one 8-hour pass on the rung-4 state of the
+    old content takes 1,626 ms planned and 2,747 ms trip by trip (with the magnet crane, which
+    the new stage does not sell), 1,208 and 1,711 ms without it (ratio 1.42). Ruled:
+    (a) PLANNING STAYS OFF AT THE WORKS. What it costs is machine time, which can be won back;
+        what planning cost was a tenth of the player's earnings (REPORT9 T3), which cannot.
+    (b) Gate G9 is measured on a rung-4 state PLAYED ON THE NEW CONTENT (no crane); its ratio
+        (at most 1.5 times the planned-runs figure) stands as a gate of this build.
+    (c) THE ABSOLUTE FIGURE IS NOT THIS BUILD'S TO MEET: the planned-runs pass itself is over a
+        second on that state. It becomes ENGINE STEP 5: an 8-hour pass at rung 4, trip by trip,
+        under 1,000 ms in node, every result bit for bit against a baseline recorded after the
+        join (the profile is flat: every trip lands as its own instant, and the works'
+        departures, the shredder's reserves and the tick's tail run at each). It is done in its
+        own working copy beside the third measurement. Ruling 20.3 stands: stage 2 goes to no
+        phone before that pass is under a second.
