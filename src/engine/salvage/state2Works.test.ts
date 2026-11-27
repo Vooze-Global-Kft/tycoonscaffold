@@ -53,12 +53,14 @@ describe('X4: a corrupt works.<plate>.work is repaired (kept only when well form
 });
 
 describe('X5: a save and reload goes on bit for bit when the next visitor\'s date lies in the past with the rack empty', () => {
-  // Both racked radiators sold, then the yard runs on past the next visitor's date with nothing racked.
-  const g0 = rackFull();
+  // The live yard's state of the attacker's 5a: the racked things sold (the rack empty) and the next visitor's date
+  // 104 s before the clock (as a5-save saw at s623, 222596.21 against 222700.17), made from rackFull.
   const sold = (() => {
-    let g = g0;
-    for (let k = 0; k < 400 && g.salvage.things.some((t) => t.at.at === 'rack'); k++) g = jump(cfg, g, g.salvage.t + 60);
-    return jump(cfg, g, Math.max(g.salvage.t, g.salvage.reuse.nextAt ?? g.salvage.t) + 120);
+    const g = rackFull();
+    const s = structuredClone(g.salvage);
+    s.things = s.things.filter((t) => t.at.at !== 'rack');
+    s.reuse = { ...s.reuse, nextAt: s.t - 104 };
+    return { ...g, salvage: s } as SalvageGame;
   })();
 
   it('the state: the rack empty and reuse.nextAt before the clock', () => {
