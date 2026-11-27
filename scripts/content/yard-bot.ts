@@ -1102,7 +1102,9 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
     // pieces it opens are worth an hour over those that come without it (tier-4 and tier-3 pieces cut in the run-up).
-    if (returns[0] && items.includes('plasma') && !returns[0].g.salvage.owned.includes('plasma' as never)) {
+    // s2e-measure (the full measurement, RULING2.md 28.7 a / 28.8 c): the plasma is priced by THE HAND'S MEASURE (the items
+    // loop above); its three moments as a help to the cutters (28.4 b) are closed and run only with --plasma3.
+    if (arg('plasma3') && returns[0] && items.includes('plasma') && !returns[0].g.salvage.owned.includes('plasma' as never)) {
       const g0 = returns[0].g;
       const moments: [string, string[]][] = [['m1 first works return', []], ['m2 after the second cutter', ['hire:cutter']], ['m3 after the hook-lift', ['hire:cutter', 'truckBridge']]];
       for (const [name, pre] of moments) {
