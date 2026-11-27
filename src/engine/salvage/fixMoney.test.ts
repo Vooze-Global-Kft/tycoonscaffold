@@ -159,9 +159,10 @@ describe('M10: the ceiling before the money, from the works\' opening (headroom 
       expect(a.refusal?.key === 'ceiling').toBe(b.refusal?.key === 'ceiling');
       if (b.refusal?.key === 'ceiling') ceiled++;
     }
-    for (const m of g.salvage.crew) {
-      const a = levelCheck(cfg, { ...g, cash: 0 }, { kind: 'crew', id: m.id });
-      const b = levelCheck(cfg, { ...g, cash: 1e9 }, { kind: 'crew', id: m.id });
+    const targets: LevelTarget[] = [...g.salvage.crew.map((m) => ({ kind: 'crew', id: m.id }) as LevelTarget), ...Object.keys(g.salvage.partners).map((p) => ({ kind: 'partner', partner: p }) as LevelTarget)];
+    for (const t of targets) {
+      const a = levelCheck(cfg, { ...g, cash: 0 }, t);
+      const b = levelCheck(cfg, { ...g, cash: 1e9 }, t);
       expect(a.refusal?.key === 'ceiling').toBe(b.refusal?.key === 'ceiling');
       if (b.refusal?.key === 'ceiling') {
         ceiled++;
@@ -177,11 +178,18 @@ describe('M10: the ceiling before the money, from the works\' opening (headroom 
     const R0 = ratedCapacity(cfg0, g);
     const cfg = { ...cfg0, salvage: { ...cfg0.salvage, ceilings_t_h: cfg0.salvage.ceilings_t_h.map(() => R0) } } as SalvageConfig;
     let seen = 0;
-    for (const m of g.salvage.crew) {
-      const rich = levelCheck(cfg, { ...g, cash: 1e9 }, { kind: 'crew', id: m.id });
+    const targets: LevelTarget[] = [...g.salvage.crew.map((m) => ({ kind: 'crew', id: m.id }) as LevelTarget), ...Object.keys(g.salvage.partners).map((p) => ({ kind: 'partner', partner: p }) as LevelTarget)];
+    for (const t of targets) {
+      const rich = levelCheck(cfg, { ...g, cash: 1e9 }, t);
       if (rich.refusal?.key !== 'ceiling') continue;
       seen++;
-      expect(levelCheck(cfg, { ...g, cash: 0 }, { kind: 'crew', id: m.id }).refusal?.key).toBe('cash');
+      expect(levelCheck(cfg, { ...g, cash: 0 }, t).refusal?.key).toBe('cash');
+    }
+    for (const role of ['hand', 'cutter', 'driver'] as const) {
+      const rich = hireCheck(cfg, { ...g, cash: 1e9 }, role);
+      if (rich.refusal?.key !== 'ceiling') continue;
+      seen++;
+      expect(hireCheck(cfg, { ...g, cash: 0 }, role).refusal?.key).toBe('cash');
     }
     expect(seen).toBeGreaterThan(0);
   });
