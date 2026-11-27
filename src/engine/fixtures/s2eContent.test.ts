@@ -52,7 +52,9 @@ describe('ruling 27.7: the stage as REPORT9 measured it, frozen', () => {
 
 describe('2.6.4, 2.7 to 2.9 (ruling 27.2 b, 27.3 D1, D2): what the shipped stage 2 sells', () => {
   it('the hook-lift, the plasma cutter, the analyser, the shredder and the two halls; everything else is gated past the ladder', () => {
-    expect(sold(S2)).toEqual({ plates: ['analyser', 'induction', 'rotary', 'shredder'], items: ['plasma', 'truckBridge'] });
+    // s2f-copper: the copper refining hall is sold while its one switch (its gate) sells it (RULING2.md 27.5, 28.7 c)
+    const copper = gateRung(S2.works!.plates.copper.gate) <= top(S2) ? ['copper'] : [];
+    expect(sold(S2)).toEqual({ plates: ['analyser', ...copper, 'induction', 'rotary', 'shredder'].sort(), items: ['plasma', 'truckBridge'] });
     const ladderTop = Math.max(...rungsOf(S2).map((r) => r.n));
     for (const [k, p] of Object.entries(S2.works!.plates)) if (!sold(S2).plates.includes(k)) expect(gateRung(p.gate), k).toBeGreaterThan(ladderTop);
     for (const i of S2.worksLayer!.shop) if (i.kind !== 'works' && !sold(S2).items.includes(i.key)) expect(gateRung(i.gate), i.key).toBeGreaterThan(ladderTop);
@@ -62,7 +64,7 @@ describe('2.6.4, 2.7 to 2.9 (ruling 27.2 b, 27.3 D1, D2): what the shipped stage
     const shop = new Map(S2.worksLayer!.shop.map((i) => [i.key, i]));
     expect(shop.get('truckBridge')!.financeable).toBe(true);
     expect(shop.get('plasma')!.financeable).not.toBe(true);
-    for (const k of ['analyser', 'shredder', 'induction', 'rotary']) expect(S2.works!.plates[k].financeable, k).toBe(true);
+    for (const k of ['analyser', 'shredder', 'induction', 'rotary', ...(sold(S2).plates.includes('copper') ? ['copper'] : [])]) expect(S2.works!.plates[k].financeable, k).toBe(true);
     for (const [k, p] of Object.entries(S2.works!.plates)) if (!sold(S2).plates.includes(k)) expect(p.financeable, k).not.toBe(true);
   });
 

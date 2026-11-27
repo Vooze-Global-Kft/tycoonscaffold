@@ -52,6 +52,15 @@ type Plates = WorksInput['plates'];
  */
 const DARK = "rung99";
 
+/**
+ * s2f-copper (RULING2.md 27.5, 28.7 c): THE COPPER REFINING HALL'S ONE SWITCH. It ships only if its measured lasting gain is at
+ * least 2 % of the yard's income on fifteen seeds with no seed below -1 % (27.2 b). "rung4": sold at rung 4 (its plate, its
+ * plot and filter on the works' map, its grade's words, its two goals, financeable); DARK: defined, never sold, its plot not
+ * drawn (D6), its goals not written into game.json (build-yard.py), not financeable. Nothing else changes with it.
+ */
+const COPPER_GATE: string = "rung4";
+const COPPER_SOLD = COPPER_GATE !== DARK;
+
 /** The works plates (2.5.3, 2.7, 2.8): level-1 numbers (tune). */
 const PLATES: Plates = {
   // ---- the yard's plates (south yard, rung 3; 2.7): fed by yard hands, the crane or the forklift
@@ -125,6 +134,42 @@ const PLATES: Plates = {
     },
     lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
   },
+  // s2f-copper (RULING2.md 27.5, 28.7 c; yard-stage2-economy.md C2): THE COPPER REFINING HALL. A tilting furnace that
+  // FIRE-REFINES the yard's copper scrap into fire-refined copper ingot (`cui`) under a bag-house filter: the charge is melted,
+  // air is blown through it so that the iron, tin, lead and zinc in it oxidise into a silica slag, the slag is skimmed and
+  // the bath is reduced and cast. BARE BRIGHT IS NOT CHARGED (it sells at 0.92 of the ingot as it is; a melt would gain
+  // under 5 % on it, 5.2 (11)). The granulator's step is the hall's (looms and thin cable are chopped to granules as its
+  // feed; the granulator alone stays dark). Its numbers, each a first value:
+  // - batch: 2,000 kg a heat in 1,800 s (the rotary hall's charge in a shorter heat; the induction hall's is 500 kg in 8
+  //   minutes): a tilting furnace, 4 t an hour at most against the 2.4 to 2.5 t an hour of No.2 the yard sells at rung 4
+  //   (s2f-copper's flows), so the hall keeps up with its feed; inbuf 2,000 kg, a whole charge, so that the bay keeps the
+  //   No.2 that comes while a heat runs for the next charge instead of the round selling it.
+  // - recipe `copper` (No.2 copper; ISRI's No.2 is at least 94 % copper): ingot 0.95, its oxidised impurities and the copper
+  //   oxide that goes with them into the slag 0.06 (with the flux), the bag-house's dust 0.01 (zinc and lead oxide fume,
+  //   collected and sent to the licensed carrier with the slag: T3, only the induction hall's zinc oxide dust is sold).
+  // - recipe `cylinders` (copper cylinders charged whole with their brass bosses: about 93 % copper with the solder): ingot
+  //   0.90, slag 0.10, dust 0.02 (the bosses' zinc fumes off into the filter).
+  // - recipe `cable` (thin cable and looms, the granulator's step: chopped, the insulation 0.65 blown off to the licensed
+  //   carrier as the granulator's own figure, the granules 0.35 then refined as No.2 is): ingot 0.3325, slag 0.021, dust
+  //   0.0035, insulation 0.65.
+  // - reagent: silica sand flux 0.02 kg a kg of copper charged at §0.15 (§0.003 a kg; paid at the heat's start).
+  // Mass kept (5.2 (1)): out + waste = 1 + reagents, per recipe. The margin a kg at p̄ (5.2 (11), at least +5 %): No.2
+  // 0.95 x 38.5 - 34.3 - 0.003 = +§2.27 (+6.6 %), cylinders 0.90 x 38.5 - 29.0 = +§5.65 (+19 %), cable 0.3325 x 38.5 - 10.5
+  // = +§2.30 (+22 %). FIRST PRICE (s2f-copper's arithmetic, a first value until the bots measure its lasting gain on fifteen
+  // seeds, ruling 28.4 a): the yard supplies §98k to §102k an hour of copper at p̄ at rung 4 (45 % of all it supplies; the
+  // bots' states seed1-s5 and s6 of the joined build, one 4-hour absence each, nobody at the yard), 85 % of it No.2 by worth
+  // (the replay's kg: No.2 3,232, bare bright 532 an hour): about 2.5 t an hour of No.2 x §2.27 = §5,600 an hour (6.0 % of the
+  // yard's §92k to §95k an hour there); x tau_4 36 h = §202,000 (bots/plates.json `copper`, marked first).
+  copper: {
+    row: "melt", slot: 2, plot: "copper", gate: COPPER_GATE, needs: null, price: 202000, financeable: COPPER_SOLD, deliver_s: 60, kind: "batch", in: [], feedBy: "bays",
+    batch: { kg: 2000, s: 1800, start_share: 0.4, start_idle: 60 },
+    recipes: {
+      copper: { in: ["no2"], out: [["cui", 0.95]], waste: [["carrier", 0.06], ["carrier", 0.01]], reagents: [["silicaFlux", 0.02, 0.15]] },
+      cylinders: { in: ["cyl"], out: [["cui", 0.9]], waste: [["carrier", 0.1], ["carrier", 0.02]], reagents: [["silicaFlux", 0.02, 0.15]] },
+      cable: { in: ["tcab"], out: [["cui", 0.3325]], waste: [["carrier", 0.65], ["carrier", 0.021], ["carrier", 0.0035]], reagents: [["silicaFlux", 0.007, 0.15]] },
+    },
+    lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
+  },
   // ---- the lead line (back field, rung 4; a separate area behind the painted line, masks on)
   breaker: {
     row: "lead", slot: 0, plot: "breaker", gate: DARK, needs: null, price: 3000, deliver_s: 60, kind: "rate", in: ["pbb"], feedBy: "bays",
@@ -182,6 +227,16 @@ const WORKS_PLACES: Record<string, [number, number, number, number, Omit<PlaceIn
   // s2e-line (3.1, D6): the lead line (breaker, smelter, their filter and apron, the lead area's line) is not drawn: batteries
   // and lead wait for stage 3 (RULING2.md 27.3 D2). Its ground west of the induction hall's filter (x -56 to -41) is the room
   // a fourth hall can stand in later (not drawn now).
+  // s2f-copper: the copper refining hall stands in that room, west of the induction hall in the processes' order (slot 2 of
+  // the melt row), its back on the wall as the other halls; its bag-house filter west of it, touching it; its apron to the
+  // works road's north kerb (the machine flatbed sets it down from the `breaker` stop). Drawn only while it is sold (D6).
+  ...(COPPER_SOLD
+    ? {
+        copper: [-47.5, 18.6, 6, 6, { h: 6, solid: true, card: "works", label: "place.copperHall" }] as [number, number, number, number, Omit<PlaceIn, 'w' | 'd'>],
+        "copper.apron": [-47.5, 22.6, 3, 2, { h: 0.05, solid: false, card: false }] as [number, number, number, number, Omit<PlaceIn, 'w' | 'd'>],
+        "copper.filter": [-52.5, 17.6, 4, 4, { h: 6, solid: true, card: false }] as [number, number, number, number, Omit<PlaceIn, 'w' | 'd'>],
+      }
+    : {}),
   worksBays: [-18.5, 30.6, 33, 3, { h: 1.4, solid: true, card: "board", label: "place.worksBunkers" }],
   worksStillages: [-39.2, 30.6, 8.4, 3, { h: 1.4, solid: true, card: "board" }],
   "backfield.sign": [0.6, 33.4, 1.6, 0.4, { h: 2, solid: true, card: false, label: "place.backfield" }],
@@ -264,6 +319,12 @@ const WORKS_LAYER: WorksLayerInput = {
     znh: { name: "Mixed heavies", pbar: 1.5, family: "nf", material: null, kind: "grade", asFound: 1, boardTab: "intermediates", bay: { kind: "bunker", place: "worksBays", slot: 7 } },
     cug: { name: "Copper granules", pbar: 34.8, family: "nf", material: "copper", kind: "grade", asFound: 1, boardTab: "works", bay: { kind: "bunker", place: "worksBays", slot: 5 } },
     dust: { name: "Zinc filter dust", pbar: 0.4, family: "nf", material: null, kind: "grade", asFound: 1, boardTab: "intermediates", bay: { kind: "bags", place: "worksStillages", slot: 3 } },
+    // s2f-copper: FIRE-REFINED COPPER INGOT, the copper refining hall's pour (a covered stillage of the works). p̄ §38.50 a kg:
+    // No.2 copper (§34.30) stands at 0.89 of it, the trade's spread between No.2 and fire-refined copper (RULING2.md 27.5: "about
+    // nine tenths"); bare bright (§35.50, 0.92) under it, as bright wire is worth a little less than the refined metal it needs
+    // no furnace to become; copper granules (§34.80, the granulator's, dark) under it by a granule's own melt loss. An ingot is
+    // never worth less than what was charged for it plus the flux: 0.95 x 38.5 = 36.58 > 34.30 + 0.003.
+    cui: { name: "Refined copper", pbar: 38.5, family: "nf", material: "copper", kind: "product", asFound: 1, boardTab: "works", bay: { kind: "stillage", place: "worksStillages", slot: 4 } },
   },
   // 5.1: the new things. Masses are first values (content2) where the specification gives none; a lot's mass is set on arrival (2.10.1).
   objects: {
@@ -351,7 +412,7 @@ const WORKS_LAYER: WorksLayerInput = {
   // the pallet truck: the boss's carrier, 300 kg
   carriers: { pallet: 300 },
   // the new bays' capacities, kg (first values, content2: "no bay full before the next sitting", 2.22)
-  bays: { shred: 40000, lib: 20000, zorba: 10000, znh: 5000, ssu: 5000, cug: 3000, pp: 3000, pbp: 10000, ss: 5000, twitch: 5000, bzs: 3000, bzi: 3000, bzd: 1000, pbi: 10000, dust: 1000, pbb: 5000 },
+  bays: { shred: 40000, lib: 20000, zorba: 10000, znh: 5000, ssu: 5000, cug: 3000, pp: 3000, pbp: 10000, ss: 5000, twitch: 5000, bzs: 3000, bzi: 3000, bzd: 1000, pbi: 10000, dust: 1000, pbb: 5000, cui: 5000 },
 };
 
 /**
@@ -373,6 +434,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
   units: "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
   "$changes": [
     "s2f-plasma-cars (27 Nov, RULING2.md 28.7 a and b): lots.mu_min_tier { 4: [-, -, 25, 30, 30] } (a piece only the plasma cuts may be worth up to its own mu of I, and the richest kind within its own cap comes); the garage's flatrack load removed (the hook-lift fetches no car) and partners.garage.recovery { needs shredder, obj elv, period_s 600 } (the garage's own recovery truck sets a car on the bay's apron, paid at its label price as it lands); the shredder line 137,000 -> 667,000 (FIRST VALUE: tau_4 x its lasting gain with those cars, 2 seeds, plates.json); the plasma's price stands at 86,500 (its hand measure, 1.8 % of E0 on 2 seeds, is under the entry rule: for the lead)",
+    "s2f-copper (27 Nov, RULING2.md 27.5 and 28.7 c): THE COPPER REFINING HALL (plate copper, melt row slot 2, gate rung 4 by the one switch COPPER_GATE; DARK keeps it defined and unsold, its plot undrawn, its goals unwritten): a tilting furnace that fire-refines No.2 copper (yield 0.95), copper cylinders (0.90) and thin cable chopped to granules inside it (0.3325; the granulator stays dark) into the new grade cui, fire-refined copper ingot, p̄ 38.50 (No.2 at 0.89 of it), under a bag-house filter; slag and dust to the licensed carrier; silica flux 0.02 kg a kg at 0.15; 2,000 kg a heat in 1,800 s; bare bright is not charged. Financeable; its plot, apron and filter west of the induction hall; goals buyCopper and pourCopper after pourRotary. FIRST PRICE 202,000 = tau_4 36 h x a first gain of 5,600 an hour (arithmetic on the measured copper flow, bots/plates.json copper marked first): the next measurement measures its lasting gain on fifteen seeds and writes the price; it ships only by the entry rule",
     "s2e-content (27 Nov, RULING2.md 27; yard-stage2-economy.md packages 2 and 3): THE STAGE'S ECONOMY BUILT AGAIN. Sold at stage 2: the three-axle hook-lift 154,000 -> 206,000 (financeable), the plasma cutter 64,900 -> 86,500, the analyser 32,800 -> 43,800, the induction hall 207,000 -> 339,000, the shredder 83,200 -> 136,000, the rotary hall 65,100 -> 107,000 (REPORT9's T8 gain x the new tau, three figures; financeable marked on the hook-lift and the machines). DARK (gate past the ladder, defined, never sold): the crane, baler, shear, granulator, depollution bay, eddy current, sensor sorter, battery breaker, lead smelter, forklift, pallet truck (twitch leaves the rotary's inputs with the sorter). tau_h 9/22/45 -> 12/36/48; works.maxLevel 10 -> 1; reuse.levels 3 -> 0; works.rungs (the stage's own rung 5 range 8; the first yard's ladder keeps 9); bank.maxF_h 2 -> 6, maxF_tau 0.15 -> 0.5; the 10- and 20-hour packs off; levels.minShareI 0.01 and levels.book {}; group.aheadWorks false; reuse.shareI_r [12.5, 62.5, 62.5 per mille]; rate.kappa 1; lots: the boiler drum, press frame and transformer core (real masses), lots.lorry_kg 20,000. The stage as REPORT9 measured it is frozen in src/engine/fixtures/salvage-report9.json",
     "content2-bots (27 Nov, REPORT9 round 1, RULING2.md 21.1 and 19.1): the plates', vehicles' and tools' prices from the gain measured over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one capped absence, a rate an hour of yard time, mean of seeds 1 to 15, from each item's planned moment with the sitting's earlier purchases owned; price = max(works.floor, tau_r x dE) to three figures (scripts/content/bots/plates.json): shear 3,000 -> 5,180, analyser 29,100 -> 32,800, shredder 419,000 -> 83,200, rotary 77,600 -> 65,100, induction 171,000 -> 207,000, breaker 38,100 -> 3,000 (its measured gain is NEGATIVE: a finding, REPORT9), smelter 27,500 -> 17,700; truckBridge 12,000 -> 154,000, plasma 8,000 -> 64,900, pallet 2,500 -> 3,000, forklift 15,000 -> 3,000; crane, baler, depollution, granulator, eddy, sorter stay at the floor 3,000 (measured gain under the floor's worth)",
     "content2-bots (26 Nov, REPORT8 round 3): ladder.rungs n 5 5,000 -> 3,600 t (RULING2.md 19.3: the stage's last goal purchase came at sitting 5 or 6 and rung 5 at sitting 10 with 5,000 t; at 3,600 t it comes in the absence before sitting 8, day 4); reuse.batchFactor 1.5 -> 1.25 (the Yard sale and the van were 5.9 % of day 1's earnings and 5.3 % of days 2 and 3, the van about 4.5 of it: aim 2 to 5 %)",

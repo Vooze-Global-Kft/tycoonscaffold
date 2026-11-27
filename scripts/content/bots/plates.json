@@ -688,6 +688,17 @@
    "E0": 114254,
    "sold": true
   },
+  "copper": {
+   "$first": "s2f-copper (27 Nov, RULING2.md 27.5, 28.7 c): A FIRST VALUE, NOT MEASURED: the copper refining hall's gain from arithmetic on the measured copper flow at rung 4 (the bots' states seed1-s5 and seed1-s6 of the joined build, one 4-hour absence each, nobody at the yard: copper supplied §102,319 and §97,891 an hour at p̄, 85 % of it No.2 by worth: about 2.5 t an hour; x (0.95 x 38.50 - 34.30 - 0.003) = §2.27 a kg); E0 the yard's income G over those absences (§92,492 and §95,091). The next measurement measures its LASTING gain on fifteen seeds (ruling 28.4 a) and writes dE, E0, perSeed and the price; it ships only at dE >= 2 % of E0 with no seed below -1 % (27.2 b).",
+   "dE": 5600,
+   "E0": 93792,
+   "gate": 4,
+   "tau_h": 36,
+   "price": 202000,
+   "seeds": 0,
+   "first": true,
+   "sold": true
+  },
   "breaker": {
    "dE": -4476,
    "dGaway": -4864,

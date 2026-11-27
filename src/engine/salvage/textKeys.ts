@@ -14,11 +14,11 @@ export const TEXT_KEYS = {
   /** Package 4: the top bar, the goal card, the one button (4.1). */
   hud: ['cash', 'rankChip', 'rankChipShort', 'rankChipToNext', 'rankChipTop', 'rankChipPassed', 'carry', 'loadFull', 'open', 'stepOut', 'getIn', 'carryDriving', 'goalProgress', 'turnSideways', 'turnSidewaysBody', 'menu', 'close', 'ok', 'cashDebit', 'passedToast'],
   /** Package 3: world labels (4.2), place names (5.2, ≤ 18). `map.places.<id>.label` names one of these. */
-  place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages', 'place.shredder', 'place.rotaryHall', 'place.inductionHall', 'place.leadLine', 'place.yardSale', 'place.oversizePad', 'place.pickingTable', 'place.carPad', 'place.worksBunkers', 'place.worksStillages', 'place.batteryBox', 'place.forklift', 'place.baler', 'place.crane', 'place.depollution', 'place.granulator', 'place.shear', 'place.eddy', 'place.sorter', 'place.smelter'],
+  place: ['place.rack', 'place.office', 'place.scalehouse', 'place.scale', 'place.weighbridge', 'place.noticeboard', 'place.dropoff', 'place.rubble', 'place.floor', 'place.park', 'place.stripper', 'place.bench', 'place.crucible', 'place.stock', 'place.backfield', 'place.bays', 'place.merchant', 'place.lane', 'place.bridge', 'place.board', 'place.stillages', 'place.shredder', 'place.rotaryHall', 'place.inductionHall', 'place.leadLine', 'place.yardSale', 'place.oversizePad', 'place.pickingTable', 'place.carPad', 'place.worksBunkers', 'place.worksStillages', 'place.batteryBox', 'place.forklift', 'place.baler', 'place.crane', 'place.depollution', 'place.granulator', 'place.shear', 'place.eddy', 'place.sorter', 'place.smelter', 'place.copperHall'],
   /** Package 3 and 4: chips over bays, things and pads (4.2, 4.4). */
   chip: ['chip.bay', 'chip.held', 'chip.lowDay', 'chip.highDay', 'chip.reservedDeal', 'chip.forCrucible', 'chip.aside', 'chip.bayHeld', 'chip.bayKg', 'chip.bayKgHeld', 'chip.padlock', 'chip.padlockPrice', 'chip.crewWeighIn', 'chip.lotSold', 'chip.certifiedEmpty', 'chip.bridgeLimit', 'chip.needsTorchGate', 'chip.count', 'chip.works.bankTag', 'chip.commissioned', 'chip.weighedAtWorks', 'chip.cod', 'chip.lotSoldBank', 'chip.rackSold', 'chip.van', 'chip.forPlate', 'chip.leadArea', 'chip.visitorsKeep', 'chip.payHere'],
   /** Package 4: card titles (4.3). */
-  title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place', 'title.works.crane', 'title.works.shear', 'title.works.baler', 'title.works.analyser', 'title.works.depollution', 'title.works.granulator', 'title.works.shredder', 'title.works.eddy', 'title.works.sorter', 'title.works.rotary', 'title.works.induction', 'title.works.breaker', 'title.works.smelter', 'title.finance', 'title.letter', 'title.agreements', 'title.shop', 'title.yardSale', 'title.lot', 'title.crate', 'title.packSheet', 'title.ageQuestion', 'title.packCode', 'title.awayBonus'],
+  title: ['title.rack', 'title.rota', 'title.partners', 'title.processBoard', 'title.machine', 'title.board', 'title.skip', 'title.deal', 'title.table', 'title.away', 'title.rung', 'title.clipboard', 'title.settings', 'title.help', 'title.place', 'title.works.crane', 'title.works.shear', 'title.works.baler', 'title.works.analyser', 'title.works.depollution', 'title.works.granulator', 'title.works.shredder', 'title.works.eddy', 'title.works.sorter', 'title.works.rotary', 'title.works.induction', 'title.works.breaker', 'title.works.smelter', 'title.finance', 'title.letter', 'title.agreements', 'title.shop', 'title.yardSale', 'title.lot', 'title.crate', 'title.packSheet', 'title.ageQuestion', 'title.packCode', 'title.awayBonus', 'title.works.copper'],
   /** Package 4: card rows and buttons (4.3, 5.2). */
   card: [
     'card.buy',
@@ -245,6 +245,9 @@ export const TEXT_KEYS = {
     'goal.rungToGo',
     // s2e-fix1 (RULING2 28.5 c): the purchase is the line (the depollution bay and the shredder); keys are append-only, so a new key
     'goal.buyShredderLine',
+    // s2f-copper (RULING2 27.5, 28.7 c): the copper refining hall's two goals, after the rotary hall's
+    'goal.buyCopper',
+    'goal.pourCopper',
   ],
   /** Package 8: the advice line (2.10; Advice.line). */
   /**
@@ -266,7 +269,7 @@ export const TEXT_KEYS = {
   /** Tabs: the process board's three pages (4.4: `tab.<page>`) and the price board's four families (4.11: `tab.<BoardTab>`, content BOARD_TABS). */
   tab: ['tab.first', 'tab.yard', 'tab.melt', 'tab.ferrous', 'tab.nonFerrous', 'tab.works', 'tab.intermediates'],
   /** A hall's recipes on its works card (`recipe.<RecipeId>` of content works.plates.<id>.recipes; 2.8). */
-  recipe: ['recipe.alu', 'recipe.brass', 'recipe.bronze', 'recipe.lead'],
+  recipe: ['recipe.alu', 'recipe.brass', 'recipe.bronze', 'recipe.lead', 'recipe.copper', 'recipe.cylinders', 'recipe.cable'],
   /** 4.3: the works card (rules-works / rules-money cards.ts; overlays-a Works). */
   works: [
     'card.works.inOut',
