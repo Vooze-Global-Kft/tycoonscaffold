@@ -70,9 +70,13 @@ const PLATES: Plates = {
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
   analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 43800, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  // s2e-line (yard-stage2-economy.md 2.7 to 2.9, 3.1; RULING2.md 27.3 D1): the depollution bay is PART OF THE SHREDDER LINE (the
+  // shredder's `with`): no shop item on sale of its own (gate past the ladder), ordered, set down and started up with the shredder.
+  // Its plot stands beside the shredder in the back field; the hook-lift sets each car down on its own apron (feedBy "truck": no
+  // forklift, no car pad).
   depollution: {
-    row: "yard", slot: 4, plot: "depollution", gate: DARK, needs: null, price: 3000, deliver_s: 30, kind: "station", in: ["elv"], feedBy: "forklift",
-    // one car at a time on its apron, set there by the forklift only (s2a-fix: feedBy "forklift"; no yard hand feeds it), depollution.s a car;
+    row: "shredder", slot: 0, plot: "depollution", gate: DARK, needs: null, price: 3000, deliver_s: 60, kind: "station", in: ["elv"], feedBy: "truck",
+    // one car at a time on its apron, set there by the hook-lift (s2e-line; the forklift's s2a-fix rule stays for the frozen content), depollution.s a car;
     // out whole: the battery, four wheels, the loom, the converter, the drained shell: the elv object's pieces, shell and waste by mass
     // (lintStage2More (e) holds the two equal: one definition of a car's yield)
     // out and waste: DERIVED from the elv object below (stationYield; the lead's ruling 6): fluids and tyres, in sealed drums, to a licensed waste carrier
@@ -84,19 +88,21 @@ const PLATES: Plates = {
     out: { tcab: [["cug", 0.35]] }, waste: { tcab: [["carrier", 0.65]] }, rate_kg_s: 0.14, lev: 0.15, maxLevel: 10, inbuf: 200, tray: 500,
   },
   // ---- the shredder line (back field, rung 4; 2.8): from the bays by route, into the bays by its belt weigher
+  // s2e-line: THE SHREDDER LINE, one purchase (the shredder's shop item, price and card; the depollution bay comes `with` it). First
+  // price 137,000 (T8's shredder gain, measured with the bay owned and cars arriving, x tau_4 36 h; the bots measure the line as one).
   shredder: {
-    row: "shredder", slot: 0, plot: "shredder", gate: "rung4", needs: null, price: 136000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays",
+    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 137000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
   },
   eddy: {
-    row: "shredder", slot: 1, plot: "eddy", gate: DARK, needs: "shredder", price: 3000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
+    row: "shredder", slot: 2, plot: "eddy", gate: DARK, needs: "shredder", price: 3000, deliver_s: 60, kind: "rate", in: ["stream"], feedBy: "stream",
     // no hopper and no level of its own: it runs at the shredder's stream (B16)
     out: { stream: [["zorba", 0.286]] }, waste: { stream: [["carrier", 0.714]] }, lev: 0, maxLevel: 1, inbuf: 0, tray: 0,
   },
   sorter: {
-    row: "shredder", slot: 2, plot: "sorter", gate: DARK, needs: "eddy", price: 3000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
+    row: "shredder", slot: 3, plot: "sorter", gate: DARK, needs: "eddy", price: 3000, deliver_s: 60, kind: "rate", in: ["zorba"], feedBy: "bays",
     out: { zorba: [["twitch", 0.7], ["no2", 0.03], ["brs", 0.04], ["znh", 0.08], ["ss", 0.05]] }, waste: { zorba: [["carrier", 0.1]] },
     rate_kg_s: 1, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 0,
   },
@@ -144,16 +150,10 @@ type PlaceIn = NonNullable<MapWorks['places']>[string];
  * first value the comment says why (the checker is right where a position moves to pass it).
  */
 const WORKS_PLACES: Record<string, [number, number, number, number, Omit<PlaceIn, 'w' | 'd'>]> = {
-  // the south yard (inside the first fence, south of the drive line, by the tipping floor; 3.3)
-  granulator: [26.95, 30.25, 2.5, 2.5, { h: 1.6, solid: false, card: "works", label: "place.granulator" }],
-  shear: [32, 31, 6, 4, { h: 1.8, solid: false, card: "works", label: "place.shear" }],
-  // 3.3's (38, 31.5) put the floor 10.5 m away (3.6 (5): floor-crane at most 10): one metre east
-  crane: [39, 31.5, 4, 4, { h: 6, solid: false, card: "works", label: "place.crane" }],
-  baler: [31.5, 36.75, 5, 3.5, { h: 2, solid: false, card: "works", label: "place.baler" }],
-  depollution: [38.75, 37.75, 5.5, 4.5, { h: 3.2, solid: true, card: "works", label: "place.depollution" }],
-  "depollution.apron": [38.75, 34.75, 5.5, 1.5, { h: 0.05, solid: false, card: false }],
-  elvPad: [42.75, 34.7, 2.5, 4.2, { h: 0.05, solid: false, card: false, label: "place.carPad" }],
-  forklift: [43.75, 38.35, 2.5, 3, { h: 0.05, solid: false, card: false, label: "place.forklift" }],
+  // the south yard (inside the first fence, south of the drive line, by the tipping floor; 3.3). s2e-line (yard-stage2-economy.md
+  // 3.1; RULING2.md 27.3 D6: a plot of something not sold is NOT drawn): the baler's, shear's, granulator's and crane's plots,
+  // the forklift's stand and the car pad leave the stage-2 layer (their plates stay defined and dark; the frozen fixture
+  // src/engine/fixtures/salvage-report9.json keeps the old map for their rules' tests).
   oversize: [47, 35, 6, 3, { h: 0.05, solid: false, card: "lot", label: "place.oversizePad" }],
   crate: [48.9, 35, 2, 2, { h: 0.9, solid: false, card: "crate", label: "place.pickingTable" }],
   // the Yard sale, by the gate in the railed public bay (T7). The rack 0.2 m east of 3.3's 56 so that the gap
@@ -165,22 +165,25 @@ const WORKS_PLACES: Record<string, [number, number, number, number, Omit<PlaceIn
   // the back field (x -56 to 0): plants with their backs on the back wall, in the processes' order westwards
   shredder: [-5, 18.6, 6, 6, { h: 7, solid: true, card: "works", label: "place.shredder" }],
   "shredder.apron": [-5, 22.6, 4, 2, { h: 0.3, solid: false, card: false }],
-  eddy: [-10, 17.6, 4, 4, { h: 4, solid: true, card: "works" }],
-  sorter: [-14.5, 17.6, 5, 4, { h: 4, solid: true, card: "works" }],
+  // s2e-line (3.1): the depollution bay beside the shredder, where the eddy current stood (the eddy current and the sensor
+  // sorter are not sold: not drawn), its back on the wall, touching the shredder house; its apron runs to the works road's north
+  // kerb and is the car's landing: the hook-lift, driving east on the road, sets the car down on it from the stop
+  // `depollution.apron` (no reversing, no forklift). The battery box (pbb's bay: a drained car's battery whole and closed,
+  // sold as it is) stands against the bay's west wall.
+  depollution: [-10.75, 17.85, 5.5, 4.5, { h: 3.2, solid: true, card: "works", label: "place.depollution" }],
+  "depollution.apron": [-10.75, 21.85, 5.5, 3.5, { h: 0.05, solid: false, card: false }],
+  batteryBox: [-14.7, 16.3, 2.4, 1.4, { h: 1.2, solid: true, card: "board" }],
   rotary: [-22.75, 19.1, 8.5, 7, { h: 7, solid: true, card: "works", label: "place.rotaryHall" }],
   "rotary.apron": [-22.75, 23.1, 4, 1, { h: 0.05, solid: false, card: false }],
   "rotary.filter": [-28.75, 17.6, 3.5, 4, { h: 6, solid: true, card: false }],
   induction: [-35, 18.6, 6, 6, { h: 6, solid: true, card: "works", label: "place.inductionHall" }],
   "induction.apron": [-35, 22.6, 3, 2, { h: 0.05, solid: false, card: false }],
   "induction.filter": [-39.5, 17.1, 3, 3, { h: 5, solid: true, card: false }],
-  breaker: [-44.5, 17.6, 4, 4, { h: 4, solid: true, card: "works", label: "place.leadLine" }],
-  batteryBox: [-45.3, 20.3, 2.4, 1.4, { h: 1.2, solid: true, card: "board" }],
-  smelter: [-50, 18.6, 7, 6, { h: 6, solid: true, card: "works" }],
-  "smelter.apron": [-50, 22.6, 3, 2, { h: 0.05, solid: false, card: false }],
-  "smelter.filter": [-54.75, 17.1, 2.5, 3, { h: 5, solid: true, card: false }],
+  // s2e-line (3.1, D6): the lead line (breaker, smelter, their filter and apron, the lead area's line) is not drawn: batteries
+  // and lead wait for stage 3 (RULING2.md 27.3 D2). Its ground west of the induction hall's filter (x -56 to -41) is the room
+  // a fourth hall can stand in later (not drawn now).
   worksBays: [-18.5, 30.6, 33, 3, { h: 1.4, solid: true, card: "board", label: "place.worksBunkers" }],
   worksStillages: [-39.2, 30.6, 8.4, 3, { h: 1.4, solid: true, card: "board" }],
-  leadArea: [-49.6, 23.5, 12.8, 0.1, { h: 0.01, solid: false, card: false }],
   "backfield.sign": [0.6, 33.4, 1.6, 0.4, { h: 2, solid: true, card: false, label: "place.backfield" }],
   // the first yard's padlocked gate becomes the field gateway (3.2): replaces `backfield` from rung 3
   backfield: [0, 37, 1, 6, { h: 2, solid: false, card: false }],
@@ -199,7 +202,8 @@ const MAP_WORKS: MapWorks = {
   driveLine: {
     // the works road (to the first yard's corridor at 39.5), the turning place, the lay-by (3.2)
     rects: [{ x0: -56, y0: 23.6, w: 95.5, d: 4 }, { x0: -56, y0: 27.6, w: 8, d: 4 }, { x0: 8, y0: 27.6, w: 8, d: 4 }],
-    stops: { works: [-20, 25.6], breaker: [-44.5, 25.6], turnWest: [-52, 27.6], southYard: [33, 25.6] },
+    // s2e-line: `depollution.apron`, where the hook-lift stands (heading east, after the turning place) to set a car on the bay's apron
+    stops: { works: [-20, 25.6], breaker: [-44.5, 25.6], turnWest: [-52, 27.6], southYard: [33, 25.6], "depollution.apron": [-10.75, 25.6] },
   },
   laneStops: { van: [67.5, 28.6] },
   roofs: {
@@ -221,7 +225,11 @@ const MAP_WORKS: MapWorks = {
   // the van on the lane's south kerb, along the fence outside, in by the wicket, to the corner
   vanPath: [[67.5, 28.6], [67.5, 37.9], [64, 37.9], [59.2, 39]],
   publicGap_m: 3,
-  forkliftZone: [{ x0: 42.5, y0: 36.85, w: 2.5, d: 3 }, { x0: 29, y0: 29, w: 16, d: 11 }],
+  // s2e-line: no forklift at stage 2 (its zone goes with its stand)
+  forkliftZone: [],
+  // s2e-line: the hook-lift's loop in the turning place (x -56 to -48, y 23.6 to 31.6): west on the road's north half, round,
+  // and out east on its south half to the car's landing (truck.radius 1.3 keeps it inside the drive line; yard_map.py checks it)
+  turnLoop: [[-50, 24.9], [-54.5, 24.9], [-54.5, 30.2], [-49.4, 30.2], [-49.4, 26.3]],
   lane: { garage_m: 430, plumbing_m: 480, barrier_m: 520 },
   // 3.4's walks on the merged map (python3 -I scripts/content/yard_map.py --routes --works; 3.6 (5): scale-crate <= 20, dropoff-reuseRack <= 24, floor-crane <= 10)
   routes: {
@@ -316,7 +324,8 @@ const WORKS_LAYER: WorksLayerInput = {
       trialMass_kg: 138, trialPrice: 150, trialPrepared: 349.2,
       skipMass_kg: 241, skipPrice: 390, skipPrepared: 540.4, skipAsFound: 459.4,
       grows: [
-        { needs: "depollution", body: "flatrack", contents: { elv: 1 } },
+        // s2e-line: cars come only once the shredder line (its item: the shredder) is owned
+        { needs: "shredder", body: "flatrack", contents: { elv: 1 } },
         { needs: "breaker", body: "batteryBox", contents: { pbb: 40 } },
         { needs: "induction", body: "skip", contents: { bushing: 20 } },
       ],

@@ -11,13 +11,14 @@
  * the checks). WAVE 2 (26 Nov): the shop's (shop.ts), the ads' (ads.ts) and the looks' actions, and
  * onAwayClosed (the second session, the away bonus's offer).
  */
-import { financeCheck, letterDue, agreementOf, shownOf } from './bank';
+import { financeCheck, financeKind, letterDue, agreementOf, parkVehicles, shownOf } from './bank';
+import { shopItem } from './ladder';
 import { sell } from './actions';
 import { awayOfferAfter, payAd } from './ads';
 import { lookUsable } from './cardsMoney';
 import { absenceOf, ageBandOf, codeHash, iapDef, quoteState, secondSession, sessions2After, settleState, validCode } from './shop';
 import { begin, finish, spend } from './clock';
-import { checks } from './rate';
+import { checks, own } from './rate';
 import { orderPlate } from './works';
 import type { AdKind, CardContext, FinanceShown, GradeId, LookSlot, PlateId, QuoteOutcome, SalvageConfig, SalvageEvent, SalvageGame, SellShown } from './types';
 
@@ -52,7 +53,9 @@ export function onAwayClosed(cfg: SalvageConfig, g: SalvageGame, closed: NonNull
 export function onSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: string; card?: string; plate?: string }, events?: SalvageEvent[]): SalvageGame {
   // 15.11 f: the shop card's line on an expired quote stands until the card is closed: the screen reports the closing as noteSeen({card: 'shop'}).
   if (seen.card === 'shop' && g.salvage.iap.expired?.length) return { ...g, salvage: { ...g.salvage, iap: { ...g.salvage.iap, expired: [] } } };
-  if (seen.card !== 'works' || !seen.plate || !letterDue(cfg, g, seen.plate)) return g;
+  // s2e-bank (yard-stage2-economy.md 2.14.5): the hook-lift's card at the truck park carries the letter as a plot's card does.
+  const due = seen.card === 'works' ? !!seen.plate && letterDue(cfg, g, seen.plate) : seen.card === 'park' && parkVehicles(cfg, g, seen.place ?? 'park').some((k) => letterDue(cfg, g, k));
+  if (!due) return g;
   events?.push({ type: 'letter' });
   return { ...g, salvage: { ...g.salvage, bank: { ...g.salvage.bank, letterSeen: true } } };
 }
@@ -75,11 +78,23 @@ export function signFinance(cfg: SalvageConfig, g: SalvageGame, plate: PlateId, 
   const x = begin(cfg, g, events, true);
   const t = Math.max(clock, x.s.t);
   spend(x, tm.d);
-  orderPlate(x, plate, t);
+  if (financeKind(x.c, plate) === 'vehicle') orderVehicle(x, plate, t);
+  else orderPlate(x, plate, t);
   x.s.bank.agreement = agreementOf(tm, t);
   x.ev.push({ type: 'financed', plate, F: tm.F, T: tm.T });
   checks(x, t);
   return finish(g, x);
+}
+
+/**
+ * A financed vehicle is ordered exactly as actions.ts `buy` orders it (s2e-bank, 2.14.3 for the hook-lift): on its
+ * way by its carrier for `deliver_s`, then owned at its arrival (the loop's one path), or owned at once with no
+ * delivery time. Nothing financed is ever taken back.
+ */
+function orderVehicle(x: ReturnType<typeof begin>, item: string, t: number): void {
+  const it = shopItem(x.c, item)!;
+  if (it.deliver_s > 0) x.s.arriving.push({ item, by: it.arrive ?? 'truck', place: it.place, since: t, at: t + it.deliver_s });
+  else own(x, item, t);
 }
 
 /**

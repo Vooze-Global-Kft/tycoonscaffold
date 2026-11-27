@@ -794,8 +794,8 @@ export function pathTimes(c: SalvageContent, path: readonly P[], t0: number, vy:
   return at;
 }
 
-/** Where a phase of the driver's trip ends (V1, V2): out and hook at the skip zone, back and weigh on the weighbridge's stop, tip at the floor's stop (never its centre), park in the park. */
-export function tripPhaseEnd(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P): P {
+/** Where a phase of the driver's trip ends (V1, V2): out and hook at the skip zone, back and weigh on the weighbridge's stop, tip at the floor's stop (never its centre) or, for a car, at its landing (s2e-line: `landing`, carLanding), park in the park. */
+export function tripPhaseEnd(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P, landing: CarLanding | null = null): P {
   switch (phase) {
     case 'out':
     case 'hook': {
@@ -806,7 +806,7 @@ export function tripPhaseEnd(c: SalvageContent, phase: string, partner: PartnerI
     case 'weigh':
       return stopOf(c, 'weighbridge');
     case 'tip':
-      return stopOf(c, 'floor');
+      return landing ? landing.stop : stopOf(c, 'floor');
     case 'park':
       return stopOf(c, 'park');
     default:
@@ -814,9 +814,74 @@ export function tripPhaseEnd(c: SalvageContent, phase: string, partner: PartnerI
   }
 }
 
-/** The path of a phase of the driver's trip from where the truck stands at its start (V1): drivePath to the phase's end; a standing phase that starts there: one point. */
-export function tripPhasePath(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P): P[] {
-  const end = tripPhaseEnd(c, phase, partner, slot, from);
-  if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return [{ x: from.x, y: from.y }];
-  return drivePath(c, from, end);
+/**
+ * s2e-line: the way points a phase drives through, from where the truck stands to the phase's end; each pair is driven
+ * along drivePath. Every phase is [from, end], except a car's set-down (`tip` with a landing): the hook-lift drives the works
+ * road west to the turning place, round its loop (map.works.turnLoop) and back east to the landing's stop, so it reaches
+ * the apron driving forward and leaves it forward (no reversing; yard_map.py checks the swept path).
+ */
+export function tripPhaseWay(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P, landing: CarLanding | null = null): P[] {
+  const end = tripPhaseEnd(c, phase, partner, slot, from, landing);
+  if (phase === 'tip' && landing) return [from, ...landing.loop, end];
+  return [from, end];
+}
+
+/** The path of a phase of the driver's trip from where the truck stands at its start (V1): drivePath along its way (tripPhaseWay); a standing phase that starts at its end: one point. */
+export function tripPhasePath(c: SalvageContent, phase: string, partner: PartnerId, slot: number, from: P, landing: CarLanding | null = null): P[] {
+  const way = tripPhaseWay(c, phase, partner, slot, from, landing);
+  const end = way[way.length - 1];
+  if (way.length === 2 && Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return [{ x: from.x, y: from.y }];
+  const out: P[] = [];
+  for (let i = 1; i < way.length; i++) {
+    const leg = drivePath(c, way[i - 1], way[i]);
+    out.push(...(i === 1 ? leg : leg.slice(1)));
+  }
+  return way.length === 2 ? out : tidy(out);
+}
+
+/**
+ * s2e-line (yard-stage2-economy.md 2.7 to 2.9, 3.1; RULING2.md 27.3 D1): WHERE THE HOOK-LIFT SETS A CAR DOWN. The station
+ * plate fed by the truck (`feedBy` 'truck': the depollution bay, part of the shredder line), its stop on the works road
+ * (`map.works.driveLine.stops["<plate>.apron"]`, beside its apron) and the turning loop it drives first
+ * (`map.works.turnLoop`). Null when the content has none (the first yard; the frozen stage-2 content, whose car is set down
+ * on the car pad as before). A pure function of the content (memoised per content object).
+ */
+export interface CarLanding {
+  plate: string;
+  stop: P;
+  loop: readonly P[];
+}
+const LANDINGS = new WeakMap<SalvageContent, CarLanding | null>();
+export function carLanding(c: SalvageContent): CarLanding | null {
+  let v = LANDINGS.get(c);
+  if (v !== undefined) return v;
+  v = null;
+  const W = c.map.works;
+  for (const [id, d] of Object.entries(c.works?.plates ?? {})) {
+    if (d.kind !== 'station' || d.feedBy !== 'truck') continue;
+    const st = (W?.driveLine?.stops as Record<string, [number, number]> | undefined)?.[`${id}.apron`];
+    if (!st) continue;
+    v = { plate: id, stop: { x: st[0], y: st[1] }, loop: (W?.turnLoop ?? []).map(([x, y]) => ({ x, y })) };
+    break;
+  }
+  LANDINGS.set(c, v);
+  return v;
+}
+
+/** The landing of a load (s2e-line): a car's (every thing of it arrives on the flatrack, `arrives` 'pad') when the content sets cars down from the road; else null (tipped on the floor, or landed by works.ts landBody as before). */
+export function loadLanding(c: SalvageContent, contents: Readonly<Record<string, number>> | null | undefined): CarLanding | null {
+  if (!contents) return null;
+  const objs = Object.keys(contents);
+  if (!objs.length || !objs.every((o) => c.objects[o]?.arrives === 'pad')) return null;
+  return carLanding(c);
+}
+
+/** The landing of the truck's trip under way (s2e-line; one function for the rules and the frame): the load aboard, else the full skip it goes for. */
+export function tripLandingOf(c: SalvageContent, s: Pick<SalvageState, 'truck' | 'partners'>): CarLanding | null {
+  const tr = s.truck;
+  if (tr.skip) return loadLanding(c, tr.skip.contents);
+  const trip = tr.trip;
+  if (!trip) return null;
+  const sk = s.partners[trip.partner]?.skips.find((q) => q.slot === trip.slot && q.phase === 'full');
+  return loadLanding(c, sk?.contents);
 }

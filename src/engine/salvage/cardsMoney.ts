@@ -23,14 +23,16 @@
  * the price board's spot buyer beside a held bay's Sell. No card but the shop and the pack sheet carries a
  * real-money button; no card that shows a debt carries a shop entry or an ad button (4.1).
  */
-import { bankDef, financeCheck, financeTerms, shareWords, shownOf } from './bank';
+import { bankDef, bankRow, financeCheck, financeName, financeTerms, keepPerHour, loanFoot, parkVehicles, shareWords, shownOf } from './bank';
+import { contentAt } from './layer';
 import { awayShowsDebt, bonusCard, spotButton } from './ads';
 import { refusalTxt, topRungOf } from './ladder';
-import { headroomU, ratedI, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
+import { PACK_LOAN, headroomU, ratedI, ageDue, blockingWait, countryOn, iapDef, lookProducts, MIN_YEAR, noAdsProduct, packProducts, packS, packsHelpShown, packsShown, packsSwitchShown, quoteCheck, secondSession, shopReachable, standingOf, standingS, yearOf } from './shop';
 import type { AgreementRow, AwayCard, CardButton, CardContext, CardData, CardRef, CardRow, EarnedLookRow, FinanceTerms, LookSlot, PackRow, PlateId, SalvageConfig, SalvageGame, ShopCard, ShopLookRow, TextKey, Txt } from './types';
 
 const btn = (label: Txt, action: CardButton['action'], refusal: Txt | null = null): CardButton => ({ label, action, refusal });
-const plateName = (plate: string): Txt['args'] => ({ plate: { text: `title.works.${plate}` as TextKey } });
+/** The finance card's title argument: a plate's works title, or a financed vehicle's item name (s2e-bank: the hook-lift). */
+const plateName = (cfg: SalvageConfig, g: SalvageGame, plate: string): Txt['args'] => ({ plate: { text: financeName(contentAt(cfg.salvage, g.salvage), plate) } });
 
 /** The finance card (4.5, 2.14.3, 2.14.5): the terms now, Sign carrying them as shown, Not now back to the works card. */
 export function financeCard(cfg: SalvageConfig, g: SalvageGame, plate: string): CardData {
@@ -38,8 +40,10 @@ export function financeCard(cfg: SalvageConfig, g: SalvageGame, plate: string): 
   const tm = financeTerms(cfg, g, plate);
   const ch = financeCheck(cfg, g, plate, null);
   const refusal = refusalTxt(ch);
-  const notNow = btn({ key: 'card.notNow' }, { act: 'open', card: { kind: 'works', plate } });
-  const base: CardData = { kind: 'finance', shape: 'centred', title: { key: 'title.finance', args: plateName(plate) }, lead: [], rows: [], foot: [notNow], showsDebt: true };
+  // s2e-bank: a financed vehicle's "Not now" goes back to its place's card (the truck park), a plate's to its works card.
+  const it = contentAt(c, g.salvage).works?.plates[plate] ? null : [...contentAt(c, g.salvage).shop].find((i) => i.key === plate);
+  const notNow = btn({ key: 'card.notNow' }, { act: 'open', card: it ? { kind: 'place', place: it.place } : { kind: 'works', plate } });
+  const base: CardData = { kind: 'finance', shape: 'centred', title: { key: 'title.finance', args: plateName(cfg, g, plate) }, lead: [], rows: [], foot: [notNow], showsDebt: true };
   if (!tm) return { ...base, lead: refusal ? [refusal] : [] };
   const share = bankDef(c)?.share ?? 0;
   const finance: FinanceTerms = {
@@ -60,7 +64,10 @@ export function financeCard(cfg: SalvageConfig, g: SalvageGame, plate: string): 
     refusal,
   };
   const rule: Txt = { key: 'card.finance.rule', args: { share: shareWords(c), x: { money: tm.T } } };
-  return { ...base, lead: [rule], finance, foot: [finance.sign, notNow] };
+  // s2e-bank (yard-stage2-economy.md 2.14.5): "While it is repaid you keep about §y an hour", y = I − share × G_r as computed (bank.ts keepPerHour).
+  const y = keepPerHour(cfg, g);
+  const keep: Txt[] = y === null ? [] : [{ key: 'card.letter.keep', args: { x: { money: y } } }];
+  return { ...base, lead: [rule, ...keep], finance, foot: [finance.sign, notNow] };
 }
 
 /** The lender's letter (4.5, 2.14.5): a centred card, once; it lends, it does not owe (no debt shown). */
@@ -130,6 +137,13 @@ export function lookUsable(cfg: SalvageConfig, g: SalvageGame, slot: LookSlot, i
  * `iap.maxStanding` quotes stand; noRoom ("Nothing to spend it on yet") above headroom. `updated` is the
  * screen's to keep from a quoteUpdated refusal while the card is open (null here).
  */
+/**
+ * s2e-bank (RULING2 27.3 D7): a pack row while a Bank loan is open: no Buy, the line `card.shop.loanOpen` ("Not while a
+ * Bank loan is open"), never "Nothing to spend it on yet". STAND-IN: types.ts (closed to this package) does not list
+ * the state yet; requests.md asks its owner to add 'loanOpen' to PackRow.state, and the cast then goes.
+ */
+export const PACK_ROW_LOAN = 'loanOpen' as unknown as PackRow['state'];
+
 export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: CardContext): PackRow[] {
   const I = ratedI(cfg, g);
   const U = headroomU(cfg, g);
@@ -142,6 +156,7 @@ export function packRows(cfg: SalvageConfig, g: SalvageGame, now: number, ctx: C
     }
     // join2b (the lead, 11:50): past its 24 hours a waiting quote no longer blocks Buy; while it stands the row says so.
     const also = standingOf(g, product).some((q) => q.state === 'waiting') ? { alsoWaiting: true as const } : {};
+    if (ch.refusal?.key === PACK_LOAN) return { product, H, S, state: PACK_ROW_LOAN, ...also, updated: null, button: null };
     if (ch.refusal) return { product, H, S, state: 'noRoom', ...also, updated: null, button: null };
     return { product, H, S, state: 'offer', ...also, updated: null, button: btn({ key: 'card.shop.buy' }, { act: 'buyPack', product, S }) };
   });
@@ -264,6 +279,12 @@ export function moneyOver(cfg: SalvageConfig, g: SalvageGame, card: CardData, no
   void now;
   let showsDebt = card.showsDebt ?? false;
   if (card.kind === 'away' && card.away) showsDebt = awayShowsDebt(g, card.away as AwayCard);
+  // s2e-bank (yard-stage2-economy.md 2.14.5): the hook-lift's finance row on the truck park's card, as on a plot's card; its open loan shows a debt.
+  if (card.kind === 'park') {
+    const fin = parkFinanceRows(cfg, g);
+    if (fin.rows.length) card = { ...card, rows: [...card.rows.filter((r) => !r.id.startsWith(MONEY_ROW)), ...fin.rows] };
+    if (fin.debt) showsDebt = true;
+  }
   const out: CardData = { ...card, showsDebt };
   if (showsDebt) return out;
   const rows = card.rows.filter((r) => !r.id.startsWith(MONEY_ROW));
@@ -293,6 +314,31 @@ export function moneyOver(cfg: SalvageConfig, g: SalvageGame, card: CardData, no
     out.board = { ...card.board, rows: card.board.rows.map((r) => ({ ...r, spot: r.sell ? spotButton(cfg, g, r.grade) : null })) };
   }
   return out;
+}
+
+/**
+ * THE TRUCK PARK'S FINANCE ROWS (s2e-bank; 2.14.5 as on a works card's foot): for each financeable vehicle of the park
+ * (the hook-lift, from the works' opening), while its agreement is open "Bank loan · §left left of §T" (it opens the
+ * Agreements page; the card then shows a debt); else, while the loan is offered (bank.ts loanFoot: the letter seen,
+ * P > cash − reserve), a row named for the vehicle whose line is "Save up (about x)" and whose button is "Bank loan"
+ * (greyed with "You pay now §d · §x more" or bankOne's words, as on a plot's card). Nothing otherwise.
+ */
+export function parkFinanceRows(cfg: SalvageConfig, g: SalvageGame, place = 'park'): { rows: CardRow[]; debt: boolean } {
+  const rows: CardRow[] = [];
+  let debt = false;
+  for (const key of parkVehicles(cfg, g, place)) {
+    const open = bankRow(g, key);
+    if (open) {
+      debt = true;
+      rows.push({ id: `${MONEY_ROW}bank.${key}`, name: { key: 'card.works.bankLeft', args: { left: { money: open.left }, total: { money: open.T } } }, line: null, button: btn({ key: 'open' }, { act: 'open', card: { kind: 'office', tab: 'agreements' } }), icon: null, state: 'info' });
+      continue;
+    }
+    const f = loanFoot(cfg, g, key);
+    if (!f.loan) continue;
+    const name: Txt = { key: financeName(contentAt(cfg.salvage, g.salvage), key) };
+    rows.push({ id: `${MONEY_ROW}loan.${key}`, name, line: f.saveUp_s !== null ? { key: 'card.works.saveUp', args: { t: { secs: f.saveUp_s } } } : null, button: f.loan, icon: null, state: 'info' });
+  }
+  return { rows, debt };
 }
 
 /** "Start the yard again"'s confirming card says that bought scrip and waiting purchases go with the yard (P16): from the second session (where anything could have been bought). */

@@ -295,6 +295,10 @@ export const TEXT_KEYS = {
     'card.finance.charge',
     'card.finance.total',
     'card.finance.rule',
+    // s2e-bank (yard-stage2-economy.md 2.14.5): "While it is repaid you keep about {x} an hour", a line of the FINANCE card
+    // (cardsMoney.ts financeCard's lead); named card.letter.* so that check.ts gives it the finance card's two-line centred box
+    // (centredTwo: "the finance card's rule, the letter's lines"); card.finance.* is the 14-character label column.
+    'card.letter.keep',
     'card.agreements.row',
     'card.agreements.repay',
     'card.agreements.left',
@@ -365,6 +369,10 @@ export const TEXT_KEYS = {
     'card.code.confirm',
     'card.code.enter',
     'card.restart.packLost',
+    // s2e-bank (RULING2 27.3 D7): a pack row while a Bank loan is open, and its refusal's words. STAND-IN: 'refusal.packLoan'
+    // moves to the derived `refusal` group (and leaves this one) once refusals.ts lists 'packLoan' (requests.md).
+    'card.shop.loanOpen',
+    'refusal.packLoan',
   ],
   /** 2.16, 4.9: rewarded ads. */
   ad: ['card.ad.spot', 'card.ad.bonus', 'card.ad.video', 'card.ad.take', 'card.ad.amount', 'card.ad.notReady'],

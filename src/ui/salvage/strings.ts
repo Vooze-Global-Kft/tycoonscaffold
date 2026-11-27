@@ -595,6 +595,7 @@ export const TEXT = {
   'card.finance.charge': 'Charge',
   'card.finance.total': 'You repay',
   'card.finance.rule': '{share} of each sale goes to the bank until {x} is repaid. No date.', // the lead's fixed sentence
+  'card.letter.keep': 'While it is repaid you keep about {x} an hour', // s2e-bank (economy 2.14.5): the FINANCE card's line under its rule (the centred box); x: { money } = I − share × G_r, as computed
   'card.agreements.row': '{bank} · {plate}',
   'card.agreements.repay': 'You repay {total} · repaid {taken}',
   'card.agreements.left': '{left} left · {share} of each sale', // share: { text: 'share.fifthIn' }
@@ -663,6 +664,8 @@ export const TEXT = {
   'card.code.confirm': 'Enter it again',
   'card.code.enter': 'Enter the code',
   'card.restart.packLost': 'Bought {currency}, and any purchase still waiting for approval, stay with this yard and are lost if it starts again.', // P16
+  'card.shop.loanOpen': 'Not while a Bank loan is open', // s2e-bank (RULING2 27.3 D7): a pack row while an agreement is open; never "Nothing to spend it on yet"
+  'refusal.packLoan': 'Not while a Bank loan is open', // s2e-bank (D7): the pack's refusal while an agreement is open
 
   // --- ads (2.16, 4.9) ---
   'card.ad.spot': 'Video · +{x}', // the spot buyer beside a held bay's Sell

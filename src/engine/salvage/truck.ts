@@ -12,7 +12,8 @@ import { laneM, legM, routeM, driverRoundF, pieceCount, pieceSpec } from './cont
 import { atPlace } from './machines';
 import { resolveGrams, roundMoney } from './money';
 import { contentsMass_g, fullestSkip, pickFromRung, ratedLoadNet, setSkipDown } from './partners';
-import { driveSplit, pointOf, siteRect, skipZone, stopOf, tripPhaseEnd } from './positions';
+import { driveSplit, loadLanding, nearPlace, pointOf, siteRect, skipZone, stopOf, tripLandingOf, tripPhaseEnd, tripPhaseWay, type CarLanding } from './positions';
+import { REFUSAL_KEYS_V3 } from './refusals';
 import { floorMass_g, floorSlot } from './things';
 import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
@@ -238,7 +239,30 @@ export function truckBossStep(x: Ctx, t: number): void {
     s.act = { kind: 'weigh', target: 'weighbridge', since: t, endsAt: t + x.c.weigh_s };
     return;
   }
+  // s2e-line (RULING2.md 27.3 D1): a car on the flatrack is set down on the bay's own apron, never at the floor: the boss
+  // standing at the wheel within reach of the apron (weighed first, as any load) sets it down there.
+  const landing = tr.skip ? loadLanding(x.c, tr.skip.contents) : null;
+  if (tr.skip && landing && nearPlace(x.c, `${landing.plate}.apron`, p.x, p.y, x.c.reach.place + x.c.truck.radius)) {
+    if (!tr.skip.weighed) {
+      if (s.act.target !== 'refused.apron') {
+        x.ev.push({ type: 'refused', key: 'weighFirst', args: {}, retry: null });
+        s.act = { kind: 'drive', target: 'refused.apron', since: t, endsAt: null };
+      }
+      return;
+    }
+    s.act = { kind: 'tip', target: `${landing.plate}.apron`, since: t, endsAt: t + x.c.truck.handle_s };
+    return;
+  }
   if (tr.skip && atPlace(x, 'floor', p.x, p.y, x.c.reach.place + x.c.truck.radius)) {
+    if (landing) {
+      // At the floor with a car aboard: nothing is tipped; the screen says where it goes once the words exist (refusal
+      // 'toApron', asked of the refusals' owner: read at run time, so nothing breaks before it is listed).
+      if (s.act.target !== 'refused.floor' && hasRefusal('toApron')) {
+        x.ev.push({ type: 'refused', key: 'toApron' as RefusalKey, args: {}, retry: null });
+        s.act = { kind: 'drive', target: 'refused.floor', since: t, endsAt: null };
+      }
+      return;
+    }
     if (!tr.skip.weighed) {
       if (s.act.target !== 'refused.floor') {
         x.ev.push({ type: 'refused', key: 'weighFirst', args: {}, retry: null });
@@ -248,6 +272,11 @@ export function truckBossStep(x: Ctx, t: number): void {
     }
     s.act = { kind: 'tip', target: 'floor', since: t, endsAt: t + x.c.truck.handle_s };
   }
+}
+
+/** s2e-line: is a refusal key listed (refusals.ts)? A key asked of its owner is used only once it exists. */
+function hasRefusal(key: string): boolean {
+  return (REFUSAL_KEYS_V3 as readonly string[]).includes(key);
 }
 
 /** A boss act of the truck ends. */
@@ -270,7 +299,11 @@ export function leaveTruck(x: Ctx, at: { x: number; y: number; heading: number }
     tr.heading = at.heading;
   }
   // owner1 T2: stepping out with a skip aboard not yet weighed or tipped says the load's next step (a toast).
-  if (tr.by === 'boss' && tr.skip && x.c.truck.yardV !== undefined) x.ev.push({ type: 'refused', key: tr.skip.weighed ? 'toFloor' : 'toWeighbridge', args: {}, retry: null });
+  if (tr.by === 'boss' && tr.skip && x.c.truck.yardV !== undefined) {
+    // s2e-line: a weighed car goes to the bay's apron, not the floor (its words once 'toApron' is listed; until then the floor's).
+    const toApron = tr.skip.weighed && loadLanding(x.c, tr.skip.contents) && hasRefusal('toApron');
+    x.ev.push({ type: 'refused', key: (toApron ? 'toApron' : tr.skip.weighed ? 'toFloor' : 'toWeighbridge') as RefusalKey, args: {}, retry: null });
+  }
   tr.by = null;
   tr.hookSince = null;
   // Entering is disarmed until he has walked away from it (hand.ts bossStep; the world's rule, 17:30).
@@ -309,7 +342,7 @@ function driveS(x: Ctx, from: { x: number; y: number }, to: { x: number; y: numb
  * weighbridge, weighbridge-floor and floor-park and the lane twice, at driverV), so the trip's total, at every level and
  * boost, is unchanged, while the yard part alone takes less than that time (else the lane at truck.laneMaxF times his speed).
  */
-function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slot: number): { vy: number; vl: number } {
+function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slot: number, landing: CarLanding | null = null): { vy: number; vl: number } {
   const c = x.c;
   const v = driverV(x);
   const vy = Math.min(c.truck.yardV ?? v, v);
@@ -319,11 +352,14 @@ function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slo
   let lane = 0;
   let at = from;
   for (const ph of ['out', 'back', 'tip', 'park']) {
-    const end = tripPhaseEnd(c, ph, partner, slot, at);
-    const L = driveSplit(c, at, end);
-    yard += L.yard;
-    lane += L.lane;
-    at = end;
+    // s2e-line: a phase's drive along its way (a car's set-down: round the turning loop to the apron's stop).
+    const way = tripPhaseWay(c, ph, partner, slot, at, landing);
+    for (let i = 1; i < way.length; i++) {
+      const L = driveSplit(c, way[i - 1], way[i]);
+      yard += L.yard;
+      lane += L.lane;
+    }
+    at = way[way.length - 1];
   }
   if (lane <= 0) return { vy, vl: v };
   // The lane takes what the yard leaves of the drive's old time; only when the yard alone takes all of it (a very high
@@ -336,15 +372,25 @@ function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slo
 /** The trip's speeds (its own, else, for a save made before them, computed now from the park). */
 function speedsOf(x: Ctx): { vy: number; vl: number } {
   const trip = x.s.truck.trip!;
-  return trip.speeds ?? (trip.speeds = tripSpeeds(x, pt(x, 'park'), trip.partner, trip.slot));
+  return trip.speeds ?? (trip.speeds = tripSpeeds(x, pt(x, 'park'), trip.partner, trip.slot, tripLandingOf(x.c, x.s)));
 }
 
 /** owner1 V1 to V3: the drive of a phase from where the truck stands to the phase's end (tripPhaseEnd), seconds. */
 function phaseDrive(x: Ctx, phase: string, from: { x: number; y: number }): number {
   const trip = x.s.truck.trip!;
-  const end = tripPhaseEnd(x.c, phase, trip.partner, trip.slot, from);
-  if (Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
-  return driveS(x, from, end, speedsOf(x));
+  // s2e-line: a car's set-down drives its way (round the turning loop to the apron's stop); every other phase [from, end].
+  const way = tripPhaseWay(x.c, phase, trip.partner, trip.slot, from, phase === 'tip' ? tripLandingOf(x.c, x.s) : null);
+  const end = way[way.length - 1];
+  if (way.length === 2 && Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
+  let s = 0;
+  for (let i = 1; i < way.length; i++) s += driveS(x, way[i - 1], way[i], speedsOf(x));
+  return s;
+}
+
+/** s2e-line: where the truck stands when its load is down (the floor's stop, or a car's landing stop). */
+function tipStop(x: Ctx): { x: number; y: number } {
+  const L = tripLandingOf(x.c, x.s);
+  return L ? L.stop : stopOf(x.c, 'floor');
 }
 
 /** May the idle driver depart now (2.12)? The partner whose skip has been full longest, cash and room allowing; earmarked at departure. */
@@ -380,7 +426,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
   const walk = legM(x.c, from, { x: tr.x, y: tr.y }) / x.c.crew.hand.v / driverF(x);
   tr.trip = { partner: best.partner, slot: sk.slot, phase: 'walk', t0: t, endsAt: t + walk };
-  if (yardLimit(x)) tr.trip.speeds = tripSpeeds(x, { x: tr.x, y: tr.y }, best.partner, sk.slot);
+  if (yardLimit(x)) tr.trip.speeds = tripSpeeds(x, { x: tr.x, y: tr.y }, best.partner, sk.slot, loadLanding(x.c, sk.contents));
   d.job = 'drive';
   d.phase = 'wait';
   d.from = { xy: [from.x, from.y] };
@@ -527,7 +573,7 @@ function planTrip(x: Ctx, t: number): void {
     // V1 to V3: each phase's drive along its own path, from where the previous one ended.
     const z = skipZone(x.c, trip.partner, trip.slot);
     const wb = stopOf(x.c, 'weighbridge');
-    const fl = stopOf(x.c, 'floor');
+    const fl = tipStop(x);
     add(phaseDrive(x, 'out', { x: tr.x, y: tr.y }));
     add(x.c.truck.handle_s / F);
     add(phaseDrive(x, 'back', { x: z.x, y: z.y }));
@@ -542,8 +588,9 @@ function planTrip(x: Ctx, t: number): void {
   add(x.c.truck.handle_s / F);
   add((laneM(x.c, trip.partner) + routeM(x.c, 'gate', 'weighbridge')) / v);
   add(x.c.weigh_s / F);
-  add(routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s / F);
-  add(routeM(x.c, 'floor', 'park') / v);
+  const L = tripLandingOf(x.c, x.s);
+  add((L ? legM(x.c, pt(x, 'weighbridge'), L.stop) : routeM(x.c, 'weighbridge', 'floor')) / v + x.c.truck.handle_s / F);
+  add((L ? legM(x.c, L.stop, pt(x, 'park')) : routeM(x.c, 'floor', 'park')) / v);
   trip.plan = { t0: t, ends: e, x: tr.x, y: tr.y };
 }
 
@@ -599,9 +646,11 @@ export function showTrip(x: Ctx): void {
   trip.endsAt = plan.ends[i];
   const z = skipZone(x.c, trip.partner, trip.slot);
   // Where the truck stands at the phase's start (V1: back starts at the skip, tip on the weighbridge's stop, park at the floor's stop).
+  // s2e-line: a car's trip parks from its landing's stop (the planned trip's load: the skip at its slot until the replay hooks it).
+  const L = tripLandingOf(x.c, x.s);
   const at = yardLimit(x)
-    ? i <= 1 ? { x: plan.x, y: plan.y } : i <= 3 ? { x: z.x, y: z.y } : i <= 5 ? stopOf(x.c, 'weighbridge') : stopOf(x.c, 'floor')
-    : i <= 1 ? { x: plan.x, y: plan.y } : i === 2 ? { x: z.x, y: z.y } : i === 3 ? pt(x, 'gate') : i === 4 ? pt(x, 'weighbridge') : pt(x, 'floor');
+    ? i <= 1 ? { x: plan.x, y: plan.y } : i <= 3 ? { x: z.x, y: z.y } : i <= 5 ? stopOf(x.c, 'weighbridge') : L ? L.stop : stopOf(x.c, 'floor')
+    : i <= 1 ? { x: plan.x, y: plan.y } : i === 2 ? { x: z.x, y: z.y } : i === 3 ? pt(x, 'gate') : i === 4 ? pt(x, 'weighbridge') : L ? L.stop : pt(x, 'floor');
   tr.x = at.x;
   tr.y = at.y;
 }
@@ -662,7 +711,6 @@ export function driverLegEnd(x: Ctx, t: number): void {
     // owner1 V1 to V3: each phase drives its own path from where the truck stands (the frame draws the same path).
     const here = { x: tr.x, y: tr.y };
     const wb = stopOf(x.c, 'weighbridge');
-    const fl = stopOf(x.c, 'floor');
     switch (trip.phase) {
       case 'walk':
         next('out', phaseDrive(x, 'out', here));
@@ -681,10 +729,13 @@ export function driverLegEnd(x: Ctx, t: number): void {
         bridgeWeigh(x, t);
         next('tip', phaseDrive(x, 'tip', wb) + x.c.truck.handle_s / F, wb);
         return;
-      case 'tip':
+      case 'tip': {
+        // s2e-line: the truck stands where its load went down (the floor's stop, or a car's landing stop) before tipNow empties it.
+        const fl = tipStop(x);
         tipNow(x, t);
         next('park', phaseDrive(x, 'park', fl), fl);
         return;
+      }
       case 'park':
         break;
     }
@@ -705,14 +756,18 @@ export function driverLegEnd(x: Ctx, t: number): void {
     case 'back':
       next('weigh', x.c.weigh_s / F, pt(x, 'weighbridge'));
       return;
-    case 'weigh':
+    case 'weigh': {
       bridgeWeigh(x, t);
-      next('tip', routeM(x.c, 'weighbridge', 'floor') / v + x.c.truck.handle_s / F, pt(x, 'floor'));
+      const L = tripLandingOf(x.c, x.s);
+      next('tip', (L ? legM(x.c, pt(x, 'weighbridge'), L.stop) : routeM(x.c, 'weighbridge', 'floor')) / v + x.c.truck.handle_s / F, L ? L.stop : pt(x, 'floor'));
       return;
-    case 'tip':
+    }
+    case 'tip': {
+      const L = tripLandingOf(x.c, x.s);
       tipNow(x, t);
-      next('park', routeM(x.c, 'floor', 'park') / v, pt(x, 'floor'));
+      next('park', (L ? legM(x.c, L.stop, pt(x, 'park')) : routeM(x.c, 'floor', 'park')) / v, L ? L.stop : pt(x, 'floor'));
       return;
+    }
     case 'park': {
       const park = pt(x, 'park');
       tr.x = park.x;

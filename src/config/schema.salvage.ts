@@ -303,6 +303,12 @@ export const MapWorksSchema = z.object({
   publicGap_m: z.number().nonnegative(),
   /** The ground the forklift drives (3.6 (6)): its bay and the south-yard rects between its pads. */
   forkliftZone: z.array(mapRect).default([]),
+  /**
+   * s2e-line (yard-stage2-economy.md 3.1; yard-stage2.md 3.6's swept path): the hook-lift's loop round the turning place, the
+   * way points it drives in order on its way to a car's landing (it turns there and comes back east, so it sets the car down on
+   * the apron driving forward and leaves forward: no reversing). Absent: no car is set down from the works road.
+   */
+  turnLoop: z.array(xy).optional(),
   lane: z.record(id, z.number().nonnegative()).default({}),
   routes: z.record(z.string(), z.number().nonnegative()).default({}),
   /** The second hero frame (3.5): the rotary hall, its filter and its apron whole. */
@@ -800,8 +806,18 @@ export const PlateSchema = z.object({
   deliver_s: z.number().nonnegative(),
   kind: z.enum(['rate', 'batch', 'station', 'assay', 'handling']),
   in: z.array(id),
-  /** Who feeds it: yard hands, the bays (back field), the line's stream, or (s2a-fix) the forklift only (the depollution bay's car, set on its apron from the car pad; no yard hand is ever sent to it). */
-  feedBy: z.enum(['hands', 'bays', 'stream', 'forklift']).nullable(),
+  /**
+   * Who feeds it: yard hands, the bays (back field), the line's stream, (s2a-fix) the forklift only (the depollution bay's
+   * car, set on its apron from the car pad; no yard hand is ever sent to it), or (s2e-line, yard-stage2-economy.md 2.7 and
+   * 3.1; RULING2 27.3 D1) the hook-lift itself: the truck sets each car down on the bay's own apron (no forklift, no pad).
+   */
+  feedBy: z.enum(['hands', 'bays', 'stream', 'forklift', 'truck']).nullable(),
+  /**
+   * s2e-line (yard-stage2-economy.md 2.6.4's entry rule, 2.7 to 2.9: "a chain whose parts cannot work alone is sold as ONE
+   * item"; RULING2 27.2 b, 27.3 D1): the plates ordered, set down and started up WITH this one. They have no shop item on
+   * sale of their own (their gate is past the ladder); this plate's shop item, price and card are the line's.
+   */
+  with: z.array(id).optional(),
   out: z.record(id, Shares).default({}),
   waste: z.record(id, Shares).default({}),
   reagents: z.array(z.tuple([id, z.number().nonnegative(), z.number().nonnegative()])).default([]),
@@ -1394,7 +1410,21 @@ export function lintStage2(s0: SalvageContent): string[] {
       for (const i of p.in) if (!p.out[i]) out.push(`works.plates.${pid}.out has no entry for its input "${i}" (out is given per input, E7)`);
       for (const k of Object.keys(p.out)) if (!p.in.includes(k)) out.push(`works.plates.${pid}.out names "${k}", which is not one of its inputs`);
     }
-    if (!mapPlaces.has(p.plot)) out.push(`works.plates.${pid}.plot "${p.plot}" is not a map point of either layer`);
+    // s2e-line (RULING2 27.3 D6): a plot of something not sold is NOT drawn, so a plate the stage does not sell (its gate past
+    // the ladder, and no part of a sold line) needs no place on the map; every sold plate, and every part of a sold line, does.
+    const lineOf = Object.entries(plates).find(([, q]) => q.with?.includes(pid))?.[0];
+    const drawn = rungOf(p.gate) <= (s.ladder.topRung ?? 3) || (lineOf !== undefined && rungOf(plates[lineOf].gate) <= (s.ladder.topRung ?? 3));
+    if (drawn && !mapPlaces.has(p.plot)) out.push(`works.plates.${pid}.plot "${p.plot}" is not a map point of either layer`);
+    for (const q of p.with ?? []) {
+      const qd = plates[q];
+      if (!qd) out.push(`works.plates.${pid}.with "${q}" is not a plate`);
+      else {
+        if (rungOf(qd.gate) <= (s.ladder.topRung ?? 3)) out.push(`works.plates.${q} is part of ${pid}'s line but has a shop item on sale of its own (gate ${qd.gate}): nothing of a line is bought alone`);
+        if (qd.with?.length) out.push(`works.plates.${q} is part of ${pid}'s line and has a line of its own`);
+        if (qd.financeable) out.push(`works.plates.${q} is part of ${pid}'s line: the line's item carries financeable, not its part`);
+        if (Object.entries(plates).some(([o, od]) => o !== pid && od.with?.includes(q))) out.push(`works.plates.${q} is part of two lines`);
+      }
+    }
     if (p.needs && !plates[p.needs]) out.push(`works.plates.${pid}.needs "${p.needs}" is not a plate`);
     for (const [k, q] of Object.entries(p.feeds ?? {})) {
       if (!plates[q]) out.push(`works.plates.${pid}.feeds.${k} "${q}" is not a plate`);
