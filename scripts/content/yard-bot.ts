@@ -308,7 +308,7 @@ function walkSection(L: string[], all: Summary[]): void {
 // ============================================================================================ stage 2 (yard-stage2.md 8.2; content2-bots)
 
 /** The bots of 8.2's table, each a habit on the first yard's normal hand unless it names another hand. */
-type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise';
+type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise' | 'old';
 const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   normal: {},
   brisk: { hand: 'brisk' },
@@ -328,6 +328,8 @@ const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   flat: {},
   behind: {},
   noise: {},
+  // old: the yard hands' order of work before RULING2.md 17 (crew.orderFromRung beyond the ladder), from the first minute (16.7)
+  old: {},
 };
 /** The bots a plain --stage 2 call runs (the variants are asked for by name). */
 const DEFAULT2: Bot2[] = ['normal', 'brisk', 'slow', 'manager', 'always', 'packs', 'ads', 'racker', 'cutter', 'holder', 'steelMax', 'leadCut'];
@@ -355,6 +357,7 @@ function variant(cfg: R.SalvageConfig, which: Bot2): R.SalvageConfig {
   if (which === 'leadCut') return leadCut(cfg);
   if (which === 'flat') return { ...cfg, salvage: { ...c, board: { ...c.board, a: 0 } } } as R.SalvageConfig;
   if (which === 'behind') return { ...cfg, salvage: { ...c, group: { ...c.group, ahead: false } } } as R.SalvageConfig;
+  if (which === 'old') return { ...cfg, salvage: { ...c, crew: { ...c.crew, orderFromRung: 99 } } } as R.SalvageConfig;
   if (which === 'noise') return { ...cfg, salvage: { ...c, crew: { ...c.crew, cutter: { ...c.crew.cutter, share: c.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig;
   return cfg;
 }
