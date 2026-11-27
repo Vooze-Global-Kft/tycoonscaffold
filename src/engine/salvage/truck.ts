@@ -343,10 +343,13 @@ function driveS(x: Ctx, from: { x: number; y: number }, to: { x: number; y: numb
  * boost, is unchanged, while the yard part alone takes less than that time (else the lane at truck.laneMaxF times his speed).
  */
 function tripSpeeds(x: Ctx, from: { x: number; y: number }, partner: string, slot: number, landing: CarLanding | null = null): { vy: number; vl: number } {
-  const c = x.c;
-  const v = driverV(x);
+  return tripSpeedsAt(x.c, driverV(x), from, partner, slot, landing);
+}
+
+/** tripSpeeds at the driver's speed v (s2e-rate: the one computation the dated trip and rated income's round both read). */
+function tripSpeedsAt(c: SalvageContent, v: number, from: { x: number; y: number }, partner: string, slot: number, landing: CarLanding | null): { vy: number; vl: number } {
   const vy = Math.min(c.truck.yardV ?? v, v);
-  const gate = pt(x, 'gate');
+  const gate = pointOf(c, 'gate');
   const D = (routeM(c, 'park', 'gate', from, gate) + 2 * laneM(c, partner) + routeM(c, 'gate', 'weighbridge') + routeM(c, 'weighbridge', 'floor') + routeM(c, 'floor', 'park')) / v;
   let yard = 0;
   let lane = 0;
@@ -379,12 +382,51 @@ function speedsOf(x: Ctx): { vy: number; vl: number } {
 function phaseDrive(x: Ctx, phase: string, from: { x: number; y: number }): number {
   const trip = x.s.truck.trip!;
   // s2e-line: a car's set-down drives its way (round the turning loop to the apron's stop); every other phase [from, end].
-  const way = tripPhaseWay(x.c, phase, trip.partner, trip.slot, from, phase === 'tip' ? tripLandingOf(x.c, x.s) : null);
+  return phaseDriveAt(x.c, phase, trip.partner, trip.slot, from, phase === 'tip' ? tripLandingOf(x.c, x.s) : null, () => speedsOf(x));
+}
+
+/** phaseDrive's drive for a given trip (s2e-rate: the one computation the dated trip and rated income's round both read); `sp` is asked only when the truck moves. */
+function phaseDriveAt(c: SalvageContent, phase: string, partner: string, slot: number, from: { x: number; y: number }, landing: CarLanding | null, sp: () => { vy: number; vl: number }): number {
+  const way = tripPhaseWay(c, phase, partner, slot, from, landing);
   const end = way[way.length - 1];
   if (way.length === 2 && Math.hypot(end.x - from.x, end.y - from.y) < 1e-6) return 0;
   let s = 0;
-  for (let i = 1; i < way.length; i++) s += driveS(x, way[i - 1], way[i], speedsOf(x));
+  for (let i = 1; i < way.length; i++) {
+    const L = driveSplit(c, way[i - 1], way[i]);
+    const q = sp();
+    s += L.yard / q.vy + L.lane / q.vl;
+  }
   return s;
+}
+
+/**
+ * s2e-rate (yard-stage2-economy.md 2.3 item 1; RULING2.md 27.4): THE HIRED DRIVER'S ROUND for one skip of `partner` at `slot`
+ * as the dated trip runs it (planTrip from the park, where the driver stands after every trip: no walk), at driver level
+ * `level` and no foreman's boost (rated income reads assets only): the seconds to the hook's end, to the tip's end, and the
+ * whole trip. Each phase's drive is phaseDriveAt at tripSpeedsAt's speeds (owner1 V1 to V3: inside the fence at
+ * truck.yardV, the lane at what the yard leaves of the old time), the hook and the tip handle_s / F, the weigh weigh_s / F.
+ * Without the yard's speed limit (truck.yardV absent) the first yard's legs at the driver's one speed, as planTrip.
+ */
+export function driverRoundS(c: SalvageContent, partner: string, slot: number, level: number): { hookS: number; tipS: number; trip: number } {
+  const F = driverRoundF(c, level);
+  const v = c.truck.v * c.truck.driverFactor * F;
+  const park = pointOf(c, 'park');
+  const hook = c.truck.handle_s / F;
+  const weigh = c.weigh_s / F;
+  if (c.truck.yardV === undefined) {
+    const out = (routeM(c, 'park', 'gate', park, pointOf(c, 'gate')) + laneM(c, partner)) / v;
+    const back = (laneM(c, partner) + routeM(c, 'gate', 'weighbridge')) / v;
+    const tipS = out + hook + back + weigh + routeM(c, 'weighbridge', 'floor') / v + hook;
+    return { hookS: out + hook, tipS, trip: tipS + routeM(c, 'floor', 'park') / v };
+  }
+  let sp: { vy: number; vl: number } | null = null;
+  const speeds = () => (sp ??= tripSpeedsAt(c, v, park, partner, slot, null));
+  const z = skipZone(c, partner, slot);
+  const out = phaseDriveAt(c, 'out', partner, slot, park, null, speeds);
+  const back = phaseDriveAt(c, 'back', partner, slot, { x: z.x, y: z.y }, null, speeds);
+  const tip = phaseDriveAt(c, 'tip', partner, slot, stopOf(c, 'weighbridge'), null, speeds) + hook;
+  const tipS = out + hook + back + weigh + tip;
+  return { hookS: out + hook, tipS, trip: tipS + phaseDriveAt(c, 'park', partner, slot, stopOf(c, 'floor'), null, speeds) };
 }
 
 /** s2e-line: where the truck stands when its load is down (the floor's stop, or a car's landing stop). */
@@ -410,7 +452,7 @@ export function driverDepart(x: Ctx, t: number): boolean {
       if (!x.c.partners[id]) continue;
       const sk = fullestSkip(x, id);
       if (!sk || hookRefusal(x, id, false, floor)) continue;
-      if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+      if (fullerFirst(sk.fullAt, best)) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
     }
   // RULING2.md 22 E4 (a): from the works' opening the rule's choice stands only while every other waiting partner can still be served within truck.fairAfter_trips.
   const fair = fairAfterTrips(x);
@@ -447,9 +489,8 @@ export function driverDepart(x: Ctx, t: number): boolean {
  * from the works' opening only (the first yard's driver at release.stage 1 is unchanged: null there).
  */
 function fairAfterTrips(x: Ctx): number | null {
-  const n = (x.c.truck as { fairAfter_trips?: unknown }).fairAfter_trips;
-  if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) return null;
-  return worksOpened(x.s) ? Math.floor(n) : null;
+  const n = fairTripsOf(x.c);
+  return n !== null && worksOpened(x.s) ? n : null;
 }
 
 /**
@@ -480,17 +521,52 @@ function fairChoice(x: Ctx, n: number, floor: { g: number | null }, best: { part
     const q = waitingFor(x, id, floor);
     if (q) waiting.push({ id, r: n - (s.partners[id].fairWait ?? 0), fullAt: fullestSkip(x, id)!.fullAt, fits: q.fits });
   }
+  const pick = fairPick(waiting, best ? best.partner : null);
+  if (pick === 'wait' || pick === null) return pick;
+  if (best && pick === best.partner) return best;
+  const sk = fullestSkip(x, pick)!;
+  return { partner: pick, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+}
+
+/**
+ * s2e-rate (RULING2.md 27.4; yard-stage2-economy.md 2.3 item 1): THE HIRED DRIVER'S RULE as pure functions, read by
+ * driverDepart and by rated income's replay (rate.ts rateQueue), so that the replay plays the driver the yard ships.
+ *
+ * fullerFirst: the first yard's rule (2.12): a skip full at `fullAt` is taken over the best so far when it has been full
+ * longer (strictly; ties keep the one found first).
+ */
+export function fullerFirst(fullAt: number, best: { fullAt: number } | null): boolean {
+  return !best || fullAt < best.fullAt;
+}
+
+/**
+ * fairPick: the fair rule's choice (RULING2.md 22 E4 (a), earliest deadline first) among the partners WAITING for the driver
+ * (`r` trips each may still wait, `fullAt` of its fullest skip, `fits` now), given the rule's own choice `best` (a partner
+ * id or null): `best` stands when the others can all still be served in time after it; else the most urgent (the least r,
+ * then full longest, then the id), or 'wait' when that one waits only for the floor's room; null: nothing to take.
+ */
+export function fairPick(waiting: readonly { id: string; r: number; fullAt: number; fits: boolean }[], best: string | null): string | null | 'wait' {
   const inTime = (taken: string | null): boolean => {
     const left = waiting.filter((w) => w.id !== taken).map((w) => w.r - (taken === null ? 0 : 1)).sort((a, b) => a - b);
     return left.every((r, j) => r >= j);
   };
-  if (best ? inTime(best.partner) : inTime(null)) return best;
+  if (inTime(best)) return best;
   let top: (typeof waiting)[number] | null = null;
   for (const w of waiting) if (!top || w.r < top.r || (w.r === top.r && (w.fullAt < top.fullAt || (w.fullAt === top.fullAt && w.id < top.id)))) top = w;
   if (!top) return best;
   if (!top.fits) return 'wait';
-  const sk = fullestSkip(x, top.id)!;
-  return { partner: top.id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+  return top.id;
+}
+
+/** fairCount's rule for one partner at a departure for `taken`: its trips waited, one more while its full skip waited for the driver and it was not taken, else 0. */
+export function fairWaitNext(id: string, taken: string, waited: number, waits: boolean): number {
+  return id !== taken && waits ? waited + 1 : 0;
+}
+
+/** truck.fairAfter_trips N for a content from the works' opening (null: no fair rule; s2e-rate: the replay reads the same). */
+export function fairTripsOf(c: SalvageContent): number | null {
+  const n = (c.truck as { fairAfter_trips?: unknown }).fairAfter_trips;
+  return typeof n !== 'number' || !Number.isFinite(n) || n < 1 ? null : Math.floor(n);
 }
 
 /** At a departure for `taken`: every other partner whose full skip waited for the driver counts one more trip; the taken one and those with nothing waiting start again from 0. */
@@ -499,7 +575,7 @@ function fairCount(x: Ctx, taken: string, floor: { g: number | null }): void {
   for (const id in s.partners) {
     if (!x.c.partners[id]) continue;
     const ps = s.partners[id];
-    const w = id !== taken && waitingFor(x, id, floor) ? (ps.fairWait ?? 0) + 1 : 0;
+    const w = fairWaitNext(id, taken, ps.fairWait ?? 0, id !== taken && !!waitingFor(x, id, floor));
     if (w > 0) ps.fairWait = w;
     else if (ps.fairWait !== undefined) delete ps.fairWait;
   }
