@@ -1668,6 +1668,13 @@ function decide2(b: Bot): boolean {
       return true;
     }
   }
+  // REPORT9: a car waiting on the car pad and a running station plate fed by the forklift with a free apron: the boss
+  // drives the forklift (2.9; the only way a car reaches the apron, T1).
+  const fp = forkliftPlate(b);
+  if (fp && !isBlocked(b, 'forklift')) {
+    forkliftLeg(b, fp);
+    return true;
+  }
   if (loadWhole(b) && rackRoom(b) && o.rack !== 'cut') {
     rackLeg(b);
     return true;
@@ -1742,6 +1749,45 @@ function decide2(b: Bot): boolean {
   // The goal's works purchase opens its card at the plot (the letter reads the card it was seen on).
   if (plate && plate in (c.works?.plates ?? {}) && s2Note(b, `seen:${plate}`)) openWorks(b, plate);
   return false;
+}
+
+/** The station plate a car on the pad can be set on now (the forklift owned and empty, the plate running, its apron free), or null. */
+function forkliftPlate(b: Bot): string | null {
+  const s = b.g.salvage;
+  const f = s.forklift;
+  if (!f || f.load.length || !s.things.some((th) => th.at.at === 'elvPad' && !th.by)) return null;
+  const c = C(b);
+  for (const [id, w] of Object.entries(s.works)) {
+    const d = c.works?.plates[id];
+    if (w.phase !== 'running' || !d || d.kind !== 'station' || d.feedBy !== 'forklift') continue;
+    if (s.things.some((th) => th.at.at === 'apron' && th.at.plate === id)) continue;
+    return id;
+  }
+  return null;
+}
+
+/**
+ * REPORT9 (the bots drive the forklift; RULING2.md 21.1 measures the depollution chain): walk into the forklift (entering is
+ * by walking near it), drive it to the car pad and stand (the forks lift the car), drive to the plate's apron and stand
+ * (the car is set there and the bay starts), Step out.
+ */
+function forkliftLeg(b: Bot, plate: string): void {
+  const c = C(b);
+  const f = b.g.salvage.forklift!;
+  react(b, 'forklift');
+  if (!inForklift(b)) {
+    travel(b, pathOf(graphFor(b), pos(b), { x: f.x, y: f.y }), c.walk / b.P.detour);
+    stand(b, b.opts.standDt);
+  }
+  if (!inForklift(b)) return;
+  const v = c.forklift?.v ?? c.walk;
+  travel(b, pathOf(graphFor(b), pos(b), pointOf(c, 'elvPad')), v);
+  stand(b, 1);
+  if (b.g.salvage.forklift?.load.length) {
+    travel(b, pathOf(graphFor(b), pos(b), pointOf(c, `${plate}.apron`)), v);
+    stand(b, 1);
+  }
+  leaveForklift(b);
 }
 
 /** The start of a sitting (yard-bot.ts): once-a-sitting habits read it. */
