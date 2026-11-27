@@ -1742,7 +1742,11 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     Object.assign(row, { measure: '28.4a', dT: T.m, seT: T.se, dP: P.m, seP: P.se, E0T, tW_h: +(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length).toFixed(2), worked: xs.filter((x) => x.worked).length, perSeedT: xs.map((x) => x.dT ?? null) });
     const third = dE !== 0 && Math.abs(T.m - dE) > Math.abs(dE) / 3;
     // the plasma's price stands until the lead rules (28.4 b): its table row is not written, its figures are printed
-    const keep = pid === 'plasma';
+    // the entry rule (27.2 b, the step's text): an item under 2 % of the yard's income (mean) or with a seed below -1 % is
+    // REPORTED and stays as it is (row and price) until the lead rules; so does the plasma (28.4 b)
+    const lowE = Math.min(...dEs);
+    const entryOk = !!E0 && dE >= 0.02 * E0 && lowE >= -0.01 * E0;
+    const keep = pid === 'plasma' || !entryOk;
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
@@ -1750,7 +1754,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
     lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
-    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? '  (THE PLASMA: printed only; its price and its row stand until the lead rules, 28.4 b)' : ''}`);
+    lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${pid === 'plasma' ? '  (THE PLASMA: printed only; its price and its row stand until the lead rules, 28.4 b)' : keep ? '  (FAILS THE ENTRY RULE: reported; its price and its row stand until the lead rules)' : ''}`);
     lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
