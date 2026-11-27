@@ -19,15 +19,15 @@ import { r4Game, worksCfg } from '../fixtures/salvage2works';
 import { setAgeBand, adPaid } from './actionsMoney';
 import { advice, levelBinds, reserve } from './advice';
 import { incomeRate } from './tick';
-import { spotButton, sellNow } from './ads';
+import { adDay, adOffer, dayRoom, spotButton, sellNow } from './ads';
 import { begin, finish } from './clock';
 import { buy, hire, level } from './actions';
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import { buyCheck, hireCheck, hiredState, levelCheck, levelled, levelPrice, ratedGain, shopItems } from './ladder';
 import { own, ratedIncome, replayIncome } from './rate';
 import { adAudience, headroomU, packsHelpShown } from './shop';
 import { restartKeeps } from './state2Money';
-import { startGame } from './bot';
+import { newBot, playTo, startGame } from './bot';
 import type { LevelTarget, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
 const RAW = JSON.parse(fs.readFileSync(new URL('../../../games/scrap-yard/game.json', import.meta.url), 'utf8'));
@@ -36,6 +36,23 @@ const NOW = Date.UTC(2026, 10, 27, 9);
 function shippedCfg(): SalvageConfig {
   return { mode: 'salvage', salvage: SalvageSchema.parse(structuredClone(RAW.salvage)), monetization: RAW.monetization } as unknown as SalvageConfig;
 }
+
+describe('the first yard on the owner\'s phone (the shipped content at release.stage 1): every rule of this pass stays dark', () => {
+  it('an hour of the normal bot: the works never open (so the partner level price, the advice line, the ceiling\'s order, I\'s envelope and the levels\' "not the bottleneck" all take the merged path), no age band, no ad, no money of stage 2', () => {
+    const cfg1 = shippedCfg();
+    const b = newBot(cfg1, startGame(cfg1, NOW), NOW, { hand: 'normal', habit: 'goal', route: 'A', seed: 611 } as never);
+    let opened = false;
+    playTo(b, 60 * 60, (bb) => {
+      if (worksOpened(bb.g.salvage)) opened = true;
+    });
+    expect(opened).toBe(false);
+    expect(b.g.salvage.iap.ageBand).toBeNull();
+    expect(b.g.salvage.ads.awayOffer).toBeNull();
+    // The facade's I reads contentAt, which is the base content itself in the first yard.
+    expect(contentAt(cfg1.salvage, b.g.salvage)).toBe(cfg1.salvage);
+    expect(ratedIncome(cfg1.salvage, b.g.salvage)).toBe(replayIncome(cfg1.salvage, b.g.salvage));
+  }, 120_000);
+});
 
 describe('M2: setAgeBand where the content has no shop (release.stage 1)', () => {
   it('the shipped content at stage 1: a refusal `nothing`, the SAME state, no band kept, the ad audience as the first yard\'s', () => {
@@ -139,6 +156,29 @@ describe('M8: an offer too small to matter is not made (ads.minOffer_min)', () =
     // A minimum at or under it: the same button.
     expect(spotButton(withMin(((amount - 0.02) / I) * 60), g, grade)).toEqual(btn);
     expect(spotButton(withMin(0), g, grade)).toEqual(btn);
+  });
+});
+
+describe('M8: the day\'s ceiling holds at every rung (ads.ts dayRoom)', () => {
+  it('a short day (the day\'s ads counted at their caps over maxDayShare of it): the away bonus and the spot buyer only while they fit; a long day as before', () => {
+    const base = shopCfg();
+    const d = base.salvage.ads!;
+    const g = shopGame();
+    const rung = g.salvage.ladder.rung;
+    const withDay = (h: number): SalvageConfig => ({ ...base, salvage: { ...base.salvage, ads: { ...d, dayHours_h: d.dayHours_h.map((x, i) => (i === rung - 1 ? h : x)) } } }) as SalvageConfig;
+    // A day in which exactly one spot buyer fits and no away bonus.
+    const oneSpot = (d.spotCap_min + 0.5) / (60 * d.maxDayShare);
+    const c1 = withDay(oneSpot);
+    expect(d.awayCap_min).toBeGreaterThan(d.spotCap_min + 0.5);
+    expect(dayRoom(c1.salvage, g, 'away')).toBe(false);
+    expect(dayRoom(c1.salvage, g, 'spot')).toBe(true);
+    const used = { ...g, salvage: { ...g.salvage, ads: { ...g.salvage.ads, day: adDay(c1.salvage, g), spotUsed: 1, awayUsed: 0 } } };
+    expect(dayRoom(c1.salvage, used, 'spot')).toBe(false);
+    expect(adOffer(c1, used, 'spot', { grade: Object.keys(g.salvage.bays)[0] })).toBeNull();
+    // A day long enough for every ad of the content: always room until the counts end.
+    const c2 = withDay((d.awayCap_min * d.awayPerDay + d.spotCap_min * d.spotPerDay) / (60 * d.maxDayShare) + 1);
+    expect(dayRoom(c2.salvage, g, 'away')).toBe(true);
+    expect(dayRoom(c2.salvage, { ...g, salvage: { ...g.salvage, ads: { ...g.salvage.ads, day: adDay(c2.salvage, g), spotUsed: d.spotPerDay - 1, awayUsed: d.awayPerDay } } }, 'spot')).toBe(true);
   });
 });
 

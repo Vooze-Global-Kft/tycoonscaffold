@@ -470,6 +470,12 @@ export interface PartnerState {
   level: number;
   /** The skips in rotation, one per level (the trial first). */
   skips: SkipState[];
+  /**
+   * ADDED (s2-fix-loop, RULING2.md 22 E4 (a)): the hired driver's departures this partner's full skip has waited through
+   * (it was there, payable, and another partner's was taken). From the works' opening with content truck.fairAfter_trips
+   * only (truck.ts driverDepart); absent = 0 (the first yard never writes it).
+   */
+  fairWait?: number;
 }
 
 /** The skip on the truck after a hook: paid, then weighed in over the weighbridge, then tipped. */

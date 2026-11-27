@@ -18,6 +18,7 @@ import { bossSees, planAhead, RUN_EPS } from './group';
 import { tipDivert } from './crate';
 import { landBody } from './works';
 import { loadRanks } from './rate';
+import { worksOpened } from './layer';
 import type { CrewMember, RefusalKey, ThingState, TripPhase, TxtArgs } from './types';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { floorKept, piecesOn, pushThing, spliceThing, thingsAt } from './lookup';
@@ -365,7 +366,15 @@ export function driverDepart(x: Ctx, t: number): boolean {
       if (!sk || hookRefusal(x, id, false, floor)) continue;
       if (!best || sk.fullAt < best.fullAt) best = { partner: id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
     }
+  // RULING2.md 22 E4 (a): from the works' opening the rule's choice stands only while every other waiting partner can still be served within truck.fairAfter_trips.
+  const fair = fairAfterTrips(x);
+  if (fair !== null) {
+    const f = fairChoice(x, fair, floor, best);
+    if (f === 'wait') return false;
+    best = f;
+  }
   if (!best) return false;
+  if (fair !== null) fairCount(x, best.partner, floor);
   const sk = fullestSkip(x, best.partner)!;
   tr.earmark = { money: best.price, floor_g: best.mass };
   const from = { x: d.to && 'xy' in d.to ? d.to.xy[0] : pt(x, 'scalehouse').x, y: d.to && 'xy' in d.to ? d.to.xy[1] : pt(x, 'scalehouse').y };
@@ -385,6 +394,69 @@ export function driverDepart(x: Ctx, t: number): boolean {
   const z = skipZone(x.c, best.partner, sk.slot);
   if (planAhead(x) && !bossSees(x, t, [{ x: tr.x, y: tr.y }, { x: z.x, y: z.y }], ['floor'])) planTrip(x, t);
   return true;
+}
+
+/**
+ * RULING2.md 22 E4 (a) (s2-fix-loop): THE DRIVER KEEPS EVERY OPEN PARTNER SERVED. Content `truck.fairAfter_trips` N,
+ * from the works' opening only (the first yard's driver at release.stage 1 is unchanged: null there).
+ */
+function fairAfterTrips(x: Ctx): number | null {
+  const n = (x.c.truck as { fairAfter_trips?: unknown }).fairAfter_trips;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) return null;
+  return worksOpened(x.s) ? Math.floor(n) : null;
+}
+
+/**
+ * Is this partner's full skip WAITING for the hired driver: open, a full skip, the yard can pay for it, and it fits the
+ * tipping floor now or will once there is room (not heavier than the whole floor)? A skip the yard cannot pay for waits
+ * for nobody and is not counted (16.1 e).
+ */
+function waitingFor(x: Ctx, id: string, floor: { g: number | null }): { fits: boolean } | null {
+  const sk = fullestSkip(x, id);
+  if (!sk) return null;
+  const why = hookRefusal(x, id, false, floor);
+  if (!why) return { fits: true };
+  return why === 'floor' && sk.mass_g <= x.c.floorRoom_kg * 1000 ? { fits: false } : null;
+}
+
+/**
+ * The fair rule's choice (earliest deadline first). Each waiting partner (waitingFor) may wait r = N - fairWait more of
+ * the driver's trips. The rule's own choice `best` stands when, after it, the others can still all be served in time
+ * (sorted by r - 1, the j-th has at least j trips left); else the driver takes the most urgent (the least r, then the
+ * skip full longest, then the partner's id); if that one waits only for the floor's room he takes nothing and waits
+ * ('wait': the room is kept for it, as 16.1 c keeps it for a better load). With nobody waiting long the rule decides.
+ */
+function fairChoice(x: Ctx, n: number, floor: { g: number | null }, best: { partner: string; fullAt: number; price: number; mass: number } | null): { partner: string; fullAt: number; price: number; mass: number } | null | 'wait' {
+  const s = x.s;
+  const waiting: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const q = waitingFor(x, id, floor);
+    if (q) waiting.push({ id, r: n - (s.partners[id].fairWait ?? 0), fullAt: fullestSkip(x, id)!.fullAt, fits: q.fits });
+  }
+  const inTime = (taken: string | null): boolean => {
+    const left = waiting.filter((w) => w.id !== taken).map((w) => w.r - (taken === null ? 0 : 1)).sort((a, b) => a - b);
+    return left.every((r, j) => r >= j);
+  };
+  if (best ? inTime(best.partner) : inTime(null)) return best;
+  let top: (typeof waiting)[number] | null = null;
+  for (const w of waiting) if (!top || w.r < top.r || (w.r === top.r && (w.fullAt < top.fullAt || (w.fullAt === top.fullAt && w.id < top.id)))) top = w;
+  if (!top) return best;
+  if (!top.fits) return 'wait';
+  const sk = fullestSkip(x, top.id)!;
+  return { partner: top.id, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
+}
+
+/** At a departure for `taken`: every other partner whose full skip waited for the driver counts one more trip; the taken one and those with nothing waiting start again from 0. */
+function fairCount(x: Ctx, taken: string, floor: { g: number | null }): void {
+  const s = x.s;
+  for (const id in s.partners) {
+    if (!x.c.partners[id]) continue;
+    const ps = s.partners[id];
+    const w = id !== taken && waitingFor(x, id, floor) ? (ps.fairWait ?? 0) + 1 : 0;
+    if (w > 0) ps.fairWait = w;
+    else if (ps.fairWait !== undefined) delete ps.fairWait;
+  }
 }
 
 /**

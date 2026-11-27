@@ -818,6 +818,12 @@ const LotKindSchema = z.object({
   from: z.string(),
   /** A kind comes only while the player owns one of these (a machine of the first yard or a plate; the analyser counts as stainless's line, decision 9). Empty: always ("an intermediate sold whole"). */
   line: z.array(id).default([]),
+  /**
+   * X3 (b), RULING2 22 (real physics, L2): the mass range [min, max] in kilograms a real object of this kind has. A
+   * lot's mass is drawn inside it and its worth follows from mass and grades; μ × I chooses WHICH kind comes (the
+   * heaviest whose worth is at most μ × I), never a multiplier on its mass. Absent: the object's own gross mass.
+   */
+  mass_kg: z.tuple([z.number().positive(), z.number().positive()]).optional(),
 });
 const LotsSchema = z.object({
   period_s: z.number().positive(),

@@ -160,7 +160,10 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
   // was done (a count of the rules above zero); a stall under the loading curtain is no absence.
   const cardS = Math.max(cfg.salvage.away.gapS, (cfg.salvage.away as { cardS?: number }).cardS ?? 60);
   const played = Object.entries(g.salvage.counts ?? {}).some(([k, v]) => k !== 'goalsAt' && (v ?? 0) > 0);
-  const showCard = raw > cardS && played;
+  // s2-fix-loop (X2, RULING2.md 22): AN OPEN AWAY CARD TAKES EVERY PASS. A pass made while a card still waits (an
+  // absence over away.gapS and under cardS, the card not yet closed) is added to it (its sold rows, its loads, its
+  // net, its time away), so the card always equals what the cash moved. The first yard too (the owner's phone).
+  const showCard = (raw > cardS && played) || !!g.salvage.away;
   x.away = { lines: {}, money: 0, supplied0: s.ladder.supplied_g, loads: 0, deliveries: 0, passed: [], spent: 0, bought: {}, deliveryList: [], bank: 0, repaid: [], rack: { n: 0, money: 0 }, van: { n: 0, money: 0 }, lotsWaiting: null };
   // The boss's last sample is stale from the first second of the pass (no boss).
   s.presence = { ...s.presence, moving: false, standingFor: 0 };

@@ -43,6 +43,24 @@ export function adCounts(c: SalvageContent, g: SalvageGame): { awayUsed: number;
   return a.day === adDay(c, g) ? { awayUsed: a.awayUsed, spotUsed: a.spotUsed } : { awayUsed: 0, spotUsed: 0 };
 }
 
+/**
+ * THE DAY'S CEILING AT EVERY RUNG (s2c-fix-money M8, RULING2 22): another ad of this kind may be offered and paid today
+ * only while the day's ads, each counted at its cap (awayCap_min, spotCap_min minutes of I), stay within maxDayShare of
+ * a day's income at the yard's rung (adDayLimitMinutes: maxDayShare x dayHours_h x 60). Where the content's caps fit
+ * the day (rungs 3 to 5 on the shipped content) this never binds; on the short days of rungs 1 and 2 it allows fewer
+ * ads (rung 1: no away bonus, three spot buyers; rung 2: the away bonus and one spot buyer). A rung the content names
+ * no day for: no ceiling here (the content's check (6) holds it).
+ */
+export function dayRoom(c: SalvageContent, g: SalvageGame, kind: AdKind): boolean {
+  const d = adsDef(c);
+  if (!d) return false;
+  const limit = adDayLimitMinutes(c, g.salvage.ladder.rung);
+  if (limit === null) return true;
+  const n = adCounts(c, g);
+  const used = n.awayUsed * d.awayCap_min + n.spotUsed * d.spotCap_min;
+  return used + (kind === 'away' ? d.awayCap_min : d.spotCap_min) <= limit + 1e-9;
+}
+
 /** The ads' state rolled to today (counts reset when the day changed). */
 function rolled(c: SalvageContent, g: SalvageGame): AdsState {
   const a = g.salvage.ads;
@@ -85,7 +103,7 @@ export function awayOfferAfter(cfg: SalvageConfig, g: SalvageGame, card: AwayCar
   const d = adsDef(cfg.salvage);
   const a = g.salvage.ads;
   if (!d || !secondSession(g) || absentS < d.awayMinAbsence_min * 60) return a;
-  if (adCounts(cfg.salvage, g).awayUsed >= d.awayPerDay) return a;
+  if (adCounts(cfg.salvage, g).awayUsed >= d.awayPerDay || !dayRoom(cfg.salvage, g, 'away')) return a;
   const I = ratedI(cfg, g);
   const amount = awayBonusOf(cfg, g, card, I);
   if (amount <= 0) return a;
@@ -126,9 +144,9 @@ export function adOffer(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, ref: {
   const n = adCounts(cfg.salvage, g);
   if (kind === 'away') {
     const o = g.salvage.ads.awayOffer;
-    return o && n.awayUsed < d.awayPerDay ? o.amount : null;
+    return o && n.awayUsed < d.awayPerDay && dayRoom(cfg.salvage, g, 'away') ? o.amount : null;
   }
-  if (!ref.grade || n.spotUsed >= d.spotPerDay) return null;
+  if (!ref.grade || n.spotUsed >= d.spotPerDay || !dayRoom(cfg.salvage, g, 'spot')) return null;
   const shown = sellNow(cfg, g, ref.grade);
   if (!shown) return null;
   const x = spotBonusOf(cfg, g, shown);
@@ -179,7 +197,7 @@ export function payAd(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, shownAmo
   if (kind === 'away') {
     const o = g.salvage.ads.awayOffer;
     if (!o) return refuse('nothing');
-    if (n.awayUsed >= d.awayPerDay) return refuse('adCap');
+    if (n.awayUsed >= d.awayPerDay || !dayRoom(cfg.salvage, g, 'away')) return refuse('adCap');
     if (Math.abs(o.amount - shownAmount) >= 0.005) return refuse('nothing', { act: 'watchAd', kind: 'away', amount: o.amount });
     const x = begin(cfg, g, events, true);
     const t = Math.max(clock, x.s.t);
@@ -189,7 +207,7 @@ export function payAd(cfg: SalvageConfig, g: SalvageGame, kind: AdKind, shownAmo
     x.ev.push({ type: 'adPaid', kind: 'away', amount: o.amount });
     return finish(g, x);
   }
-  if (n.spotUsed >= d.spotPerDay) return refuse('adCap');
+  if (n.spotUsed >= d.spotPerDay || !dayRoom(cfg.salvage, g, 'spot')) return refuse('adCap');
   const grade = ref.grade;
   const shown = ref.sell;
   if (!grade || !shown) return refuse('nothing');

@@ -211,6 +211,13 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
     const p = rawP[id];
     if (p && typeof p === 'object' && Array.isArray(p.skips)) s.partners[id] = { ...p, skips: arr<PartnerState['skips'][number]>(p.skips) };
   }
+  // s2-fix-loop (E4 a): the driver's departures a partner's skip has waited through, a whole number of at least 1, else none.
+  for (const ps of Object.values(s.partners)) {
+    if (ps.fairWait === undefined) continue;
+    const w = Math.floor(num(ps.fairWait));
+    if (w >= 1) ps.fairWait = Math.min(w, 1_000_000);
+    else delete ps.fairWait;
+  }
 
   // Positions are never trusted.
   const pr = obj<SalvageState['presence']>(raw.presence);

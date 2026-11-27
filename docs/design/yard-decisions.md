@@ -2469,3 +2469,14 @@ which the rule changes below would break); then one pass of fixes by four owners
 may start at once: their files are not the engine step's); then the bots measure the stage again
 (prices with a played hour, 21.1; the crane pair; fifteen seeds), a confirmation by engineers who
 wrote none of it, and the specification is brought into step.
+
+20.5 ENGINE STEP 4 (27 November, about 02:40): built in its own working copy, checked by an engineer
+    who wrote none of it against the engine before steps 3 and 4 (137 cases, 1,684 computations,
+    144,324 comparison points: 0 differences; no writer goes past the index; no cache could be made
+    stale), merged into the working line (1bfb34a). Six hours away in node, before steps 3 and 4 /
+    after step 3 / after step 4: the first yard at minute 120 with the Night watch 331 / 290 /
+    267 ms; stage 2 at rung 4 with seven plates 2,806 / 1,204 / 966 ms. The aims of 20.1 are still
+    not met and the profile is flat (departures that set out and plan a run, and their landings).
+    From now on every change of the things or the pieces goes through lookup.ts's writers. What is
+    left for a later step: planning a run more cheaply, and the oversize pieces weighed where they
+    are cut (finding X3: thousands of fragments on the floor cost a tick 2.3 ms at rung 5).
