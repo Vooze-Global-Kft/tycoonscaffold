@@ -502,7 +502,9 @@ function gAt(cfg: R.SalvageConfig, g0: R.SalvageGame): { G: number; h: number } 
 }
 
 /** The stage's vehicles and tools measured with the plates (yard-stage2.md 2.9: payback-priced; RULING2.md 21.1). */
+// s2e-bots: superseded by soldItems (the stage as built); kept for the record of REPORT9's measure.
 const MEASURED_ITEMS = ['truckBridge', 'pallet', 'forklift', 'plasma'];
+void MEASURED_ITEMS;
 type PlateRow = { at_h: number; rung: number; I: number; dI: number; bought: boolean; price?: number; G?: number; dG?: number; dE?: number; E0?: number; hE?: number; pre?: string[] };
 
 /**
@@ -571,6 +573,7 @@ interface Sitting2 {
 // ============================================================================================ s2e-bots: the new economy's measures
 
 /** A content gate's rung ('rung4' -> 4; a gate past the ladder, salvage.content.ts DARK 'rung99', is past every rung). */
+const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '-');
 const gateN = (gate: unknown): number => Number(/^rung(\d+)$/.exec(String(gate ?? ''))?.[1] ?? 0);
 
 /**
@@ -591,9 +594,10 @@ function agreementLeft(g: R.SalvageGame): number | null {
   return a ? a.T - a.taken : null;
 }
 
-/** The packs that fit with the cash in hand now (T11's arithmetic: cash + H x I <= U), none while a loan is open (D7). */
+/** The packs that fit with the cash in hand now (T11's arithmetic: cash + H x I <= U), from rung 4, none while a loan is open (D7). */
 function packsFit(cfg: R.SalvageConfig, g: R.SalvageGame): number[] {
-  if (agreementLeft(g) !== null) return [];
+  // packs come from rung 4 (2.15, as built) and never while a loan is open (D7 as amended by 28.2 c)
+  if (agreementLeft(g) !== null || g.salvage.ladder.rung < 4) return [];
   const U = R.headroomU(cfg, g);
   const I = incomeAt(cfg, g);
   return ((cfgPacks ?? packProducts(cfg)) as { H: number }[]).map((p) => p.H).filter((H) => g.cash + H * I <= U + 1e-9);
@@ -990,10 +994,17 @@ function report8(all: Summary[], tauH: (number | null)[]): string {
   // T2. I against G
   L.push('');
   L.push('T2. RATED INCOME I AGAINST G (14.10; G a capped absence at usual prices from the sitting\'s return, I at the same state; gate per moment: median 0.95-1.05, 13 of 15 in 0.88-1.12, none outside 0.80-1.25)');
-  for (const bot of ['normal', 'flat'] as Bot2[]) {
-    const rs = by(bot).filter((r) => SS(r).some((x) => x.G !== undefined));
+  // s2e-bots (ruling 27.4): the band is FITTED on the normal hand's normal board (seeds 1 to 15, route A) and GATED off it:
+  // the unseen seeds (101 to 105), route B, the flat board and every other habit, each printed on its own.
+  const groups = new Map<string, Summary[]>();
+  for (const r of runs) {
+    const key = r.spec.bot === 'normal' && r.spec.seed > 100 ? 'unseen' : String(r.spec.bot);
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(r);
+  }
+  for (const [gname, grp] of groups) {
+    const rs = grp.filter((r) => SS(r).some((x) => x.G !== undefined)).sort((a, b) => a.spec.seed - b.spec.seed);
     if (!rs.length) continue;
-    L.push(`   ${bot === 'flat' ? 'PLAYED WITH PRICES FLAT (board.a 0)' : 'PLAYED WITH THE NORMAL BOARD'}, ${rs.length} seeds`);
+    L.push(`   ${gname === 'normal' ? 'FITTED: the normal hand, the normal board' : gname === 'flat' ? 'GATED: PLAYED WITH PRICES FLAT (board.a 0)' : `GATED: ${gname}`}, ${rs.length} seeds`);
     const moments: [string, (r: Summary) => { I?: number; Iback?: number; G?: number } | null][] = [
       ['r3 entry (sitting 1)', (r) => SS(r)[0] ?? null],
       ['r3 last purchase', (r) => [...SS(r)].reverse().find((x) => x.rung === 3 && x.bought > 0) ?? null],
@@ -1228,6 +1239,187 @@ function report8(all: Summary[], tauH: (number | null)[]): string {
   return L.join('\n');
 }
 
+/**
+ * s2e-bots: THE NEW STAGE'S TABLE (yard-stage2-economy.md "THE GATES"; ruling 27.8): the first look per sitting, the
+ * measures the design added (the level ladders' three steps, the rung's bill against the purse, felt cash, E19 by rung,
+ * sittings without a purchase that pays back within 1.25 tau_r, the last goal purchase to rung 5, the person-paced rung-4
+ * sitting) and the gates G1 to G16 one by one, each with REPORT9's number beside it and met or MISSED. A gate measured on
+ * fewer seeds than it names says so ("on n seeds"); a gate this tool does not measure says who does.
+ */
+function reportS2e(all: Summary[], tauH: (number | null)[], platesLines: string[] | null): string {
+  const L: string[] = [];
+  const runs = all.filter((r) => r.spec.kind === 'stage2').sort((a, b) => String(a.spec.bot).localeCompare(String(b.spec.bot)) || a.spec.seed - b.spec.seed);
+  const SS = (r: Summary) => r.extra.sittings as Sitting2[];
+  const by = (bot: string) => runs.filter((r) => r.spec.bot === bot);
+  const tauOf = (rung: number) => (tauH[rung - 1] as number) || 0;
+  const pc = (v: number) => (Number.isFinite(v) ? `${v >= 0 ? '+' : ''}${(100 * v).toFixed(1)} %` : '-');
+  const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
+  const k$ = (v: number | undefined) => (v === undefined || !Number.isFinite(v) ? '-' : Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : `${Math.round(v / 1000)}k`);
+  const sitAt = (r: Summary, rung: number) => SS(r).find((x) => x.rung >= rung)?.n ?? null;
+  const useful = (x: Sitting2) => (x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan' || (q.pb !== undefined && q.pb <= 1.25 * tauOf(x.rung) + 1e-9));
+  L.push(`S2E. THE NEW STAGE (yard-stage2-economy.md; RULING2.md 27, 28): ${runs.length} runs, seeds ${[...new Set(runs.map((r) => r.spec.seed))].join(',')}`);
+  // F. the first look, sitting by sitting
+  L.push('');
+  L.push('F. THE FIRST LOOK, SITTING BY SITTING: n (h, rung, supplied t) | purse on return -> at the end | G (a capped absence at usual prices) and I at the return, I/G | U (headroom) and the sold machines\' bill at the return | the bank: offers, loans signed, left at the end | oversize pieces cut / came (waiting at the return) | packs that would fit with own cash (H hours) at the return / end | bought (k price [via, payback h]) | the goal after');
+  for (const r of runs) {
+    L.push(`   ${r.spec.bot} seed ${r.spec.seed}${r.extra.daily ? ' (ONCE A DAY: a sitting is a day)' : ''}: rung 3 at ${hours((r.extra.rungsAt as Record<string, number>)?.[3])}, rung 4 at sitting ${sitAt(r, 4) ?? '-'}, rung 5 at sitting ${sitAt(r, 5) ?? '-'}`);
+    for (const x of SS(r)) {
+      const bought = (x.keys ?? []).map((q) => `${q.k} ${k$(q.p)}${q.via ? ` [${q.via}${q.pb !== undefined ? ` ${q.pb.toFixed(1)}h` : ''}]` : ''}`).join(', ') || 'nothing';
+      L.push(`     ${pad(x.n, 2)} h${pad(x.h.toFixed(1), 5)} r${x.rung} ${pad(Math.round(x.t), 5)} t | §${k$(x.cashBack)} -> §${k$(x.cash)} | G ${k$(x.G)} I ${k$(x.Iback)} ${x.G ? f2((x.Iback ?? 0) / x.G) : '-'} | U ${k$(x.Uback)} bill ${k$(x.billM)} | bank offers ${x.offers ?? 0}${x.loans?.length ? ` SIGNED ${x.loans.join('; ')}` : ''}${x.loanLeft ? ` left ${k$(x.loanLeft)}` : ''} | lots ${x.lotsCut}/${x.lotsCame} (${x.lotsWait ?? 0} waiting, tier ${x.tier ?? '-'}) | packs ${(x.fitBack ?? []).join('+') || '-'} / ${(x.fitEnd ?? []).join('+') || '-'} | ${bought} | -> ${x.goal}`);
+    }
+  }
+  // the measures
+  L.push('');
+  L.push('M. THE MEASURES');
+  if (platesLines?.length) {
+    L.push('   M1. every SOLD machine, vehicle and tool at its planned moment in the new goal order (ruling 21.1\'s measure: an hour of play and a capped absence, with and without; plates.json): dE, its standard error, E0 (the yard\'s income there), the entry rule (at least 2 % of E0, no seed under -1 %), the price tau_r x dE against the content\'s, and ruling 27.6\'s second-round test');
+    L.push(...platesLines);
+  }
+  const bt = bookTable(all);
+  if (Object.keys(bt).length) {
+    L.push('   M2. THE LEVEL LADDERS\' THREE STEPS (the gain book g(L) = g1 x d^(L-1); ruling 27.4): the measured gain of each step (§ an hour, mean of seeds), g1, d, and the calculated gain (rate.ts levelGain) beside g1 (G2 R: within 0.7 to 1.4)');
+    for (const [k, v] of Object.entries(bt)) L.push(`     ${k.padEnd(17)} at ${v.at.padEnd(8)} n ${v.seeds}  steps §${v.gains.join(' / §')}  g1 §${v.g1}  d ${v.d}  calculated §${v.calc}  calc/measured ${v.g1 > 0 ? f2(v.calc / v.g1) : '-'}  per seed ${v.perSeed.map((q) => q.join('/')).join(' | ')}${BOOK_FAILING.includes(k) ? '  (failing the check by s2e-rate: written to levels.book by --book write)' : ''}`);
+  }
+  L.push('   M3. THE RUNG\'S BILL AGAINST THE PURSE at each rung\'s entry return (yard-stage2-economy.md section 0; ruling 27.8; it refuses nothing): the purse on return, U (every sold step with payback within 1.5 tau_r: the bill of section 0) and the sold machines\' bill alone');
+  for (const r of runs) {
+    const cells = [3, 4, 5].map((rung) => { const x = SS(r).find((q) => q.rung >= rung); return x ? `r${rung} (s${x.n}): purse §${k$(x.cashBack)} U §${k$(x.Uback)} (${x.Uback ? f2(x.Uback / Math.max(1, x.cashBack)) : '-'} x) machines §${k$(x.billM)}` : `r${rung}: -`; });
+    L.push(`     ${String(r.spec.bot).padEnd(11)} s${pad(r.spec.seed, 3)}  ${cells.join('  |  ')}`);
+  }
+  const al = runs.filter((r) => r.spec.bot === 'always' || r.spec.bot === 'packsAlways');
+  if (al.length) {
+    L.push('   M4. FELT CASH (2.14 aims): the sittings at which the always-finance bot\'s purse after buying is LOWER than the never-finance (normal) bot\'s, per seed');
+    for (const r of al) {
+      const o = by(r.spec.bot === 'packsAlways' ? 'packs' : 'normal').find((q) => q.spec.seed === r.spec.seed);
+      if (!o) { L.push(`     ${r.spec.bot} s${r.spec.seed}: no ${r.spec.bot === 'packsAlways' ? 'packs' : 'normal'} run on this seed`); continue; }
+      const n = Math.min(SS(r).length, SS(o).length);
+      const lower = Array.from({ length: n }, (_, i) => i).filter((i) => SS(r)[i].cash < SS(o)[i].cash).map((i) => i + 1);
+      L.push(`     ${r.spec.bot} s${r.spec.seed}: ${lower.length} of ${n} sittings lower (${lower.map((i) => `s${i} §${k$(SS(r)[i - 1].cash)} vs §${k$(SS(o)[i - 1].cash)}`).join(', ') || 'none'})`);
+    }
+  }
+  L.push('   M5. E19 BY RUNG (an hour away / an hour played, lifetime earnings; aim 0.3 to 0.8), M6. SITTINGS WITHOUT A PURCHASE THAT PAYS BACK WITHIN 1.25 tau_r before rung 5 (a goal purchase counts: a goal machine is priced at tau_r x its measured gain) and the LAST GOAL PURCHASE TO RUNG 5 in sittings, M7. LOTS CUT A SITTING');
+  for (const r of runs) {
+    const ss = SS(r);
+    const daily = !!r.extra.daily;
+    const e19 = [3, 4, 5].map((rung) => { const q = ss.map((x, i) => ({ rung: x.rung, a: (x.Lback - (i ? ss[i - 1].Lend : x.Lback)) / Math.max(1e-9, x.ranH), p: (x.Lend - x.Lback) / 0.25 })).filter((q, i) => i > 0 && q.rung === rung && q.p > 0).map((q) => q.a / q.p); return q.length ? `r${rung} ${f2(med(q))} (${q.length})` : `r${rung} -`; });
+    const s5 = sitAt(r, 5);
+    const before = ss.filter((x) => s5 === null || x.n < s5);
+    const dry = before.filter((x) => !useful(x)).map((x) => x.n);
+    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan')).map((x) => x.n));
+    L.push(`     ${String(r.spec.bot).padEnd(11)} s${pad(r.spec.seed, 3)}  E19 ${e19.join(' ')}  |  without a useful purchase: ${dry.length} of ${before.length} (${dry.map((n) => `s${n}`).join(' ') || '-'})  |  last goal purchase s${lastGoal || '-'}, rung 5 s${s5 ?? '-'}${s5 && lastGoal ? ` (${s5 - lastGoal} ${daily ? 'days' : 'sittings'} apart)` : ''}  |  lots cut ${ss.map((x) => x.lotsCut).join(' ')} (came ${ss.map((x) => x.lotsCame).join(' ')})${ss.some((x) => x.lotMassBad?.length) ? `  MASS OUTSIDE ITS RANGE: ${ss.flatMap((x) => x.lotMassBad ?? []).join(', ')}` : ''}`);
+  }
+  const persons = runs.map((r) => r.extra.person as PersonRow | null).filter((q): q is PersonRow => !!q);
+  if (persons.length) {
+    L.push('   M8. A PERSON\'S RUNG-4 ENTRY SITTING (G15; the slow hand\'s pace from the normal hand\'s first rung-4 return): the second each step was done (within 900 s fits), the centred cards and what opened each');
+    for (const q of persons) L.push(`     s${q.seed} h${q.t0_h} purse §${k$(q.cash)}: ${Object.entries(q.done).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v}s`).join(', ') || 'nothing'}; pieces waiting ${q.lotsWaiting}, cut ${q.lotsCut}; cards ${q.cards.map((c) => `${c.card}@${c.t}s (${c.by})`).join(', ')}; two cards without an action between: ${q.twoCards}; FITS 15 MIN: ${q.fits ? 'yes' : `NO (missing or late: ${q.missing.join(', ')})`}`);
+  }
+  L.push('');
+  L.push(...gatesTable(runs, tauH, platesLines));
+  return L.join('\n');
+}
+
+/** The design's gates G1 to G16 (ruling 27.8's additions with them): number, REPORT9's figure, this table's figure, met or MISSED. */
+function gatesTable(runs: Summary[], tauH: (number | null)[], platesLines: string[] | null): string[] {
+  const L: string[] = [];
+  const SS = (r: Summary) => r.extra.sittings as Sitting2[];
+  const by = (bot: string) => runs.filter((r) => r.spec.bot === bot);
+  const nrm = by('normal').filter((r) => r.spec.seed < 100);
+  const ns = nrm.length;
+  const sitAt = (r: Summary, rung: number) => SS(r).find((x) => x.rung >= rung)?.n ?? null;
+  const tauOf = (rung: number) => (tauH[rung - 1] as number) || 0;
+  const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
+  const few = (n: number, want: number) => (n < want ? ` (on ${n} seed${n === 1 ? '' : 's'}; the gate names ${want})` : '');
+  const row = (g: string, name: string, r9: string, now: string, ok: boolean | null) => L.push(`   ${g.padEnd(4)} ${name.padEnd(22)} REPORT9: ${r9}\n        now: ${now}  => ${ok === null ? 'NOT MEASURED HERE' : ok ? 'met' : 'MISSED'}`);
+  L.push('THE GATES (yard-stage2-economy.md G1 to G16; RULING2.md 27.8): each with REPORT9\'s figure beside it; a gate measured on fewer seeds than it names says so and is NOT a pass of the gate');
+  // G1
+  const entry = (platesLines ?? []).map((l) => /^\s+(\S+).* entry (met|MISSED)/.exec(l)).filter((m): m is RegExpExecArray => !!m);
+  type W = { at: string; rows: { step: string; d: number; hidden?: boolean }[] };
+  const walks = nrm.flatMap((r) => ((r.extra.walk as W[]) ?? []).map((w) => ({ seed: r.spec.seed, w })));
+  const steps = new Map<string, number[]>();
+  for (const { w } of walks) for (const q of w.rows) if (Number.isFinite(q.d)) (steps.get(`${w.at} ${q.step}`) ?? steps.set(`${w.at} ${q.step}`, []).get(`${w.at} ${q.step}`)!).push(q.d);
+  const failing = [...steps.entries()].filter(([, v]) => v.reduce((a, x) => a + x, 0) / v.length < -0.01 || Math.min(...v) < -0.04).map(([k]) => k);
+  const hidden = walks.flatMap(({ seed, w }) => w.rows.filter((q) => q.hidden).map((q) => `${w.at} ${q.step} s${seed}`));
+  row('G1', 'Entry', 'walk 5 of 74 steps failing (partner levels); hidden best buys: the driver level 15/15, the plasma 15/15', `${entry.length ? `items ${entry.map((m) => `${m[1]} ${m[2]}`).join(', ')}` : 'items not measured (--plates)'}; walk ${walks.length ? `${failing.length} of ${steps.size} steps failing${failing.length ? ` (${failing.join('; ')})` : ''}; hidden best buys ${hidden.length ? hidden.join(', ') : 'none'}` : 'not run (--walk2)'}${few(ns, 15)}`, entry.length && walks.length ? entry.every((m) => m[2] === 'met') && !failing.length && !hidden.length : null);
+  // G2
+  const moments: [string, (r: Summary) => Sitting2 | undefined][] = [
+    ['r3 entry', (r) => SS(r)[0]], ['r3 last', (r) => [...SS(r)].reverse().find((x) => x.rung === 3 && x.bought > 0)], ['r4 entry', (r) => SS(r).find((x) => x.rung >= 4)],
+    ['day 3', (r) => SS(r)[5]], ['r4 last', (r) => [...SS(r)].reverse().find((x) => x.rung === 4 && x.bought > 0)], ['r5 entry', (r) => SS(r).find((x) => x.rung >= 5)],
+  ];
+  const ig = moments.map(([n, get]) => { const q = nrm.map(get).filter((x): x is Sitting2 => !!x && !!x.G).map((x) => (x.Iback ?? 0) / x.G!); return { n, m: q.length ? med(q) : NaN, q }; });
+  const igOk = ig.every((x) => x.q.length && x.m >= 0.95 && x.m <= 1.05 && x.q.every((v) => v >= 0.8 && v <= 1.25));
+  const bt = bookTable(runs);
+  const drv = bt.driver;
+  const kappa = (contentAtRunsKappa ?? []).map((v) => (v === null ? '-' : String(v))).join('/');
+  row('G2', 'Rated income', 'medians 0.91 1.31 1.46 1.44 1.38 1.44; driver level dI 0', `normal board medians ${ig.map((x) => `${x.n} ${f2(x.m)}`).join(', ')}; kappa ${kappa}; G2 R (driver, r4 entry) ${drv ? `calculated §${drv.calc} / measured g1 §${drv.g1} = ${drv.g1 > 0 ? f2(drv.calc / drv.g1) : 'no measured gain'}` : 'not measured (--book)'}${few(ns, 15)}; off the fitted board: see T2's GATED rows`, ns ? igOk && !!drv && drv.g1 > 0 && drv.calc / drv.g1 >= 0.7 && drv.calc / drv.g1 <= 1.4 : null);
+  // G3
+  const pace = (rs: Summary[], daily: boolean) => rs.map((r) => ({ s: r.spec.seed, r4: sitAt(r, 4), r5: sitAt(r, 5) })).map((q) => ({ ...q, ok: daily ? q.r4 !== null && q.r4 >= 2 && q.r4 <= 3 && q.r5 !== null && q.r5 >= 4 && q.r5 <= 6 : q.r4 !== null && q.r4 >= 4 && q.r4 <= 6 && q.r5 !== null && q.r5 >= 8 && q.r5 <= 12 }));
+  const pN = pace(nrm, false);
+  const pB = pace(by('routeB'), false);
+  const pU = pace(by('normal').filter((r) => r.spec.seed > 100), false);
+  const pS = pace(by('slow'), true);
+  const fmt = (p: ReturnType<typeof pace>) => `${p.filter((q) => q.ok).length}/${p.length} [${p.map((q) => `s${q.s} ${q.r4 ?? '-'}/${q.r5 ?? '-'}`).join(' ')}]`;
+  row('G3', 'Pace', 'rung 4 day 2.0-2.5, rung 5 sittings 9-10 (15/15 both routes, 5/5 unseen); slow rung 5 at sitting 12 (twice a day)', `normal ${fmt(pN)}; routeB ${pB.length ? fmt(pB) : '-'}; unseen ${pU.length ? fmt(pU) : '-'}; slow once a day (rung 4 day 2-3, rung 5 day 4-6) ${pS.length ? fmt(pS) : '-'}${few(ns, 15)}`, ns ? pN.every((q) => q.ok) && pB.every((q) => q.ok) && pU.every((q) => q.ok) && pS.every((q) => q.ok) : null);
+  // G4
+  const g4 = nrm.map((r) => {
+    const ss = SS(r);
+    const s5 = sitAt(r, 5);
+    const lastM = Math.max(0, ...ss.filter((x) => x.rung === 4 && (x.keys ?? []).some((q) => (q.via === 'goal' || q.via === 'loan') && soldKeys.has(q.k))).map((x) => x.n));
+    const dry = ss.filter((x) => (s5 === null || x.n < s5) && !(x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan' || (q.pb !== undefined && q.pb <= 1.25 * tauOf(x.rung) + 1e-9)));
+    const lastGoal = Math.max(0, ...ss.filter((x) => (x.keys ?? []).some((q) => q.via === 'goal' || q.via === 'loan')).map((x) => x.n));
+    return { s: r.spec.seed, dry: dry.length, early: dry.filter((x) => x.n < lastM).length, gap: s5 && lastGoal ? s5 - lastGoal : null };
+  });
+  row('G4', 'Sittings', '63 of 139 without a purchase; last goal purchase to rung 5: 4 to 5 sittings', `${g4.map((q) => `s${q.s}: ${q.dry} dry (${q.early} before rung 4's last machine), gap ${q.gap ?? '-'}`).join('; ')}${few(ns, 15)}`, ns ? g4.every((q) => q.dry <= 2 && q.early === 0 && q.gap !== null && q.gap <= 3) : null);
+  // G5
+  const alw = by('always');
+  const g5 = alw.map((r) => {
+    const s2 = r.extra.s2 as Bot['rec']['s2'];
+    const ss = SS(r);
+    const sitOf = (t: number) => Math.max(1, ss.findIndex((x) => x.h * 3600 >= t) + 1 || ss.length);
+    const o = s2.offers[0];
+    const rp = s2.repaid[0];
+    const r4 = (r.extra.rungsAt as Record<string, number>)?.[4];
+    const nv = nrm.find((q) => q.spec.seed === r.spec.seed);
+    const sooner = nv && nv.rungs[5] && r.rungs[5] ? 1 - r.rungs[5] / nv.rungs[5] : NaN;
+    return { s: r.spec.seed, first: o ? sitOf(o.t) : null, loans: s2.loans.length, repaid4: s2.loans.length ? !!rp && r4 !== undefined && rp.t < r4 : null, sooner };
+  });
+  row('G5', 'Bank', 'first offer at sitting 1-2 of rung 3: 0 of 15; no loan on any run', alw.length ? `${g5.map((q) => `s${q.s}: first offer sitting ${q.first ?? '-'}, loans ${q.loans}, first repaid before rung 4 ${q.repaid4 === null ? '-' : q.repaid4 ? 'yes' : 'NO'}, rung 5 sooner than never ${Number.isFinite(q.sooner) ? `${(100 * q.sooner).toFixed(1)} %` : '-'}`).join('; ')}; felt cash: M4${few(alw.length, 15)}` : 'no always-finance run', alw.length ? g5.every((q) => q.first !== null && q.first <= 2 && q.repaid4 !== false && (!Number.isFinite(q.sooner) || q.sooner <= 0.1)) : null);
+  // G6
+  const r4m = nrm.map((r) => ({ s: r.spec.seed, hs: [...new Set(SS(r).filter((x) => x.rung === 4).flatMap((x) => [...(x.fitBack ?? []), ...(x.fitEnd ?? [])]))] }));
+  const Hs = ((cfgPacks ?? []) as { H: number }[]).map((p) => p.H);
+  const leads = ['packs', 'packsAlways'].flatMap((bt2) => by(bt2).map((r) => { const o = nrm.find((q) => q.spec.seed === r.spec.seed); const a = sitAt(r, 5); const b0 = o ? sitAt(o, 5) : null; return { bt2, s: r.spec.seed, lead: a !== null && b0 !== null ? b0 - a : null, packs: ((r.extra.s2 as Bot['rec']['s2']).packs ?? []).length }; }));
+  row('G6', 'Packs', 'T11: 0 of 150 rung-4 moments fit with own cash; the packs bot bought none', `${Hs.map((H) => `${H} h pack fits at a rung-4 moment on ${r4m.filter((q) => q.hs.includes(H)).length}/${r4m.length} seeds`).join('; ')}; ${leads.map((q) => `${q.bt2} s${q.s}: ${q.packs} packs, lead at rung 5 ${q.lead ?? '-'} sitting(s)`).join('; ') || 'no packs run'}${few(ns, 15)}`, ns ? Hs.every((H) => r4m.filter((q) => q.hs.includes(H)).length >= Math.ceil((10 / 15) * r4m.length)) && leads.every((q) => q.lead === null || q.lead <= 1) : null);
+  // G7
+  const mg = by('manager').map((r) => { const o = nrm.find((q) => q.spec.seed === r.spec.seed); const at = (n: number) => { const a = o && SS(o)[n - 1]; const m = SS(r)[n - 1]; return a && m ? a.Lend / m.Lend : NaN; }; return { s: r.spec.seed, r4: sitAt(r, 4), r5: sitAt(r, 5), w4: at(4), w8: at(8) }; });
+  row('G7', 'The hand', 'the manager never reaches rung 4; hand/manager 3.67 (s4), 5.34 (s8)', mg.length ? mg.map((q) => `s${q.s}: rung 4 at sitting ${q.r4 ?? '-'} (aim <= 7), rung 5 at ${q.r5 ?? '-'} (aim <= 14); hand/manager ${f2(q.w4)} at s4, ${f2(q.w8)} at s8 (aim >= 1.2); no mechanism over three fifths: not measured`).join('; ') + few(mg.length, 3) : 'no manager run', mg.length ? mg.every((q) => q.r4 !== null && q.r4 <= 7 && q.r5 !== null && q.r5 <= 14 && !(q.w4 < 1.2) && !(q.w8 < 1.2)) : null);
+  // G8
+  const g8 = nrm.map((r) => { const ss = SS(r); const from = ss.filter((x) => x.n >= 2); return { s: r.spec.seed, ok: from.filter((x) => x.lotsCut >= 1).length, n: from.length, bad: ss.flatMap((x) => x.lotMassBad ?? []) }; });
+  row('G8', 'Oversize pieces', '0 cut in every sitting of every run', `${g8.map((q) => `s${q.s}: a piece cut in ${q.ok} of ${q.n} sittings from sitting 2${q.bad.length ? `, MASS OUT OF RANGE ${q.bad.join(', ')}` : ', every mass in its range'}`).join('; ')}${few(ns, 15)}`, ns ? g8.every((q) => q.ok === q.n && !q.bad.length) : null);
+  // G9
+  const pl = by('planned').map((r) => { const o = nrm.find((q) => q.spec.seed === r.spec.seed); const a = SS(r)[5]; const b0 = o && SS(o)[5]; return a && b0 ? b0.Lend / a.Lend - 1 : NaN; }).filter(Number.isFinite);
+  const tj = runs.filter((r) => r.spec.gate);
+  const tjd = tj.reduce((a, r) => a + ((r.extra.s2 as Bot['rec']['s2']).gate ?? []).length, 0);
+  row('G9', 'Planning', 'trip by trip +9.9 % lifetime at day 3; a minute of ticks = a jump at 120 checks', `trip by trip against planned (day 3 lifetime): ${pl.length ? pl.map((v) => `${(100 * v).toFixed(1)} %`).join(' ') : 'no planned pair run'}; tick = jump: ${tjd} of ${tj.reduce((a, r) => a + SS(r).filter((x) => x.n <= 5 || [8, 12].includes(x.n)).length, 0)} checks differ; the bench (8-hour pass under 1,000 ms, at most 1.5 x planned): engine step 5 (ruling 28.1), not this tool`, tjd === 0 ? null : false);
+  // G10
+  const e19 = [3, 4].map((rung) => { const q = nrm.flatMap((r) => { const ss = SS(r); return ss.map((x, i) => ({ rung: x.rung, a: (x.Lback - (i ? ss[i - 1].Lend : x.Lback)) / Math.max(1e-9, x.ranH), p: (x.Lend - x.Lback) / 0.25 })).filter((q2, i) => i > 0 && q2.rung === rung && q2.p > 0).map((q2) => q2.a / q2.p); }); return { rung, m: q.length ? med(q) : NaN }; });
+  row('G10', 'Time away', 'E19 0.70 (rung 3), 0.89 (rung 4)', `${e19.map((q) => `rung ${q.rung} ${f2(q.m)}`).join(', ')}${few(ns, 15)}`, ns ? e19.every((q) => q.m >= 0.3 && q.m <= 0.8) : null);
+  // G11
+  const day = nrm.map((r) => { const ss = SS(r); const s2 = r.extra.s2 as Bot['rec']['s2']; const out: number[] = []; for (let d = 0; 2 * d + 1 < ss.length && d < 5; d++) { const a = d ? ss[2 * d - 1] : null; const b2 = ss[2 * d + 1]; const L0 = a ? a.Lend : 0; let num = 0; for (const x of [ss[2 * d], b2]) num += x.rack + x.van + s2.rackSold.filter((q) => q.t > x.h * 3600 - 900 && q.t <= x.h * 3600 + 1).reduce((s0, q) => s0 + q.money, 0); out.push(num / Math.max(1, b2.Lend - L0)); } return out; });
+  const dmed = [0, 1, 2, 3, 4].map((d) => { const v = day.map((x) => x[d]).filter((y) => y !== undefined); return v.length ? med(v) : NaN; });
+  const over = day.flat().filter((v) => v > 0.08).length;
+  row('G11', 'Yard sale and van', '6.9, 1.9, 1.8, 1.9, 1.8 % (days 1 to 5)', `${dmed.map((v) => (Number.isFinite(v) ? `${(100 * v).toFixed(1)} %` : '-')).join(', ')}; ${over} seed-days over 8 %${few(ns, 15)}`, ns ? dmed.every((v) => !Number.isFinite(v) || (v >= 0.02 && v <= 0.05)) && over === 0 : null);
+  // G12
+  const broken = runs.reduce((a, r) => a + r.broken.length, 0);
+  row('G12', 'Hard promises', 'none broken on 198 runs; ads 1.8 % of day 1', `${broken} broken on ${runs.length} runs (section 0 lists them); ads: the ads bot's T5 row`, broken === 0);
+  row('G13', 'The first yard', '75 of 75 runs to the millisecond; same.ts 4 of 4', 'not this table: s2e/first-yard.sh --full (same.ts on 4 hands, the 75-run comparison)', null);
+  row('G14', 'Candidates', '-', 'the copper hall is built and measured after the core in its own working copy; the trailer is not built (RULING2.md 27.3 D3)', null);
+  const ps = runs.map((r) => r.extra.person as PersonRow | null).filter((q): q is PersonRow => !!q);
+  row('G15', 'A person\'s sitting', 'not measured', ps.length ? `${ps.map((q) => `s${q.seed}: ${q.fits ? 'fits 15 min' : `does NOT fit (${q.missing.join(', ')})`}, two cards without an action ${q.twoCards}`).join('; ')} (a script at the slow hand's pace; the three people of 8.4 are the lead's)` : 'not run (--person)', ps.length ? ps.every((q) => q.fits && q.twoCards === 0) : null);
+  row('G16', 'Store-review pass', '-', 'done: notes/s2e-policy.md, ruled in RULING2.md 28.2', true);
+  return L;
+}
+/** The content's rate.kappa (printed by G2) and the sold keys (G4: rung 4's machines), set in main. */
+let contentAtRunsKappa: (number | null)[] | null = null;
+let soldKeys = new Set<string>();
+
 let gameHash = '';
 /** The shop's packs (H hours each), read from the game for T11. */
 let cfgPacks: { H: number }[] | null = null;
@@ -1239,13 +1431,16 @@ let snapHash = '';
  * rung, and the price the rule gives: max(works.floor, τ_r × ΔI), τ_r = tau_h[rung − 1] of its gate's rung. build-yard.py's
  * check (3) compares works.plates.<id>.price with it.
  */
-function writePlates(all: Summary[], gameFile: string, write: boolean): void {
+function writePlates(all: Summary[], gameFile: string, write: boolean): string[] {
   const cfg = loadCfg(gameFile);
   const c = contentAt(cfg.salvage, { counts: { bathSet: 1 } } as never);
   const W = c.works!;
   const rows: Record<string, unknown> = {};
   const items: Record<string, unknown> = {};
-  for (const pid of [...Object.keys(W.plates), ...MEASURED_ITEMS]) {
+  // s2e-bots: the sold items only (soldItems); a dark item's REPORT9 row is kept as it stands in the table read below.
+  const sold = soldItems(cfg);
+  const lines: string[] = [];
+  for (const pid of sold.map((i) => i.key)) {
     const xs = all.map((r) => (r.extra.plates as Record<string, PlateRow> | undefined)?.[pid]).filter((x): x is PlateRow => !!x);
     if (!xs.length) continue;
     const isPlate = pid in W.plates;
@@ -1261,14 +1456,68 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): void {
     const raw = Math.max(W.floor, tau * dE);
     const p10 = 10 ** Math.max(0, Math.floor(Math.log10(raw)) - 2);
     const dGs = xs.map((x) => x.dG ?? 0);
-    const row = { dE, dGaway: Math.round(dGs.reduce((a, v) => a + v, 0) / dGs.length), dI, I: med(xs.map((x) => x.I)), G: med(xs.map((x) => x.G ?? 0)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price: Math.round(raw / p10) * p10, seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: dEs, perSeedAway: dGs, perSeedI: xs.map((x) => x.dI) };
+    // s2e-bots (ruling 27.8): the standard error of the mean gain beside it, and E0 (the yard's income at the moment: the
+    // branch without the item, § an hour, mean of seeds), which build-yard.py's entry rule reads (at least 2 % of E0).
+    const se = dEs.length > 1 ? Math.sqrt(dEs.reduce((a, v) => a + (v - dE) ** 2, 0) / (dEs.length - 1) / dEs.length) : null;
+    const E0s = xs.map((x) => x.E0 ?? NaN).filter(Number.isFinite);
+    const E0 = E0s.length ? Math.round(E0s.reduce((a, v) => a + v, 0) / E0s.length) : null;
+    const price = Math.round(raw / p10) * p10;
+    const row = { dE, se: se === null ? null : Math.round(se), E0, sold: true, dGaway: Math.round(dGs.reduce((a, v) => a + v, 0) / dGs.length), dI, I: med(xs.map((x) => x.I)), G: med(xs.map((x) => x.G ?? 0)), at_h: med(xs.map((x) => x.at_h)), gate: gateR, tau_h: tau, price, seeds: xs.length, bought: xs.filter((x) => x.bought).length, perSeed: dEs, perSeedAway: dGs, perSeedI: xs.map((x) => x.dI), perSeedE0: xs.map((x) => x.E0 ?? null) };
     (isPlate ? rows : items)[pid] = row;
+    // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
+    const old = sold.find((i) => i.key === pid)!.price;
+    const moved = Math.abs(price - old);
+    const second = se !== null && moved > tau * se && moved > 0.1 * old;
+    const low = Math.min(...dEs);
+    lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
   }
   // --plates write: the table build-yard.py's check (3) reads (it then refuses a price off the rule); --plates: printed only.
-  const out = write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : path.join(os.tmpdir(), `yard-plates-${process.pid}.json`));
+  // s2e-bots: --platesOut file writes there instead of the repository's table (a try on one or two seeds must not move the
+  // shipped prices: build-yard.py --check would refuse the content). The table written MERGES: the rows of what is not sold
+  // (REPORT9's, as measured), the purse and the comments of the table it starts from are kept; `book` (the level ladders'
+  // three steps, --book) is written beside the plates.
+  const target = arg('platesOut');
+  const out = target && target !== 'true' ? path.resolve(target) : write ? path.join(ROOT, 'scripts/content/bots/plates.json') : path.resolve(arg('json') ? `${arg('json')}.plates.json` : path.join(os.tmpdir(), `yard-plates-${process.pid}.json`));
+  const base = JSON.parse(fs.readFileSync(fs.existsSync(out) && write ? out : path.join(ROOT, 'scripts/content/bots/plates.json'), 'utf8')) as Record<string, unknown> & { plates: Record<string, unknown>; items: Record<string, unknown> };
+  const bookRows = bookTable(all);
+  const merged = { ...base, $s2eBots: 's2e-bots (27 Nov): the sold items measured at their planned moments in the NEW goal order (ruling 21.1\'s measure), with `se` (the standard error of the mean over seeds) and `E0` (the yard\'s income at that moment, the branch without the item); `book`: the level ladders\' three steps g1 and d (g(L) = g1 x d^(L-1)) at each ladder\'s planned moment.', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: { ...base.plates, ...rows }, items: { ...base.items, ...items }, ...(Object.keys(bookRows).length ? { book: bookRows } : {}) };
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, `${JSON.stringify({ $comment: 'yard-stage2.md 2.6.4: the payback rule\'s table, written by scripts/content/yard-bot.ts --stage 2 --plates (content2-bots). dE (RULING2.md 19.1 and 21.1): § an hour of yard time the yard earns more at usual prices with the plate than without, over AN HOUR OF PLAY by the reference bot (the normal hand, buying nothing else) and then one absence at the cap, from its planned moment on the normal bots\' yards with the sitting\'s earlier purchases owned, mean of seeds; price: max(works.floor, tau_r x dE) to three figures; dGaway the gain over the capped absence alone (REPORT8\'s measure), dI the rated gain (not read); items: the stage\'s vehicles and tools (2.9), the same measure.', seeds: [...new Set(all.map((r) => r.spec.seed))], plates: rows, items }, null, 1)}\n`);
+  fs.writeFileSync(out, `${JSON.stringify(merged, null, 1)}\n`);
   process.stderr.write(`wrote ${out}\n`);
+  return lines;
+}
+
+/** The level ladders' three steps over the runs (--book): per ladder g1 (mean of the first step's gain), g2, g3 and d = sqrt(g3 / g1) within (0, 1]. */
+function bookTable(all: Summary[]): Record<string, { g1: number; d: number; at: string; gains: number[]; seeds: number; calc: number; perSeed: number[][] }> {
+  const out: Record<string, { g1: number; d: number; at: string; gains: number[]; seeds: number; calc: number; perSeed: number[][] }> = {};
+  const rows = all.flatMap((r) => ((r.extra.book as BookRow[] | undefined) ?? []));
+  for (const L of LADDERS) {
+    const xs = rows.filter((q) => q.ladder === L.ladder && q.gains.length);
+    if (!xs.length) continue;
+    const m = (k: number) => { const v = xs.map((q) => q.gains[k]).filter(Number.isFinite); return v.length ? v.reduce((a, x) => a + x, 0) / v.length : NaN; };
+    const gains = [m(0), m(1), m(2)].map((v) => Math.round(v));
+    const g1 = Math.max(0, gains[0]);
+    const d = g1 > 0 && gains[2] > 0 ? Math.min(1, Math.max(0.01, Math.sqrt(gains[2] / g1))) : g1 > 0 && gains[1] > 0 ? Math.min(1, Math.max(0.01, gains[1] / g1)) : 1;
+    out[L.ladder] = { g1, d: +d.toFixed(3), at: L.at, gains, seeds: xs.length, calc: Math.round(xs.reduce((a, q) => a + q.calc, 0) / xs.length), perSeed: xs.map((q) => q.gains) };
+  }
+  return out;
+}
+
+/**
+ * --book write: the content's levels.book (src/config/salvage.content.ts) gets the measured ladder ONLY for the ladders rated
+ * income's engineer reported failing the driver-level check (BOOK_FAILING; ruling 27.4: the book is read for a ladder where
+ * the check fails); one exact replacement of the `book:` line, then `python3 scripts/content/build-yard.py` writes game.json.
+ */
+function writeBook(all: Summary[]): string[] {
+  const t = bookTable(all);
+  const want = Object.fromEntries(Object.entries(t).filter(([k]) => BOOK_FAILING.includes(k)).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
+  const file = path.join(ROOT, 'src/config/salvage.content.ts');
+  const src = fs.readFileSync(file, 'utf8');
+  const re = /\n    book: \{[^\n]*\},\n/;
+  if (!re.test(src)) return ['levels.book: the `book:` line of salvage.content.ts was not found; nothing written'];
+  const body = Object.entries(want).map(([k, v]) => `${JSON.stringify(k)}: { g1: ${v.g1}, d: ${v.d}, at: ${JSON.stringify(v.at)} }`).join(', ');
+  fs.writeFileSync(file, src.replace(re, `\n    book: {${body ? ` ${body} ` : ''}},\n`));
+  return [`levels.book written (${Object.keys(want).join(', ') || 'nothing'}): run python3 scripts/content/build-yard.py`];
 }
 
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
@@ -1840,9 +2089,12 @@ async function main(): Promise<void> {
   // them (default every one); --shard i/n runs every n-th spec from i (a background command here is stopped after 30 min:
   // run the shards one after another with the same --cache, then once more without --shard to print the table).
   if (Number(arg('stage', '0')) === 2) {
-    const names = (arg('bots', DEFAULT2.join(',')) ?? '').split(',') as Bot2[];
+    const asked = (arg('bots', DEFAULT2.join(',')) ?? '').split(',') as Bot2[];
+    // s2e-bots: a habit that no longer means anything on the stage as built is dropped with its line.
+    for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
+    const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
@@ -1851,14 +2103,19 @@ async function main(): Promise<void> {
     // --from a.json,b.json: print the report again from runs already made (no play).
     const from = arg('from');
     const all2 = from ? from.split(',').flatMap((f) => JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')) as Summary[]) : await runAll(gameFile, specs2, Number(arg('jobs', '2')));
-    if (arg('plates')) writePlates(all2, gameFile, arg('plates') === 'write');
+    cfgPacks = packProducts(loadCfg(gameFile));
+    const cfgG = loadCfg(gameFile);
+    soldKeys = new Set(soldItems(cfgG).map((i) => i.key));
+    contentAtRunsKappa = ((cfgG.salvage as unknown as { rate?: { kappa?: (number | null)[] } }).rate?.kappa ?? null);
+    const platesLines = arg('plates') ? writePlates(all2, gameFile, arg('plates') === 'write') : null;
+    const bookLines = arg('book') === 'write' ? writeBook(all2) : [];
     const json2 = arg('json');
     if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
     const seeds2 = from ? [...new Set(all2.map((r) => r.spec.seed))].sort((a, b) => a - b) : seeds;
-    cfgPacks = packProducts(loadCfg(gameFile));
     const W2: string[] = [];
     walkSection(W2, all2);
-    process.stdout.write(`${report2(all2, seeds2)}\n\n${report8(all2, (loadCfg(gameFile).salvage as unknown as { tau_h: (number | null)[] }).tau_h)}\n${W2.join('\n')}\n`);
+    const tauH2 = (cfgG.salvage as unknown as { tau_h: (number | null)[] }).tau_h;
+    process.stdout.write(`${report2(all2, seeds2)}\n\n${report8(all2, tauH2)}\n${W2.join('\n')}\n\n${reportS2e(all2, tauH2, platesLines)}\n${bookLines.join('\n')}\n`);
     process.exit(all2.some((r) => r.broken.length || ((r.extra.s2 as Bot['rec']['s2'])?.gate ?? []).length) ? 2 : 0);
   }
   const only = (arg('only', 'beats,hand,away,days,nohand,gate,income,walk') ?? '').split(',');

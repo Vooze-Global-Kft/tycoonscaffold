@@ -11,6 +11,11 @@ import { thingPos } from './positions';
 import type { SalvageConfig } from './types';
 import { begin, finish } from './clock';
 import { orderPlate, worksOwn } from './works';
+import { financeHabit } from './bot';
+import { moneyCfg, r3open } from '../fixtures/salvage2money';
+import { financeTerms, ratedIG } from './bank';
+import { reserve } from './advice';
+import { roundMoney } from './money';
 
 const cfg = { mode: 'salvage', salvage: SALVAGE_TEST } as unknown as SalvageConfig;
 const NOW = Date.UTC(2026, 10, 25, 9);
@@ -222,6 +227,72 @@ describe('REPORT9 (content2-bots): the measured branches buy nothing; the boss d
     expect(car === undefined || car.at.at === 'apron').toBe(true);
     expect(b.g.salvage.works.depollution.car?.thing === 'carT' || (b.g.salvage.counts?.depolluted ?? 0) >= 1).toBe(true);
     expect(b.g.salvage.forklift?.by).toBe(null);
+    expect(b.rec.broken).toEqual([]);
+  });
+});
+
+/**
+ * s2e-bots (yard-stage2-economy.md 2.14.2, 2.10; RULING2 27): the hook-lift financed at its card (the truck park's), and the
+ * boss's own hand cutting every oversize piece his tool opens whatever the goal. On the frozen contents, with the new rule's
+ * bank written here (as bankReach.test.ts does): no tuned number of game.json is read or pinned.
+ */
+describe('s2e-bots: the new stage\'s habits', () => {
+  const opts = { hand: 'normal' as const, habit: 'goal' as const, route: 'A' as const, seed: 2 };
+  function hookCfg(): SalvageConfig {
+    const base = moneyCfg();
+    const c = structuredClone(base.salvage) as unknown as SalvageConfig['salvage'] & { tau_h: (number | null)[] };
+    c.bank = { ...c.bank!, maxF_h: 6, maxF_tau: 0.5 };
+    c.tau_h = [null, null, 12, 36, 48];
+    const tb = c.worksLayer!.shop.find((i) => i.key === 'truckBridge')!;
+    tb.price = roundMoney(3 * ratedIG(base, r3open()).I);
+    (tb as { financeable?: boolean }).financeable = true;
+    return { ...base, salvage: c } as SalvageConfig;
+  }
+  const hcfg = hookCfg();
+  const g0 = (() => {
+    const g = r3open();
+    const tm = financeTerms(hcfg, { ...g, cash: 0 }, 'truckBridge')!;
+    return { ...g, cash: roundMoney(reserve(hcfg, g) + tm.d + 500), salvage: { ...g.salvage, bank: { ...g.salvage.bank, letterSeen: false } } };
+  })();
+
+  it('the always-finance bot opens the truck park\'s card, reads the letter and signs the hook-lift\'s loan: the deposit exactly, the truck ordered', () => {
+    const b = newBot(hcfg, structuredClone(g0), g0.salvage.clock.highMs, { ...opts, finance: 'always' });
+    newSitting(b);
+    const tm = financeTerms(hcfg, b.g, 'truckBridge')!;
+    const cash0 = b.g.cash;
+    expect(financeHabit(b, 'truckBridge')).toBe(true);
+    expect(b.g.salvage.bank.letterSeen).toBe(true);
+    expect(b.rec.s2.offers.map((o) => o.plate)).toEqual(['truckBridge']);
+    expect(b.rec.s2.loans.map((l) => l.plate)).toEqual(['truckBridge']);
+    expect(b.g.salvage.bank.agreement?.plate).toBe('truckBridge');
+    expect(b.g.salvage.owned.includes('truckBridge' as never) || b.g.salvage.arriving.some((q) => q.item === 'truckBridge')).toBe(true);
+    // the deposit is P - F of the terms shown (the walk to the card took a few seconds: the terms read at the press)
+    expect(b.rec.purchases.at(-1)!.price).toBeCloseTo(b.rec.s2.loans[0].P - b.rec.s2.loans[0].F, 2);
+    expect(cash0 - b.g.cash).toBeGreaterThan(0);
+    void tm;
+    expect(b.rec.broken).toEqual([]);
+    // once a sitting: no second opening of the card in the same sitting
+    expect(financeHabit(b, 'truckBridge')).toBe(false);
+  });
+
+  it('the never-finance bot sees the offer and signs nothing', () => {
+    const b = newBot(hcfg, structuredClone(g0), g0.salvage.clock.highMs, opts);
+    newSitting(b);
+    expect(financeHabit(b, 'truckBridge')).toBe(true);
+    expect(b.rec.s2.offers.length).toBe(1);
+    expect(b.rec.s2.loans).toEqual([]);
+    expect(b.g.salvage.bank.agreement ?? null).toBe(null);
+  });
+
+  it('every oversize piece his tool opens is cut, whatever the goal (the boss\'s own hand)', () => {
+    const wcfg = worksCfg();
+    const g = structuredClone(lots4());
+    g.salvage.goals.done = [...new Set([...g.salvage.goals.done, 'cutLot'])];
+    const before = g.salvage.counts?.lotOpened ?? 0;
+    const b = newBot(wcfg, g, g.salvage.clock.highMs, opts);
+    newSitting(b);
+    playTo(b, b.g.salvage.t + 240);
+    expect(b.g.salvage.counts?.lotOpened ?? 0).toBeGreaterThan(before);
     expect(b.rec.broken).toEqual([]);
   });
 });

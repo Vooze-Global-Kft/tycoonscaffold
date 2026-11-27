@@ -1610,8 +1610,9 @@ function rackRoom(b: Bot): boolean {
  * Finance (2.14; 8.2 "Always / never finances"): the goal's (or the advice line's) plate when cash cannot pay it outright.
  * s2e-bots (yard-stage2-economy.md 2.14.2; s2e-bank): also a financeable VEHICLE (the three-axle hook-lift), whose card is
  * the truck park's (noteSeen {card: 'park', place}): the letter, the offer and signFinance exactly as for a plate.
+ * Exported for bot.test.ts.
  */
-function financeHabit(b: Bot, plate: string): boolean {
+export function financeHabit(b: Bot, plate: string): boolean {
   const s = b.g.salvage;
   const kind = financeKind(C(b), plate);
   if (kind === null || s.bank.agreement) return false;
