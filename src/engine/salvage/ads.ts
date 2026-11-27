@@ -106,7 +106,8 @@ export function awayBonusOf(cfg: SalvageConfig, g: SalvageGame, card: Pick<AwayC
 export function awayOfferAfter(cfg: SalvageConfig, g: SalvageGame, card: AwayCard, absentS: number): AdsState {
   const d = adsDef(cfg.salvage);
   const a = g.salvage.ads;
-  if (!d || !secondSession(g) || absentS < d.awayMinAbsence_min * 60) return a;
+  // s2e-fix1 (RULING2 28.2 b): no offer is made for the band u13 (adsAllowed), so none stands to show later.
+  if (!d || !adsAllowed(cfg, g) || absentS < d.awayMinAbsence_min * 60) return a;
   if (adCounts(cfg.salvage, g).awayUsed >= d.awayPerDay || !dayRoom(cfg.salvage, g, 'away')) return a;
   const I = ratedI(cfg, g);
   const amount = awayBonusOf(cfg, g, card, I);
