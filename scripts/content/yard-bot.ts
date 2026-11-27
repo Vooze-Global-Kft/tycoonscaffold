@@ -249,6 +249,15 @@ function namedSteps(cfg: R.SalvageConfig, g: R.SalvageGame): Set<string> {
     const tg = x.target;
     if (x.act === 'level' && tg) out.add(tg.kind === 'crew' ? `level ${role(tg.id ?? '')}` : tg.kind === 'machine' ? `level ${tg.machine}` : tg.kind === 'partner' ? `level ${tg.partner}` : `level plate ${tg.plate}`);
   }
+  // s2e-bots: the advice line's second line "For now: {item}" names a purchase too (advice.ts works.meanwhile)
+  const m = (a as { works?: { meanwhile?: { action: unknown } | null } } | null)?.works?.meanwhile;
+  if (m) {
+    const x = m.action as { act: string; item?: string; role?: string; target?: { kind: string; id?: string; machine?: string; partner?: string; plate?: string } };
+    if (x.act === 'buy' && x.item) out.add(`buy ${x.item}`);
+    if (x.act === 'hire' && x.role) out.add(`hire ${x.role}`);
+    const tg = x.target;
+    if (x.act === 'level' && tg) out.add(tg.kind === 'crew' ? `level ${role(tg.id ?? '')}` : tg.kind === 'machine' ? `level ${tg.machine}` : tg.kind === 'partner' ? `level ${tg.partner}` : `level plate ${tg.plate}`);
+  }
   const goal = R.nextGoal(cfg, g);
   if (goal?.buy) {
     const it = [...contentAt(cfg.salvage, g.salvage).shop, ...cfg.salvage.dayOneList].find((i) => i.key === goal.buy);
@@ -660,7 +669,9 @@ type PersonRow = { seed: number; hand: string; t0_h: number; cash: number; done:
 function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, seed: number): PersonRow {
   const p = resumeBot(cfg, snap, { ...opts, hand: 'slow', gate2: false });
   const t0 = p.g.salvage.t;
-  const want = soldItems(cfg).filter((i) => i.gate === 4).map((i) => i.key);
+  // what the rung-4 entry sitting still has to do: the rung's sold items not yet owned or ordered at the return
+  const own0 = (k: string) => !!p.g.salvage.works[k] || p.g.salvage.owned.includes(k as never) || p.g.salvage.arriving.some((q) => q.item === k);
+  const want = soldItems(cfg).filter((i) => i.gate === 4 && !own0(i.key)).map((i) => i.key);
   const lots0 = p.g.salvage.things.filter((th) => th.at.at === 'lot' && (contentAt(cfg.salvage, p.g.salvage).objects[th.obj]?.tier ?? 9) <= p.g.salvage.tier).length;
   const cut0 = p.g.salvage.counts?.lotOpened ?? 0;
   const n0 = p.rec.purchases.length;
@@ -688,7 +699,9 @@ function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, se
   }
   const lotsCut = (p.g.salvage.counts?.lotOpened ?? 0) - cut0;
   const halls = want.filter((k) => contentAt(cfg.salvage, p.g.salvage).works?.plates[k]?.recipes);
-  const need = [...want.map((k) => `buy ${k}`), ...want.filter((k) => contentAt(cfg.salvage, p.g.salvage).works?.plates[k]).map((k) => `start ${k}`), ...halls.map((k) => `pour ${k}`), ...Array.from({ length: Math.min(2, lots0) }, (_, j) => `cut ${j + 1}`)];
+  // a hall bought before the return but not yet poured still owes its first heat
+  const unpoured = soldItems(cfg).filter((i) => i.gate === 4 && contentAt(cfg.salvage, p.g.salvage).works?.plates[i.key]?.recipes && !want.includes(i.key) && !snap.g.salvage.works[i.key]?.heat?.firstPoured).map((i) => i.key);
+  const need = [...want.map((k) => `buy ${k}`), ...want.filter((k) => contentAt(cfg.salvage, p.g.salvage).works?.plates[k]).map((k) => `start ${k}`), ...[...halls, ...unpoured].map((k) => `pour ${k}`), ...Array.from({ length: Math.min(2, lots0) }, (_, j) => `cut ${j + 1}`)];
   const missing = need.filter((x) => done[x] === undefined || done[x] > 900);
   // Two centred cards without a player's action between them: only the away card opens without one; another card opened
   // in the same instant as it (before the away card was put aside) would be the fault.
