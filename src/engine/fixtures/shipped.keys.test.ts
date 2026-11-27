@@ -29,7 +29,8 @@ function withoutPassKeys(raw: Record<string, any>): Record<string, any> {
 describe('the first yard does not read this pass\'s keys (release.stage 1)', () => {
   it('the shipped content is at stage 1 and carries the keys', () => {
     expect(RAW.release.stage).toBe(1);
-    expect(RAW.truck.fairAfter_trips).toBe(4);
+    // 12 since the lead's ruling 23.1 (4 cost the normal hand a quarter of its lifetime earnings by day 6).
+    expect(RAW.truck.fairAfter_trips).toBe(12);
     expect(RAW.ladder.supply.trips_h).toBeGreaterThan(0);
     expect(RAW.ads.minOffer_min).toBe(2);
     expect(RAW.ads.dayHours_h.slice(0, 2).every((h: unknown) => typeof h === 'number')).toBe(true);
@@ -42,7 +43,7 @@ describe('the first yard does not read this pass\'s keys (release.stage 1)', () 
     expect(a.iap).toBeUndefined();
     const { fairAfter_trips, ...truck } = a.truck;
     const { supply, ...ladder } = a.ladder;
-    expect(fairAfter_trips).toBe(4);
+    expect(fairAfter_trips).toBe(12);
     expect(supply).toBeDefined();
     expect({ ...a, truck, ladder }).toEqual(b);
   });
