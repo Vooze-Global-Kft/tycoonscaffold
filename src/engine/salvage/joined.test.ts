@@ -154,9 +154,10 @@ describe('an absence at the rung\'s cap pays what its away card prints, once (2.
       expect(card, 'an away card').toBeTruthy();
       expect(card.seconds).toBeCloseTo(cap, 6);
       expect(r.earnings).toBe(0);
-      // The card's money is gross of the bank's share and its net is money − spent (2.14.4): the cash moved by net − bank.
-      expect(roundMoney(r.game.cash - n.g.cash)).toBe(roundMoney((card.net ?? 0) - (card.bank ?? 0)));
-      expect(roundMoney(card.net ?? NaN)).toBe(roundMoney(card.money - (card.spent ?? 0)));
+      // The lead's ruling 23.2 (27 November): NET is what the cash moved. The card's money (sold) is gross of the
+      // bank's share, which stands on its own line: net = money − spent − bank.
+      expect(roundMoney(r.game.cash - n.g.cash)).toBe(roundMoney(card.net ?? NaN));
+      expect(roundMoney(card.net ?? NaN)).toBe(roundMoney(card.money - (card.spent ?? 0) - (card.bank ?? 0)));
       expect(roundMoney((r.game.lifetimeEarnings ?? 0) - (n.g.lifetimeEarnings ?? 0))).toBe(roundMoney(card.money - (card.bank ?? 0)));
       if (n.g.salvage.bank.agreement) expect(roundMoney(r.game.salvage.bank.agreement ? r.game.salvage.bank.agreement.taken - n.g.salvage.bank.agreement.taken : n.g.salvage.bank.agreement.T - n.g.salvage.bank.agreement.taken)).toBe(card.bank ?? 0);
       // Once: the same device time again pays nothing and changes nothing.

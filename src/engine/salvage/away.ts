@@ -84,7 +84,8 @@ function card(x: Ctx, seconds: number, capS: number, absentS: number, runLonger:
     absentS,
     spent: acc.spent,
     bought,
-    net: roundMoney(acc.money - acc.spent),
+    // The lead, 27 November (ruling 23.2): NET is what the cash moved: sold, less the loads, less the bank's share.
+    net: roundMoney(acc.money - acc.spent - (acc.bank > 0 ? acc.bank : 0)),
     deliveryList: acc.deliveryList,
     runLonger,
     // engine2-income (E40): the held bays sold to keep the yard running, in order (only when there were any).
@@ -238,6 +239,8 @@ export function awayPass(cfg: SalvageConfig, g: SalvageGame, now: number, events
       delete merged.van;
       const bank = roundMoney((prev.bank ?? 0) + (c.bank ?? 0));
       if (bank > 0) merged.bank = bank;
+      // Ruling 23.2: the merged card's NET is the cash's own change over both passes.
+      merged.net = roundMoney(money - spent - (bank > 0 ? bank : 0));
       const repaid = [...(prev.repaid ?? []), ...(c.repaid ?? [])];
       if (repaid.length) merged.repaid = repaid;
       for (const k of ['rack', 'van'] as const) {

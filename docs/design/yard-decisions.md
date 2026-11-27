@@ -2480,3 +2480,42 @@ wrote none of it, and the specification is brought into step.
     From now on every change of the things or the pieces goes through lookup.ts's writers. What is
     left for a later step: planning a run more cheaply, and the oversize pieces weighed where they
     are cut (finding X3: thousands of fragments on the floor cost a tick 2.3 ms at rung 5).
+
+### 23. The one pass of fixes on stage 2 (27 November, from 02:30): what the owners handed back for a ruling
+
+23.1 THE FAIR DRIVER AT TWELVE TRIPS (E4 (a)). Built as ruled (from the works' opening no open
+    partner's full skip waits more than N trips; a count a partner; tick, jump and time away agree;
+    the first yard plays byte for byte the same), it reached rung 5 with the bridge partners
+    levelled, but at N = 4 it cost the normal hand 25 to 28 % of lifetime earnings by day 6 (trips
+    spent on poorer loads). `truck.fairAfter_trips` is 12: the normal hand is unchanged, the
+    bridge-partner play reaches rung 5 at 6 % less, and the build's supply check still passes
+    (rung 5: light iron within 29.4 h of 49). The attacker's dead end did not reproduce on the tree
+    as it stood when the rule was built, with the rule off; the confirm step looks for it again.
+23.2 NET IS WHAT THE CASH MOVED. The away card's net is sold less loads less the bank's share (it
+    was sold less loads, with the bank's share on its own line: a card that prints NET alone
+    overstated the cash while an agreement was open). The sold total stays gross and the bank's
+    line stays beside it. It replaces the sentence of 2.14.4 and 2.17. The first yard has no bank:
+    its card is unchanged.
+23.3 WHAT WAS PAID FOR SURVIVES A RESTART (M3): the shared store's reset hands the game the player
+    had to the mode (`EngineMode.onReset`, optional: the four other games are unchanged); the yard
+    keeps the entitlements, the age band, the packs-hidden lock and a chosen look that is an owned
+    product, and loses the cash, the yard and a purchase still waiting, as its card says. Tested
+    through the real store at both stages.
+23.4 RATED INCOME (E6, E7, 19.2, 21.4). From the works' opening rated income is the best replay over
+    the yard's effective assets and partner loads are ranked by net per truck-second; over the
+    attacker's 597 purchase steps it now falls on 6 (it fell on 38): not yet "never". The advice
+    line names the shortest payback within τ_r and matches the attacker's best buy at 3 of his 5
+    moments (at two it names the garage, which rated income overrates). Both wait for ONE more
+    step, the calibration of rated income against the bots' measured gains (every plate's term,
+    the hands' carrying, whole things, the van; the band of 14.10; no fall at any purchase step of
+    the bots' runs), which follows the bots' second measurement. Until then nothing is priced
+    from a term that is known to be wrong: a partner's level is priced from its own rated gain
+    (E3), which the attacker measured at a tenth to a quarter of what the yard keeps.
+23.5 PACKS AGAINST HEADROOM (M5): on states played under the old prices the 20-hour pack never
+    fits and the 10-hour pack only at rung 4's entry with no cash. Read again on the bots' second
+    measurement (partner levels now cost what they earn, so headroom is larger); a pack that still
+    never fits at an ordinary moment is taken off the list of ruling 9.1.
+23.6 A SAVE THAT HAS SEEN STAGE 2, IN A BUILD AT STAGE 1 (X6), as built: the stage's dates are
+    moved on by the time the first yard ran (a thawed save goes on from where it froze); a crew
+    member caught on stage-2 work is made idle and his load put on the tipping floor; a first-yard
+    partner's waiting skip keeps its works-layer things aside. Accepted.
