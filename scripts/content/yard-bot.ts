@@ -363,7 +363,7 @@ function walkSection(L: string[], all: Summary[]): void {
 // ============================================================================================ stage 2 (yard-stage2.md 8.2; content2-bots)
 
 /** The bots of 8.2's table, each a habit on the first yard's normal hand unless it names another hand. */
-type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise' | 'old' | 'noCrane' | 'bridgeLevels' | 'routeB';
+type Bot2 = 'normal' | 'brisk' | 'slow' | 'manager' | 'always' | 'packs' | 'ads' | 'racker' | 'cutter' | 'holder' | 'steelMax' | 'leadCut' | 'flat' | 'behind' | 'noise' | 'old' | 'noCrane' | 'bridgeLevels' | 'routeB' | 'cut60' | 'hand15';
 const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   normal: {},
   brisk: { hand: 'brisk' },
@@ -392,13 +392,16 @@ const BOTS2: Record<Bot2, Partial<BotOptions>> = {
   noCrane: {},
   bridgeLevels: {},
   routeB: { route: 'B' },
+  // REPORT9's probe of planning ahead (14.9, T3): the planned runs shorter (group.cutRun_s 120 -> 60; group.handRun_s 30 -> 15)
+  cut60: {},
+  hand15: {},
 };
 /** The bots a plain --stage 2 call runs (the variants are asked for by name). */
 const DEFAULT2: Bot2[] = ['normal', 'brisk', 'slow', 'manager', 'always', 'packs', 'ads', 'racker', 'cutter', 'holder', 'steelMax', 'leadCut'];
 /** The bots whose sittings measure G (a capped absence at usual prices from each return) beside I (REPORT8). */
 const MEASURES_G = new Set<Bot2>(['normal', 'flat']);
 /** The bots whose first part (to the works' opening) is the normal hand's own: they share one snapshot per seed. */
-const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut', 'behind', 'noise', 'noCrane', 'bridgeLevels']);
+const SHARES_NORMAL = new Set<Bot2>(['normal', 'always', 'packs', 'ads', 'racker', 'cutter', 'steelMax', 'leadCut', 'behind', 'noise', 'noCrane', 'bridgeLevels', 'cut60', 'hand15']);
 const S2_SITTINGS = Number(arg('sittings', '16')); // 8 days twice a day (8.2)
 const S2_AWAY_S = 11.75 * 3600;
 const S2_PLAY_S = 15 * 60;
@@ -447,6 +450,8 @@ function variant(cfg: R.SalvageConfig, which: Bot2): R.SalvageConfig {
   if (which === 'leadCut') return leadCut(cfg);
   if (which === 'noCrane') return dropItems(cfg, ['crane'], ['buyCrane']);
   if (which === 'flat') return { ...cfg, salvage: { ...c, board: { ...c.board, a: 0 } } } as R.SalvageConfig;
+  if (which === 'cut60') return { ...cfg, salvage: { ...c, group: { ...c.group, cutRun_s: 60 } } } as R.SalvageConfig;
+  if (which === 'hand15') return { ...cfg, salvage: { ...c, group: { ...c.group, handRun_s: 15 } } } as R.SalvageConfig;
   if (which === 'behind') return { ...cfg, salvage: { ...c, group: { ...c.group, ahead: false } } } as R.SalvageConfig;
   if (which === 'old') return { ...cfg, salvage: { ...c, crew: { ...c.crew, orderFromRung: 99 } } } as R.SalvageConfig;
   if (which === 'noise') return { ...cfg, salvage: { ...c, crew: { ...c.crew, cutter: { ...c.crew.cutter, share: c.crew.cutter.share * (1 + 1e-9) } } } } as R.SalvageConfig;
