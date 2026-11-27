@@ -584,7 +584,7 @@ export const TEXT = {
   'card.bay.route': 'Goes to: {to}', // to: { text: 'title.works.<id>' } or { text: 'card.bay.sellFromBay' }
   'card.bay.sellFromBay': 'Sell from the bay',
   // s2e-levels (economy 2.11, RULING2 27.3 D5): a level's row from the works' opening; x: { money } = levelGain as applied, t: { secs } = price ÷ gain
-  'card.levelEarns': '+{x} an hour on your figures',
+  'card.levelEarns': '+{x} an hour on your yard', // s2e-advice (the build's words): the same words as the advice line's gain (advice.gain)
   'card.levelPays': 'Pays for itself in about {t}', // t: { secs } = price ÷ gain, the yard's running hours
   'refusal.notLimit': 'Not the limit now · +{x} an hour', // x: { money } = levelGain; no Buy
 

@@ -421,11 +421,12 @@ const itemArg = (a: Advice): TxtArgs => ({ item: a.line.args?.item ?? { text: 'i
  * (a) THE BEST BUY: of everything sold whose payback (price ÷ gain) is within 1.25 tau_r, the shortest payback, ties to the
  *     larger gain. It is named with its card's line ("Next: {item} · {x}", as built) and `works.gain` "+§x an hour on your
  *     yard's figures", the calculated number on this state.
- * (b) THE TARGET, when it costs more than the cash less the driver's reserve (E19): the current goal's item when the goal
- *     buys one (any payback: the goal list is the stage's order; this is what makes the card manager reach rungs 4 and 5);
+ * (b) THE TARGET, when it costs more than the cash less the driver's reserve (E19): the item of the next goal that buys
+ *     one (goals.ts goalBuyNow: from the current goal on) (any payback: the goal list is the stage's order; this is what makes the card manager reach rungs 4 and 5);
  *     else the best buy of (a) when the cash will reach it at the next return (cash less reserve plus I x the away cap), else
  *     the best buy within the line's budget (cash + advice.minutes of income less the reserve), else the best buy however far
- *     (the line is never null while something sold pays back within the window). The line reads "Save up: {item}" (advice.saveFor)
+ *     (the line is never null while something sold pays back within the window), else the goal's item itself (affordable,
+ *     outside the window: named as a purchase). The line reads "Save up: {item}" (advice.saveFor)
  *     over "Cash for it in about {t}" (works.save, advice.saveTime); `loanHint` ("A loan suits a machine that earns.") ONLY where bank.ts loanHintDue holds for the
  *     target with its own gain (the letter seen, the loan offered, no agreement open, gain x save-up time > the charge).
  *     `works.meanwhile` ("For now: {item}", advice.meanwhile): of the items in the window the cash less the reserve pays
@@ -457,7 +458,8 @@ function worksAdvice(cfg0: SalvageConfig, g: SalvageGame, budget: number): Advic
   if (goalC && goalC.a.price > room + 1e-9) target = goalC;
   else {
     const near = best && best.a.price <= reach + 1e-9 ? best : null;
-    const pick = near ?? bestOf(inWin.filter((x) => x.a.price <= budget + 1e-9)) ?? best;
+    // The goal's item, affordable but outside the window, is still named when nothing in the window is (the stage's order).
+    const pick = near ?? bestOf(inWin.filter((x) => x.a.price <= budget + 1e-9)) ?? best ?? goalC;
     if (!pick) return null;
     if (pick.a.price > room + 1e-9) target = pick;
     else return { ...pick.a, works: worksOf(pick, null, null) };

@@ -287,12 +287,16 @@ function currentSpec(cfg: SalvageConfig, g: SalvageGame, gs: GoalState): GoalSpe
 }
 
 /**
- * s2e-advice (yard-stage2-economy.md 2.13 (b)): the shop key the CURRENT goal asks to buy (its `buy`), or null. Read by the
- * advice line (the target to save for) without the goal card's own reading of the advice (no cycle: the order of the list
- * reads no advice).
+ * s2e-advice (yard-stage2-economy.md 2.13 (b) and the sittings' "the plasma is the next target"): the shop key of the first
+ * goal, from the current one on in the card's order, that asks to buy something not yet met (its `buy`), or null. Read by
+ * the advice line (the target to save for) without the goal card's own reading of the advice (no cycle: the order of the
+ * list reads no advice). A goal the player leaves open (a deal not signed, a load not fetched) does not hide the stage's
+ * next purchase (REPORT9: the card manager stood at "signDeal" for twelve sittings).
  */
 export function goalBuyNow(cfg: SalvageConfig, g: SalvageGame): string | null {
-  return currentSpec(cfg, g, g.salvage.goals)?.buy ?? null;
+  const gs = g.salvage.goals;
+  for (const d of ordered(cfg, g, gs)) if (isOpen(gs, d) && d.buy && !goalMet(cfg, g, d)) return d.buy;
+  return null;
 }
 
 // ============================================================================ what the card prints

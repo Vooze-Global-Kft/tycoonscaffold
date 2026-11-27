@@ -97,7 +97,9 @@ function promises(cfg: SalvageConfig, g: SalvageGame): void {
   if (w.saveUp_s === null) {
     // (a) the cash pays it now, within the window, and no hire or level sold now pays back sooner within the line's budget.
     expect(a.price).toBeLessThanOrEqual(room + 1e-9);
-    expect(w.payback_h).toBeLessThanOrEqual(ADVICE_WINDOW * tau + 1e-9);
+    const goalItem = (a.action.act === 'buy' ? a.action.item : a.action.act === 'hire' ? null : null) === goalBuyNow(cfg, g) && goalBuyNow(cfg, g) !== null;
+    // Within the window, unless it is the stage's next goal purchase named because nothing in the window is.
+    if (!goalItem) expect(w.payback_h).toBeLessThanOrEqual(ADVICE_WINDOW * tau + 1e-9);
     expect(a.loanHint).toBeUndefined();
     expect(w.meanwhile).toBeNull();
     const budget = g.cash + cfg.salvage.advice.minutes * ratedIncomeCfg(cfg, g) - reserve(cfg, g);
