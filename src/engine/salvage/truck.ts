@@ -522,7 +522,8 @@ function fairChoice(x: Ctx, n: number, floor: { g: number | null }, best: { part
     if (q) waiting.push({ id, r: n - (s.partners[id].fairWait ?? 0), fullAt: fullestSkip(x, id)!.fullAt, fits: q.fits });
   }
   const pick = fairPick(waiting, best ? best.partner : null);
-  if (pick === 'wait' || pick === null) return pick;
+  if (pick === null) return null;
+  if (typeof pick === 'object') return 'wait';
   if (best && pick === best.partner) return best;
   const sk = fullestSkip(x, pick)!;
   return { partner: pick, fullAt: sk.fullAt, price: sk.price, mass: sk.mass_g };
@@ -543,9 +544,9 @@ export function fullerFirst(fullAt: number, best: { fullAt: number } | null): bo
  * fairPick: the fair rule's choice (RULING2.md 22 E4 (a), earliest deadline first) among the partners WAITING for the driver
  * (`r` trips each may still wait, `fullAt` of its fullest skip, `fits` now), given the rule's own choice `best` (a partner
  * id or null): `best` stands when the others can all still be served in time after it; else the most urgent (the least r,
- * then full longest, then the id), or 'wait' when that one waits only for the floor's room; null: nothing to take.
+ * then full longest, then the id), or `{ wait: id }` when that one waits only for the floor's room; null: nothing to take.
  */
-export function fairPick(waiting: readonly { id: string; r: number; fullAt: number; fits: boolean }[], best: string | null): string | null | 'wait' {
+export function fairPick(waiting: readonly { id: string; r: number; fullAt: number; fits: boolean }[], best: string | null): string | null | { wait: string } {
   const inTime = (taken: string | null): boolean => {
     const left = waiting.filter((w) => w.id !== taken).map((w) => w.r - (taken === null ? 0 : 1)).sort((a, b) => a - b);
     return left.every((r, j) => r >= j);
@@ -554,7 +555,7 @@ export function fairPick(waiting: readonly { id: string; r: number; fullAt: numb
   let top: (typeof waiting)[number] | null = null;
   for (const w of waiting) if (!top || w.r < top.r || (w.r === top.r && (w.fullAt < top.fullAt || (w.fullAt === top.fullAt && w.id < top.id)))) top = w;
   if (!top) return best;
-  if (!top.fits) return 'wait';
+  if (!top.fits) return { wait: top.id };
   return top.id;
 }
 

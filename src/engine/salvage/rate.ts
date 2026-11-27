@@ -7,7 +7,7 @@ import { checkGoals } from './goals';
 import { rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
-import { convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP } from './content';
+import { assayOf, convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP } from './content';
 import { roundMoney } from './money';
 import { crucibleCharged } from './crucible';
 import { dealOffer, gateReached } from './deal';
@@ -18,8 +18,10 @@ import { holdRelease } from './bays';
 import { roundTry } from './round';
 import { routesChanged } from './memo';
 import { worksOpen, worksOwn } from './works';
+import { shareIAt } from './reuse';
 import { floorSlots, pointOf, thingPos } from './positions';
 import { contentAt } from './layer';
+import { driverRoundS, fairPick, fairTripsOf, fairWaitNext, fullerFirst } from './truck';
 import type { MachineId, SalvageConfig, SalvageGame } from './types';
 
 /**
@@ -106,6 +108,21 @@ export function stockValue(c: Ctx['c'], s: Ctx['s']): number {
     if (cr.chargeBy) for (const [grade, g] of Object.entries(cr.chargeBy)) v += (g / 1000) * usualP(c, grade);
     else v += (cr.charge_g / 1000) * usualP(c, ins[0]);
     v += (cr.heel_g / 1000) * usualP(c, out);
+  }
+  // s2e-rate: from the works' opening the plates' own stock too (a hall's charge and heel at its recipe's first input and
+  // output, a plate's hopper, tray and piece in work): measured, a heat under way at the end of the bots' window moved G by
+  // up to §2,000 an hour (the charge left the bays and was counted nowhere). Nothing of it in the first yard.
+  if (worksOn(c, s)) for (const [id, w] of Object.entries(s.works ?? {})) {
+    for (const [grade, g] of Object.entries(w.tray_g ?? {})) v += (g / 1000) * usualP(c, grade);
+    for (const p of w.hopper ?? []) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
+    if (w.work) v += w.work.piece.whole ? thingValue(c, w.work.piece.whole, 0, false) : pv(w.work.piece);
+    const h = w.heat;
+    const rec = h ? c.works?.plates[id]?.recipes?.[h.recipe] : undefined;
+    if (h && rec) {
+      if (h.chargeBy) for (const [grade, g] of Object.entries(h.chargeBy)) v += (g / 1000) * usualP(c, grade);
+      else v += (h.charge_g / 1000) * usualP(c, rec.in[0]);
+      if (rec.out[0]) v += (h.heel_g / 1000) * usualP(c, rec.out[0][0]);
+    }
   }
   for (const l of s.merchant.lot) v += (l.g / 1000) * usualP(c, l.grade);
   for (const p of s.pieces) v += p.whole ? thingValue(c, p.whole, 0, false) : pv(p);
@@ -317,7 +334,7 @@ function slotSpacing(c: Ctx['c'], at: 'floor' | 'dropoff', n: number): number {
  * a thing that needs no cutting is carried as it is (E35: from the floor to the bench's or the powered
  * stripper's hopper when it is their input and they are owned; from the drop-off to the scale).
  */
-function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff', cutP: number, cutV: number, walkM: number, raw = false): Unit {
+function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff', cutP: number, cutV: number, walkM: number, raw = false, assay = false): Unit {
   const u = emptyUnit();
   const o = c.objects[obj];
   if (!o) return u;
@@ -328,6 +345,8 @@ function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff
   const put = (grade: string, kg: number) => {
     u.kg[grade] = (u.kg[grade] ?? 0) + kg;
   };
+  // s2e-rate (2.3 item 2): with the analyser running every piece weighs in at its spec's assay grade (assay.ts assayGrade).
+  const weighed = (sp: { grade: string; g: number; spec: number }) => (assay ? assayOf(c, { grade: sp.grade, spec: sp.spec, g: sp.g, whole: null } as never) ?? sp.grade : sp.grade);
   if (o.tier === 0) {
     // Loose: carried as it is. From the floor a machine's input goes to its hopper (E35); from the drop-off to the scale.
     for (let k = 0; k < n; k++) {
@@ -340,7 +359,7 @@ function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff
       } else {
         u.scaleKg += sp.g / 1000;
         u.m2 += (sp.g / 1000) * (o.gross_g / 1000);
-        put(sp.grade, sp.g / 1000);
+        put(weighed(sp), sp.g / 1000);
       }
     }
     for (const d of ['stripper', 'bench'] as const) if (u.machKg[d] > 0) u.feeds[d] += 1;
@@ -365,7 +384,7 @@ function unitOf(c: Ctx['c'], s: Ctx['s'], obj: string, where: 'floor' | 'dropoff
     else {
       u.scaleKg += sp.g / 1000;
       u.m2 += (sp.g / 1000) ** 2;
-      put(sp.grade, sp.g / 1000);
+      put(weighed(sp), sp.g / 1000);
     }
   }
   for (const d of ['stripper', 'bench'] as const) if (u.machKg[d] > 0) u.feeds[d] += 1;
@@ -507,14 +526,60 @@ function plateTerms(c: Ctx['c'], s: Ctx['s'], kgBy: Record<string, number>): num
   return Math.max(0, add);
 }
 
-/** join2b (2.12, 2.3.1 step 5): the Yard sale's premium, 0.6 of what its ceiling lets the public pay an hour (shareI × max(I₀, floorI)), once the works are open. The van's third is not counted (no rated flow of batches yet). */
-function yardSaleTerm(c: Ctx['c'], s: Ctx['s'], I0: number): number {
+/**
+ * THE YARD SALE'S PREMIUM (2.12; s2e-rate, replacing join2b's 0.6 of the ceiling): what the public pays an hour for the
+ * tagged things the feed taken brings (reuse.ts tagUid: a thing of `reuse.kinds` not barred by `reuse.never`, a share
+ * `reuse.share` of them; a `fromPartnerOnly` kind only from a load), each at `reuse.factor` × its prepared value, at most
+ * the ceiling reuse.ts shareIAt × max(I₀, floorI); less what those things would have sold for as scrap (the replay counts
+ * them cut: ÷ factor). Read from reuse.ts's own share by rung (shareI_r), so the term follows the rule.
+ */
+function yardSaleTerm(c: Ctx['c'], s: Ctx['s'], I0: number, t: RatedTerms): number {
   const R = c.reuse;
   if (!R || s.counts?.bathSet === undefined) return 0;
-  const list = R.shareI;
-  let sh: number | null = null;
-  for (let r = Math.min(s.ladder.rung, list.length); r >= 1 && sh === null; r--) sh = list[r - 1] ?? null;
-  return sh ? 0.6 * sh * Math.max(I0, R.floorI) : 0;
+  const sh = shareIAt({ c, s });
+  if (!sh || !(R.factor > 0)) return 0;
+  const tagV = (obj: string, fromLoad: boolean): number => {
+    const k = R.kinds[obj];
+    if (!k || (k.fromPartnerOnly && !fromLoad)) return 0;
+    if ((c.objects[obj]?.tags ?? []).some((tg) => R.never.includes(tg))) return 0;
+    return R.share * thingValue(c, obj, 0, false);
+  };
+  let v = 0;
+  const wsum = c.dropoff.mix.reduce((a, [, w]) => a + w, 0) || 1;
+  for (const [obj, w] of c.dropoff.mix) v += t.dropoff * (w / wsum) * tagV(obj, false);
+  for (const [id, n] of Object.entries(t.loads)) for (const [obj, q] of Object.entries(skipContents(c, s, id))) v += n * q * tagV(obj, true);
+  const sale = Math.min(R.factor * v, sh * Math.max(I0, R.floorI));
+  return Math.max(0, sale - sale / R.factor);
+}
+
+/**
+ * THE VAN (2.12; s2e-rate): a partner's reusable batch (`reuseBatch`) rides each of its loads from the works' opening, goes
+ * to the trade corner at the tip and is paid `reuse.batchFactor` × its prepared value by the van; the load's price counts
+ * it at k × its as-found value (partners.ts fillSkip prices it with the rest).
+ */
+function vanTerm(c: Ctx['c'], s: Ctx['s'], loads: Record<string, number>): number {
+  const R = c.reuse;
+  if (!R || s.counts?.bathSet === undefined) return 0;
+  let v = 0;
+  for (const [id, n] of Object.entries(loads)) {
+    const b = c.partners[id]?.reuseBatch;
+    if (!b || !c.objects[b.obj]) continue;
+    let asFound = 0;
+    for (const [grade, g, k] of specsOf(c, b.obj)) asFound += k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
+    v += n * b.n * (R.batchFactor * thingValue(c, b.obj, 0, false) - c.partners[id].k * asFound);
+  }
+  return v;
+}
+
+/** rate.kappa at the rung (s2e-rate, 2.3 item 3): the content's factor at rungs 3 to 5 (a rung past the list reads its last), 1 where none is given. */
+function kappaAt(c: Ctx['c'], rung: number): number {
+  const k = (c as { rate?: { kappa?: readonly (number | null)[] } }).rate?.kappa;
+  if (!k?.length) return 1;
+  for (let r = Math.min(Math.max(1, rung), k.length); r >= 1; r--) {
+    const v = k[r - 1];
+    if (typeof v === 'number' && v > 0) return v;
+  }
+  return 1;
 }
 
 /**
@@ -603,14 +668,19 @@ function rawTerms(c: Ctx['c'], s: Ctx['s'], key = assetKey(c, s)): RatedTerms {
   // join2b: the plates' terms and the Yard sale's premium on top of the first yard's replay (nothing in the first yard).
   if (c.works && s.counts?.bathSet !== undefined) {
     const I1 = t.I;
-    const I0 = roundMoney(t.I + plateTerms(c, s, t.detail?.kgBy ?? {}));
+    // s2e-rate (2.3 item 3): the rung's one bounded factor kappa_r (content rate.kappa), on the whole of I from the works'
+    // opening (the first yard's part with it); below the works' opening nothing is scaled.
+    const kappa = kappaAt(c, s.ladder.rung);
+    const I0 = roundMoney(kappa * (t.I + plateTerms(c, s, t.detail?.kgBy ?? {})));
     t.I0 = I0;
-    t.I = roundMoney(I0 + yardSaleTerm(c, s, I0));
+    t.I = roundMoney(I0 + kappa * (yardSaleTerm(c, s, I0, t) + vanTerm(c, s, t.loads)));
+    if (process.env.RATE_DEBUG) console.log('TERMS', JSON.stringify({ I1: Math.round(I1), plates: Math.round(plateTerms(c, s, t.detail?.kgBy ?? {})), yard: Math.round(yardSaleTerm(c, s, I0, t)), van: Math.round(vanTerm(c, s, t.loads)) }));
     // the same terms are gross sales too (G_r, the bank's "Save up" with an agreement open, E9)
     t.sales = roundMoney(t.sales + (t.I - I1));
   }
   if (byKey.size >= RAW_CACHE_MAX) byKey.delete(byKey.keys().next().value as string);
   byKey.set(key, t);
+  if (process.env.RATE_DEBUG) console.log('RAW', JSON.stringify({ I: t.I, I0: t.I0, sales: t.sales, spent: t.spent, drop: t.dropoff, loads: t.loads, bind: t.bind, kg: Object.fromEntries(Object.entries(t.detail?.kgBy ?? {}).filter(([, v]) => v > 50).map(([k, v]) => [k, Math.round(v)])) }));
   return t;
 }
 
@@ -716,15 +786,16 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
   const handV = hands.length / hands.reduce((a, m) => a + 1 / speed(m.level), 0);
   const { floorWalk, dropWalk } = walksOf(c);
 
+  const works = worksOn(c, s);
   // 1. Feed units: an hour of the drop-off's arrivals, and one load of each open partner.
   const per = 3600 / Math.max(1e-9, c.dropoff.period);
   const wsum = c.dropoff.mix.reduce((a, [, w]) => a + w, 0) || 1;
   const drop = emptyUnit();
-  for (const [obj, w] of c.dropoff.mix) addUnit(drop, unitOf(c, s, obj, 'dropoff', cutP, cutV, dropWalk), (per * w) / wsum);
+  const assay = works && analyserRunning(c, s);
+  for (const [obj, w] of c.dropoff.mix) addUnit(drop, unitOf(c, s, obj, 'dropoff', cutP, cutV, dropWalk, false, assay), (per * w) / wsum);
   const driver = s.crew.find((m) => m.role === 'driver');
   const F = driverRoundF(c, driver?.level ?? 1);
   const dv = c.truck.v * c.truck.driverFactor * F;
-  const works = worksOn(c, s);
   const buildParts = (raw: boolean): QueuePart[] => {
   const parts: QueuePart[] = [];
   if (driver && s.truck.owned) {
@@ -741,11 +812,15 @@ function ratedCompute(c: Ctx['c'], s: Ctx['s']): RatedTerms {
       if (works) ({ hookS, tipS, trip } = shippedRound(c, id, Math.max(1, ps?.level ?? 1), driver.level));
       const u = emptyUnit();
       let asFound = 0;
-      for (const [obj, n] of Object.entries(p.skip)) {
-        addUnit(u, unitOf(c, s, obj, 'floor', cutP, cutV, floorWalk, raw), n);
+      // s2e-rate: from the works' opening a skip carries what partners.ts grownContents fills it with (the `grows` of body
+      // 'skip' whose plate is owned: the plumber's sinks once the analyser is, the garage's bushings once the induction
+      // hall is); the partner's reusable batch rides it too but goes to the trade corner (vanTerm), never to the floor.
+      const contents = works ? skipContents(c, s, id) : p.skip;
+      for (const [obj, n] of Object.entries(contents)) {
+        addUnit(u, unitOf(c, s, obj, 'floor', cutP, cutV, floorWalk, raw, assay), n);
         for (const [grade, g, k] of specsOf(c, obj)) asFound += n * k * (g / 1000) * usualP(c, grade) * (c.grades[grade]?.asFound ?? 1);
       }
-      const mass = Object.entries(p.skip).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
+      const mass = Object.entries(contents).reduce((a, [o, n]) => a + (c.objects[o]?.gross_g ?? 0) * n, 0);
       parts.push({ id, max: (3600 * Math.max(1, ps?.level ?? 1)) / Math.max(1e-9, p.fill_s), trip, hookS, tipS, fill_s: p.fill_s, level: Math.max(1, ps?.level ?? 1), price: roundMoney(p.k * asFound), mass: mass / 1000, u, wc: 0, wh: 0, cq: null as unknown as Carry, net: ratedLoadNet(c, id), rank: 0 });
     }
   }
@@ -949,6 +1024,60 @@ interface QueuePart {
   rank: number;
 }
 
+/** s2e-rate: is an analyser (a plate of kind 'assay') running (assay.ts analyserOn)? */
+function analyserRunning(c: Ctx['c'], s: Ctx['s']): boolean {
+  for (const id in s.works ?? {}) if (s.works[id].phase === 'running' && c.works?.plates[id]?.kind === 'assay') return true;
+  return false;
+}
+
+/** s2e-rate: a skip's contents from the works' opening (partners.ts grownContents without its rotation: the skip's own body). */
+function skipContents(c: Ctx['c'], s: Ctx['s'], partner: string): Record<string, number> {
+  const p = c.partners[partner];
+  const out: Record<string, number> = { ...p.skip };
+  for (const gr of p.grows ?? []) if (gr.body === 'skip' && s.works?.[gr.needs]) for (const [o, n] of Object.entries(gr.contents)) out[o] = (out[o] ?? 0) + n;
+  return out;
+}
+
+/** s2e-rate: have the works opened in this state, for a content with a works layer (the rule of every stage-2 term of I)? */
+function worksOn(c: Ctx['c'], s: Ctx['s']): boolean {
+  return !!c.works && s.counts?.bathSet !== undefined;
+}
+
+/**
+ * s2e-rate: the shipped round of one load of `partner` (truck.ts driverRoundS) at its level `L` (its skips at slots 0 to
+ * L - 1) and the driver's level, the mean over the slots; memoised per content object (a pure function of the content).
+ */
+const ROUND = new WeakMap<object, Map<string, { hookS: number; tipS: number; trip: number }>>();
+function shippedRound(c: Ctx['c'], partner: string, L: number, driverLevel: number): { hookS: number; tipS: number; trip: number } {
+  let m = ROUND.get(c);
+  if (!m) ROUND.set(c, (m = new Map()));
+  const key = `${partner}|${L}|${driverLevel}`;
+  let r = m.get(key);
+  if (!r) {
+    r = { hookS: 0, tipS: 0, trip: 0 };
+    for (let slot = 0; slot < L; slot++) {
+      const q = driverRoundS(c, partner, slot, driverLevel);
+      r.hookS += q.hookS / L;
+      r.tipS += q.tipS / L;
+      r.trip += q.trip / L;
+    }
+    m.set(key, r);
+  }
+  return { ...r };
+}
+
+/** s2e-rate: for each part (index k), the index of its skip full longest at `clock` (truck.ts fullestSkip: earliest fullAt, then the lower slot), or -1. */
+function fullestOf(skips: readonly { k: number; fullAt: number }[], clock: number, n: number): number[] {
+  const out: number[] = new Array(n).fill(-1);
+  for (let i = 0; i < skips.length; i++) {
+    const sk = skips[i];
+    if (sk.fullAt > clock + 1e-9) continue;
+    const j = out[sk.k];
+    if (j < 0 || sk.fullAt < skips[j].fullAt) out[sk.k] = i;
+  }
+  return out;
+}
+
 interface QueueResult {
   /** Loads an hour by partner. */
   n: Record<string, number>;
@@ -1047,7 +1176,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
       // own choice is the one full longest that fits (fullerFirst, in the partners' order); the fair rule may take a more
       // urgent one instead, or wait for the floor's room for it (fairPick); at the departure every other waiting partner
       // counts a trip more (fairWaitNext).
-      const full = fullestOf(skips, clock);
+      const full = fullestOf(skips, clock, parts.length);
       let best: { k: number; fullAt: number } | null = null;
       const waiting: { id: string; r: number; fullAt: number; fits: boolean }[] = [];
       for (let k = 0; k < parts.length; k++) {
@@ -1113,6 +1242,7 @@ function rateQueue(c: Ctx['c'], parts: QueuePart[], cutHave: number, carryHave: 
     clock += p.trip;
   }
   if (clock > lastT) massT += lastM * (Math.min(H, clock) - lastT);
+  if (process.env.RATE_DEBUG) console.log('QDBG', JSON.stringify(parts.map((p, k) => ({ id: p.id, L: p.level, mass: +p.mass.toFixed(0), trip: +p.trip.toFixed(1), hook: +p.hookS.toFixed(1), fill: p.fill_s, work: +work[k].toFixed(1), n: n[k] / 2 }))), 'room', room, 'floorKg', +(massT / 7200).toFixed(0), 'fairN', fairN);
   const out: Record<string, number> = {};
   parts.forEach((p, k) => {
     if (n[k] > 0) out[p.id] = n[k] / 2;
