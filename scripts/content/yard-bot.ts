@@ -1033,7 +1033,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
       const B = A ? branchAt(tag, g0, pre, null, A.tW) : null;
       return A && B ? lastingGain(A, B) : null;
     };
-    for (const pid of items) {
+    // --plasmaOnly (the lead's line of 18:30): only the plasma's third moment below (the seeds whose price shards ran before it)
+    for (const pid of arg('plasmaOnly') ? [] : items) {
       let ri = returns.findIndex((x) => x.bought.includes(pid));
       const bought = ri >= 0;
       // an item the hand never buys (no goal names it, the advice line never did): its planned moment is the FIRST return at
@@ -1102,6 +1103,56 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     // s2e-measure (RULING2.md 28.4 (b)): THE PLASMA AT THREE MOMENTS (the first works return before anything is bought; after
     // the second cutter; after the hook-lift, both from the first works return), its lasting gain and what the oversize
     // pieces it opens are worth an hour over those that come without it (tier-4 and tier-3 pieces cut in the run-up).
+    // s2e-measure (the lead's line of 18:30): THE PLASMA'S PRICE READS "WHAT IT OPENS" AT THE THIRD MOMENT: the first return
+    // at which the hook-lift and the analyser are both owned (the crate of bronze bushings needs the analyser), the pad
+    // cleared in both branches, with the plasma and without it (owned list and tool tier back to the torch's where the hand
+    // already owns it): the reference hand's two sittings (as the items loop's hand measure); dL = the worth of the
+    // oversize pieces cut an hour more with it, dT = everything kept an hour more.
+    if (items.includes('plasma')) {
+      const ri3 = returns.findIndex((x) => x.g.salvage.owned.includes('truckBridge' as never) && !!x.g.salvage.works.analyser);
+      if (ri3 >= 0) {
+        const fl = cfg.salvage.board.a === 0 ? cfg : ({ ...cfg, salvage: { ...cfg.salvage, board: { ...cfg.salvage.board, a: 0 } } } as R.SalvageConfig);
+        const cleared = (g0: R.SalvageGame): R.SalvageGame => {
+          const s = structuredClone(g0.salvage);
+          s.things = s.things.filter((th) => th.at.at !== 'lot');
+          if (s.lots && s.lots.nextAt === null) s.lots.nextAt = s.t;
+          return { ...g0, salvage: s } as R.SalvageGame;
+        };
+        const g3 = cleared(returns[ri3].g);
+        const owns = g3.salvage.owned.includes('plasma' as never);
+        const tools = ((contentAt(cfg.salvage, g3.salvage) as unknown as { tools?: Record<string, { tier?: number }> }).tools ?? {});
+        const without = (g0: R.SalvageGame): R.SalvageGame => {
+          const s = structuredClone(g0.salvage);
+          s.owned = s.owned.filter((k) => k !== 'plasma');
+          s.tier = Math.max(1, ...s.owned.map((k) => tools[k as string]?.tier ?? 0).filter((t) => t > 0), 3);
+          return { ...g0, salvage: s } as R.SalvageGame;
+        };
+        const gA = owns ? g3 : stateWith(g3, ['plasma']);
+        const gB = owns ? without(g3) : g3;
+        const hand2 = (g1: R.SalvageGame) => {
+          const g2 = { ...g1, cash: 1e7, salvage: { ...g1.salvage, away: null } } as R.SalvageGame;
+          const hb = newBot(fl, g2, g2.salvage.clock.highMs, { ...opts, noBuy: true, gate2: false });
+          const v0 = stockAt(fl, g2);
+          let bank = 0;
+          let pieces = 0;
+          for (let k = 0; k < 2; k++) {
+            if (k > 0) newSitting(hb);
+            const wait = hb.g.salvage.things.filter((th) => th.at.at === 'lot').map((th) => [th.uid, R.cardOf(fl, hb.g, { kind: 'lot', k: (th.at as { k: number }).k } as never, hb.g.salvage.clock.highMs).lot?.valueOnceCut ?? 0] as const);
+            playTo(hb, hb.g.salvage.t + S2_PLAY_S);
+            for (const [uid, w] of wait) if (!hb.g.salvage.things.some((th) => th.uid === uid)) pieces += w;
+            away(hb, S2_AWAY_S);
+            bank += hb.g.salvage.away?.bank ?? 0;
+          }
+          return { E: hb.g.cash - g2.cash + bank + stockAt(fl, hb.g) - v0, pieces, h: (hb.g.salvage.t - g2.salvage.t) / 3600, t: (hb.g.salvage.ladder.supplied_g - g2.salvage.ladder.supplied_g) / 1e6 };
+        };
+        const hA = gA ? hand2(gA) : null;
+        const hB = hand2(gB);
+        if (hA) {
+          const hh = (hA.h + hB.h) / 2;
+          plasma3.push({ at: 'm3 hand: hook-lift and analyser owned (the price, the lead 18:30)', at_h: +(g3.salvage.t / 3600).toFixed(1), tL: +((hA.t - hB.t) / hh).toFixed(3), dL: Math.round((hA.pieces - hB.pieces) / hh), dT: Math.round((hA.E - hB.E) / hh), dP: Math.round((hA.E - hB.E) / hh), E0: Math.round(hB.E / hB.h), tW_h: +hh.toFixed(2), lot4: Math.round((hA.pieces - hB.pieces) / hh), lot3: 0, lotA: { cut4: Math.round(hA.pieces / hA.h), cut3: 0 }, lotB: { cut4: Math.round(hB.pieces / hB.h), cut3: 0 } });
+        }
+      }
+    }
     // s2e-measure (the full measurement, RULING2.md 28.7 a / 28.8 c): the plasma is priced by THE HAND'S MEASURE (the items
     // loop above); its three moments as a help to the cutters (28.4 b) are closed and run only with --plasma3.
     if (arg('plasma3') && returns[0] && items.includes('plasma') && !returns[0].g.salvage.owned.includes('plasma' as never)) {
@@ -1751,7 +1802,13 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
   const sold = soldItems(cfg);
   const lines: string[] = [];
   for (const pid of sold.map((i) => i.key)) {
-    const xs = all.map((r) => (r.extra.plates as Record<string, PlateRow> | undefined)?.[pid]).filter((x): x is PlateRow => !!x);
+    let xs = all.map((r) => (r.extra.plates as Record<string, PlateRow> | undefined)?.[pid]).filter((x): x is PlateRow => !!x);
+    // s2e-measure (the lead's line of 18:30): the plasma's gain is "what it opens" at the third moment (the hook-lift and the
+    // analyser owned; the hand's measure), one row a seed (plasma3's 'm3 hand'); its price is written from it whatever the
+    // entry rule says (the lead rules on its staying after the table)
+    const m3 = pid === 'plasma' ? all.flatMap((r) => ((r.extra.plasma3 as Plasma3[] | undefined) ?? []).filter((q) => q.at.startsWith('m3 hand')).map((q) => ({ q, seed: r.spec.seed }))) : [];
+    const forced = m3.length > 0;
+    if (forced) xs = m3.map(({ q }) => ({ at_h: q.at_h, rung: 3, I: 0, dI: 0, bought: false, price: 0, G: 0, dG: 0, dE: q.dL, E0: q.E0, dT: q.dT, dP: q.dP, E0T: q.E0, tW_h: q.tW_h, worked: true, tL: q.tL, tT: q.tL, T0: 0, hand: true, pre: [] }) as unknown as PlateRow);
     if (!xs.length) continue;
     const isPlate = pid in W.plates;
     const gate = isPlate ? W.plates[pid].gate : (c.shop.find((i) => i.key === pid)?.gate ?? 'rung3');
@@ -1788,7 +1845,7 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const entryOk = !!E0 && dE >= 0.02 * E0 && lowE >= -0.01 * E0;
     // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
     // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
-    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : !entryOk;
+    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : !entryOk && !forced;
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
@@ -2080,7 +2137,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -2448,7 +2505,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
