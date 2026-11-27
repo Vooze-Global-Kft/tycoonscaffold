@@ -283,10 +283,13 @@ export function reconcileState(cfg: SalvageConfig, raw: Partial<SalvageState>, n
   if (stage1) {
     if (obj<Record<string, unknown>>(raw.counts).bathSet !== undefined) freezeStage2(c, raw, s, fresh2);
     else if (frozenOf(raw)) s.stage2Frozen = JSON.parse(JSON.stringify(frozenOf(raw)));
-    // A stage-2 goal's id (a string the first yard's content does not know) waits aside with the rest of stage 2.
-    const was = obj<{ done?: unknown; skipped?: unknown }>(frozenOf(raw)?.goals);
-    const aside = { done: idList([...arr(was.done), ...g.aside.done]), skipped: idList([...arr(was.skipped), ...g.aside.skipped]) };
-    if (aside.done.length || aside.skipped.length) s.stage2Frozen = { ...(s.stage2Frozen ?? { v: 1 }), goals: aside };
+    // A stage-2 goal's id (a string the first yard's content does not know) waits aside with the rest of stage 2, when
+    // there is a stage 2 to keep (the save saw it, or holds it frozen already); a save that never saw stage 2 sets nothing aside.
+    if (s.stage2Frozen) {
+      const was = obj<{ done?: unknown; skipped?: unknown }>(frozenOf(raw)?.goals);
+      const aside = { done: idList([...arr(was.done), ...g.aside.done]), skipped: idList([...arr(was.skipped), ...g.aside.skipped]) };
+      if (aside.done.length || aside.skipped.length) s.stage2Frozen = { ...s.stage2Frozen, goals: aside };
+    }
   } else if (frozenOf(raw)) {
     thawStage2(c, raw, s, fresh2);
     const was = obj<{ done?: unknown; skipped?: unknown }>(frozenOf(raw)?.goals);

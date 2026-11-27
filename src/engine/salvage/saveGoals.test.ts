@@ -32,6 +32,16 @@ function loadRun(cfg: SalvageConfig, g: SalvageGame, f: (goals: Record<string, u
 }
 
 describe('R5: goals.done and goals.skipped are lists of known goal ids on any load', () => {
+  it('release.stage 1, a save that never saw stage 2 (no bathSet): an unknown id is dropped and nothing is set aside', () => {
+    const one = ids(cfg1, 'goals').slice(0, 2);
+    const two = ids(cfg2, 'stage2').slice(0, 1);
+    const g = R.createSalvage(cfg1, E.createInitialState(cfg1 as never, FIXTURE_NOW), FIXTURE_NOW);
+    const goals = { done: [one[0], two[0], one[1]], skipped: [], lastPromptAt: -1e9, repeats: 0 };
+    const L = reconcileSalvage(cfg1, { ...g, salvage: undefined } as never, { salvage: { ...JSON.parse(JSON.stringify(g.salvage)), goals } }, FIXTURE_NOW);
+    expect(L.salvage.goals.done).toEqual(one);
+    expect(L.salvage.stage2Frozen).toBeUndefined();
+  });
+
   it('the release.stage 1 content really is the first yard (no stage-2 goal list)', () => {
     expect(cfg1.salvage.release?.stage).toBe(1);
     expect(ids(cfg1, 'stage2')).toEqual([]);
@@ -87,7 +97,9 @@ describe('R5: goals.done and goals.skipped are lists of known goal ids on any lo
     const two = ids(cfg2, 'stage2').slice(0, 3);
     const g = R.createSalvage(cfg1, E.createInitialState(cfg1 as never, FIXTURE_NOW), FIXTURE_NOW);
     const goals = { done: [one[0], two[0], one[1], two[1]], skipped: [two[2]], lastPromptAt: -1e9, repeats: 0 };
-    const L1 = reconcileSalvage(cfg1, { ...g, salvage: undefined } as never, { salvage: { ...JSON.parse(JSON.stringify(g.salvage)), goals } }, FIXTURE_NOW);
+    // A save that saw stage 2 (counts.bathSet: the works opened once): X6 freezes it at a stage-1 build.
+    const saw = { ...JSON.parse(JSON.stringify(g.salvage)), goals, counts: { ...(g.salvage.counts ?? {}), bathSet: 0 } };
+    const L1 = reconcileSalvage(cfg1, { ...g, salvage: undefined } as never, { salvage: saw }, FIXTURE_NOW);
     expect(L1.salvage.goals.done).toEqual(one);
     expect(L1.salvage.goals.skipped).toEqual([]);
     expect((L1.salvage.stage2Frozen as { goals?: unknown }).goals).toEqual({ done: [two[0], two[1]], skipped: [two[2]] });
