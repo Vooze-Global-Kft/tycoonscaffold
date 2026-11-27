@@ -92,7 +92,10 @@ export function crucibleFromBays(x: Ctx, t: number): void {
       cr.lastFeedAt = t;
     }
   }
-  for (const g of Object.keys(x.s.bays)) if (x.s.bays[g].forCrucible_g && !busy(cr.phase)) x.s.bays[g].forCrucible_g = 0;
+  // engine6: the bays walked in their own order without a copy of their keys (no key is added or deleted here); the phase is
+  // not busy here (the busy case returned above and nothing since changes it), so the busy test is not asked per bay.
+  const bays = x.s.bays;
+  for (const g in bays) if (bays[g].forCrucible_g) bays[g].forCrucible_g = 0;
   settle(x, t);
 }
 

@@ -105,6 +105,19 @@ interface Sub<T> {
   list: T[];
   /** engine5: items taken out of the index still standing in `list` (see Idx.pend). */
   pend?: T[];
+  /**
+   * engine6: an order the reader wants (thingsAtWhere's `ord`) and whether `list` (pending items included) is known to be
+   * in it: true from a build that found it so, kept true by a push of an item not before the list's last one (taking items
+   * out keeps an order); once false it stays false until the list is built again.
+   */
+  ord?: (a: T, b: T) => number;
+  sorted?: boolean;
+}
+
+/** engine6: is `l` in the order `ord` (each item not after the next)? */
+function inOrder<T>(l: readonly T[], ord: (a: T, b: T) => number): boolean {
+  for (let i = 1; i < l.length; i++) if (ord(l[i - 1], l[i]) > 0) return false;
+  return true;
 }
 
 /** The k's in use on one pile: how many pieces hold each, and `low` (every k below it is in use). */
@@ -224,7 +237,11 @@ function fileIn<T extends { uid: string }>(i: Idx<T>, q: T, k: string): void {
   if (subs)
     for (let n = 0; n < subs.length; n++) {
       const e = subs[n];
-      if (e.key === k && e.test(q)) e.list.push(q);
+      if (e.key === k && e.test(q)) {
+        const l = e.list;
+        if (e.sorted && l.length && e.ord!(l[l.length - 1], q) > 0) e.sorted = false;
+        l.push(q);
+      }
     }
 }
 
@@ -403,21 +420,40 @@ export function thingsAt(arr: readonly ThingState[], kind: string): readonly Thi
  * array (its `obj`, its `uid`) and the content `c`: the list is kept under `slot` by the writers and built afresh only
  * for another content object (each slot names one test). Verify mode: the kept list against the filter, item by item.
  */
-export function thingsAtWhere(arr: readonly ThingState[], kind: string, c: object, slot: string, test: (th: ThingState) => boolean): readonly ThingState[] {
+export function thingsAtWhere(arr: readonly ThingState[], kind: string, c: object, slot: string, test: (th: ThingState) => boolean, ord?: (a: ThingState, b: ThingState) => number): readonly ThingState[] {
   const i = get(THINGS, arr, placeOf, 'things');
-  if (!i) return arr.filter((q) => q.at.at === kind && test(q));
+  if (!i) {
+    LAST_SORTED = false;
+    return arr.filter((q) => q.at.at === kind && test(q));
+  }
   const subs = (i.sub ??= new Map());
   let e = subs.get(slot);
   if (!e || e.c !== c || e.key !== kind) {
     e = { key: kind, c, test, list: (keyList(i, kind) ?? EMPTY).filter(test) };
+    // engine6: the order a reader asks for, checked once at the build (a slot names one test and one order).
+    if (ord) {
+      e.ord = ord;
+      e.sorted = inOrder(e.list, ord);
+    }
     subs.set(slot, e);
     i.subs = [...subs.values()];
   } else if (MEMO_CHECK.verify) {
     const f = (keyList(i, kind) ?? EMPTY).filter(test);
     if (e.pend) ready(e.list, e.pend);
     if (f.length !== e.list.length || f.some((q, j) => q !== e!.list[j])) mismatch('things', `sub-list ${slot}: kept ${e.list.length} items, recomputed ${f.length}`);
+    if (e.sorted && !inOrder(e.list, e.ord!)) mismatch('things', `sub-list ${slot}: kept as in order, it is not`);
   }
+  LAST_SORTED = e.sorted === true;
   return e.pend && e.pend.length ? ready(e.list, e.pend) : e.list;
+}
+
+/**
+ * engine6: whether the list the LAST thingsAtWhere call returned is known to be in the order its slot was built with
+ * (false: unknown, the reader checks for itself). Read it right after that call, before any other read of the index.
+ */
+let LAST_SORTED = false;
+export function lastWhereSorted(): boolean {
+  return LAST_SORTED;
 }
 
 /** The first thing with this uid (`arr.find((t) => t.uid === uid)`). */

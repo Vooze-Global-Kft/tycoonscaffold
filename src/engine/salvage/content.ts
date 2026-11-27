@@ -59,6 +59,18 @@ export function cutTime(c: SalvageContent, obj: string, g: number, P: number): n
 
 /** The best tool's power P (kg/s at hardness 1) for a tier (the highest tier owned at most `tier`). */
 export function toolP(c: SalvageContent, tier: number): number {
+  // engine6: the last answer kept (a pure function of the content object and the tier; a cutter's power asks it at every offer).
+  if (c === TOOLP_C && tier === TOOLP_T) return TOOLP_V;
+  const v = toolPNow(c, tier);
+  TOOLP_C = c;
+  TOOLP_T = tier;
+  TOOLP_V = v;
+  return v;
+}
+let TOOLP_C: SalvageContent | null = null;
+let TOOLP_T = NaN;
+let TOOLP_V = 0;
+function toolPNow(c: SalvageContent, tier: number): number {
   let best = 0;
   let bt = -1;
   for (const t of Object.values(c.tools)) if (t.tier <= tier && t.tier > bt) {

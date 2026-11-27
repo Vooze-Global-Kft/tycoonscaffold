@@ -170,8 +170,16 @@ export function shellWeighIn(x: Ctx, th: ThingState, by: string, t: number): voi
 
 /** Finding W9: the merchant's round has taken grade `grade` from its bay: every shell of that grade weighed in before leaves the yard with it. */
 export function shellsLeave(x: Ctx, grade: string): void {
-  for (const th of [...x.s.things]) {
-    if (!th.shell || x.c.objects[th.obj]?.shell?.grade !== grade) continue;
+  // engine6: the shells of the grade found first, in the array's order (usually none), then each taken out as before (the
+  // copy of the whole array the loop walked is made only of those: nothing else of it was read).
+  let found: ThingState[] | null = null;
+  const all = x.s.things;
+  for (let i = 0; i < all.length; i++) {
+    const th = all[i];
+    if (th.shell && x.c.objects[th.obj]?.shell?.grade === grade) (found ??= []).push(th);
+  }
+  if (!found) return;
+  for (const th of found) {
     const i = x.s.things.indexOf(th);
     if (i >= 0) spliceThing(x.s.things, i);
     delete x.s.counts![`shell:${th.uid}`];

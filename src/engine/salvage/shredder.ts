@@ -13,6 +13,7 @@ import { plateDef } from './content';
 import { bayAvailFor, hallReserve } from './halls';
 import type { PlateId, WorksState } from './types';
 import { creditPlate, pieceEndsAt, routeOf, takesGrade } from './works';
+import { MEMO_CHECK, memoMismatch, ROUTES } from './memo';
 
 // THE RULE AS BUILT (rules-works, wave 1; 2.8.1):
 // 1. An idle running bay-fed rate plate (feedBy 'bays': the shredder, the sensor sorter, the battery breaker) DRAWS
@@ -60,21 +61,57 @@ export function bayDraw(x: Ctx, id: PlateId, w: WorksState, t: number): boolean 
   return false;
 }
 
+/**
+ * engine6: of each grade refreshReserves looks at (takenGrades' order), the station whose reserve it may keep: its route
+ * when that is a plate that takes the grade (r && r !== 'bay' && r !== 'crucible' && takesGrade), else null, with the
+ * plate's definition. routeOf's answers are kept per transition by the routes memo (memo.ts ROUTES) and dropped at every
+ * change of what routeOf and takesGrade read (engine3's list: a plate ordered, set down or started up, a purchase owned, a
+ * route or a hall's recipe set), so these are kept beside that memo object and made afresh with a new one. What the size
+ * reads (the plate's state, a hall's heat) is read at each call. Verify mode: recomputed and compared at every hit.
+ */
+type ReserveRoute = { r: string | null; d: ReturnType<typeof plateDef> | undefined };
+const RESERVE_ROUTES = new WeakMap<object, ReserveRoute[]>();
+function reserveRouteNow(x: Ctx, g: string): ReserveRoute {
+  const r = routeOf(x, g);
+  if (r && r !== 'bay' && r !== 'crucible' && takesGrade(x, r, g)) return { r, d: plateDef(x.c, r) };
+  return { r: null, d: undefined };
+}
+function reserveRoutes(x: Ctx, grades: readonly string[]): ReserveRoute[] {
+  // routeOf makes the transition's memo object when there is none; asked first so that the key below is that object.
+  if (grades.length) routeOf(x, grades[0]);
+  const memo = ROUTES.get(x);
+  let v = memo && memo.c === x.c ? RESERVE_ROUTES.get(memo) : undefined;
+  if (v && MEMO_CHECK.verify) {
+    for (let n = 0; n < grades.length; n++) {
+      const f = reserveRouteNow(x, grades[n]);
+      if (f.r !== v[n].r || f.d !== v[n].d) memoMismatch(`reserveRoute(${grades[n]})`, v[n].r, f.r);
+    }
+  }
+  if (!v) {
+    v = grades.map((g) => reserveRouteNow(x, g));
+    if (memo && memo.c === x.c) RESERVE_ROUTES.set(memo, v);
+  }
+  return v;
+}
+
 /** Rule 2: every bay a plate takes from keeps the reserve of the station its grade is routed to (and no other). */
 export function refreshReserves(x: Ctx): void {
   const s = x.s;
-  for (const g of takenGrades(x)) {
+  const grades = takenGrades(x);
+  const st = reserveRoutes(x, grades);
+  for (let n = 0; n < grades.length; n++) {
+    const g = grades[n];
     const b = s.bays[g];
     if (!b) continue;
-    const r = routeOf(x, g);
     let id: string | null = null;
     let size = 0;
-    if (r && r !== 'bay' && r !== 'crucible' && takesGrade(x, r, g)) {
-      const w = s.works[r];
-      const d = plateDef(x.c, r);
-      if (w && d) {
-        size = d.kind === 'batch' ? hallReserve(x, r, w) : d.feedBy === 'bays' ? d.inbuf * 1000 : 0;
-        if (size > 0) id = r;
+    // engine6: the route's part of the test (routeOf, takesGrade, the plate's definition) kept for the transition's routes (reserveRoutes).
+    const e = st[n];
+    if (e.r !== null) {
+      const w = s.works[e.r];
+      if (w && e.d) {
+        size = e.d.kind === 'batch' ? hallReserve(x, e.r, w) : e.d.feedBy === 'bays' ? e.d.inbuf * 1000 : 0;
+        if (size > 0) id = e.r;
       }
     }
     const cur = b.reserved;
