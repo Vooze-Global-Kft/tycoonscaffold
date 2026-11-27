@@ -779,6 +779,8 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
 const BOOK_FAILING = ['driver'];
 /** The full measurement (RULING2.md 28.8, after a13a006): EVERY sold item's row and price is written, unless it misses the entry rule (then its row and price stand and it is reported to the lead). */
 const WRITE_ITEMS: string[] | null = null;
+/** The lead's line of 18:30 (3): the rotary hall stays as it is for the table whatever its mean (he rules on it with the fifteen seeds). */
+const STAND_ITEMS = ['rotary'];
 const f2s = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
 type BookRow = { ladder: string; at: string; at_h: number; rung: number; L0: number; gains: number[]; gainsT?: number[]; E0: number; calc: number; I: number; price: number | null };
 
@@ -1842,17 +1844,23 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     // the entry rule (27.2 b, the step's text): an item under 2 % of the yard's income (mean) or with a seed below -1 % is
     // REPORTED and stays as it is (row and price) until the lead rules; so does the plasma (28.4 b)
     const lowE = Math.min(...dEs);
-    const entryOk = !!E0 && dE >= 0.02 * E0 && lowE >= -0.01 * E0;
+    // the lead's line of 18:30: the seed clause (no seed below -1 %) CANNOT be read on the lasting gain (the two branches part
+    // ways after the purchase and a few rich loads more or less move a whole absence): the entry rule reads the mean; the
+    // seeds below zero are counted and printed instead
+    void lowE;
+    const entryOk = !!E0 && dE >= 0.02 * E0;
+    const belowZero = dEs.filter((v) => v < 0).length;
+    const tSe = se ? dE / se : NaN;
     // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
     // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
-    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : !entryOk && !forced;
+    const keep = WRITE_ITEMS ? !WRITE_ITEMS.includes(pid) : STAND_ITEMS.includes(pid) || (!entryOk && !forced);
     if (!keep) (isPlate ? rows : items)[pid] = row;
     // Ruling 27.6: a second round only for a price that moved by more than its standard error (in price, tau x s.e.) AND by more than a tenth.
     const old = sold.find((i) => i.key === pid)!.price;
     const moved = Math.abs(price - old);
     const second = se !== null && moved > tau * se && moved > 0.1 * old;
     const low = Math.min(...dEs);
-    lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  entry ${E0 && dE >= 0.02 * E0 && low >= -0.01 * E0 ? 'met' : 'MISSED'}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
+    lines.push(`   ${pid.padEnd(12)} n ${pad(xs.length, 2)}  at h ${f1(med(xs.map((x) => x.at_h)))}  dE §${dE} (s.e. ${se === null ? '-' : Math.round(se)}) of E0 §${E0 ?? '-'} = ${E0 ? ((100 * dE) / E0).toFixed(2) : '-'} %  = ${Number.isFinite(tSe) ? tSe.toFixed(1) : '-'} s.e. above zero  worst seed ${E0 ? ((100 * low) / E0).toFixed(2) : '-'} %  ${belowZero}/${dEs.length} seeds below zero  entry (the mean at least 2 %) ${entryOk ? 'met' : 'MISSED'}${forced ? ' (the plasma: its price is written from this whatever the entry rule, the lead 18:30)' : ''}  price §${old} -> §${price}${second ? '  SECOND ROUND (moved over its s.e. and over a tenth)' : se === null ? '  (one seed: no s.e.)' : '  stands'}${se !== null && dE > 0 && se > 0.25 * dE ? '  s.e. over a quarter of the mean: more seeds' : ''}`);
     lines.push(`                the hour and the absence together dT §${T.m} (s.e. ${T.se ?? '-'}) of §${E0T}; the run-up alone dP §${P.m} (s.e. ${P.se ?? '-'}); run-up ${f1(xs.reduce((a, x) => a + (x.tW_h ?? 1), 0) / xs.length)} h, worked before the absence on ${xs.filter((x) => x.worked).length}/${xs.length}${third ? '  dT AND THE LASTING GAIN DIFFER BY MORE THAN A THIRD: find why' : ''}${keep ? (entryOk ? '  (NOT WRITTEN: outside WRITE_ITEMS)' : '  (NOT WRITTEN: THE ENTRY RULE IS MISSED: its row and price stand; reported to the lead)') : ''}`);
     lines.push(`                per seed lasting ${dEs.map((v) => Math.round(v)).join(' ')} | together ${xs.map((x) => x.dT ?? '-').join(' ')}`);
     { const tl = xs.map((x) => x.tL ?? NaN).filter(Number.isFinite); const m = tl.reduce((q, v) => q + v, 0) / Math.max(1, tl.length); const se2 = tl.length > 1 ? Math.sqrt(tl.reduce((q, v) => q + (v - m) ** 2, 0) / (tl.length - 1) / tl.length) : NaN; const t0m = xs.reduce((q, x) => q + (x.T0 ?? 0), 0) / xs.length; Object.assign(row, { tL: +m.toFixed(3), seTL: +se2.toFixed(3), T0: +t0m.toFixed(2) }); lines.push(`                IN TONNES: the lasting gain ${m.toFixed(2)} t an hour (s.e. ${f2s(se2)}) of the yard's ${t0m.toFixed(1)} t an hour supplied over the absence (${(100 * m / Math.max(1e-9, t0m)).toFixed(1)} %); together ${(xs.reduce((q, x) => q + (x.tT ?? 0), 0) / xs.length).toFixed(2)} t an hour`); }
