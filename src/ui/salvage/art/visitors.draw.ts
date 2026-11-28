@@ -158,7 +158,7 @@ export function drawVisitor(c: SkCanvas, v: View3q, heading: number, pose: Visit
   const fwd = (d: number): [number, number] => [Sn * d, C * d * 0.3];
 
   // the hands (shoulder, hand, depth) for the pose
-  const shW = 7.4;
+  const shW = 8;
   const shoulders = [
     { x: -C * shW + Sn * 0.6, depth: Sn * shW, sign: 1 }, // right
     { x: C * shW - Sn * 0.6, depth: -Sn * shW, sign: -1 }, // left
@@ -183,7 +183,7 @@ export function drawVisitor(c: SkCanvas, v: View3q, heading: number, pose: Visit
     } else {
       const d = (pose === 'walk' ? swing * 6 : 0) * s.sign;
       const [fx, fy] = fwd(d);
-      hx = s.x * 1.12 + fx;
+      hx = s.x - C * s.sign * 1.8 + fx;
       hyy = T + 15 + fy;
     }
     return { sx, sy, hx, hy: hyy, depth: s.depth };

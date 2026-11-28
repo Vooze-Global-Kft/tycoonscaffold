@@ -412,7 +412,7 @@ export const TEXT_KEYS = {
   /** plots family (src/ui/salvage/strings/plots.ts; rooms ../../ui/salvage/rooms/plots.ts): PLAN2 2.2, WORDS-SETUP. */
   famPlots: ['card.works.earns', 'card.works.pays', 'card.works.arrivesIn', 'card.works.step.locked', 'card.works.step.forSale', 'card.works.step.arriving', 'card.works.step.startUp', 'card.works.step.working', 'card.notice.levelsWorks'],
   /** halls family (src/ui/salvage/strings/halls.ts; rooms ../../ui/salvage/rooms/halls.ts): PLAN2 2.2, WORDS-SETUP. */
-  famHalls: ['card.works.selfPour', 'card.heat.empty', 'card.heat.filling', 'card.heat.heating', 'card.heat.ready', 'card.heat.pour', 'card.heat.cooling', 'card.heat.fromBays', 'card.heat.ingots', 'card.works.recipeInUse', 'card.works.recipePin', 'chip.poured', 'chip.cooling'],
+  famHalls: ['card.works.selfPour', 'card.heat.empty', 'card.heat.filling', 'card.heat.heating', 'card.heat.ready', 'card.heat.pour', 'card.heat.cooling', 'card.heat.fromBays', 'card.heat.ingots', 'card.works.recipeInUse', 'card.works.recipePin', 'chip.poured', 'chip.cooling', 'card.works.chooseHow', 'card.works.keptHow', 'card.works.chargeAsk'],
   /** line family (src/ui/salvage/strings/line.ts; rooms ../../ui/salvage/rooms/line.ts): PLAN2 2.2, WORDS-SETUP. */
   famLine: ['title.works.shredderLine', 'card.line.every', 'card.line.nextCar', 'card.line.cashShort', 'card.line.apronTaken', 'card.line.coming', 'card.line.stageWhole', 'card.line.stageDraining', 'card.line.stageShell'],
   /** pieces family (src/ui/salvage/strings/pieces.ts; rooms ../../ui/salvage/rooms/pieces.ts): PLAN2 2.2, WORDS-SETUP. */
