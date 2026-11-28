@@ -331,7 +331,7 @@ export function devOnlyViolations(input: { stage: 'fast' | 'export'; platform: s
   if (input.platform === 'web') return [];
   const devOnly = new Set<string>(modes.DEV_ONLY);
   const out: Violation[] = [];
-  const rule = 'dev-only' as unknown as Violation['rule'];
+  const rule: Violation['rule'] = 'dev-only';
   if (input.stage === 'fast') {
     for (const e of input.edges ?? []) if (devOnly.has(e.to)) out.push({ rule, file: e.from, message: `imports ${e.to} (scripts/lib/modes.js DEV_ONLY) through "${e.spec}" not behind __DEV__: require it only inside if (__DEV__) { ... }, so a release bundle cannot hold it` });
     return out;

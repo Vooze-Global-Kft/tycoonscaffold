@@ -61,6 +61,7 @@ export interface Violation {
     | 'other-family'
     | 'unclassified'
     | 'node-only'
+    | 'dev-only'
     | 'other-game'
     | 'other-pack'
     | 'restaurant-rig'
