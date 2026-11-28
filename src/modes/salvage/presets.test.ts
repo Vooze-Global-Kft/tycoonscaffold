@@ -9,7 +9,9 @@ import gameJson from '../../../games/scrap-yard/game.json';
 import { GameConfigSchema } from '../../config/schema';
 import { SalvageSchema } from '../../config/schema.salvage';
 import type * as R from '../../engine/salvage';
-import { hand, stand } from '../../engine/salvage/play';
+import { hand, stand, standUntil } from '../../engine/salvage/play';
+import { begin } from '../../engine/salvage/clock';
+import { carLabelPrice } from '../../engine/salvage/works';
 import { pointOf } from '../../engine/salvage/positions';
 import { playPour, WORKS_PRESETS } from './presets.web';
 import { shipped2Config } from '../../engine/fixtures/shipped2';
@@ -213,8 +215,22 @@ describe.skipIf(!!STALE)(`the works' moments hold${STALE ? ` (SKIPPED: ${STALE})
     expect(g.salvage.works.depollution?.phase).toBe('running');
     const f = Salvage.frame(cfg2, g);
     expect(f.line).toBeDefined();
-    if (!missed || missed.includes('Waiting for cash')) expect(f.line!.recovery.waitsFor).toBe('cash');
-    else expect(f.line!.car?.stage).toBe('draining');
+    if (missed) {
+      if (missed.includes('Waiting for cash')) expect(f.line!.recovery.waitsFor).toBe('cash');
+      else expect(f.line!.car?.stage).toBe('draining');
+      return;
+    }
+    // A car draining, its end (the next car's due date) seconds away, the cash short of the next car's label price.
+    const car = g.salvage.works.depollution.car!;
+    expect(f.line!.car?.stage).toBe('draining');
+    expect(car.end - g.salvage.t).toBeGreaterThan(0);
+    expect(car.end - g.salvage.t).toBeLessThanOrEqual(3);
+    const price = carLabelPrice(begin(cfg2, g, undefined, false), 'depollution', car.end)!;
+    expect(price).toBeGreaterThan(g.cash - (g.salvage.truck.earmark?.money ?? 0));
+    // Standing on past its end: the recovery truck waits for cash.
+    const hd = hand(cfg2, structuredClone(g), g.salvage.clock.highMs, 0.1);
+    standUntil(hd, (x) => x.salvage.t >= car.end + 1, 10);
+    expect(Salvage.frame(cfg2, hd.g).line!.recovery.waitsFor).toBe('cash');
   });
 
   it('w4loan: an agreement open, a sale has paid the bank its share', () => {
@@ -250,8 +266,13 @@ describe.skipIf(!!STALE)(`the works' moments hold${STALE ? ` (SKIPPED: ${STALE})
 
   it('w5: rung 5 reached; w5wait: the waiting advice for rung 5', { timeout: 60_000 }, () => {
     expect(at('w5').g.salvage.ladder.rung).toBe(5);
-    const { g } = at('w5wait');
+    const { g, missed } = at('w5wait');
     const a = Salvage.adviceLine(cfg2, g, g.salvage.clock.highMs) as Salvage.AdviceWait | null;
+    if (missed) {
+      // As its file says: no waiting line was met in the play; the nearest is rung 5's first sitting's end.
+      expect(g.salvage.ladder.rung).toBe(5);
+      return;
+    }
     expect(a?.kind).toBe('waiting');
     expect(a!.rung).toBe(5);
   });

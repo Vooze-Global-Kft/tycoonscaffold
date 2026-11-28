@@ -17,5 +17,6 @@ export const PLOTS = {
   'card.works.step.startUp': 'Start-up',
   'card.works.step.working': 'Working',
   // P10: the one notice at the works' opening, a strip at the top of the rota (CardData.notice; C-CARDS-b sets it)
-  'card.notice.levelsWorks': 'From the works on, a level costs what it earns. Each says what it adds an hour.',
+  // ruling 30.3's two facts (SEAM-0, C-CARDS-b's [seam] 01:55): no number (tau_r is 12 / 36 / 48 h by rung)
+  'card.notice.levelsWorks': 'From the works on, a level costs what it earns over a number of hours. Some levels are no longer offered.',
 } as const;

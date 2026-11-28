@@ -190,6 +190,14 @@ export const TEXT_KEYS = {
     'goal.step.tip',
     // owner1-fix (finding 3): standing still near a partner's site, outside it
     'goal.step.pullUp',
+    // C-CARDS-b's [seam] (28 Nov 01:55; SEAM-0): the works' goal steps (goals.ts worksGoalStep / lineStep, keyOr)
+    'goal.step.startUp',
+    'goal.step.toApron',
+    'goal.step.cutLot',
+    'goal.step.sort',
+    'goal.step.toRack',
+    'goal.step.lift',
+    'goal.step.firstCar',
     'goal.buyBench',
     'goal.breakMotor',
     'goal.supplyRung2',

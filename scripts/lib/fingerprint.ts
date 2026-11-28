@@ -458,6 +458,22 @@ export function textsOf(value: unknown, out: string[] = []): string[] {
 }
 
 /**
+ * The files of a mode's words for dimension 17: src/ui/<mode>/strings.ts, then (a mode that splits its words into
+ * families, as the scrap yard's works do: SEAM-0, 28 Nov) every .ts file of src/ui/<mode>/strings/, by name. A mode
+ * without the folder reads strings.ts alone, as before.
+ */
+export function modeStringFiles(root: string, mode: string): string[] {
+  const out: string[] = [];
+  const table = path.join(root, 'src', 'ui', mode, 'strings.ts');
+  if (fs.existsSync(table)) out.push(table);
+  const dir = path.join(root, 'src', 'ui', mode, 'strings');
+  if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+    for (const f of fs.readdirSync(dir).filter((f) => /\.ts$/.test(f) && !/\.test\.ts$/.test(f)).sort()) out.push(path.join(dir, f));
+  }
+  return out;
+}
+
+/**
  * The texts of a mode's string table (src/ui/<mode>/strings.ts) for dimension 17: every single-quoted
  * string that follows a colon (as before), every double-quoted string, and the static parts of every
  * template literal (each piece between its `${...}` holes, nested templates included), with comments
@@ -547,8 +563,7 @@ export function gameFacts(root: string, id: string, cfg: GameConfig, games: { li
   const raw = readJson<Record<string, unknown>>(path.join(dir, 'game.json')) ?? {};
   const { store: _store, monetization: _m, app: _app, theme: _t, assets: _a, firebase: _f, ...gameTexts } = raw;
   const strings = textsOf(gameTexts);
-  const table = path.join(root, 'src', 'ui', cfg.mode, 'strings.ts');
-  if (fs.existsSync(table)) for (const t of tableStrings(fs.readFileSync(table, 'utf8'))) textsOf(t, strings);
+  for (const table of modeStringFiles(root, cfg.mode)) for (const t of tableStrings(fs.readFileSync(table, 'utf8'))) textsOf(t, strings);
   const bundle = readBundleReport(root, id);
   const releases = readJson<ReleasesFile>(path.join(dir, 'store', 'releases.json'));
   const last = releases?.submissions?.map((s) => Date.parse(s.date)).filter(Number.isFinite).sort((x, y) => y - x)[0];

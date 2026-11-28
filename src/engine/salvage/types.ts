@@ -637,9 +637,15 @@ export interface GoalState {
 export interface SeenState {
   /** Places whose label has shown on first sight, or whose card was opened. */
   places: PlaceId[];
-  /** Card kinds opened at least once (the board's first-opening hint, the fictional line). */
-  cards: CardKind[];
+  /**
+   * Card kinds opened at least once (the board's first-opening hint, the fictional line); also the levels' notice's seen
+   * mark 'levelsWorks' (cards.ts LEVELS_NOTICE_MARK; C-CARDS-b, critic F18: no new save field; widened by SEAM-0, 28 Nov).
+   */
+  cards: SeenCard[];
 }
+
+/** What `seen.cards` holds: a card kind, or the levels' notice's mark (cards.ts LEVELS_NOTICE_MARK). */
+export type SeenCard = CardKind | 'levelsWorks';
 
 /** What kind of vehicle or walker a purchase or an arrival comes by (sound `arrival`, the frame's `arrivals`). */
 export type ArrivalKind = 'dropoff' | 'van' | 'machineFlatbed' | 'truck' | 'crew' | 'recovery' | 'lowLoader';
@@ -922,7 +928,7 @@ export interface SalvageActions {
   stepOut(cfg: SalvageConfig, g: SalvageGame, at: { x: number; y: number; heading: Heading } | null, clock: number, events?: SalvageEvent[]): SalvageGame;
   skipGoal(cfg: SalvageConfig, g: SalvageGame, id: string, clock: number, events?: SalvageEvent[]): SalvageGame;
   /** v3: `plate` with card 'works' (2.14.5, B11): reading a financeable works card under the letter's condition sets `bank.letterSeen` and emits `letter`. */
-  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: CardKind; plate?: PlateId }, clock: number, events?: SalvageEvent[]): SalvageGame;
+  noteSeen(cfg: SalvageConfig, g: SalvageGame, seen: { place?: PlaceId; card?: SeenCard; plate?: PlateId }, clock: number, events?: SalvageEvent[]): SalvageGame;
   ackAway(cfg: SalvageConfig, g: SalvageGame): SalvageGame;
 }
 
@@ -1122,8 +1128,8 @@ export type CardRef =
   | { kind: 'finance'; plate: PlateId }
   | { kind: 'letter' }
   | { kind: 'yardSale' }
-  /** An oversize piece on the pad's square k. */
-  | { kind: 'lot'; k: number }
+  /** An oversize piece on the pad's square k; k absent (or its piece gone): the pad's own card (PLAN2 2.1; SEAM-0). */
+  | { kind: 'lot'; k?: number }
   | { kind: 'crate' }
   | { kind: 'shop' }
   | { kind: 'packSheet'; product: string }
@@ -1152,7 +1158,7 @@ export interface CardData {
   /** Lines under the title (the rota's "Site licence · metal dealer", a machine's status, the deal's terms). */
   lead: Txt[];
   /** Help (kind 'help'; s2a-fix, the lead's ruling 7): the glossary's terms the yard's rung shows (content text.glossary, `fromRung` at most the rung), in order. */
-  glossary?: { term: string; line: string }[];
+  glossary?: { term: string; line: string; item?: string }[];
   /** Tabs of the office panel (Rota, Partners, Process board, v3 Agreements), with the open one (refs are `{kind:'office', tab}`; v3 the process board's pages). */
   tabs?: { ref: CardRef; title: Txt; open: boolean }[];
   rows: CardRow[];

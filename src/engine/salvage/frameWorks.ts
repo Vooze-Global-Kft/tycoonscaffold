@@ -20,7 +20,7 @@ import { TEXT_KEYS } from './textKeys';
 import { worksOpened } from './layer';
 import { gateRefusal, gateRung, shopItem, topRungOf } from './ladder';
 import { carDueAt, carLabelPrice, lineOf, pieceEndsAt, recoveryOf } from './works';
-import { lotsWaiting } from './lots';
+import { lotKindsOpen, lotsWaiting } from './lots';
 import { rackCap } from './reuse';
 import { thingsAt } from './lookup';
 import { hallWhy, heatView } from './heatView';
@@ -128,13 +128,6 @@ function firstGrade(c: SalvageContent, id: PlateId): string | null {
   const ps = c.works?.plates ?? {};
   for (const q in ps) if (q !== id && Object.values(ps[q].feeds ?? {}).includes(id)) return firstGrade(c, q);
   return null;
-}
-
-/** Does the yard own a line of a lot kind (lots.ts ownsLine's rule; a [seam] asks lots.ts to export it): a first-yard machine owned or a plate ordered; none named: always. */
-function ownsLine(s: SalvageGame['salvage'], line: readonly string[]): boolean {
-  if (!line.length) return true;
-  for (const id of line) if ((s.machines as Record<string, { owned: boolean } | undefined>)[id]?.owned || s.works[id]) return true;
-  return false;
 }
 
 /** The plot of a sold or owned plate (FrameWorks), every field from the rules' state at yard second t. */
@@ -285,10 +278,7 @@ function worksTable(c: SalvageContent, g: SalvageGame, f: FrameTable): void {
     const nextAt = s.lots.nextAt;
     let why: Txt | null = null;
     if (s.act.kind !== 'lot') {
-      const opens = c.lots.kinds.some((k) => {
-        const o = c.objects[k.obj];
-        return !!o && o.tier <= s.tier && ownsLine(s, k.line);
-      });
+      const opens = lotKindsOpen(x);
       if (n >= max) why = key('plate.pad.full', { n: { n }, m: { n: max } });
       else if (!opens) why = key('plate.pad.noKind');
       else if (nextAt !== null) why = key('plate.pad.next', { t: secsTo(nextAt, t) });

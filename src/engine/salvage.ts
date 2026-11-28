@@ -23,7 +23,7 @@ export { ceilingFor, levelPrice, shopPrice } from './salvage/ladder';
 export { industryTable, rivalGrams } from './salvage/rivals';
 export { goalList, nextGoal } from './salvage/goals';
 export { advice, adviceLine, adviceWait, reserve } from './salvage/advice';
-export { awayCard, cardOfCfg as cardOf, processBoard, skipLabel, skipLabels, topBar } from './salvage/cards';
+export { awayCard, cardOfCfg as cardOf, LEVELS_NOTICE_MARK, levelsNoticeDue, processBoard, skipLabel, skipLabels, topBar } from './salvage/cards';
 export { frameCfg as frame, loadFamily, pieceAt, specIndex, toolFor } from './salvage/frame';
 export { tickets } from './salvage/tickets';
 // rules-book, fix pass (W11, P3, P17, S10, W15): new selectors, add only.

@@ -202,6 +202,20 @@ function wholePiece(x: Ctx, th: ThingState): Piece {
 /** A yard hand may rack it: hired hands exist and it weighs at most crew.hand.load. */
 const handLifts = (x: Ctx, th: ThingState): boolean => (x.c.objects[th.obj]?.gross_g ?? Infinity) <= x.c.crew.hand.load * 1000 && x.s.crew.some((m) => m.role === 'hand');
 
+/**
+ * SEAM-0 (requests.md [seam] 28 Nov 01:05, C-FRAME; 4.6's third line): whose a TAGGED thing is now, read from rackChoice's own
+ * predicates so the plate and the rule never disagree: the first thing is the boss's always; no place free: 'full' (cut as
+ * scrap); the boss sees it (bossSeesThing): 'boss'; heavier than a yard hand lifts: 'heavy'; a yard hand lifts it
+ * (handLifts): 'hands'; else (light, no yard hand, out of his sight) the boss's to fetch. A reader only: no rule calls it.
+ */
+export function tagWho(x: Ctx, th: ThingState, t: number): 'boss' | 'hands' | 'full' | 'heavy' {
+  if (th.uid === FIRST_UID) return 'boss';
+  if (freePlaces(x) <= 0) return 'full';
+  if (bossSeesThing(x, th, t)) return 'boss';
+  if ((x.c.objects[th.obj]?.gross_g ?? Infinity) > x.c.crew.hand.load * 1000) return 'heavy';
+  return handLifts(x, th) ? 'hands' : 'boss';
+}
+
 /** A yard hand (th null), the boss (th null) or a cutter (th a candidate) meets what may be a tagged thing. */
 export function rackChoice(x: Ctx, who: 'boss' | CrewMember, t: number, th: ThingState | null): boolean {
   if (!x.c.reuse || !opened(x)) return false;

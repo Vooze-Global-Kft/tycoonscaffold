@@ -339,6 +339,14 @@ export const TEXT = {
   'goal.step.weigh': 'Drive onto the weighbridge',
   'goal.step.tip': 'Tip it on the floor',
   'goal.step.pullUp': 'Pull up to the skip', // owner1-fix finding 3
+  // the works' goal steps (C-CARDS-b's [seam] 28 Nov 01:55; SEAM-0): goals.ts uses each once textKeys.ts holds it
+  'goal.step.startUp': 'Stand at it to start · {n} s', // n: { n } works.commission_s
+  'goal.step.toApron': "Walk to the furnace's apron", // the first heat ready
+  'goal.step.cutLot': 'Cut it with the plasma cutter', // a piece waiting on the pad
+  'goal.step.sort': 'Stand at the table · {n} s each', // n: { n } crate.sort_s
+  'goal.step.toRack': 'Carry it to the Yard sale', // the bath carried
+  'goal.step.lift': 'Stand at it to lift it', // the bath lying in the yard
+  'goal.step.firstCar': 'First car in {t}', // t: { secs } to the garage's next car
   'goal.buyBench': 'Buy the motor bench',
   'goal.breakMotor': 'Break a motor on the bench',
   'goal.supplyRung2': 'Supply {t} ({r} materials)',
@@ -879,6 +887,8 @@ export const TEXT = {
   'refusal.routed': 'This feeds the {plate}. Choose Sell from the bay first.', // T17: a toast of two lines
   'refusal.adCap': 'No more this market day',
   'refusal.inForklift': 'Step out of the forklift first', // R4: an act of his own tried from the forklift
+  'refusal.notSold': 'Not offered at the works', // s2i-levels (RULING2 30.3): a level the book does not sell at the works; no number (moved from TEXT_PENDING by SEAM-0)
+  'refusal.noVideo': 'No video right now', // C-ACTIONS (PLAN2 2.3): a rewarded video that did not show (SEAM-0)
 
   // ============================================================================================ STAGE 2 SCREENS
   // WORDS-SETUP (28 November; PLAN2 2.2): the 17 word families of the works' screens, one file each under ./strings/ (its
@@ -916,9 +926,6 @@ void _noExtra;
  * Holes are the arguments the caller passes; the comment says which formatter fills each.
  */
 export const TEXT_PENDING: Record<string, string> = {
-  // s2i-levels' [seam] (28 Nov; RULING2 30.3): a level the book does not sell at the works. Whoever adds 'notSold' to
-  // refusals.ts REFUSAL_KEYS moves this line into TEXT in the same save (the typecheck then wants it there).
-  'refusal.notSold': 'Not offered at the works',
 };
 
 // ================================================================================================ names

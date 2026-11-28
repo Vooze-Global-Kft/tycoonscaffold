@@ -109,6 +109,19 @@ function ownsLine(x: Ctx, line: readonly string[]): boolean {
   return false;
 }
 
+/**
+ * SEAM-0 (requests.md [seam] 28 Nov 01:10, C-FRAMEWORKS): is there a lot kind the yard can open now (lotArrive's own filter:
+ * its object at most the yard's tier and a line owned)? A reader only: no rule calls it (the pad's "No piece your tools can open").
+ */
+export function lotKindsOpen(x: Ctx): boolean {
+  const L = x.c.lots;
+  if (!L) return false;
+  return L.kinds.some((k) => {
+    const o = x.c.objects[k.obj];
+    return !!o && o.tier <= x.s.tier && ownsLine(x, k.line);
+  });
+}
+
 /** A lot arrives at its instant t. */
 export function lotArrive(x: Ctx, t: number): void {
   const L = x.c.lots;

@@ -36,7 +36,9 @@ import * as R from '../../../src/engine/salvage';
 import { financeTerms, letterDue, loanOffered, parkVehicles, shownOf } from '../../../src/engine/salvage/bank';
 import { away, newBot, newSitting, playUntil, resumeBot, snapBot, startGame, type Bot, type BotOptions } from '../../../src/engine/salvage/bot';
 import { soldPlates } from '../../../src/engine/salvage/frameWorks';
+import { begin } from '../../../src/engine/salvage/clock';
 import { contentAt, worksOpened } from '../../../src/engine/salvage/layer';
+import { carLabelPrice } from '../../../src/engine/salvage/works';
 import { hand, standUntil, walkTo } from '../../../src/engine/salvage/play';
 import { pointOf } from '../../../src/engine/salvage/positions';
 import { rackCount } from '../../../src/engine/salvage/reuse';
@@ -138,6 +140,11 @@ function throttled(key: string, g: SalvageGame, every: number): boolean {
   lastRead.set(key, t);
   return true;
 }
+
+/** The advice line's purchase (a buy, hire or level), or null when it is the waiting line or empty. */
+const buyOf = (a: R.Advice | R.AdviceWait | null): R.Advice | null => (a && (a as R.AdviceWait).kind !== 'waiting' ? (a as R.Advice) : null);
+/** The advice line when it is the waiting line (what the yard waits for), else null. */
+const waitOf = (a: R.Advice | R.AdviceWait | null): R.AdviceWait | null => (a && (a as R.AdviceWait).kind === 'waiting' ? (a as R.AdviceWait) : null);
 
 function adviceOf(g: SalvageGame, now: number): R.Advice | R.AdviceWait | null {
   return R.adviceLine(cfg, g, now) as R.Advice | R.AdviceWait | null;
@@ -241,8 +248,50 @@ function loanBranch(b: Bot, last: Map<string, SalvageEvent>): boolean {
   return false;
 }
 
+let w5end: { g: SalvageGame; now: number; ev: SalvageEvent[]; what: string } | null = null;
 let lineNear: { g: SalvageGame; now: number; ev: SalvageEvent[]; what: string } | null = null;
 let lineCash: { g: SalvageGame; now: number; ev: SalvageEvent[]; what: string } | null = null;
+
+/** The garage's next car's label price at yard second t, and the cash the recovery truck may spend (cash less the driver's earmark). */
+function carPrice(g: SalvageGame, t: number): { price: number; can: number } | null {
+  const x = begin(cfg, g, undefined, false);
+  const price = carLabelPrice(x, 'depollution', t);
+  return price === null ? null : { price, can: g.cash - (g.salvage.truck.earmark?.money ?? 0) };
+}
+
+/**
+ * w4line: a car draining on the depollution bay's apron, its end (the next car's due date) seconds away, and the cash short of
+ * the next car's label price: the player has just pressed the advice's purchase (a real buy, hire or level as shown), which
+ * leaves the yard less than the car costs. Recorded 2 s before the car's end; the same hand standing on sees "Waiting for cash".
+ */
+function lineBranch(b: Bot, last: Map<string, SalvageEvent>): boolean {
+  const s = b.g.salvage;
+  const car = s.works.depollution?.car;
+  if (!car || s.works.shredder?.phase !== 'running' || car.end - s.t <= 15 || car.end - s.t > 45 || !onFoot(b.g)) return false;
+  const a = buyOf(adviceOf(b.g, b.now));
+  const acts = a ? [a.action, ...(a.works?.meanwhile ? [a.works.meanwhile.action] : [])] : [];
+  for (const act of acts) {
+    const ev: SalvageEvent[] = [];
+    const t = s.t;
+    const g1 = act.act === 'buy' ? R.buy(cfg, b.g, act.item, act.price, t, ev) : act.act === 'hire' ? R.hire(cfg, b.g, act.role, act.price, t, ev) : R.level(cfg, b.g, act.target, act.price, t, ev);
+    if (g1 === b.g) continue;
+    const hd = hand(cfg, g1, b.now, 0.1);
+    hd.events.push(...ev);
+    standUntil(hd, (g) => g.salvage.t >= car.end - 2, 60);
+    const cp = carPrice(hd.g, car.end);
+    const c2 = hd.g.salvage.works.depollution.car;
+    if (!cp || !c2 || c2.thing !== car.thing || cp.price <= cp.can) continue;
+    const g2 = hd.g;
+    const now2 = hd.now;
+    const ev2 = [...hd.events];
+    standUntil(hd, (g) => g.salvage.t >= car.end + 1, 10);
+    const f = R.frame(cfg, hd.g);
+    if (f.line?.recovery.waitsFor !== 'cash') continue;
+    put('w4line', g2, now2, `the line running, a car draining (2 s to its end, when the next car is due), the cash ${Math.round(cp.can)} short of the next car's ${Math.round(cp.price)} after the player bought the advice's ${JSON.stringify(act)}: a second later the recovery truck waits for cash`, eventsFor('w4line', last, ev2), 'normal, then the advice\'s purchase pressed');
+    return true;
+  }
+  return false;
+}
 
 /** A live-only moment is pending in this state (the sitting's 15 minutes may end before it: a longer sitting is played in a branch). */
 function pendingLive(g: SalvageGame): string[] {
@@ -253,7 +302,7 @@ function pendingLive(g: SalvageGame): string[] {
   if (!out.w4pour && w('induction') && !w('induction').heat?.firstPoured) out2.push('w4pour');
   if (!out.w4hall && halls(g).length + Object.values(s.works).filter((x) => !!x.heat && x.phase !== 'running').length >= 3 && Object.values(s.works).some((x) => !!x.heat && !x.heat.firstPoured)) out2.push('w4hall');
   if (!out.w4arrive && Object.values(s.works).some((x) => !!x.heat && x.phase === 'arriving')) out2.push('w4arrive');
-  if (!out.w4line && w('shredder') && w('depollution')) out2.push('w4line');
+  if (!out.w4line && !lineNear && w('shredder') && w('depollution')) out2.push('w4line');
   return out2;
 }
 
@@ -281,12 +330,12 @@ function scanNormal(b: Bot, last: Map<string, SalvageEvent>, rung4Entry: { snap:
   const lift = hookLift(g);
   if (r === 3 && !owns(g, lift)) {
     if (!out.w3 && throttled('w3', g, 20)) {
-      const a = adviceOf(g, b.now);
-      if (a && a.kind !== 'waiting' && 'works' in a && a.works && a.works.saveUp_s === null) snapOf(b, last, 'w3', `works open, the plots for sale, the hook-lift (${lift}) unbought; advice names ${'item' in a.action ? a.action.item : a.action.act} the cash pays now`);
+      const a = buyOf(adviceOf(g, b.now));
+      if (a && a.works && a.works.saveUp_s === null) snapOf(b, last, 'w3', `works open, the plots for sale, the hook-lift (${lift}) unbought; advice names ${'item' in a.action ? a.action.item : a.action.act} the cash pays now`);
     }
     if (!out.w3save && s.bank.letterSeen && throttled('w3save', g, 20)) {
-      const a = adviceOf(g, b.now);
-      if (a && a.kind !== 'waiting' && a.works?.saveUp_s && a.loanHint && a.works.meanwhile) snapOf(b, last, 'w3save', `saving for ${'item' in a.action ? a.action.item : '?'} (Save up ${Math.round(a.works.saveUp_s)} s), the loan sentence, For now ${'item' in a.works.meanwhile.action ? a.works.meanwhile.action.item : JSON.stringify(a.works.meanwhile.action)}`);
+      const a = buyOf(adviceOf(g, b.now));
+      if (a && a.works?.saveUp_s && a.loanHint && a.works.meanwhile) snapOf(b, last, 'w3save', `saving for ${'item' in a.action ? a.action.item : '?'} (Save up ${Math.round(a.works.saveUp_s)} s), the loan sentence, For now ${'item' in a.works.meanwhile.action ? a.works.meanwhile.action.item : JSON.stringify(a.works.meanwhile.action)}`);
     }
   }
   if (r === 3 && !out.w3letter && !s.bank.letterSeen && parkVehicles(cfg, g, 'park').some((k) => letterDue(cfg, g, k))) snapOf(b, last, 'w3letter', `rung 3, the letter not seen; cash ${Math.round(g.cash)} pays the hook-lift's deposit and reserve, not its price: opening the park card makes the letter due`);
@@ -302,10 +351,14 @@ function scanNormal(b: Bot, last: Map<string, SalvageEvent>, rung4Entry: { snap:
     }
     if (!out.w4pour) pourBranch(b, last);
     if (!out.w4hall) hallBranch(b, last);
+    if (!out.w4line && throttled('w4lineB', g, 10)) lineBranch(b, last);
     if (!out.w4line && s.works.depollution?.car && s.t < s.works.depollution.car.end && throttled('w4line', g, 5)) {
       const f = R.frame(cfg, g);
       if (f.line?.car?.stage === 'draining' && f.line.recovery.waitsFor === 'cash') snapOf(b, last, 'w4line', `the line running, a car draining (${(s.works.depollution.car.end - s.t).toFixed(0)} s left), the recovery truck waits for cash (short ${Math.round(f.line.recovery.short ?? 0)})`);
-      else if (f.line?.car?.stage === 'draining' && f.line.recovery.waitsFor === 'apron' && f.line.recovery.nextAt !== null && f.line.recovery.nextAt <= s.t) lineNear ??= { g: structuredClone(g), now: b.now, ev: eventsFor('w4line', new Map([...last, ...b.ev.map((e) => [e.type, e] as const)])), what: `the line running, a car draining (${(s.works.depollution.car.end - s.t).toFixed(0)} s left), the next car due (its date passed: the apron is taken)` };
+      else if (f.line?.car?.stage === 'draining' && f.line.recovery.nextAt !== null && f.line.recovery.nextAt - s.t > 0 && f.line.recovery.nextAt - s.t <= 30) {
+        const cp = carPrice(g, f.line.recovery.nextAt);
+        lineNear ??= { g: structuredClone(g), now: b.now, ev: eventsFor('w4line', new Map([...last, ...b.ev.map((e) => [e.type, e] as const)])), what: `the line running, a car draining (${(s.works.depollution.car.end - s.t).toFixed(0)} s left), the next car due in ${(f.line.recovery.nextAt - s.t).toFixed(0)} s (its label ${Math.round(cp?.price ?? 0)}, the cash the truck may spend ${Math.round(cp?.can ?? 0)})` };
+      }
     }
     if (!out.w4line && !lineCash && s.works.shredder?.phase === 'running' && throttled('w4lineCash', g, 5)) {
       const f = R.frame(cfg, g);
@@ -318,9 +371,9 @@ function scanNormal(b: Bot, last: Map<string, SalvageEvent>, rung4Entry: { snap:
   }
   if (r >= 5 && !out.w5) snapOf(b, last, 'w5', `rung ${r} reached (the first state at it)`);
   // w5wait: the waiting advice (adviceWait names the NEXT rung, so at the stage's top, 5, there is none): the yard waiting for rung 5.
-  if (r === 4 && !out.w5wait && throttled('w5wait', g, 20)) {
-    const a = adviceOf(g, b.now);
-    if (a && a.kind === 'waiting') snapOf(b, last, 'w5wait', `rung ${r}, the waiting advice for rung ${a.rung} (${a.line.key}${a.material ? `, ${a.material}` : ''})`);
+  if ((r === 3 || r === 4) && !out.w5wait && throttled('w5wait', g, 20)) {
+    const a = waitOf(adviceOf(g, b.now));
+    if (a) snapOf(b, last, 'w5wait', `rung ${r}, the waiting advice for rung ${a.rung} (${a.line.key}${a.material ? `, ${a.material}` : ''})`);
   }
 }
 
@@ -348,13 +401,18 @@ function normalRun(): void {
       snapOf(b, last, 'w4back', `rung 4 at a sitting's end (sitting ${k}): the phone put down here; the preview counts 8 h away from it (counting=run&countingH=8)`);
     }
     longerSitting(b, last, entry, 2 * 3600);
+    if (b.g.salvage.ladder.rung >= 5 && !w5end) {
+      for (const e of b.ev) last.set(e.type, e);
+      w5end = { g: structuredClone(b.g), now: b.now, ev: eventsFor('w5wait', last), what: `rung ${b.g.salvage.ladder.rung} at the end of its first sitting (sitting ${k}): the advice line ${adviceOf(b.g, b.now) ? 'names something' : 'is empty (nothing to buy that pays back; no next rung)'}` };
+    }
     if (b.g.salvage.ladder.rung >= 5) pastFive += 1;
     log(`sitting ${k}: yard ${(b.g.salvage.t / 3600).toFixed(2)} h, rung ${b.g.salvage.ladder.rung}, recorded ${Object.keys(out).length}`);
   }
   // Fallbacks for the moments the play did not meet exactly (said in `missed`).
+  if (!out.w5wait && w5end) put('w5wait', w5end.g, w5end.now, w5end.what, w5end.ev, 'normal', 'no state at rung 3 or 4 had the waiting advice (read every 20 s: the advice always named a purchase), and at rung 5, the stage\'s top, adviceWait has no next rung: the line is empty. Recorded: rung 5 at the end of its first sitting');
   if (!out.w4line && (lineNear || lineCash)) {
     const n = (lineCash ?? lineNear)!;
-    put('w4line', n.g, n.now, n.what, n.ev, 'normal', lineCash ? 'no car drains while the recovery waits for cash (frameWorks recoveryView reads a taken apron first, so a draining car and "cash short" never hold together): recorded with the apron free and "Waiting for cash"' : 'the recovery never waited for cash with the line running: recorded with a car draining and the next car due');
+    put('w4line', n.g, n.now, n.what, n.ev, 'normal', lineCash ? 'no car drains while the recovery waits for cash (frameWorks recoveryView reads a taken apron first, so a draining car and "cash short" never hold together): recorded with the apron free and "Waiting for cash"' : 'cash short never held: the next car is due exactly when the draining one ends, and its label price (about 1.2 thousand) is below what the hand keeps in cash at every due date, also after the advice\'s purchase (tried at each car within 45 s of its end). Recorded: a car draining, the next due within 30 s');
   }
   if (!out.w3) {
     const ob = resumeBot(cfg, opening, b.opts);

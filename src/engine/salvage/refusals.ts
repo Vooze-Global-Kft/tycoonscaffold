@@ -31,9 +31,12 @@ export const REFUSAL_KEYS = ['cash', 'earmark', 'owned', 'notOwned', 'needsItem'
  *   ("Not the limit now · +{x} an hour"; state locked, no price, no Buy).
  * - toApron (s2e-line, RULING2 27.3 D1): a weighed car at the tipping floor, or the boss stepping out with one: it is set
  *   down on the depollution bay's apron ("Set the car down at the depollution bay").
+ * - notSold (s2i-levels, RULING2 30.3; SEAM-0, 28 Nov): a level the book does not sell at the works (no entry, or s1 0 at the
+ *   rung): "Not offered at the works" (no number). Listed here only: ladder.ts's line that answers it is the rules' fix pass's.
+ * - noVideo (C-ACTIONS, PLAN2 2.3; SEAM-0, 28 Nov): a rewarded video that did not show ("No video right now").
  * Gates reuse `rung` and `needsItem`; money reuses `cash` and `ceiling`; "nothing offered" reuses `nothing`. A pack while
  * a Bank loan is open reuses `packOff` (RULING2 28.2 c: the pack section is absent, as where the country's switch is off).
  */
-export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap', 'inForklift', 'notLimit', 'toApron'] as const;
+export const REFUSAL_KEYS_V3 = ['bankOne', 'bankReserve', 'bankTerms', 'notFinanceable', 'quoteUpdated', 'packPending', 'packHeadroom', 'packOff', 'packCode', 'badYear', 'rackFull', 'notReusable', 'forkliftLoad', 'noRoute', 'routed', 'adCap', 'inForklift', 'notLimit', 'toApron', 'notSold', 'noVideo'] as const;
 /** Every refusal key of version 3 (stage 1 and stage 2). */
 export type RefusalKey = (typeof REFUSAL_KEYS)[number] | (typeof REFUSAL_KEYS_V3)[number];

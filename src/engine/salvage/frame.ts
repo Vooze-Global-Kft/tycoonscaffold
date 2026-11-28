@@ -11,7 +11,7 @@ import { frameMoney } from './frameMoney';
 import { frameWorks } from './frameWorks';
 import { contentAt, worksOpened } from './layer';
 import { lineAmount, roundMoney } from './money';
-import { carrierCap_g, owner1Rules, plateDef, tierOf } from './content';
+import { owner1Rules, plateDef, tierOf } from './content';
 import { idleWhyOf } from './crew';
 import { bossHandleS, hookRefusal } from './truck';
 import { fullestSkip } from './partners';
@@ -20,10 +20,9 @@ import { truckFree } from './hand';
 import { chevronOf } from './goals';
 // C-FRAME (PLAN2 2.2): the works' readers the frame asks (tags, oversize pieces, the halls' charge, the drop-off's pace).
 import type { Ctx } from './clock';
-import { bossFresh } from './clock';
 import { hallCap_g } from './halls';
 import { lotValue } from './lots';
-import { FIRST_UID, rackCap, rackCount, tagFigures, tagUid, tagged } from './reuse';
+import { tagFigures, tagWho, tagged } from './reuse';
 import { worksDropoffPeriod } from './things';
 import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, mapAt, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripLandingOf, tripPhasePath } from './positions';
 import type {
@@ -47,7 +46,6 @@ import type {
   TextKey,
   TxtArgs,
   ThingAt,
-  ThingState,
   ToolKind,
   Txt,
 } from './types';
@@ -510,39 +508,6 @@ function readCtx(c: SalvageContent, g: SalvageGame): Ctx {
 }
 
 /**
- * The Yard sale's places taken (reuse.ts `taken`, mirrored: requests.md [seam] 28 Nov C-FRAME asks reuse.ts to export a
- * `tagWho`): racked things, tagged things a yard hand fetches or carries there, tagged things in the boss's load.
- */
-function rackTaken(x: Ctx): number {
-  let n = rackCount(x);
-  for (const m of x.s.crew) if (m.job === 'rack') n++;
-  for (const p of x.s.load) if (p.whole && p.spec === -1 && tagUid(x.c, p.uid, p.whole)) n++;
-  return n;
-}
-
-/**
- * Whose a tagged thing is now (ruling 13.1, 4.6's third line; reuse.ts rackChoice mirrored, see rackTaken): the first thing
- * is the boss's always; no place free: 'full' (cut as scrap); a fresh boss within reach.sight whose carrier holds it:
- * 'boss'; a hired yard hand lifts it (at most crew.hand.load): 'hands'; heavier than a yard hand lifts: 'heavy' (cut by the
- * crews unless the boss comes); else (light, no yard hand, out of his sight) the boss's to fetch.
- */
-function tagWho(x: Ctx, th: ThingState, free: number): NonNullable<FrameThing['tag']>['who'] {
-  if (th.uid === FIRST_UID) return 'boss';
-  if (free <= 0) return 'full';
-  const { c, s } = x;
-  const o = c.objects[th.obj];
-  const gross = o?.gross_g ?? Infinity;
-  if (bossFresh(x, s.t) && gross <= carrierCap_g(c, s)) {
-    const q = thingPos(c, th.at);
-    const p = s.presence;
-    const d = Math.hypot(Math.max(0, Math.abs(p.x - q.x) - (o?.size.w ?? 1) / 2), Math.max(0, Math.abs(p.y - q.y) - (o?.size.d ?? 0.8) / 2));
-    if (d <= c.reach.sight) return 'boss';
-  }
-  if (gross > c.crew.hand.load * 1000) return 'heavy';
-  return s.crew.some((m) => m.role === 'hand') ? 'hands' : 'boss';
-}
-
-/**
  * The things with their Yard sale tags (4.6: "Reusable" (· "Checked") / "§q at the gate · §v as scrap" at the present
  * step / whose). The list is the SAME object while every tag reads the same (owner1-fix-world: an unchanged list keeps
  * its identity), and an untagged thing keeps its own entry.
@@ -552,15 +517,13 @@ function withTags(c: SalvageContent, g: SalvageGame, things: FrameThing[]): Fram
   const x = readCtx(c, g);
   let out: FrameThing[] | null = null;
   let sig = '';
-  let free: number | null = null;
   for (let i = 0; i < s.things.length; i++) {
     const th = s.things[i];
     const f = things[i];
     if (!f || f.uid !== th.uid || !tagged(x, th)) continue;
     const fig = tagFigures(x, th, s.t);
     if (!fig) continue;
-    free ??= rackCap(x) - rackTaken(x);
-    const tag = { q: fig.gate, v: fig.scrap, who: tagWho(x, th, free), checked: !!c.reuse?.kinds[th.obj]?.fromPartnerOnly, g: c.objects[th.obj]?.gross_g ?? 0 };
+    const tag = { q: fig.gate, v: fig.scrap, who: tagWho(x, th, s.t), checked: !!c.reuse?.kinds[th.obj]?.fromPartnerOnly, g: c.objects[th.obj]?.gross_g ?? 0 };
     sig += `${th.uid}|${tag.q}|${tag.v}|${tag.who};`;
     (out ??= things.slice())[i] = { ...f, tag };
   }

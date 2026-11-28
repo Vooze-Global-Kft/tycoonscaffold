@@ -38,7 +38,7 @@ import { PORTRAIT_MODES } from '../src/config/artIcons';
 import { GameConfigSchema, type GameConfig } from '../src/config/schema';
 import { args } from './lib/cli';
 import { economyTableClash, storeTextProblems, textSimilarity } from './lib/checks';
-import { comparePair, formatPair, gameFacts, pairFailures, promotionalTextOf, tableStrings, type AudioScore, type ReleasesFile } from './lib/fingerprint';
+import { comparePair, formatPair, gameFacts, modeStringFiles, pairFailures, promotionalTextOf, tableStrings, type AudioScore, type ReleasesFile } from './lib/fingerprint';
 import { storeFiles } from './sync';
 
 const games = require('./lib/games.js');
@@ -448,8 +448,9 @@ function staleScreenshots(id: string, mode: string): string[] {
   };
   walk(shots);
   if (!pngs.length) return [];
-  // The game's data, and the interface words of its mode when the mode keeps them in one file.
-  const sources = [path.join(games.gameDir(id), 'game.json'), path.join(games.ROOT, 'src', 'ui', mode, 'strings.ts')].filter((f) => fs.existsSync(f));
+  // The game's data, and the interface words of its mode: strings.ts and, for a mode that has it, every file of its
+  // strings/ folder (SEAM-0, 28 Nov: the scrap yard's works keep their word families there).
+  const sources = [path.join(games.gameDir(id), 'game.json'), ...modeStringFiles(games.ROOT, mode)].filter((f) => fs.existsSync(f));
   const changed = sources.map((f) => ({ f, t: lastChange(f) })).sort((a, b) => b.t - a.t)[0];
   if (!changed) return [];
   // A full run of the store tool records what its images were taken from (TAKEN.json, written by

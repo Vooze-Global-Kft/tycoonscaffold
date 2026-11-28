@@ -143,10 +143,15 @@ export function presetState(T: Tree, name: string, cam?: string | null): { cfg: 
     g = T.PW.salvagePreset(cfg, { m5: 'early', m30: 'mid', back: 'late' }[name], NOW);
   } else if (/^w\d/.test(name) && typeof T.PW.worksPresetOf === 'function') {
     try {
-      const ret = T.req(`${T.root}/src/modes/salvage/returning.ts`);
-      if (typeof ret.stage2Config === 'function') cfg = ret.stage2Config(cfg);
+      // stage2Raw.ts's two lines on the game, then both schemas: what returning.ts stage2Config parses (returning.ts
+      // itself reaches the store's native modules, which do not load in node)
+      const { stage2RawOf } = T.req(`${T.root}/src/modes/salvage/stage2Raw.ts`);
+      const raw = stage2RawOf(JSON.parse(fs.readFileSync(path.join(T.root, 'games/scrap-yard/game.json'), 'utf8')));
+      const gschema = T.req(`${T.root}/src/config/schema.ts`);
+      const schema = T.req(`${T.root}/src/config/schema.salvage.ts`);
+      cfg = { ...gschema.GameConfigSchema.parse(raw), salvage: schema.SalvageSchema.parse(raw.salvage) };
     } catch (e) {
-      note = `the stage-2 config could not be loaded (${(e as Error).message.slice(0, 120)}): the game's content as it is`;
+      note = `the stage-2 config could not be made (${(e as Error).message.slice(0, 120)}): the game's content as it is`;
     }
     const p = T.PW.worksPresetOf(name, T.econ.createInitialState(cfg, NOW), NOW);
     g = p.game;
