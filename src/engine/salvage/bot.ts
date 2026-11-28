@@ -116,6 +116,11 @@ export interface BotOptions {
    * default: the reference bots leave every hall to choose its own recipe (halls.ts hallPick), as a player who never taps.
    */
   pinRecipe?: boolean;
+  /**
+   * Measurements only (s2i-measure, RULING2.md 30.3): called after every purchase the bot makes (a buy, a hire, a level, a
+   * signed loan's plate) with the state before and after and the action pressed. It reads; it never changes what the bot does.
+   */
+  onPurchase?: (before: SalvageGame, after: SalvageGame, a: CardAction) => void;
 }
 
 // ============================================================================================ the record
@@ -778,6 +783,7 @@ export function press(b: Bot, a: CardAction, goal: boolean): boolean {
     if (Math.abs(cash0 - b.g.cash - a.price) > 0.005) b.rec.broken.push({ t: clock, what: `paid ${cash0 - b.g.cash} for shown ${a.price}` });
     const key = a.act === 'buy' ? a.item : a.act === 'hire' ? `hire:${a.role}` : `lev:${targetKey(a.target)}`;
     b.rec.purchases.push({ t: clock, key: a.act === 'hire' ? hireKey(b, before, a.role) : key, price: a.price, kind: a.act, goal, cashAfter: b.g.cash });
+    b.opts.onPurchase?.(before, b.g, a);
   }
   observe(b);
   return before !== b.g;
@@ -1666,6 +1672,7 @@ export function financeHabit(b: Bot, plate: string): boolean {
   if (b.opts.finance !== 'always') return true;
   const cash0 = b.g.cash;
   const ev: SalvageEvent[] = [];
+  const g0 = b.g;
   b.g = signFinance(b.cfg, b.g, plate, shownOf(t2), b.g.salvage.t, ev);
   b.ev.push(...ev);
   const r = ev.find((e) => e.type === 'refused');
@@ -1677,6 +1684,7 @@ export function financeHabit(b: Bot, plate: string): boolean {
     if (Math.abs(cash0 - b.g.cash - (t2.P - t2.F)) > 0.005) b.rec.broken.push({ t: b.g.salvage.t, what: `signFinance took ${cash0 - b.g.cash} for a deposit shown ${t2.P - t2.F}` });
     b.rec.s2.loans.push({ t: b.g.salvage.t, plate, P: t2.P, F: t2.F, T: t2.T });
     b.rec.purchases.push({ t: b.g.salvage.t, key: plate, price: t2.P - t2.F, kind: 'buy', goal: true, cashAfter: b.g.cash, via: 'loan' });
+    b.opts.onPurchase?.(g0, b.g, { act: 'buy', item: plate, price: t2.P - t2.F } as CardAction);
   }
   observe(b);
   return true;

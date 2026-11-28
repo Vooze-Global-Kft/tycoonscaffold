@@ -32,7 +32,10 @@ const MODE_FOLDERS = {
   // content they were played on (engine2's), and the two Phase-B fixture files (rules-works', rules-money's).
   // The stage's new rules files (works, reuse, lots, crate, bank, shop, ads, halls, shredder, assay, forklift,
   // state2, samples2) are inside src/engine/salvage, which is the mode's already.
-  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/engine/fixtures/salvage-report9.json', 'src/engine/fixtures/report9.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts'],
+  salvage: ['src/modes/salvage', 'src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/engine/salvageMode.ts', 'src/engine/fixtures/salvage.ts', 'src/engine/fixtures/salvage-stage2.json', 'src/engine/fixtures/salvage2works.ts', 'src/engine/fixtures/salvage2money.ts', 'src/engine/fixtures/salvage-report9.json', 'src/engine/fixtures/report9.ts', 'src/config/schema.salvage.ts', 'src/config/salvage.content.ts',
+    // The works' screens (C-MODE, PLAN2 2.4): the tests' and bots' stage-2 helper (it imports the mode's own
+    // src/modes/salvage/stage2Raw.ts) and the works' recorded states (C-FIXTURE; DEV_ONLY below).
+    'src/engine/fixtures/shipped2.ts', 'src/engine/fixtures/salvage-works.json'],
 };
 
 /**
@@ -244,6 +247,39 @@ const WEB_ONLY = [
   'src/ui/salvage/hud/dev.web.ts',
   // The hints' scripted thumb of the preview (?autoplay=opening&route=1|2); phones take autoplay.tsx (null).
   'src/ui/salvage/hints/autoplay.web.tsx',
+  // The works' development switch read from the address (?stage=2; C-MODE, PLAN2 2.4): phones take stage.ts (the
+  // STAGE=2 variable behind __DEV__). The tests' and bots' stage-2 helper (tests, bots and report9 only).
+  'src/modes/salvage/stage.web.ts',
+  'src/engine/fixtures/shipped2.ts',
+];
+
+/**
+ * DEV_ONLY (C-MODE, PLAN2 2.4, critic-missing I13; s2c-plan-wiring b.4): files a DEVELOPMENT phone bundle may hold
+ * (the works' recorded states and the Settings rows that load them into their own save slots, the timer row), and a
+ * release export must not. Each is reached only through a `require(...)` written inside `if (__DEV__) { ... }` (or
+ * behind `__DEV__ &&` / `__DEV__ ? ... :`): Metro's production transform folds `__DEV__` to false before it collects
+ * dependencies, so the file never reaches a release bundle. scripts/check-bundle.ts proves both halves: the fast stage
+ * fails a phone graph that reaches one of them through an import NOT behind `__DEV__` (rule 'dev-only'); the export
+ * stage fails when one of them, or one of DEV_ONLY_STRINGS, is in the shipped JavaScript.
+ */
+const DEV_ONLY = [
+  'src/engine/fixtures/salvage-works.json',
+  'src/ui/salvage/dev/phoneStates.ts',
+  'src/ui/salvage/dev/timeAway.ts',
+  'src/ui/salvage/dev/devSlots.ts',
+];
+
+/**
+ * Strings a release export must not hold (export stage only; `modes` limits them as in WEB_ONLY_STRINGS):
+ * - DEV_ONLY_MARKER: every DEV_ONLY file carries this text (the recording as a top-level `"marker"` field, a .ts file
+ *   as an exported constant), so a DEV_ONLY file that reached a release bundle by any route is found by its text;
+ * - EXPO_PUBLIC_YARD_STAGE: the works' switch (src/modes/salvage/stage.ts) is read only behind `__DEV__`, which a
+ *   release folds away with the variable's name.
+ */
+const DEV_ONLY_MARKER = 'yard-dev-only:works';
+const DEV_ONLY_STRINGS = [
+  { text: DEV_ONLY_MARKER, modes: ['salvage'] },
+  { text: 'EXPO_PUBLIC_YARD_STAGE', modes: ['salvage'] },
 ];
 
 /**
@@ -270,4 +306,4 @@ const WEB_ONLY_STRINGS = [
   { text: 'empire', quoted: true, modes: ['haul'] },
 ];
 
-module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, SHARED_SRC, CLASSIFIED_ROOT, NODE_ONLY, THEME_WORDS_ALLOWED, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS, WEB_ONLY, WEB_ONLY_STRINGS };
+module.exports = { MODE_FOLDERS, FAMILIES, SHARED_UI, SHARED_SRC, CLASSIFIED_ROOT, NODE_ONLY, THEME_WORDS_ALLOWED, THEME_WORDS, MODE_PACKAGES, RESTAURANT_RIG, GENERATED_ENTRY, SOUND_PACKS, WEB_ONLY, WEB_ONLY_STRINGS, DEV_ONLY, DEV_ONLY_MARKER, DEV_ONLY_STRINGS };

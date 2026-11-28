@@ -121,8 +121,8 @@ export const SHADOW_DX = 0.06;
 export const SUN = { dx: 0.42, dy: 0.08 } as const;
 
 /** How a material is told apart without its colour. */
-export type Sheen = 'none' | 'freckles' | 'dots' | 'ticks' | 'streak' | 'stripe' | 'band' | 'facet';
-export type Pictogram = 'plate' | 'radiator' | 'beam' | 'coil' | 'tap' | 'can' | 'cell' | 'crucible' | 'bar' | 'battery';
+export type Sheen = 'none' | 'freckles' | 'dots' | 'ticks' | 'streak' | 'stripe' | 'band' | 'facet' | 'brushed' | 'patina';
+export type Pictogram = 'plate' | 'radiator' | 'beam' | 'coil' | 'tap' | 'can' | 'cell' | 'crucible' | 'bar' | 'battery' | 'sink' | 'bushing';
 
 export interface MetalLook {
   /** Base, light (top faces, sheen) and dark (south faces, outline accents). */
@@ -149,10 +149,30 @@ export const METAL: Record<string, MetalLook> = {
   lead: { base: '#50555D', light: '#727881', dark: '#383C42', sheen: 'none', pictogram: 'battery', code: 'PB' },
   lithium: { base: '#7AA9E0', light: '#A6C6EC', dark: '#41709F', sheen: 'band', pictogram: 'cell', code: 'LI' },
   iridium: { base: '#DDE5EF', light: '#F4F7FB', dark: '#9AA6B6', sheen: 'facet', pictogram: 'crucible', code: 'IR' },
+  // THE WORKS (stage 2; C-ART, PLAN2 2.7): the content's materials 'stainless' (ss, ssu) and 'bronze' (bzs, bzi, bzd). Outside
+  // LADDER_ORDER (the first yard's ladder and its tests do not move); WORKS_METAL_PAIRS below is their own test's list.
+  // Stainless: bright grey, satin, no rust; told from aluminium by value (L* 68 against 90) and its brushed mark.
+  stainless: { base: '#9FA7AE', light: '#C4CBD1', dark: '#6E767D', sheen: 'brushed', pictogram: 'sink', code: 'SS' },
+  // Bronze: warmer and darker than brass (L* 45 against 68), told from copper (46) by its olive-gold hue, patina and mark.
+  bronze: { base: '#86662C', light: '#B08F4E', dark: '#5C4419', sheen: 'patina', pictogram: 'bushing', code: 'BZ' },
 };
 
 /** Stage 1's metals in ladder order (the neighbours art.test.ts compares). */
 export const LADDER_ORDER = ['light_iron', 'cast_iron', 'hms', 'lead', 'aluminium', 'brass', 'copper', 'lithium', 'iridium'] as const;
+
+/** The works' metals (stage 2), outside LADDER_ORDER. */
+export const WORKS_METALS = ['stainless', 'bronze'] as const;
+/**
+ * The pairs a works metal is told apart from where they lie side by side (bays, heaps, the board), with the L* gap each
+ * must keep (sheets.hash.test.ts checks them; every works metal also differs from EVERY metal in sheen or pictogram):
+ * stainless against aluminium and against light iron's sheen; bronze against brass by L*; bronze against copper by hue,
+ * sheen and pictogram (an L* gap of 20 from both brass and copper cannot exist: their own gap is 22).
+ */
+export const WORKS_METAL_PAIRS: readonly (readonly [string, string, number])[] = [
+  ['stainless', 'aluminium', 20],
+  ['bronze', 'brass', 20],
+  ['stainless', 'bronze', 20],
+];
 
 // ---------------------------------------------------------------------------
 // Colour maths (pure)

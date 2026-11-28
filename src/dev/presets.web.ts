@@ -21,7 +21,12 @@ export type PresetName = (typeof PRESETS)[number];
  * stage-2 frozen states r3, r3plain and held14 (src/engine/fixtures/salvage.ts) arrive as `late` and are told
  * apart by the address in the same way (the lead, 26 Nov: to look at rung 3 before the stage's own presets exist).
  */
-export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = { m5: 'early', m15: 'mid', m30: 'mid', pour: 'mid', back: 'late', r3: 'late', r3plain: 'late', held14: 'late' };
+export const PRESET_ALIASES: Readonly<Record<string, PresetName>> = {
+  m5: 'early', m15: 'mid', m30: 'mid', pour: 'mid', back: 'late', r3: 'late', r3plain: 'late', held14: 'late',
+  // The works' recorded moments (PLAN2 2.6; C-MODE, critic-build F8): every w* name arrives as `late`, and the salvage
+  // mode's presets.web.ts tells them apart by the address (src/modes/salvage/presets.web.ts WORKS_PRESETS, the same list).
+  ...Object.fromEntries(['w3open', 'w3', 'w3save', 'w3letter', 'w3sale', 'w3van', 'w3lot', 'w4entry', 'w4arrive', 'w4pour', 'w4hall', 'w4line', 'w4loan', 'w4packs', 'w4all', 'w4back', 'w5', 'w5wait', 'w3plain', 'w4plain'].map((n) => [n, 'late' as PresetName])),
+};
 
 /** A mode with its own engine builds its own presets (its entry hands them over, src/modes/contract.ts). */
 let modePresets: ((cfg: GameConfig, name: PresetName, now: number) => GameState) | null = null;

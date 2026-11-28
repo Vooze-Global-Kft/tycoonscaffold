@@ -25,7 +25,7 @@ import { hallCap_g } from './halls';
 import { lotValue } from './lots';
 import { FIRST_UID, rackCap, rackCount, tagFigures, tagUid, tagged } from './reuse';
 import { worksDropoffPeriod } from './things';
-import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripLandingOf, tripPhasePath } from './positions';
+import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, mapAt, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripLandingOf, tripPhasePath } from './positions';
 import type {
   FrameArrival,
   FrameBay,
@@ -47,6 +47,7 @@ import type {
   TextKey,
   TxtArgs,
   ThingAt,
+  ThingState,
   ToolKind,
   Txt,
 } from './types';
@@ -376,7 +377,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const base: FrameArrival = { item: a.item, kind: a.by, place: a.place, from: { x: gate.x + 20, y: gate.y }, to, span: { t0: a.since, t1: a.at }, phase: t < set ? 'in' : 'setDown' };
     if (!yardV || a.by === 'crew') return base;
     // owner1 V4: along the drive line to the stop nearest the place; set down there.
-    const stop = nearestStop(c, to);
+    const stop = nearestStop(c, to, worksOpened(s));
     const path = drivePath(c, base.from, stop);
     const L = pathSplit(c, path);
     const D = Math.max(1e-3, set - a.since);
@@ -497,8 +498,168 @@ function getInHere(c: SalvageContent, s: SalvageGame['salvage'], place: string |
   return dt <= Math.hypot(pr.x - p.x, pr.y - p.y);
 }
 
-/** owner1 V4: the drive line's stop nearest a point (content map.driveLine.stops; none: the gate). */
-function nearestStop(c: SalvageContent, p: { x: number; y: number }): { x: number; y: number } {
+// ============================================================ C-FRAME: the works' parts of the first table (PLAN2 2.2)
+
+/** The look of a works bay kind with no sprite of its own (C-ART's entry ids, PLAN2 2.7: worksStore, worksLine). */
+const WORKS_BAY_LOOK: Partial<Record<string, string>> = { bunker: 'works.bunker', bags: 'works.bigbags', box: 'works.batteryBox' };
+
+/** A read-only rules context over the state as it stands (no clone: the readers called with it write only its price memo). */
+function readCtx(c: SalvageContent, g: SalvageGame): Ctx {
+  const s = g.salvage;
+  return { cfg: { salvage: c } as SalvageConfig, c, s, cash: g.cash, earned: 0, ev: [], live: true, ms0: s.clock.highMs, t0: s.t, away: null, dirty: false, prices: new Map(), rung0: s.ladder.rung };
+}
+
+/**
+ * The Yard sale's places taken (reuse.ts `taken`, mirrored: requests.md [seam] 28 Nov C-FRAME asks reuse.ts to export a
+ * `tagWho`): racked things, tagged things a yard hand fetches or carries there, tagged things in the boss's load.
+ */
+function rackTaken(x: Ctx): number {
+  let n = rackCount(x);
+  for (const m of x.s.crew) if (m.job === 'rack') n++;
+  for (const p of x.s.load) if (p.whole && p.spec === -1 && tagUid(x.c, p.uid, p.whole)) n++;
+  return n;
+}
+
+/**
+ * Whose a tagged thing is now (ruling 13.1, 4.6's third line; reuse.ts rackChoice mirrored, see rackTaken): the first thing
+ * is the boss's always; no place free: 'full' (cut as scrap); a fresh boss within reach.sight whose carrier holds it:
+ * 'boss'; a hired yard hand lifts it (at most crew.hand.load): 'hands'; heavier than a yard hand lifts: 'heavy' (cut by the
+ * crews unless the boss comes); else (light, no yard hand, out of his sight) the boss's to fetch.
+ */
+function tagWho(x: Ctx, th: ThingState, free: number): NonNullable<FrameThing['tag']>['who'] {
+  if (th.uid === FIRST_UID) return 'boss';
+  if (free <= 0) return 'full';
+  const { c, s } = x;
+  const o = c.objects[th.obj];
+  const gross = o?.gross_g ?? Infinity;
+  if (bossFresh(x, s.t) && gross <= carrierCap_g(c, s)) {
+    const q = thingPos(c, th.at);
+    const p = s.presence;
+    const d = Math.hypot(Math.max(0, Math.abs(p.x - q.x) - (o?.size.w ?? 1) / 2), Math.max(0, Math.abs(p.y - q.y) - (o?.size.d ?? 0.8) / 2));
+    if (d <= c.reach.sight) return 'boss';
+  }
+  if (gross > c.crew.hand.load * 1000) return 'heavy';
+  return s.crew.some((m) => m.role === 'hand') ? 'hands' : 'boss';
+}
+
+/**
+ * The things with their Yard sale tags (4.6: "Reusable" (· "Checked") / "§q at the gate · §v as scrap" at the present
+ * step / whose). The list is the SAME object while every tag reads the same (owner1-fix-world: an unchanged list keeps
+ * its identity), and an untagged thing keeps its own entry.
+ */
+function withTags(c: SalvageContent, g: SalvageGame, things: FrameThing[]): FrameThing[] {
+  const s = g.salvage;
+  const x = readCtx(c, g);
+  let out: FrameThing[] | null = null;
+  let sig = '';
+  let free: number | null = null;
+  for (let i = 0; i < s.things.length; i++) {
+    const th = s.things[i];
+    const f = things[i];
+    if (!f || f.uid !== th.uid || !tagged(x, th)) continue;
+    const fig = tagFigures(x, th, s.t);
+    if (!fig) continue;
+    free ??= rackCap(x) - rackTaken(x);
+    const tag = { q: fig.gate, v: fig.scrap, who: tagWho(x, th, free), checked: !!c.reuse?.kinds[th.obj]?.fromPartnerOnly, g: c.objects[th.obj]?.gross_g ?? 0 };
+    sig += `${th.uid}|${tag.q}|${tag.v}|${tag.who};`;
+    (out ??= things.slice())[i] = { ...f, tag };
+  }
+  if (!out) return things;
+  const hit = TAGS.get(things);
+  if (hit && hit.sig === sig) return hit.out;
+  TAGS.set(things, { sig, out });
+  return out;
+}
+
+/** "For the {hall} a / b kg": the hall (a plate with a batch) keeping the most of this bay, its grams and its charge; else nothing. */
+function forPlateOf(c: SalvageContent, s: SalvageGame['salvage'], reserved: Record<string, number>): { forPlate?: NonNullable<FrameBay['forPlate']> } {
+  let best: NonNullable<FrameBay['forPlate']> | null = null;
+  for (const id in reserved) {
+    const a = reserved[id];
+    const w = s.works?.[id];
+    if (!(a > 0) || !w || !plateDef(c, id)?.batch) continue;
+    if (!best || a > best.a_g) best = { plate: id, a_g: a, b_g: hallCap_g({ c } as Ctx, id, w) };
+  }
+  return best ? { forPlate: best } : {};
+}
+
+const BRIDGE_WHY = 'tag.driver.bridge';
+
+/**
+ * The hired driver's standing reason while the bridge partners' skips fill (s2c-plan-world 2.4: "The bridge partners'
+ * skips are filling · {t}"): from the works' opening, the driver waiting at his place, the truck parked empty, NO open
+ * partner's skip full (a full one waiting is another reason: refused, kept, or the fair rule), and the skip that fills
+ * soonest a bridge partner's (content `partners.<id>.opens` the three-axle hook-lift): its seconds to full. Else null.
+ */
+function driverBridgeWhy(c: SalvageContent, s: SalvageGame['salvage'], m: SalvageGame['salvage']['crew'][number]): Txt | null {
+  if (!TEXT.has(BRIDGE_WHY) || !worksOpened(s) || m.job !== 'idle' || m.phase !== 'wait') return null;
+  const tk = s.truck;
+  if (!tk.owned || tk.by !== null || tk.trip || tk.skip) return null;
+  let soon: { at: number; bridge: boolean } | null = null;
+  for (const [pid, ps] of Object.entries(s.partners)) {
+    const def = c.partners[pid];
+    if (!def || !ps.open) continue;
+    for (const sk of ps.skips) {
+      if (!(sk.phase === 'filling' && sk.fullAt > s.t + 1e-6)) return null;
+      if (!soon || sk.fullAt < soon.at) soon = { at: sk.fullAt, bridge: def.opens === 'truckBridge' };
+    }
+  }
+  return soon?.bridge ? { key: BRIDGE_WHY as TextKey, args: { t: { secs: Math.max(0, soon.at - s.t) } } } : null;
+}
+
+/** The arrivals' start beyond the gate, metres (as `arrivals` above: from gate.x + 20). */
+const BEYOND_GATE_M = 20;
+
+/**
+ * The drop-off's car (PLAN2 0: drawn from the works' opening, one arrival a `works.dropoffPeriod_s`): the car that brings
+ * the NEXT arrival (dropoff.nextAt, dated by the rules; -1 while every place is taken: none comes) from when it sets off,
+ * else the car of the LAST arrival (dropoff.lastAt) until it is gone. Its span is the arrival ± the drive from beyond the
+ * gate to the drop-off at truck.yardV (the yard's own speed, the owner's point 7), so it stands there at the arrival's
+ * instant. Below the works' opening (or without the key): null, as the first yard has always drawn it.
+ */
+function dropoffCarOf(c: SalvageContent, s: SalvageGame['salvage']): FrameTable['dropoffCar'] {
+  const v = c.truck.yardV;
+  if (!v || worksDropoffPeriod(c, s) === null) return null;
+  const gate = pointOf(c, 'gate');
+  const to = pointOf(c, 'dropoff');
+  const from = { x: gate.x + BEYOND_GATE_M, y: gate.y };
+  const D = (Math.hypot(from.x - gate.x, from.y - gate.y) + Math.hypot(gate.x - to.x, gate.y - to.y)) / v;
+  const t = s.t;
+  const car = (at: number) => ({ x: to.x, y: to.y, t0: at - D, t1: at + D, from, to });
+  const last = s.dropoff.lastAt;
+  if (last !== undefined && t >= last - 1e-9 && t <= last + D) return car(last);
+  const next = s.dropoff.nextAt;
+  if (next >= 0 && t >= next - D && t <= next) return car(next);
+  return null;
+}
+
+/**
+ * C-FRAME (PLAN2 2.2, W9): a signature of every works field of a frame, for the scene stamp: a presence-only change keeps
+ * the stamp only while it reads the same (the tags' "whose" follows the boss's sight). '' below the works' opening.
+ */
+function worksSig(f: FrameTable): string {
+  if (!f.works && !f.line && !f.pad && !f.rack && !f.bunker && !f.visitors && !f.van && !f.crate && !f.crane && !f.forklift && !f.truck.model && !f.dropoffCar && !f.things.some((th) => th.tag || th.lot) && !f.bays.some((b) => b.forPlate)) return '';
+  return JSON.stringify([f.works, f.line, f.pad, f.rack, f.bunker, f.visitors, f.van, f.crate, f.crane, f.forklift, f.truck.model, f.dropoffCar, f.things.map((th) => th.tag ?? th.lot ?? 0), f.bays.map((b) => b.forPlate ?? 0)]);
+}
+
+/** owner1 V4: the drive line's stop nearest a point (content map.driveLine.stops; none: the gate). C-FRAME: exported for its test (the works stop). */
+export function nearestStop(c: SalvageContent, p: { x: number; y: number }, opened = false): { x: number; y: number } {
+  // C-FRAME (s2c-plan-world 2.3 item 6): from the works' opening the merged map's stops (map.works.driveLine.stops over the
+  // first layer's: positions.ts mapAt), so a works plot's crates are set down at the works road's stop, not at the merchant's
+  // stand; the turning places are no stops. Below the opening (opened false): the first layer's, exactly as before.
+  if (opened && c.map.works) {
+    let best = pointOf(c, 'gate');
+    let bd = Infinity;
+    for (const [k, [x, y]] of Object.entries(mapAt(c, true).stops)) {
+      if (k === 'turn' || k === 'turnWest') continue;
+      const d = Math.hypot(x - p.x, y - p.y);
+      if (d < bd - 1e-9 && insideFence(c, { x, y })) {
+        bd = d;
+        best = { x, y };
+      }
+    }
+    return best;
+  }
   const stops = Object.entries((c.map.driveLine?.stops ?? {}) as Record<string, [number, number]>).filter(([k]) => k !== 'turn');
   let best = pointOf(c, 'gate');
   let bd = Infinity;
@@ -567,9 +728,11 @@ export function frameCfg(cfg: import('./types').SalvageConfig, g: SalvageGame): 
   frameWorks(c, g, f);
   frameMoney(c, g, f);
   // owner1 L2: the scene stamp (the same across a presence-only change that leaves the chevron where it was).
+  // C-FRAME (PLAN2 2.2, W9): and that leaves every works field as it was (worksSig; '' in the first yard: as before).
   const last = LAST.get(cfg.salvage);
-  f.scene = last && last.cash === g.cash && presenceOnly(last.s, g.salvage) && last.f.chevron?.id === f.chevron?.id && last.f.chevron?.x === f.chevron?.x ? (last.f.scene ?? 0) : (last?.f.scene ?? 0) + 1;
-  LAST.set(cfg.salvage, { s: g.salvage, cash: g.cash, f });
+  const sig = worksSig(f);
+  f.scene = last && last.cash === g.cash && presenceOnly(last.s, g.salvage) && last.f.chevron?.id === f.chevron?.id && last.f.chevron?.x === f.chevron?.x && last.sig === sig ? (last.f.scene ?? 0) : (last?.f.scene ?? 0) + 1;
+  LAST.set(cfg.salvage, { s: g.salvage, cash: g.cash, f, sig });
   byCfg.set(cfg.salvage, { cash: g.cash, f });
   return f;
 }
@@ -578,7 +741,9 @@ const FRAMES = new WeakMap<SalvageGame['salvage'], WeakMap<SalvageContent, { cas
 const THINGS = new WeakMap<object, { c: SalvageContent; crew: object; act: object; tier: number; rings: boolean; out: FrameThing[] }>();
 const PIECES = new WeakMap<object, { c: SalvageContent; things: object; out: FramePiece[] }>();
 /** owner1 L2: the last frame built per content, to keep its scene stamp across a presence-only change. */
-const LAST = new WeakMap<SalvageContent, { s: SalvageGame['salvage']; cash: number; f: FrameTable }>();
+const LAST = new WeakMap<SalvageContent, { s: SalvageGame['salvage']; cash: number; f: FrameTable; sig: string }>();
+/** C-FRAME: the tagged list per base things list (withTags: the same object while the tags read the same). */
+const TAGS = new WeakMap<FrameThing[], { sig: string; out: FrameThing[] }>();
 
 /** Did only the boss's presence change between two states (every other part the same object)? */
 function presenceOnly(a: SalvageGame['salvage'], b: SalvageGame['salvage']): boolean {

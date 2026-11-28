@@ -169,6 +169,8 @@ interface Report {
   denied?: DeniedHit[];
   /** Strings of the web preview's tools found in a phone bundle (scripts/lib/modes.js WEB_ONLY_STRINGS). */
   webOnlyHits?: { file: string; text: string }[];
+  /** DEV_ONLY's findings (C-MODE; devOnlyViolations), added to the violations. */
+  devOnly?: Violation[];
   violations: Violation[];
 }
 
@@ -288,6 +290,58 @@ export function runtimeImports(fileName: string, text: string): string[] {
     ts.forEachChild(node, visit);
   };
   visit(sf);
+  return out;
+}
+
+/**
+ * DEV_ONLY (C-MODE, scripts/lib/modes.js): the module specifiers a file imports at run time that are NOT behind
+ * `__DEV__`: a static `import`/`export ... from`, or a `require()`/`import()` call outside every `if (__DEV__) { ... }`
+ * then-branch, `__DEV__ && ...` right side and `__DEV__ ? ... :` true branch (a test that also names something else,
+ * `typeof __DEV__ !== 'undefined' && __DEV__`, counts; a negated `!__DEV__` never does). Metro's production transform
+ * folds `__DEV__` before it collects dependencies, so only these reach a release bundle.
+ */
+export function unguardedImports(fileName: string, text: string): Set<string> {
+  const sf = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const devTest = (e: ts.Expression) => /\b__DEV__\b/.test(e.getText(sf)) && !/!\s*__DEV__\b/.test(e.getText(sf));
+  const within = (inner: ts.Node, outer: ts.Node) => inner.pos >= outer.pos && inner.end <= outer.end;
+  const guarded = (node: ts.Node): boolean => {
+    for (let p: ts.Node | undefined = node.parent, c: ts.Node = node; p; c = p, p = p.parent) {
+      if (ts.isIfStatement(p) && c === p.thenStatement && devTest(p.expression)) return true;
+      if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && within(c, p.right) && devTest(p.left)) return true;
+      if (ts.isConditionalExpression(p) && c === p.whenTrue && devTest(p.condition)) return true;
+    }
+    return false;
+  };
+  const out = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && !node.importClause?.isTypeOnly) out.add(node.moduleSpecifier.text);
+    else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && !node.isTypeOnly) out.add(node.moduleSpecifier.text);
+    else if (ts.isCallExpression(node) && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
+      const callee = node.expression;
+      if (((ts.isIdentifier(callee) && callee.text === 'require') || callee.kind === ts.SyntaxKind.ImportKeyword) && !guarded(node)) out.add(node.arguments[0].text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return out;
+}
+
+/** DEV_ONLY's rule (C-MODE): a phone graph's imports of a DEV_ONLY file that are not behind `__DEV__` (fast stage), or a DEV_ONLY file or string in the shipped JavaScript (export stage). */
+export function devOnlyViolations(input: { stage: 'fast' | 'export'; platform: string; mode: string; modules: readonly string[]; edges?: readonly { from: string; to: string; spec: string }[]; texts?: Iterable<[file: string, text: string]> }): Violation[] {
+  if (input.platform === 'web') return [];
+  const devOnly = new Set<string>(modes.DEV_ONLY);
+  const out: Violation[] = [];
+  const rule = 'dev-only' as unknown as Violation['rule'];
+  if (input.stage === 'fast') {
+    for (const e of input.edges ?? []) if (devOnly.has(e.to)) out.push({ rule, file: e.from, message: `imports ${e.to} (scripts/lib/modes.js DEV_ONLY) through "${e.spec}" not behind __DEV__: require it only inside if (__DEV__) { ... }, so a release bundle cannot hold it` });
+    return out;
+  }
+  for (const m of input.modules) if (devOnly.has(m)) out.push({ rule, file: m, message: `is a development-only file (scripts/lib/modes.js DEV_ONLY) and is in the ${input.platform} release bundle` });
+  const strings: { text: string; modes?: string[] }[] = (modes.DEV_ONLY_STRINGS as { text: string; modes?: string[] }[]).filter((w) => !w.modes || w.modes.includes(input.mode));
+  for (const [file, text] of input.texts ?? []) {
+    if (file.includes('node_modules/')) continue;
+    for (const w of strings) if (text.includes(w.text)) out.push({ rule, file, message: `holds ${JSON.stringify(w.text)} (scripts/lib/modes.js DEV_ONLY_STRINGS) in the ${input.platform} release bundle` });
+  }
   return out;
 }
 
@@ -430,7 +484,25 @@ export function fastReport(id: string): Report {
     }
   };
   const webOnlyHits = webOnlyHitsIn(sources(), mode, PLATFORM, 'fast');
-  return finish({ game: id, mode, pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied, webOnlyHits });
+  const devOnly = devOnlyViolations({ stage: 'fast', platform: PLATFORM, mode, modules: modules.map((m) => m.path), edges: devOnlyEdges(g, virtual) });
+  return finish({ game: id, mode, pack: games.soundPack(id, game), stage: 'fast', modules, assets, packages: [...g.packages].sort(), unresolved: g.unresolved, denied, webOnlyHits, devOnly });
+}
+
+/** The graph's edges into a DEV_ONLY file whose import is not behind __DEV__ (C-MODE). */
+function devOnlyEdges(g: Graph, virtual: Map<string, string>): { from: string; to: string; spec: string }[] {
+  const devOnly = new Set<string>(modes.DEV_ONLY);
+  const out: { from: string; to: string; spec: string }[] = [];
+  const exts = platformExts(PLATFORM);
+  for (const [from, to] of g.edges) {
+    if (!devOnly.has(to)) continue;
+    const abs = path.join(ROOT, from);
+    const text = virtual.get(abs) ?? fs.readFileSync(abs, 'utf8');
+    for (const spec of unguardedImports(abs, text)) {
+      const r = resolveImport(abs, spec, exts, virtual, ALIASES);
+      if ('file' in r && rel(r.file) === to) out.push({ from, to, spec });
+    }
+  }
+  return out;
 }
 
 /** Every import edge in src/ (all files, reachable or not, generated ones as written now). */
@@ -602,7 +674,8 @@ function exportReport(id: string, dir: string, root: string): Report {
     for (let i = 0; i < starts.length; i++) yield [starts[i].path, bundle.slice(starts[i].start, i + 1 < starts.length ? starts[i + 1].start : bundle.length)];
   };
   const webOnlyHits = webOnlyHitsIn(slices(), bundledMode, PLATFORM, 'export');
-  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root, webOnlyHits });
+  const devOnly = devOnlyViolations({ stage: 'export', platform: PLATFORM, mode: bundledMode, modules: modules.map((m) => m.path), texts: slices() });
+  return finish({ game: id, mode: bundledMode, pack: games.soundPack(id, game), stage: 'export', modules, assets, packages, bytes: bundle.length, denied, root, webOnlyHits, devOnly });
 }
 
 // ---------------------------------------------------------------------------
@@ -630,7 +703,7 @@ function finish(input: Omit<Report, 'violations' | 'bytes' | 'ownBytes' | 'asset
     bytes: r.bytes ?? r.modules.reduce((n, m) => n + m.bytes, 0),
     ownBytes: own.reduce((n, m) => n + m.bytes, 0),
     assetBytes: r.assets.reduce((n, a) => n + fileSize(path.join(root ?? ROOT, a)), 0),
-    violations: bundleViolations(contents, MANIFEST),
+    violations: [...bundleViolations(contents, MANIFEST), ...(r.devOnly ?? [])],
   };
 }
 

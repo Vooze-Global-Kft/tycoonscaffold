@@ -48,7 +48,7 @@ import { awayPass } from '../../src/engine/salvage/away';
 import { idleWhyOf } from '../../src/engine/salvage/crew';
 import { begin, finish } from '../../src/engine/salvage/clock';
 import { buyCheck, hireCheck, levelCheck, levelQuote } from '../../src/engine/salvage/ladder';
-import { levelGainCfg, levelLadderOf, own } from '../../src/engine/salvage/rate';
+import { bookEntry, bookShare, levelGainCfg, levelLadderOf, own } from '../../src/engine/salvage/rate';
 import { floorMass } from '../../src/engine/salvage/cards';
 import type { LevelTarget } from '../../src/engine/salvage/types';
 import { packProducts } from '../../src/engine/salvage/shop';
@@ -878,8 +878,25 @@ function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, se
  * hour (supplied to the ladder over the absence) against the yard's own; the calculated tonnes beside (rate.ts
  * ratedCapacity, the yard's capacity in t an hour, with the level less without).
  */
-type BorrowLevel = { target: LevelTarget; label: string; L: number; gain: number; share: number; sold: boolean; price: number; dE: number; dEshare: number; dT: number; dTshare: number; calcT: number };
+type BorrowLevel = { target: LevelTarget; label: string; L: number; gain: number; share: number; sold: boolean; price: number; dE: number; dEshare: number; dT: number; dTshare: number; calcT: number; ladder?: string; bookRung?: number | null; bookOwn?: boolean };
 type BorrowRow = { n: number; h: number; rung: number; I: number; cash: number; E0: number; T0: number; cap0: number; levels: BorrowLevel[] };
+/** s2i-measure: the returns at which --borrower measures (--borrowAt 3,4,6,7; default the third and fourth, as s2g-measure). */
+const borrowAt = (): number[] => (arg('borrowAt') ?? '3,4').split(',').map(Number).filter((n) => n > 0);
+/**
+ * s2i-measure (RULING2.md 30.3, M1): which rung's number of the book a ladder reads at the yard's rung (rate.ts bookShare:
+ * its own, or the nearest rung's), and whether the rung has a number of its own that sells (a number above 0). With
+ * `--borrower sold` a level is measured where its card sells it OR where its ladder is in the book without a selling number
+ * of its own at this rung (the rung the book is missing: the cutter's, the hand's and the bench's rung 4).
+ */
+function bookAt(cfg: R.SalvageConfig, g: R.SalvageGame, t: LevelTarget): { ladder: string; entry: boolean; from: number | null; own: boolean } {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const e = bookEntry(c as never, g.salvage as never, t);
+  const ladder = levelLadderOf(g.salvage, t);
+  if (!e) return { ladder, entry: false, from: null, own: false };
+  const r = g.salvage.ladder.rung;
+  const v = Array.isArray(e.s1) ? e.s1[Math.min(2, Math.max(0, r - 3))] : e.s1;
+  return { ladder, entry: true, from: bookShare(e, r).from, own: typeof v === 'number' && v > 0 };
+}
 function levelTargets(g: R.SalvageGame): { t: LevelTarget; label: string }[] {
   // s2i-book: --borrower machines measures the first yard's three machines' levels only (the ladders with no data in hand)
   if (arg('borrower') === 'machines') return (['stripper', 'bench', 'crucible'] as const).filter((m) => g.salvage.machines[m]?.owned).map((m) => ({ t: { kind: 'machine', machine: m } as LevelTarget, label: m }));
@@ -898,6 +915,9 @@ function borrowRow(cfg: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, n:
   for (const { t, label } of levelTargets(g)) {
     const q = levelQuote(cfg, g, t);
     if (!q) continue;
+    const bk = bookAt(cfg, g, t);
+    // s2i-measure (M1): `--borrower sold` measures the levels the cards sell and the book's ladders missing at this rung
+    if (arg('borrower') === 'sold' && !q.sold && !(bk.entry && !bk.own)) continue;
     const st = stepUp(cfg, g, t, levelLadderOf(g.salvage, t));
     if (!st) continue;
     const E1 = lastingE(cfg, st, opts, null, 3600);
@@ -905,7 +925,7 @@ function borrowRow(cfg: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, n:
     const dE = (E1.Ea - E0.Ea) / Math.max(1e-9, ha);
     const dT = (E1.Ta - E0.Ta) / Math.max(1e-9, ha);
     const T0 = E0.Ta / Math.max(1e-9, E0.ha);
-    levels.push({ target: t, label, L: q.L, gain: Math.round(q.gain), share: q.gain / Math.max(1e-9, q.I), sold: q.sold, price: q.price, dE: Math.round(dE), dEshare: dE / Math.max(1e-9, q.I), dT: +dT.toFixed(3), dTshare: dT / Math.max(1e-9, T0), calcT: +(ratedCapacity(at(cfg, st), st) - cap0).toFixed(3) });
+    levels.push({ target: t, label, L: q.L, gain: Math.round(q.gain), share: q.gain / Math.max(1e-9, q.I), sold: q.sold, price: q.price, dE: Math.round(dE), dEshare: dE / Math.max(1e-9, q.I), dT: +dT.toFixed(3), dTshare: dT / Math.max(1e-9, T0), calcT: +(ratedCapacity(at(cfg, st), st) - cap0).toFixed(3), ladder: bk.ladder, bookRung: bk.from, bookOwn: bk.own });
   }
   return { n, h: +(g.salvage.t / 3600).toFixed(2), rung: g.salvage.ladder.rung, I: Math.round(I), cash: Math.round(g0.cash), E0: Math.round(E0.Ea / Math.max(1e-9, E0.ha)), T0: +(E0.Ta / Math.max(1e-9, E0.ha)).toFixed(2), cap0: +cap0.toFixed(2), levels };
 }
@@ -945,6 +965,25 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   const base = variant(base0, which);
   const cfg = seededCfg(base, spec.seed);
   const opts: BotOptions = { hand: 'normal', habit: 'goal', route: 'A', seed: spec.seed, ...BOTS2[which] };
+  // s2i-measure (RULING2.md 30.3; M2 "no purchase lowers rated income", M3 "what a yard gets for its levels"): --isteps records,
+  // at every purchase from the works' opening, rated income just before and just after it and the gain the purchase was sold
+  // on (a level: levelQuote's book gain on the state before; a machine, vehicle or tool: its measured gain_h in the content;
+  // a hire: none, its rated step is I1 - I0). It reads; the bot plays as without it.
+  const iSteps: { t: number; k: string; act: string; rung: number; I0: number; I1: number; gain: number | null; price: number }[] = [];
+  if (arg('isteps')) {
+    opts.onPurchase = (g0, g1, a) => {
+      if (!worksOpened(g0.salvage)) return;
+      const c0 = contentAt(cfg.salvage, g0.salvage);
+      let gain: number | null = null;
+      if (a.act === 'level') gain = levelQuote(cfg, g0, a.target)?.gain ?? null;
+      else if (a.act === 'buy') {
+        const it = c0.shop.find((i) => i.key === a.item) as { gain_h?: number } | undefined;
+        gain = (c0.works?.plates[a.item] as { gain_h?: number } | undefined)?.gain_h ?? it?.gain_h ?? null;
+      }
+      const k = a.act === 'buy' ? a.item : a.act === 'hire' ? `hire:${a.role}` : a.act === 'level' ? `lev:${levelLadderOf(g0.salvage, a.target)}` : a.act;
+      iSteps.push({ t: Math.round(g0.salvage.t), k, act: a.act, rung: g0.salvage.ladder.rung, I0: +incomeAt(cfg, g0).toFixed(2), I1: +incomeAt(cfg, g1).toFixed(2), gain: gain === null ? null : Math.round(gain), price: Math.round('price' in a ? (a as { price: number }).price : 0) });
+    };
+  }
   // s2e-bots: the slow hand once a day (DAILY2), every other hand twice a day.
   const awayS = DAILY2.has(which) ? 23.75 * 3600 : S2_AWAY_S;
   const cacheDir = arg('cache');
@@ -1046,7 +1085,8 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
     }
     if (which === 'bridgeLevels') levelBridge(b);
     // s2g-measure (29.7): the borrower's numbers at the returns of the third and fourth sittings; the forced levels at the third
-    if (arg('borrower') && (k === 3 || k === 4) && worksOpened(gBack.salvage)) borrow.push(borrowRow(cfg, gBack, opts, k));
+    // s2i-measure (30.3, M1): at the returns --borrowAt names (3, 4, 6, 7)
+    if (arg('borrower') && borrowAt().includes(k) && worksOpened(gBack.salvage)) borrow.push(borrowRow(cfg, gBack, opts, k));
     if (forceList.length && k === 3) forced.push(...forceLevels(b, forceList));
     playTo(b, b.g.salvage.t + S2_PLAY_S, idleOn && worksOpened(gBack.salvage) ? (bb) => sampleCrew(bb.g, 'play') : undefined);
     if (which === 'bridgeLevels') levelBridge(b);
@@ -1307,7 +1347,7 @@ function run2(base0: R.SalvageConfig, spec: Spec): Summary {
   // REPORT8: G and I where the run ended (rung 5's entry when it was reached), for I's gate at rung 5.
   const fin = MEASURES_G.has(which) ? { ...gAt(cfg, b.g), I: incomeAt(cfg, b.g), rung: b.g.salvage.ladder.rung, h: b.g.salvage.t / 3600 } : null;
   const sum = summary(b, spec, [], [], {}, t0);
-  sum.extra = { borrow, forced, floorFill, fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, bench8, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
+  sum.extra = { iSteps, borrow, forced, floorFill, fin, walk: walk2, s2: b.rec.s2, sittings, nohand, plates, plasma3, idle, oldStock, bench8, book, person, daily: DAILY2.has(which), rungsAt: Object.fromEntries(Object.entries(b.rec.rungs).map(([k, v]) => [k, Math.round(v)])), snapMs: Math.round(snapMs), lastGoal: R.nextGoal(cfg, b.g)?.id ?? null, materials: R.rungProgress(cfg, b.g).materials, worth: Object.fromEntries(Object.entries(b.g.salvage.ladder.worth ?? {}).map(([m, v]) => [m, Math.round(Number(v))])), rung: b.g.salvage.ladder.rung, supplied_t: +(b.g.salvage.ladder.supplied_g / 1e6).toFixed(1), cash: Math.round(b.g.cash), counts: { rackSold: b.g.salvage.counts?.rackSold ?? 0, ...Object.fromEntries(Object.entries(b.g.salvage.counts ?? {}).filter(([k]) => k.startsWith('poured:'))) }, plateCount: Object.keys(contentAt(cfg.salvage, b.g.salvage).works?.plates ?? {}).length };
   // The record's per-minute marks are the first hour's: dropped here to keep the cache small.
   sum.minutes = [];
   return sum;
@@ -2373,7 +2413,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json', 'items', 'borrower', 'forceLevels', 'probe'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json', 'items', 'borrower', 'forceLevels', 'probe', 'borrowAt', 'isteps'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -2741,7 +2781,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('items') ? `i${arg('items')}` : ''}${arg('borrower') ? 'B' : ''}${arg('forceLevels') ? `F${createHash('sha1').update(fs.readFileSync(path.resolve(arg('forceLevels')!))).digest('hex').slice(0, 8)}` : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('items') ? `i${arg('items')}` : ''}${arg('borrower') ? `B${arg('borrower') === 'true' ? '' : arg('borrower')}${arg('borrowAt') ?? ''}` : ''}${arg('isteps') ? 'I' : ''}${arg('forceLevels') ? `F${createHash('sha1').update(fs.readFileSync(path.resolve(arg('forceLevels')!))).digest('hex').slice(0, 8)}` : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);

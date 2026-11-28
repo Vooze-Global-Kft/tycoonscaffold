@@ -39,12 +39,15 @@
  *
  * Module state, one per JavaScript context (as the store). Owner: owner2-hud.
  */
+import { GameConfigSchema, type GameConfig } from '../../config/schema';
 import type { EngineMode } from '../../engine/mode';
 import * as R from '../../engine/salvage';
 import { awaySeconds } from '../../engine/salvage/away';
 import { salvageEngineMode } from '../../engine/salvageMode';
 import type { GameState } from '../../engine/types';
 import { useGame } from '../../state/store';
+import { stageOn } from './stage';
+import { stage2RawOf } from './stage2Raw';
 
 /** The absence that waits for its pass: the device ms the yard last ran (the pass counts from here). */
 export interface PendingAbsence {
@@ -154,10 +157,56 @@ function pass(engine: EngineMode, cfg: R.SalvageConfig, g: R.SalvageGame, from: 
   return { ...next, lastSavedAt: g.lastSavedAt, stats: { ...next.stats, clockHigh: g.stats.clockHigh } };
 }
 
+/**
+ * C-MODE (PLAN2 2.4, 7 D1): the game at stage 2 for the works' development switch: exactly what a build at
+ * release.stage 2 would parse (src/modes/salvage/stage2Raw.ts's two lines on the game, then the shared schema), so the
+ * mode's own `config` parses the works blocks, the bank, the shop's products, the ads and the stage's goals, and the
+ * shared product list holds the sixteen products. Pure.
+ */
+export function stage2Config(cfg: GameConfig): GameConfig {
+  return GameConfigSchema.parse(stage2RawOf(cfg));
+}
+
+/**
+ * The wrapped engine's `config`: with the switch OFF (every store build, every phone started without STAGE, every node
+ * test) it IS the mode's own function (the same object: the first yard parses bit for bit as before, first-yard.sh part
+ * 1c); with it ON the game is first made stage 2 (stage2Config). Decided once, when the engine is wrapped (at load).
+ */
+export function stagedConfig(mode: EngineMode): EngineMode['config'] {
+  const base = mode.config;
+  if (!base || !stageOn()) return base;
+  return (cfg) => (cfg.mode === 'salvage' ? base(stage2Config(cfg)) : base(cfg));
+}
+
+/** C-MODE: the dev slot whose save key is in use (MOD-SLOTS sets it), or null for the real yard's. */
+let slot: string | null = null;
+
+/**
+ * Development only (MOD-SLOTS' rows): save and load under `<tag>.dev-<name>` (a slot that never touches the real
+ * save) or, with null, under the real tag again. The store's saveKey() reads the tag at every save and load. A
+ * release build (no __DEV__) ignores it; a name that is not letters and digits is ignored.
+ */
+export function setSaveSlot(name: string | null): void {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  if (name !== null && !/^[A-Za-z0-9]{1,24}$/.test(name)) return;
+  slot = name;
+}
+
+/** The save tag of `mode` with the dev slot (if any): `salvage1` for the real yard, `salvage1.dev-<name>` for a slot. */
+export function saveTagOf(mode: EngineMode): string {
+  return slot === null ? mode.saveTag : `${mode.saveTag}.dev-${slot}`;
+}
+
 /** The engine mode, with the away pass of a carded absence deferred to the screen (see above). */
 export function deferAway(mode: EngineMode): EngineMode {
   return {
     ...mode,
+    // C-MODE: the save tag is read at every save and load (a dev slot's own key; the real yard's without one).
+    get saveTag() {
+      return saveTagOf(mode);
+    },
+    // C-MODE: the works' development switch (off: the mode's own function, the same object).
+    config: stagedConfig(mode),
     // A1: a save killed while its absence waited keeps its own yard clock (the shared reconcile raises highMs to
     // the save's stamp), so the next start counts the absence from the instant the yard last ran.
     reconcile: (cfg, base, raw) => {
@@ -251,7 +300,8 @@ export function devBeginAbsence(hours: number, holdForever = false): void {
   tell();
 }
 
-/** Tests only: forget a waiting absence. */
+/** Tests only: forget a waiting absence (and any dev save slot). */
 export function resetPendingForTests(): void {
   pending = null;
+  slot = null;
 }

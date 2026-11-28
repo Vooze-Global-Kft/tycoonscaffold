@@ -12,26 +12,26 @@
  *   shipped2Config(parse, raw?)  { mode, salvage (parsed with `parse`, SalvageSchema.parse, at stage 2), monetization }: the light
  *                         configuration the rules and the bots read (scripts/content/yard-bot.ts --stage 2)
  *
- * Default `raw`: the real games/scrap-yard/game.json. The parser is passed in (SalvageSchema.parse): this file is shared
- * (scripts/lib/modes.js does not list it under the salvage mode), so it must not import the mode's schema itself
- * (npm run check:bundle, shared-imports-mode).
+ * Default `raw`: the real games/scrap-yard/game.json. The parser is passed in (SalvageSchema.parse), as before.
+ * C-MODE (PLAN2 2.4, 28 Nov): the two lines themselves live in the mode's pure src/modes/salvage/stage2Raw.ts, which the
+ * works' development switch (src/modes/salvage/returning.ts) applies to the running game; this file adds the default
+ * and stays the one helper of the tests and bots. It is now listed under the salvage mode (scripts/lib/modes.js), which
+ * lets it import the mode's file (check:bundle layering); nothing outside the salvage mode imports it.
  */
 import gameJson from '../../../games/scrap-yard/game.json';
+import { modeProductsOf, stage2RawOf } from '../../modes/salvage/stage2Raw';
 import type { SalvageConfig } from '../salvage/types';
 
 type Raw = { salvage: Record<string, unknown> & { release?: { stage: number }; iap?: { products?: unknown[] } }; monetization: Record<string, unknown> & { iap?: Record<string, unknown> } };
 
 /** The mode's own product list (salvage.iap.products), as build-yard.py writes it (titles from the names register). */
 export function modeProducts(raw: unknown = gameJson): Record<string, unknown>[] {
-  return structuredClone(((raw as Raw).salvage.iap?.products ?? []) as Record<string, unknown>[]);
+  return modeProductsOf(raw);
 }
 
 /** The raw game as a build at release.stage 2 writes it: release.stage 2 and the shared list mirrored from the mode's block. */
 export function shipped2Raw<T = typeof gameJson>(raw: unknown = gameJson): T {
-  const g = structuredClone(raw) as Raw;
-  g.salvage.release = { ...(g.salvage.release ?? {}), stage: 2 };
-  g.monetization = { ...g.monetization, iap: { ...(g.monetization.iap ?? {}), products: modeProducts(g) } };
-  return g as unknown as T;
+  return stage2RawOf<T>(raw);
 }
 
 /** The light stage-2 configuration of the shipped content (what the rules and the bots read). */

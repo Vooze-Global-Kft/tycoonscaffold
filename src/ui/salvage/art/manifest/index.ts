@@ -34,8 +34,35 @@ import type { View3q } from '../pen';
 import { PEOPLE } from './people';
 import { PLANT } from './plant';
 import { THINGS } from './things';
+import { WORKS_HALLS } from './worksHalls';
+import { WORKS_HALL_PARTS } from './worksHallParts';
+import { WORKS_STORE } from './worksStore';
+import { WORKS_LINE } from './worksLine';
+import { WORKS_PLOTS } from './worksPlots';
+import { WORKS_TRUCK3 } from './worksTruck3';
+import { WORKS_LORRIES } from './worksLorries';
+import { WORKS_PEOPLE } from './worksPeople';
+import { WORKS_LANE } from './worksLane';
+import { WORKS_THINGS } from './worksThings';
+import { WORKS_SALE } from './worksSale';
+import { WORKS_SMALL } from './worksSmall';
 
+/**
+ * The first yard's three sheets (world/atlas.ts bakes exactly these for every player; their pixels are held by
+ * sheets.hash.test.ts against BASELINE's record of ff064ce). NOTHING of the works goes on A, B or G.
+ */
 export type Sheet = 'A' | 'B' | 'G';
+/**
+ * THE WORKS' SHEETS (PLAN2 2.7; stage 2 only, baked from rung 2 under stageOn(), each at most 2048 x 2048 at density 2):
+ *   sheet 'C'  the plant of the works (halls, their parts, the store, the shredder line, plots, the big lots, the Yard sale)
+ *   sheet 'D'  moving things (the hook-lift, the crane lorry, visitors, the boss's new poses, the van), the lane's new
+ *              sites and the small things, glyphs and pictograms of the works' grades
+ * (S stays the world's shadow sheet, baked by world/useYard.ts.) A works entry is a ManifestEntry<WorksSheet>; it is
+ * NOT in MANIFEST (whose indices, sheets and bake the first yard's world and tests read): it is in WORKS_MANIFEST.
+ * C-WORLD-1 joins the two when atlas.ts takes a sheet list (requests.md [seam] C-ART 28 Nov).
+ */
+export type WorksSheet = 'C' | 'D';
+export type AnySheet = Sheet | WorksSheet;
 
 /** A box in points round the anchor (x, y are its top-left, so usually negative). */
 export interface Bounds {
@@ -45,11 +72,11 @@ export interface Bounds {
   h: number;
 }
 
-export interface ManifestEntry {
+export interface ManifestEntry<S extends AnySheet = Sheet> {
   id: string;
   /** what the world looks it up by in bulk, e.g. 'person', 'thing', 'piece', 'plant', 'prop', 'ui', 'ground', 'mark' */
   group: string;
-  sheet: Sheet;
+  sheet: S;
   /** metres on the ground (east-west w, north-south d); the world sorts by the footprint's south edge */
   footprint: { w: number; d: number };
   bounds: Bounds;
@@ -68,10 +95,37 @@ export interface ManifestEntry {
   draw(c: SkCanvas, v: View3q, frame: number, heading: number): void;
 }
 
-export const PARTS = { people: PEOPLE, things: THINGS, plant: PLANT } as const;
+/** An entry of the works (sheet C or D). */
+export type WorksEntry = ManifestEntry<WorksSheet>;
 
-/** Every entry of the three parts, in a stable order. */
+/**
+ * The works' twelve parts (PLAN2 2.7), each its own file owned by its art package (ART-HALLS ... ART-SMALL); C-ART put
+ * every entry in with its final id, group, sheet, footprint, frames, headings, anchor and slots and a labelled
+ * placeholder box. Anchors: the first yard's code (the footprint's centre on the ground, a vehicle's too: vehicles.draw.ts
+ * `drawTruck`; slots named).
+ */
+export const WORKS_PARTS = {
+  worksHalls: WORKS_HALLS,
+  worksHallParts: WORKS_HALL_PARTS,
+  worksStore: WORKS_STORE,
+  worksLine: WORKS_LINE,
+  worksPlots: WORKS_PLOTS,
+  worksTruck3: WORKS_TRUCK3,
+  worksLorries: WORKS_LORRIES,
+  worksPeople: WORKS_PEOPLE,
+  worksLane: WORKS_LANE,
+  worksThings: WORKS_THINGS,
+  worksSale: WORKS_SALE,
+  worksSmall: WORKS_SMALL,
+} as const;
+
+export const PARTS = { people: PEOPLE, things: THINGS, plant: PLANT, ...WORKS_PARTS } as const;
+
+/** Every entry of the first yard's three parts, in a stable order (sheets A, B, G only). */
 export const MANIFEST: readonly ManifestEntry[] = [...PEOPLE, ...THINGS, ...PLANT];
+
+/** Every entry of the works' twelve parts, in a stable order (sheets C and D only). */
+export const WORKS_MANIFEST: readonly WorksEntry[] = Object.values(WORKS_PARTS).flat();
 
 /** The headings the atlas bakes for an entry (west-facing ones dropped when mirrorWest). */
 export function bakedHeadings(e: Pick<ManifestEntry, 'headings' | 'mirrorWest'>): number[] {
@@ -91,13 +145,13 @@ export function mirrorOf(e: Pick<ManifestEntry, 'headings' | 'mirrorWest'>, head
 }
 
 /** The box of an entry's cell at a baked heading (boundsByHeading when given, else bounds). */
-export function cellBounds(e: Pick<ManifestEntry, 'headings' | 'mirrorWest' | 'bounds' | 'boundsByHeading'>, heading: number): Bounds {
+export function cellBounds(e: Pick<ManifestEntry<AnySheet>, 'headings' | 'mirrorWest' | 'bounds' | 'boundsByHeading'>, heading: number): Bounds {
   const i = bakedHeadings(e).indexOf(heading);
   return (i >= 0 && e.boundsByHeading?.[i]) || e.bounds;
 }
 
 /** Pixels an entry takes in its atlas at a density (cells of every baked frame and heading). */
-export function entryPixels(e: ManifestEntry, density: number): number {
+export function entryPixels(e: ManifestEntry<AnySheet>, density: number): number {
   let n = 0;
   for (const h of bakedHeadings(e)) {
     const b = cellBounds(e, h);
@@ -107,3 +161,6 @@ export function entryPixels(e: ManifestEntry, density: number): number {
 }
 
 export const byId = (id: string): ManifestEntry | undefined => MANIFEST.find((e) => e.id === id);
+
+/** A works entry by id (sheets C and D), else undefined. */
+export const worksById = (id: string): WorksEntry | undefined => WORKS_MANIFEST.find((e) => e.id === id);

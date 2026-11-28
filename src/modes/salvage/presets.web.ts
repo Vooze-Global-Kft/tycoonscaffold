@@ -26,6 +26,19 @@
  * sign, the deal's offer, the skip ticket and a refusal; m30 a weigh-in with its lesson, a collection, a
  * refusal; back the away report and a deal delivery. `&events=0` keeps them back.
  * Web only (Metro takes ./presets.ts for iOS and Android).
+ *
+ * THE WORKS (stage 2; C-MODE, PLAN2 2.4 and 2.6), with `&stage=2` on the address (./stage.web.ts):
+ *   ?preset=w3open | w3 | w3save | w3letter | w3sale | w3van | w3lot | w4entry | w4arrive | w4pour | w4hall | w4line |
+ *           w4loan | w4packs | w4all | w4back | w5 | w5wait | w3plain | w4plain   (WORKS_PRESETS; PLAN2 2.6 says each moment)
+ *     the recorded states of the works (C-FIXTURE records them into src/engine/fixtures/salvage-works.json and
+ *     src/engine/fixtures/salvage.ts hands them over by name: `worksPresetState`). Until a name is recorded the
+ *     preview loads the frozen rung-3 state r3 with a loud warning in the console (and so does a stale recording).
+ * Switches on top of any preset (C-MODE, critic-build F10):
+ *   &cam=gate|works|sale|lane  the boss on foot at the yard's gate, the works road's stop, the Yard sale's rack zone or the
+ *                              lane outside the gate (the dealer's van stop); the camera follows him (no camera code)
+ *   &age=due                   the second session begun and no age band: the age question is due
+ *   &band=u13                  the second session begun and the band u13 kept
+ *   &country=XX                the store country the shop reads (region.ts setStorefrontForDev): a code, auto or none
  */
 import type { GameConfig } from '../../config/schema';
 import type { PresetName } from '../../dev/presets';
@@ -38,6 +51,33 @@ import { pointOf } from '../../engine/salvage/positions';
 import type { SalvageEvent, SalvageGame } from '../../engine/salvage/types';
 import type { GameState } from '../../engine/types';
 import { modeEvents } from '../../state/modeEvents';
+import * as Fixtures from '../../engine/fixtures/salvage';
+import { stageOn } from './stage';
+
+/** The works' recorded moments by name (PLAN2 2.6); src/dev/presets.web.ts PRESET_ALIASES maps each to `late`. */
+export const WORKS_PRESETS = ['w3open', 'w3', 'w3save', 'w3letter', 'w3sale', 'w3van', 'w3lot', 'w4entry', 'w4arrive', 'w4pour', 'w4hall', 'w4line', 'w4loan', 'w4packs', 'w4all', 'w4back', 'w5', 'w5wait', 'w3plain', 'w4plain'] as const;
+export type WorksPreset = (typeof WORKS_PRESETS)[number];
+
+/**
+ * THE SEAM to C-FIXTURE (requests.md, 28 Nov): src/engine/fixtures/salvage.ts exports
+ * `worksPresetState(name, base, now)`: the recorded state at device time `now` (as stage2Game does), the events to
+ * emit once after the curtain, and `stale` (null, or why the recording's content hash no longer matches the content).
+ * Until it exists (or for a name it does not hold: null) the preview shows r3 with a warning (worksPresetOf).
+ */
+export interface WorksPresetState {
+  game: SalvageGame;
+  events: readonly SalvageEvent[];
+  stale: string | null;
+}
+type WorksLoader = (name: WorksPreset, base: GameState, now: number) => WorksPresetState | null;
+const worksLoader = (): WorksLoader | null => (Fixtures as unknown as { worksPresetState?: WorksLoader }).worksPresetState ?? null;
+
+/** A works preset: the recorded state when there is one, else the frozen rung-3 state r3 (both with their events once after the curtain). */
+export function worksPresetOf(name: WorksPreset, base: GameState, now: number): { game: GameState; events: readonly SalvageEvent[]; note: string | null } {
+  const rec = worksLoader()?.(name, base, now) ?? null;
+  if (rec) return { game: rec.game as unknown as GameState, events: rec.events, note: rec.stale ? `STALE RECORDING ${name}: ${rec.stale} (re-record: scripts/content/yard/record-works.ts)` : null };
+  return { game: stage2Game('r3', base, now) as unknown as GameState, events: STAGE2_EVENTS.r3, note: `${name} is not recorded yet (C-FIXTURE): showing r3, the frozen rung-3 state` };
+}
 
 const BY_PRESET: Record<PresetName, FixtureName> = { fresh: 'fresh', early: 'm5', mid: 'm30', late: 'back' };
 
@@ -195,7 +235,70 @@ function withGetIn(cfg: R.SalvageConfig, g: GameState): GameState {
 
 export function salvagePreset(cfg: GameConfig, name: PresetName, now: number): GameState {
   if (!R.isSalvage(cfg)) throw new Error('salvagePreset needs a salvage config');
-  return withGetIn(cfg, presetOf(cfg, name, now));
+  return withSwitches(cfg, withGetIn(cfg, presetOf(cfg, name, now)), addressSwitches());
+}
+
+/** The works' address switches (C-MODE, F10): cam, age, band, country; each null when absent or unknown. */
+export interface PresetSwitches {
+  cam: 'gate' | 'works' | 'sale' | 'lane' | null;
+  age: 'due' | null;
+  band: 'u13' | null;
+  /** A store country code, 'auto', or 'none' (unknown). */
+  country: string | null;
+}
+
+function addressSwitches(): PresetSwitches {
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+  const pick = <T extends string>(k: string, ok: readonly T[]): T | null => {
+    const v = q?.get(k);
+    return v && (ok as readonly string[]).includes(v) ? (v as T) : null;
+  };
+  const country = q?.get('country') ?? null;
+  return { cam: pick('cam', ['gate', 'works', 'sale', 'lane'] as const), age: pick('age', ['due'] as const), band: pick('band', ['u13'] as const), country: country && /^([A-Za-z]{2}|auto|none)$/.test(country) ? country : null };
+}
+
+/**
+ * Where `cam` puts the boss, from the content (map keys, never a number here): the yard's gate (map.points.gate), the
+ * works road's stop (map.works.driveLine.stops.works), the Yard sale's rack zone (map.works.points['reuseRack.zone']), the
+ * lane outside the gate (map.works.laneStops.van). Null when the content has no such key (a first-yard-only content).
+ */
+export function camPoint(c: R.SalvageConfig['salvage'], cam: NonNullable<PresetSwitches['cam']>): { x: number; y: number } | null {
+  const m = c.map as unknown as { points: Record<string, [number, number]>; works?: { points?: Record<string, [number, number]>; driveLine?: { stops?: Record<string, [number, number]> }; laneStops?: Record<string, [number, number]> } };
+  const p = cam === 'gate' ? m.points.gate : cam === 'works' ? m.works?.driveLine?.stops?.works : cam === 'sale' ? m.works?.points?.['reuseRack.zone'] : m.works?.laneStops?.van;
+  return p ? { x: p[0], y: p[1] } : null;
+}
+
+/** The switches applied to a preset's state (pure, but `country`, which sets region.ts's development country). */
+export function withSwitches(cfg: R.SalvageConfig, g: GameState, sw: PresetSwitches): GameState {
+  const sg = g as unknown as SalvageGame;
+  if (!sg.salvage) return g;
+  let s = sg.salvage;
+  if (sw.cam) {
+    const at = camPoint(cfg.salvage, sw.cam);
+    if (!at) console.warn(`[preset] cam=${sw.cam}: this content has no such place`);
+    else {
+      // On foot at the point (out of the truck or the forklift, which stay where they are), as withGetIn does.
+      s = {
+        ...s,
+        epoch: s.epoch + 1,
+        truck: s.truck.by === 'boss' ? { ...s.truck, by: null } : s.truck,
+        forklift: s.forklift && s.forklift.by === 'boss' ? { ...s.forklift, by: null } : s.forklift,
+        presence: { ...s.presence, x: at.x, y: at.y, driving: false, moving: false, standingFor: 1, vehicle: null },
+        act: { kind: 'none', target: null, since: s.t, endsAt: null },
+      };
+    }
+  }
+  if (sw.age === 'due' || sw.band === 'u13') {
+    const iap = s.iap;
+    s = { ...s, iap: { ...iap, sessions2At: iap.sessions2At ?? s.t, ageBand: sw.band === 'u13' ? 'u13' : null } };
+  }
+  if (sw.country) {
+    // Required here: region.ts imports react-native (the presets' node tests load this file).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { setStorefrontForDev } = require('../../services/region') as typeof import('../../services/region');
+    setStorefrontForDev(sw.country === 'auto' ? 'auto' : sw.country === 'none' ? null : sw.country.toUpperCase());
+  }
+  return s === sg.salvage ? g : ({ ...g, salvage: s } as unknown as GameState);
 }
 
 function presetOf(cfg: R.SalvageConfig, name: PresetName, now: number): GameState {
@@ -221,6 +324,14 @@ function presetOf(cfg: R.SalvageConfig, name: PresetName, now: number): GameStat
   // The stage-2 frozen states by their own names (?preset=r3 | r3plain | held14): rung 3 with the crew in runs,
   // looked at before the stage's own prepared yards exist (the lead, 26 Nov; wiring2 replaces this with its rows).
   const asked2 = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('preset') : null;
+  // The works' recorded moments (C-MODE; PLAN2 2.6): played on the stage-2 content, so `&stage=2` belongs with them.
+  if (asked2 && (WORKS_PRESETS as readonly string[]).includes(asked2)) {
+    if (!stageOn()) console.warn(`[preset] ${asked2} is a works moment: add &stage=2 to the address (without it the yard runs as the first yard)`);
+    const w = worksPresetOf(asked2 as WorksPreset, base, now);
+    if (w.note) console.warn(`[preset] ${w.note}`);
+    emitEventsWhenShown(structuredClone(w.events) as SalvageEvent[]);
+    return { ...w.game, lastSavedAt: now } as GameState;
+  }
   if (asked2 && (STAGE2_NAMES as readonly string[]).includes(asked2)) {
     const n = asked2 as Stage2Name;
     emitEventsWhenShown(structuredClone(STAGE2_EVENTS[n]) as SalvageEvent[]);

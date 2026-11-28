@@ -14,12 +14,36 @@
  *
  * REGISTRY: an artist adds a sheet as one entry { name, run } (run gets the same helpers the built-in
  * sheets use); add entries, change nobody else's.
+ *
+ * THE WORKS (stage 2; C-ART, PLAN2 2.7 and critic F13): every works sheet name is registered here once, each delegating to
+ * scripts/art/works/<name>.ts, a file its art package owns (export `run(x: WorksSheetCtx)`): works-halls, works-hall-parts,
+ * works-store, works-line, works-plots, works-truck3, works-lorries, works-people, works-lane, works-things, works-sale,
+ * works-small (the twelve manifest parts of sheets C and D), card-marks, card-paper, card-scenes, hero-works (the card art
+ * and the second hero frame), budget-C, budget-D (sheets C and D packed at density 2: they must fit 2048 x 2048). Nobody
+ * edits this file for a works sheet: the art package edits its own works/<name>.ts.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SkCanvas } from '@shopify/react-native-skia';
-import { headless } from './headless';
+import type { WorksEntry } from '../../src/ui/salvage/art/manifest';
+import { headless, type Headless } from './headless';
+import type { TextFn } from '../../src/ui/salvage/art/ui.draw';
 import { makeText } from './yard-text';
+
+/** What a works sheet's script (scripts/art/works/<name>.ts) gets: the registry's helpers and a contact sheet. */
+export interface WorksSheetCtx {
+  H: Headless;
+  /** the folder the PNGs go into */
+  out: string;
+  T: TextFn;
+  /** draws w x h points at `scale` px a point into <out>/<name> */
+  write: (name: string, w: number, h: number, draw: (c: SkCanvas) => void, scale?: number, bg?: string) => Promise<void>;
+  put: (c: SkCanvas, x: number, y: number, draw: () => void) => void;
+  caption: (c: SkCanvas, text: string, x: number, y: number) => void;
+  title: (c: SkCanvas, text: string) => void;
+  /** every frame of every baked heading of `entries` at phone size (1 pt = 3 px), its bounds box faint, into <out>/<name>.png */
+  contact: (name: string, entries: readonly WorksEntry[]) => Promise<void>;
+}
 
 headless(async (H) => {
   /* eslint-disable @typescript-eslint/no-require-imports */
@@ -103,6 +127,53 @@ headless(async (H) => {
   REGISTRY.push({ name: 'manifest-people', run: manifestSheet('people') });
   REGISTRY.push({ name: 'manifest-things', run: manifestSheet('things') });
   REGISTRY.push({ name: 'manifest-plant', run: manifestSheet('plant') });
+  // the works (C-ART): a contact sheet of works entries, every frame at every baked heading, drawn at its baked size
+  const contact = async (name: string, entries: readonly WorksEntry[]) => {
+    const M = MF();
+    if (!entries.length) {
+      console.log(`${name}: no entries`);
+      return;
+    }
+    const W = 900;
+    const cells: { e: WorksEntry; f: number; h: number; x: number; y: number }[] = [];
+    let x = 10;
+    let y = 30;
+    let row = 0;
+    for (const e of entries)
+      for (const h of M.bakedHeadings(e))
+        for (let f = 0; f < e.frames.length; f++) {
+          const b = M.cellBounds(e, h);
+          const w = Math.max(b.w, 46) + 8;
+          if (x + w > W) {
+            x = 10;
+            y += row + 22;
+            row = 0;
+          }
+          cells.push({ e, f, h, x: x - b.x + (w - 8 - b.w) / 2, y: y - b.y });
+          x += w;
+          row = Math.max(row, b.h);
+        }
+    await write(`${name}.png`, W, y + row + 30, (c) => {
+      title(c, `${name} (${entries.length} entries; every frame and baked heading at its baked size; faint box = bounds)`);
+      for (const cell of cells) {
+        const b = M.cellBounds(cell.e, cell.h);
+        c.drawPath(pen.rect(cell.x + b.x, cell.y + b.y, b.w, b.h), pen.stroke(YARD.inkSoft, 0.4, 0.5));
+        put(c, cell.x, cell.y, () => cell.e.draw(c, V, cell.f, cell.h));
+        const tag = `${cell.e.id}${cell.e.frames.length > 1 ? ' ' + cell.e.frames[cell.f] : ''}${cell.e.headings > 1 ? ' h' + cell.h : ''}`;
+        T(c, tag, cell.x + b.x + b.w / 2, cell.y + b.y + b.h + 9, { size: 6, weight: 'semibold', color: YARD.inkSoft, align: 'center' });
+      }
+    }, 3);
+  };
+  for (const name of [
+    'works-halls', 'works-hall-parts', 'works-store', 'works-line', 'works-plots', 'works-truck3', 'works-lorries', 'works-people',
+    'works-lane', 'works-things', 'works-sale', 'works-small', 'card-marks', 'card-paper', 'card-scenes', 'hero-works', 'budget-C', 'budget-D',
+  ])
+    REGISTRY.push({
+      name,
+      run: async (x) =>
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        (require(`./works/${name}`) as { run: (c: WorksSheetCtx) => Promise<void> }).run({ ...x, contact }),
+    });
   // the artist "people" (scripts/art/yard-people-sheets.ts): crew, carriers, vehicles, atlas-people, people-scene
   for (const name of ['crew', 'carriers', 'vehicles', 'atlas-people', 'people-scene'])
     REGISTRY.push({
