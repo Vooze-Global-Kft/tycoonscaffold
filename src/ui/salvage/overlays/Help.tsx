@@ -5,6 +5,7 @@
  * The lessons' and the glossary's words live in the game's data (5.7), every other word is a key.
  */
 import { StyleSheet, View } from 'react-native';
+import { glossaryShown } from '../strings';
 import { helpLessons } from './marketLines';
 import { DataLine, SectionHead, useContent, useSeenOnClose } from './marketParts';
 import type { CardViewProps } from './OverlayHost';
@@ -16,7 +17,10 @@ export function Help({ data, onClose }: CardViewProps) {
   useSeenOnClose('help');
   const lessons = helpLessons(c as never);
   // The rules give the terms of the yard's rung (cardOf's help card, s2a-fix: stage 2's terms from rung 3); the content's whole list only for an older card.
-  const glossary = data.glossary ?? (c as { text?: { glossary?: { term: string; line: string }[] } }).text?.glossary ?? [];
+  const terms = data.glossary ?? (c as { text?: { glossary?: { term: string; line: string }[] } }).text?.glossary ?? [];
+  // WORDS-SETUP (critic I7): a term whose item is dark in the running content is left out; without a works layer (the
+  // first yard) the list is the same array, so stage 1's Help is unchanged.
+  const glossary = glossaryShown(terms, c as unknown as Parameters<typeof glossaryShown>[1]);
   return (
     <Panel title={data.title} onClose={onClose}>
       <SectionHead t={{ key: 'help.lessons' }} />

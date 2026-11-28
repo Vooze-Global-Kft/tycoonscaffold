@@ -161,6 +161,23 @@ describe("from the works' opening: the line's promises on the frozen works conte
     const a = advice(wcfg, g, 0);
     if (a) expect(a.works!.saveUp_s).toBeNull();
   }, 120_000);
+  it('s2i-levels (RULING2.md 30.3): a level of the book is named by its payback (the book\'s gain, the price over it); the promises hold with a book', () => {
+    const g0 = goalsDone(wcfg, r4Game());
+    const driver = g0.salvage.crew.find((m) => m.role === 'driver')!;
+    const t: LevelTarget = { kind: 'crew', id: driver.id };
+    const book = { driver: { s1: 0.05, d: 0.9, from: 1, to: 40 } };
+    // tau_r a tenth: a level pays back in tau_r, the purchases (their prices stand) in ten times that: outside the window
+    const cfg = { ...wcfg, salvage: { ...wcfg.salvage, tau_h: wcfg.salvage.tau_h?.map((x) => (x === null ? null : x / 10)), levels: { ...wcfg.salvage.levels, minShareI: 0.01, book } } } as SalvageConfig;
+    for (const cash of [0, 30_000, 1e6, 1e9]) promises(cfg, { ...g0, cash });
+    const g = { ...g0, cash: 1e9 };
+    const a = advice(cfg, g, 0)!;
+    expect(a.action).toMatchObject({ act: 'level', target: t });
+    const gain = levelGainCfg(cfg, g, t);
+    expect(gain).toBeGreaterThan(0);
+    expect(a.works!.gain_h).toBeCloseTo(gain, 6);
+    expect(a.works!.payback_h).toBeCloseTo(a.price / gain, 9);
+    expect(a.price).toBe(levelCheck(cfg, g, t).price);
+  }, 120_000);
 });
 
 describe('(c) waiting: the next rung\'s main purchase under the waiting line', () => {

@@ -76,7 +76,7 @@ describe('stage 2 (strings2; yard-stage2.md 5.3, 4, 2.14 to 2.16, 8.1 words)', (
     const cc = await c();
     expect(say({ key: 'card.finance.rule', args: { share: { text: 'share.fifth' }, x: { money: 69120 } } }, cc)).toBe('A fifth of each sale goes to the bank until §69,120 is repaid. No date.');
     expect(say({ key: 'card.shop.unconfirmed' }, cc)).toBe('The store has not confirmed this purchase yet. If you were charged, your scrip arrives when it does.');
-    expect(say({ key: 'card.shop.packLine', args: { n: { n: 2 } } }, cc)).toBe('about 2 hours of your yard’s earnings');
+    expect(say({ key: 'card.shop.packLine', args: { n: { n: 2 } } }, cc)).toBe('about 2 h of the yard’s own earnings'); // RULING2 28.2 (d) via the lead's fallback (strings.ts)
     expect(say({ key: 'card.shop.unreachable' }, cc)).toBe('The store cannot be reached. Nothing was charged.');
     expect(say({ key: 'card.shop.expired' }, cc)).toBe('A purchase that was waiting never arrived. Nothing was added.');
     for (const k of ['card.shop.waiting', 'refusal.packPending'] as const) expect(say({ key: k }, cc)).toBe('Waiting for approval');
@@ -127,12 +127,112 @@ describe('stage 2 (strings2; yard-stage2.md 5.3, 4, 2.14 to 2.16, 8.1 words)', (
     const keys = Object.keys(TEXT);
     expect(keys.filter((k) => k.startsWith('plate.works.')).length).toBeGreaterThanOrEqual(8);
     for (const k of keys.filter((x) => /^plate\.(works\.|reuse\.|lot|crate|opens$)/.test(x))) expect(boxOf(k).maxChars, k).toBe(31);
-    const plates = keys.filter((k) => k.startsWith('title.works.'));
-    expect(plates.length).toBe(13);
+    // every plate of the content has its name (s2f-copper's copper hall made 14); the line's bought-with title is not a plate
+    const plates = keys.filter((k) => k.startsWith('title.works.') && k !== 'title.works.shredderLine');
+    const { readGameJson } = (await import('../../lib/games.js')) as unknown as { readGameJson(id: string): { salvage: { works: { plates: Record<string, unknown> } } } };
+    for (const id of Object.keys(readGameJson('scrap-yard').salvage.works.plates)) expect(keys, `title.works.${id}`).toContain(`title.works.${id}`);
+    expect(plates.length).toBeGreaterThanOrEqual(13);
     for (const k of plates) {
       const v = (TEXT as Record<string, string>)[k];
       expect([...v].length, k).toBeLessThanOrEqual(18);
       expect(fitFindings(k, v, BOXES.plate), k).toEqual([]);
     }
+  });
+});
+
+describe('the works\' word families (WORDS-SETUP; PLAN2 2.2, 2.5; cards 3.3)', () => {
+  it('seventeen families, each spread into TEXT and listed in TEXT_KEYS, each key fitted in a room of its own family', async () => {
+    const { FAMILIES, TEXT } = await import('../../../src/ui/salvage/strings');
+    const { TEXT_KEYS } = await import('../../../src/engine/salvage/textKeys');
+    const { FAMILY_ROOMS, boxOf, familyRoom } = await import('./check');
+    expect(Object.keys(FAMILIES).sort()).toEqual(['age', 'away', 'bank', 'count', 'dev', 'goal', 'halls', 'hints', 'hud', 'line', 'opening', 'packcode', 'pieces', 'plots', 'sale', 'shop', 'world']);
+    const listed = new Set(Object.values(TEXT_KEYS).flat() as string[]);
+    for (const [f, words] of Object.entries(FAMILIES)) {
+      expect(Object.keys(words).length, f).toBeGreaterThan(0);
+      for (const [k, v] of Object.entries(words)) {
+        expect((TEXT as Record<string, string>)[k], k).toBe(v);
+        expect(listed.has(k), k).toBe(true);
+        const room = familyRoom(k);
+        expect(room, k).toMatch(new RegExp(`^${f}\\.`));
+        expect(boxOf(k), k).toBe(BOXES[room!]);
+        expect(boxOf(k).assumed, k).toBeUndefined();
+      }
+      for (const r of Object.values(FAMILY_ROOMS[f as keyof typeof FAMILY_ROOMS].ROOMS)) expect(r.w, f).toBeGreaterThan(0);
+    }
+  });
+  it('a family key no room names is a finding, never a fallback box', async () => {
+    const { familyRoom } = await import('./check');
+    expect(familyRoom('card.buy')).toBeNull(); // a first-yard key: no family
+    expect(familyRoom('opening.strip')).toBe('opening.strip');
+    expect(familyRoom('away.tile.amount')).toBe('away.tileNumber');
+  });
+  it('rooms come from the screens\' own layout constants (the goal card\'s room is goalW less GOAL_CHROME)', async () => {
+    const { GOAL_ROOM } = await import('../../../src/ui/salvage/rooms/goal');
+    const { hudLayout, GOAL_CHROME } = await import('../../../src/ui/salvage/hud/metrics');
+    expect(GOAL_ROOM).toBe(hudLayout(667, 375, { top: 0, bottom: 0, left: 0, right: 0 }, 1.3).goalW - GOAL_CHROME);
+    const { TILE } = await import('../../../src/ui/salvage/rooms/away');
+    expect([TILE.w, TILE.h]).toEqual([72, 56]);
+  });
+  it('the planners\' named keys exist (PLAN2 2.2: selfPour, shredderLine, materials, the counting line, the tiles, the opening strip)', async () => {
+    const { TEXT } = await import('../../../src/ui/salvage/strings');
+    for (const k of ['card.works.selfPour', 'title.works.shredderLine', 'away.countHour', 'away.tile.pours', 'opening.strip', 'plate.bunker.full', 'hud.loanPlate', 'dev.timer', 'hint.pour'])
+      expect(TEXT, k).toHaveProperty([k]);
+    const { readGameJson } = (await import('../../lib/games.js')) as unknown as { readGameJson(id: string): { salvage: { grades: Record<string, { material?: string }>; worksLayer?: { grades?: Record<string, { material?: string }> } } } };
+    const sv = readGameJson('scrap-yard').salvage;
+    const materials = new Set([...Object.values(sv.grades), ...Object.values(sv.worksLayer?.grades ?? {})].map((g) => g.material).filter((m): m is string => !!m));
+    for (const m of materials) {
+      expect(TEXT, `material.${m}`).toHaveProperty([`material.${m}`]);
+      expect([...(TEXT as Record<string, string>)[`material.${m}`]].length).toBeLessThanOrEqual(18);
+    }
+  });
+  it('ruling 30.3: a level\'s card line reads "About +{x} an hour"', async () => {
+    const { say } = await import('../../../src/ui/salvage/strings');
+    const cc = { names: {}, grades: {}, objects: {} } as unknown as Parameters<typeof say>[1];
+    expect(say({ key: 'card.levelEarns', args: { x: { money: 4400 } } }, cc)).toBe('About +§4,400 an hour');
+  });
+});
+
+describe('Help leaves out the terms of dark items (critic I7)', () => {
+  const glossary = [
+    { term: 'Bale', line: 'a' },
+    { term: 'Zorba', line: 'b' },
+    { term: 'Analyser', line: 'c' },
+    { term: 'Twitch', line: 'd' },
+  ];
+  it('without a works layer (the first yard) the list is the same array', async () => {
+    const { glossaryShown } = await import('../../../src/ui/salvage/strings');
+    expect(glossaryShown(glossary, { ladder: { topRung: 3 } })).toBe(glossary);
+  });
+  it('with the works: a plate past the top rung and a grade only such plates make are left out; a sold one stays', async () => {
+    const { glossaryShown, itemDark } = await import('../../../src/ui/salvage/strings');
+    const c = {
+      ladder: { topRung: 5 },
+      works: {
+        plates: {
+          baler: { gate: 'rung99', out: { li: [['lib', 1]] as [string, number][] } },
+          eddy: { gate: 'rung99', out: { stream: [['zorba', 0.3]] as [string, number][] } },
+          sorter: { gate: 'rung99', out: { zorba: [['twitch', 0.7]] as [string, number][] } },
+          analyser: { gate: 'rung3' },
+        },
+      },
+    };
+    expect(glossaryShown(glossary, c).map((e) => e.term)).toEqual(['Analyser']);
+    expect(itemDark(c, 'analyser')).toBe(false);
+    expect(itemDark(c, 'li')).toBe(false); // a grade no plate makes is never dark
+    const sold = { ...c, works: { plates: { ...c.works.plates, baler: { gate: 'rung4', out: c.works.plates.baler.out } } } };
+    expect(glossaryShown(glossary, sold).map((e) => e.term)).toEqual(['Bale', 'Analyser']);
+  });
+  it('the stand-in agrees with text.json\'s items, and the shipped stage-2 content hides all five', async () => {
+    const { GLOSSARY_ITEM_STANDIN, glossaryShown } = await import('../../../src/ui/salvage/strings');
+    const { glossaryFindings } = await import('./check');
+    const fs = await import('fs');
+    const path = await import('path');
+    const text = JSON.parse(fs.readFileSync(path.join(__dirname, 'text.json'), 'utf8')) as { glossary: { term: string; line: string; item?: string }[] };
+    expect(glossaryFindings(text.glossary)).toEqual([]);
+    expect(Object.fromEntries(text.glossary.filter((e) => e.item).map((e) => [e.term, e.item]))).toEqual(GLOSSARY_ITEM_STANDIN);
+    const { readGameJson } = (await import('../../lib/games.js')) as unknown as { readGameJson(id: string): { salvage: Parameters<typeof glossaryShown>[1] } };
+    const shown = glossaryShown(text.glossary, readGameJson('scrap-yard').salvage).map((e) => e.term);
+    for (const t of Object.keys(GLOSSARY_ITEM_STANDIN)) expect(shown).not.toContain(t);
+    expect(shown).toContain('Analyser');
   });
 });

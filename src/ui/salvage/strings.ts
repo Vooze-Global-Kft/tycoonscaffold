@@ -19,6 +19,23 @@
  */
 import * as R from '../../engine/salvage';
 import type { SalvageContent } from '../../engine/salvage';
+import { PLOTS } from './strings/plots';
+import { HALLS } from './strings/halls';
+import { LINE } from './strings/line';
+import { PIECES } from './strings/pieces';
+import { SALE } from './strings/sale';
+import { BANK } from './strings/bank';
+import { SHOP } from './strings/shop';
+import { PACKCODE } from './strings/packcode';
+import { AGE } from './strings/age';
+import { AWAY } from './strings/away';
+import { COUNT } from './strings/count';
+import { GOAL } from './strings/goal';
+import { HUD } from './strings/hud';
+import { WORLD } from './strings/world';
+import { OPENING } from './strings/opening';
+import { DEV } from './strings/dev';
+import { HINTS } from './strings/hints';
 
 /** The texts by key, grouped by the package that shows them. */
 export const TEXT = {
@@ -590,7 +607,7 @@ export const TEXT = {
   'card.bay.route': 'Goes to: {to}', // to: { text: 'title.works.<id>' } or { text: 'card.bay.sellFromBay' }
   'card.bay.sellFromBay': 'Sell from the bay',
   // s2e-levels (economy 2.11, RULING2 27.3 D5): a level's row from the works' opening; x: { money } = levelGain as applied, t: { secs } = price ÷ gain
-  'card.levelEarns': '+{x} an hour on your yard', // s2e-advice (the build's words): the same words as the advice line's gain (advice.gain)
+  'card.levelEarns': 'About +{x} an hour', // RULING2 30.3 (WORDS-SETUP, 28 Nov): a level's gain is the book's measured ladder, "about" as it is the mean of yards like his
   'card.levelPays': 'Pays for itself in about {t}', // t: { secs } = price ÷ gain, the yard's running hours
   'card.works.carPrice': 'A car from the garage · {x}', // s2f-plasma-cars (RULING2 28.7 b): x: { money } = the label price its landing pays today
   'card.works.recipeHall': 'The hall chooses: {recipe}', // s2g-halls (RULING2 29.1): recipe: { text: recipe.<id> }; at each heat the recipe that adds the most worth
@@ -862,7 +879,31 @@ export const TEXT = {
   'refusal.routed': 'This feeds the {plate}. Choose Sell from the bay first.', // T17: a toast of two lines
   'refusal.adCap': 'No more this market day',
   'refusal.inForklift': 'Step out of the forklift first', // R4: an act of his own tried from the forklift
+
+  // ============================================================================================ STAGE 2 SCREENS
+  // WORDS-SETUP (28 November; PLAN2 2.2): the 17 word families of the works' screens, one file each under ./strings/ (its
+  // package owns it from wave 1; the boxes are ./rooms/<family>.ts). Spread last, so a key written twice fails the typecheck.
+  ...PLOTS,
+  ...HALLS,
+  ...LINE,
+  ...PIECES,
+  ...SALE,
+  ...BANK,
+  ...SHOP,
+  ...PACKCODE,
+  ...AGE,
+  ...AWAY,
+  ...COUNT,
+  ...GOAL,
+  ...HUD,
+  ...WORLD,
+  ...OPENING,
+  ...DEV,
+  ...HINTS,
 } as const satisfies Record<R.TextKey, string>;
+
+/** The words by family (PLAN2 2.2), for the text check: a family's keys are fitted in its own rooms (rooms/<family>.ts). */
+export const FAMILIES = { plots: PLOTS, halls: HALLS, line: LINE, pieces: PIECES, sale: SALE, bank: BANK, shop: SHOP, packcode: PACKCODE, age: AGE, away: AWAY, count: COUNT, goal: GOAL, hud: HUD, world: WORLD, opening: OPENING, dev: DEV, hints: HINTS } as const;
 
 // The other direction: every key of TEXT is a TextKey (an extra key fails here).
 const _noExtra: Record<keyof typeof TEXT, R.TextKey> = Object.fromEntries(Object.keys(TEXT).map((k) => [k, k])) as Record<keyof typeof TEXT, R.TextKey>;
@@ -1006,6 +1047,54 @@ export function fill(text: string, args: R.TxtArgs | undefined, c: Content): str
 /** THE function that turns a printed line into words. */
 export function say(t: R.Txt, c: Content): string {
   return fill(TEXT[t.key], t.args, c);
+}
+
+// ================================================================================================ the glossary's dark terms
+
+/**
+ * WORDS-SETUP (critic I7, PLAN2 3.1 rule 5): a glossary term names an `item` (text.json glossary[].item: a works plate, a shop
+ * key or a grade) and Help leaves it out while that item is DARK in the running content: a plate or shop item whose gate lies
+ * past the stage's top rung, or a grade that only such plates make. Without a works layer (the first yard, release.stage 1)
+ * nothing is dark and the list comes back as it went in (the same array).
+ *
+ * STAND-IN until the seam lands (requests.md, WORDS-SETUP): the content schema (src/config/schema.salvage.ts text.glossary)
+ * strips `item` and cardOf's help card passes term and line only, so Help reads a term's item from here when its entry has
+ * none. check.ts refuses a difference between this table and text.json's items.
+ */
+export const GLOSSARY_ITEM_STANDIN: Readonly<Record<string, string>> = { Bale: 'baler', 'Eddy current': 'eddy', 'Sensor sorter': 'sorter', Twitch: 'twitch', Zorba: 'zorba' };
+
+type DarkContent = {
+  ladder: { topRung?: number };
+  works?: { plates?: Record<string, { gate?: string | null; out?: Record<string, readonly (readonly [string, number])[]> }> };
+  shop?: readonly { key: string; gate?: string | null }[];
+};
+
+const rungOfGate = (gate: string | null | undefined): number => {
+  const m = /^rung(\d+)$/.exec(gate ?? '');
+  return m ? Number(m[1]) : 0;
+};
+
+/** Is `item` dark in this content (named nowhere a player looks)? Always false without a works layer. */
+export function itemDark(c: DarkContent, item: string): boolean {
+  const plates = c.works?.plates;
+  if (!plates) return false;
+  const top = c.ladder.topRung ?? 3;
+  const sold = (gate: string | null | undefined) => rungOfGate(gate) <= top;
+  if (plates[item]) return !sold(plates[item].gate);
+  const shopItem = (c.shop ?? []).find((i) => i.key === item);
+  if (shopItem) return !sold(shopItem.gate);
+  const makers = Object.values(plates).filter((p) => Object.values(p.out ?? {}).some((outs) => outs.some(([g]) => g === item)));
+  return makers.length > 0 && !makers.some((p) => sold(p.gate));
+}
+
+/** The glossary as Help shows it: every term whose item is not dark, in order. The same array when nothing is left out. */
+export function glossaryShown<T extends { term: string; item?: string }>(terms: readonly T[], c: DarkContent): readonly T[] {
+  if (!c.works?.plates) return terms;
+  const kept = terms.filter((e) => {
+    const item = e.item ?? GLOSSARY_ITEM_STANDIN[e.term];
+    return !item || !itemDark(c, item);
+  });
+  return kept.length === terms.length ? terms : kept;
 }
 
 // ================================================================================================ the ground work's

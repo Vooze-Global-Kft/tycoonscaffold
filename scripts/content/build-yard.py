@@ -494,6 +494,109 @@ def lint(s, sprites):
     for i, k in enumerate(((s.get('rate') or {}).get('kappa')) or []):
         if i >= 2 and (not isinstance(k, (int, float)) or isinstance(k, bool) or not (0.85 <= k <= 1.15)):
             bad('rate.kappa[%d] (rung %d): %r is outside 0.85 to 1.15: a term of rated income is wrong; fix the term (rate.ts), not the factor (ruling 27.4)' % (i, i + 1, k))
+    for m in book_check(s):
+        bad(m)
+    return out
+
+
+# ------------------------------------------------------------------------------------------ the book (s2i-book)
+# RULING2.md 30.3: FROM THE WORKS' OPENING A LEVEL'S GAIN IS THE BOOK'S, for every ladder: gain = s1 x d^(L-1) x I, levels.book
+# { ladder: { s1: number | [rung 3, rung 4, rung 5] (null: that rung reads its nearest rung's), d, from, to } } (rate.ts
+# levelLadderOf names a ladder: a crew role, a first-yard machine's id, a partner's id, a plate's id, `reuse`). A ladder with no
+# entry is NOT SOLD at the works. REFUSED: (a) a ladder a player can hold at the works with neither an entry nor a line in
+# BOOK_NOT_SOLD (its reason) nor a level that does nothing by the content itself (a machine without `lev`, a plate while
+# works.maxLevel is 1, the Yard sale's rack while reuse.levels is 0); (b) an entry for a ladder nobody can hold, or for one that
+# is listed not sold or whose level does nothing; (c) s1 outside 0 to 0.5, d outside 0.5 to 1, from above to, to not a whole
+# number; (d) where bots/plates.json has the bots' table (`bookShares`, yard-bot.ts --book write), an entry that is not that
+# table's, a table ladder sold but missing here, or a rung sold whose yards are fewer than three or whose s1 is not two
+# standard errors above zero.
+BOOK_NOT_SOLD = {
+    # measured by the always-finance hand's returns at sittings 3 and 4 (s2g-measure TB, yard-bot.ts --borrower): their levels
+    # add tonnes and LOSE money (ruling 17: no purchase makes the yard poorer; RULING2.md 30.3)
+    'partnerFarm': 'its level loses money: -3.45 % of rated income a step at rung 3 (s.e. 0.63; 5 of 5 yards below zero), -3.6 % at rung 4 (2 yards); ruling 17',
+    'partnerDemolition': 'its level loses money: -2.60 % of rated income a step at rung 3 (s.e. 0.75; 5 of 5 yards below zero), -4.1 % at rung 4 (2 yards); ruling 17',
+}
+
+
+def book_ladders(s):
+    """{ladder: None (it levels) or the reason it has no level by the content itself} for every level a player can hold at the
+    works (shop.ts headroomWorks' targets: each crew role, each first-yard machine, each partner open at the works; and the
+    plates' and the rack's levels, which have none while the content says so)."""
+    out = {}
+    for role, v in (s.get('crew') or {}).items():
+        if isinstance(v, dict) and 'maxlev' in v:
+            out[role] = None
+    for m, v in (s.get('machines') or {}).items():
+        out[m] = None if (v.get('lev') or 0) > 0 else 'its level does nothing (machines.%s has no lev: crews and machines.ts read rate x (1 + lev x (L - 1)))' % m
+    for p in list((s.get('partners') or {}).keys()) + list(((s.get('worksLayer') or {}).get('partners') or {}).keys()):
+        out[p] = None
+    W = s.get('works') or {}
+    for pid, p in (W.get('plates') or {}).items():
+        top = min(p.get('maxLevel') or 1, W.get('maxLevel') or 1)
+        out[pid] = None if top > 1 else 'a plate has no level while works.maxLevel or its maxLevel is 1'
+    R = s.get('reuse') or {}
+    if R:
+        out['reuse'] = None if (R.get('levels') or 0) > 0 else 'the Yard sale\'s rack has no level while reuse.levels is 0'
+    return out
+
+
+def book_check(s, tab=None):
+    lv = s.get('levels') or {}
+    book = lv.get('book')
+    if book is None:
+        return []
+    out = []
+    can = book_ladders(s)
+    for lad, why in sorted(can.items()):
+        if why is None and lad not in book and lad not in BOOK_NOT_SOLD:
+            out.append('levels.book: the ladder %s can be held at the works and has neither an entry nor a reason it is not sold (BOOK_NOT_SOLD; RULING2.md 30.3)' % lad)
+    for lad, e in sorted(book.items()):
+        if lad not in can:
+            out.append('levels.book.%s: no ladder of that name can be held at the works (rate.ts levelLadderOf)' % lad)
+        elif can[lad] is not None:
+            out.append('levels.book.%s: an entry for a level that does nothing: %s' % (lad, can[lad]))
+        if lad in BOOK_NOT_SOLD:
+            out.append('levels.book.%s: listed as not sold (%s) and given an entry' % (lad, BOOK_NOT_SOLD[lad]))
+        s1 = e.get('s1')
+        shares = s1 if isinstance(s1, list) else [s1]
+        if isinstance(s1, list) and len(s1) != 3:
+            out.append('levels.book.%s.s1: a list holds rungs 3, 4 and 5 (three values)' % lad)
+        for v in shares:
+            if v is None and isinstance(s1, list):
+                continue
+            if not isinstance(v, (int, float)) or isinstance(v, bool) or not (0 <= v <= 0.5):
+                out.append('levels.book.%s.s1: %r is outside 0 to 0.5 (a first step\'s share of the yard\'s income)' % (lad, v))
+        if isinstance(s1, list) and not any(isinstance(v, (int, float)) for v in s1):
+            out.append('levels.book.%s.s1: no rung has a number' % lad)
+        d = e.get('d')
+        if not isinstance(d, (int, float)) or not (0.5 <= d <= 1):
+            out.append('levels.book.%s.d: %r is outside 0.5 to 1' % (lad, d))
+        fr, to = e.get('from'), e.get('to')
+        if not isinstance(to, int) or isinstance(to, bool) or not isinstance(fr, (int, float)) or fr < 1 or fr > to:
+            out.append('levels.book.%s: from %r and to %r are not 1 <= from <= to with to a whole level' % (lad, fr, to))
+    if tab is None and os.path.exists(PLATES_TABLE):
+        tab = load(PLATES_TABLE)
+    bs = (tab or {}).get('bookShares')
+    if bs:
+        lads = bs.get('ladders') or {}
+        for lad, f in sorted(lads.items()):
+            if f.get('sold') and lad not in book:
+                out.append('levels.book: the bots\' table (plates.json bookShares) sells %s and the content has no entry' % lad)
+        for lad, e in sorted(book.items()):
+            f = lads.get(lad)
+            if not f:
+                out.append('levels.book.%s: not in the bots\' table (plates.json bookShares; yard-bot.ts --book write)' % lad)
+                continue
+            want = {'s1': f.get('s1'), 'd': f.get('d'), 'from': f.get('from'), 'to': f.get('to')}
+            got = {k: e.get(k) for k in want}
+            if got != want:
+                out.append('levels.book.%s: %s is not the bots\' table\'s %s (yard-bot.ts --book write writes both)' % (lad, json.dumps(got), json.dumps(want)))
+            s1 = e.get('s1') if isinstance(e.get('s1'), list) else [e.get('s1')] * 3
+            for i, v in enumerate(s1):
+                if isinstance(v, (int, float)) and v > 0:
+                    x = (f.get('rungs') or {}).get(str(i + 3))
+                    if not x or (x.get('yards') or 0) < 3 or x.get('se') is None or x['s1'] < 2 * x['se'] or x['s1'] <= 0:
+                        out.append('levels.book.%s: sold at rung %d, but the bots\' table does not show its step at least two standard errors above zero on three yards or more (%s)' % (lad, i + 3, json.dumps(x)))
     return out
 
 
@@ -643,6 +746,20 @@ ENTRY_SEED = -0.01   # ... and no seed below -1 % (printed by entry_rows: plates
 DARK_PAST = 9        # a gate past the ladder's nine rungs: not sold at this stage (salvage.content.ts DARK)
 
 
+def entry_ok(row, gain, e0):
+    """THE ENTRY RULE'S LAST FORM (RULING2.md 29.3 and 30.1): the mean at least 2 % of the yard's income and two standard errors
+    above zero; OR at the bar: within one standard error of 2 %, at least four standard errors above zero and no seed below
+    zero. A row without a standard error (one seed, or an older table) is read by the 2 % alone."""
+    se = row.get('se')
+    if se is None:
+        return gain >= ENTRY_SHARE * e0
+    per = row.get('perSeed') or []
+    t = gain / se if se > 0 else (float('inf') if gain > 0 else 0)
+    if gain >= ENTRY_SHARE * e0 and t >= 2:
+        return True
+    return gain >= ENTRY_SHARE * e0 - se and t >= 4 and bool(per) and min(per) >= 0
+
+
 def sold_items(s, tab):
     """(kind, key, the content's item, its plates.json row) of every plate and works-layer shop item SOLD at this stage: its gate
     a rung within the stage's top (a gate past the ladder is dark: defined, never sold; s2e-content)."""
@@ -720,8 +837,8 @@ def warnings(s, game):
             e0 = row.get('E0')
             if not e0:
                 out.append('(3) ENTRY: bots/plates.json has no E0 (the yard\'s income at its moment) for %s %s' % (kind, key))
-            elif gain < ENTRY_SHARE * e0:
-                out.append('(3) ENTRY: %s %s is sold, but its measured gain §%s an hour is %.2f %% of the yard\'s E0 §%s at its moment (at least %d %%, yard-stage2-economy.md 2.6.4, ruling 27.2 b)' % (kind, key, gain, 100 * gain / e0, e0, round(100 * ENTRY_SHARE)))
+            elif not entry_ok(row, gain, e0):
+                out.append('(3) ENTRY: %s %s is sold, but its measured gain §%s an hour (s.e. %s) is %.2f %% of the yard\'s E0 §%s at its moment: not at least %d %% and two s.e. above zero, nor at the bar (within one s.e. of %d %%, four s.e. above zero, no seed below zero) (RULING2.md 29.3, 30.1)' % (kind, key, gain, row.get('se'), 100 * gain / e0, e0, round(100 * ENTRY_SHARE), round(100 * ENTRY_SHARE)))
     else:
         out.append('(3) plate prices not checked: bots/plates.json (the payback rule\'s table, 2.6.4) does not exist yet: %d plates at first values' % len(plates))
     # (14) for the away caps: now a refusal of the schema (s2a-fix: away.ts runLongerOf stops at the stage's top rung)
@@ -818,6 +935,46 @@ def selftest():
     c = copy.deepcopy(s)
     c['worksLayer']['shop'] = [dict(i, gain_h=i['gain_h'] + 1) if i['key'] == 'plasma' else i for i in c['worksLayer']['shop']]
     expect('28.5 b: a gain_h that is not plates.json\'s is refused', any(w.startswith('(3) tool plasma: the content') for w in warnings(c, game)))
+    # s2i-book (RULING2.md 29.3, 30.1): the entry rule's last form
+    expect('30.1: 2 % and two s.e. above zero passes', entry_ok({'se': 400, 'perSeed': [-100, 3000]}, 2000, 100000))
+    expect('30.1: 2 % but under two s.e. is refused', not entry_ok({'se': 1100, 'perSeed': [5000, -1000]}, 2100, 100000))
+    expect('30.1: at the bar (1.98 %, s.e. 0.33 %, six s.e., no seed below zero) passes', entry_ok({'se': 330, 'perSeed': [10, 4000]}, 1980, 100000))
+    expect('30.1: at the bar with a seed below zero is refused', not entry_ok({'se': 330, 'perSeed': [-10, 4000]}, 1980, 100000))
+    expect('30.1: at the bar under four s.e. is refused', not entry_ok({'se': 600, 'perSeed': [10, 4000]}, 1980, 100000))
+    expect('30.1: more than one s.e. under 2 % is refused', not entry_ok({'se': 100, 'perSeed': [10, 4000]}, 1850, 100000))
+    # s2i-book (RULING2.md 30.3): the book
+    expect('30.3: the shipped book passes its check', book_check(s) == [])
+    can = book_ladders(s)
+    expect('30.3: the ladders held at the works are listed (crew roles, the four machines, the four partners)', all(k in can for k in ('cutter', 'hand', 'driver', 'hand_stripper', 'stripper', 'bench', 'crucible', 'partnerFarm', 'partnerDemolition', 'partner.garage', 'partner.plumbing')))
+    expect('30.3: the hand stripper\'s level does nothing by the content (no lev)', can.get('hand_stripper') is not None)
+    sold_lads = sorted(s['levels']['book'])
+    if sold_lads:
+        lad = sold_lads[0]
+        c = copy.deepcopy(s)
+        del c['levels']['book'][lad]
+        expect('30.3: a ladder held at the works with no entry and no reason is refused (%s)' % lad, any(('the ladder %s can be held' % lad) in w for w in book_check(c, {})))
+        expect('30.3: a ladder the bots\' table sells and the content lacks is refused (%s)' % lad, any(('sells %s' % lad) in w for w in book_check(c)))
+        for key, val, what in (('s1', 0.6, 'outside 0 to 0.5'), ('d', 0.4, 'outside 0.5 to 1'), ('from', 9999, 'from')):
+            c = copy.deepcopy(s)
+            c['levels']['book'][lad][key] = val
+            expect('30.3: %s %s is refused' % (key, val), any(what in w for w in book_check(c, {})))
+        c = copy.deepcopy(s)
+        e = c['levels']['book'][lad]
+        e['s1'] = [x * 1.1 if isinstance(x, (int, float)) else x for x in e['s1']] if isinstance(e['s1'], list) else e['s1'] * 1.1
+        expect('30.3: an entry that is not the bots\' table is refused', any('is not the bots\' table' in w for w in book_check(c)))
+    c = copy.deepcopy(s)
+    c['levels']['book']['hand_stripper'] = {'s1': 0.02, 'd': 0.8, 'from': 1, 'to': 3}
+    expect('30.3: an entry for a level that does nothing is refused', any('levels.book.hand_stripper: an entry for a level that does nothing' in w for w in book_check(c, {})))
+    c = copy.deepcopy(s)
+    c['levels']['book']['partnerFarm'] = {'s1': 0.02, 'd': 0.8, 'from': 1, 'to': 3}
+    expect('30.3: an entry for a ladder listed not sold (the farm, ruling 17) is refused', any('partnerFarm: listed as not sold' in w for w in book_check(c, {})))
+    c = copy.deepcopy(s)
+    c['levels']['book']['nosuch'] = {'s1': 0.02, 'd': 0.8, 'from': 1, 'to': 3}
+    expect('30.3: an entry for no ladder is refused', any('levels.book.nosuch: no ladder' in w for w in book_check(c, {})))
+    tb = {'bookShares': {'ladders': {'cutter': {'s1': [0.03, None, None], 'd': 0.8, 'from': 1, 'to': 5, 'sold': True, 'rungs': {'3': {'yards': 2, 's1': 0.03, 'se': 0.001}}}}}}
+    c = copy.deepcopy(s)
+    c['levels']['book'] = {'cutter': {'s1': [0.03, None, None], 'd': 0.8, 'from': 1, 'to': 5}}
+    expect('30.3: a rung sold on fewer than three yards is refused', any('sold at rung 3, but the bots' in w for w in book_check(c, tb)))
     expect('the rung bill is printed for rungs 3 and 4 (it refuses nothing)', sum(1 for r in entry_rows(s) if r.startswith('the rung-')) == 2 and bool(tab.get('purse')))
     ws = warnings(s, game)
     expect('(3) warns while bots/plates.json is missing', os.path.exists(PLATES_TABLE) or any(w.startswith('(3)') for w in ws))

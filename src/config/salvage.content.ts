@@ -78,7 +78,7 @@ const PLATES: Plates = {
     // rate: about the light iron the yard makes at rung 3 (E13: version 1's 72 t/h met about 8 t/h of feed) (first value, content2)
     out: { li: [["lib", 1]] }, rate_kg_s: 2.5, lev: 0.15, maxLevel: 10, inbuf: 500, tray: 2000,
   },
-  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 37900, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
+  analyser: { row: "yard", slot: 3, plot: "scalehouse", gate: "rung3", needs: null, price: 52000, financeable: true, deliver_s: 6, kind: "assay", in: [], feedBy: null, lev: 0, maxLevel: 1, inbuf: 0, tray: 0 },
   // s2e-line (yard-stage2-economy.md 2.7 to 2.9, 3.1; RULING2.md 27.3 D1): the depollution bay is PART OF THE SHREDDER LINE (the
   // shredder's `with`): no shop item on sale of its own (gate past the ladder), ordered, set down and started up with the shredder.
   // Its plot stands beside the shredder in the back field; the hook-lift sets each car down on its own apron (feedBy "truck": no
@@ -100,7 +100,7 @@ const PLATES: Plates = {
   // s2e-line: THE SHREDDER LINE, one purchase (the shredder's shop item, price and card; the depollution bay comes `with` it). First
   // price 137,000 (T8's shredder gain, measured with the bay owned and cars arriving, x tau_4 36 h; the bots measure the line as one).
   shredder: {
-    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 378000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
+    row: "shredder", slot: 1, plot: "shredder", gate: "rung4", needs: null, price: 333000, financeable: true, deliver_s: 60, kind: "rate", in: ["cbody", "appl", "li"], feedBy: "bays", with: ["depollution"],
     out: { li: [["shred", 0.95]], cbody: [["shred", 0.72], ["stream", 0.28]], appl: [["shred", 0.72], ["stream", 0.28]] },
     waste: { li: [["carrier", 0.05]] }, // the non-magnetic stream goes to the carrier as shredder residue while no eddy current is owned (2.8)
     feeds: { stream: "eddy" }, rate_kg_s: 8.33, lev: 0.15, maxLevel: 10, inbuf: 2000, tray: 0,
@@ -404,7 +404,7 @@ const WORKS_LAYER: WorksLayerInput = {
     // s2f-plasma-cars (RULING2.md 28.7 a): the price STANDS (86,500): the hand's measure of the boss's own tool on 2 seeds is
     // §802 an hour, 1.8 % of E0, UNDER the entry rule's 2 % (build-yard.py refuses it): for the lead (notes/s2f-plasma-cars.md).
     // The shredder line's price (667,000) is tau_4 x its lasting gain with the recovery truck's cars (2 seeds), a FIRST VALUE.
-    { key: "plasma", kind: "tool", place: "rack", price: 25400, gate: "rung3", deliver_s: 6, arrive: "van" },
+    { key: "plasma", kind: "tool", place: "rack", price: 20900, gate: "rung3", deliver_s: 6, arrive: "van" },
     ...Object.entries(PLATES).map(([key, p]) => ({ key, kind: "works" as const, place: p.plot, price: p.price, gate: p.gate, deliver_s: p.deliver_s, arrive: "machineFlatbed" as const, ...(p.needs ? { needsItem: p.needs } : {}) })),
   ],
   // the plasma cutter: tier 4, P 60, on every material (B4, T8)
@@ -1530,6 +1530,10 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     // s2e-content (yard-stage2-economy.md 2.11; RULING2.md 27.2 c, 27.4): FROM THE WORKS' OPENING a level is sold only while its gain is at
     // least minShareI x I; `book` holds the bots' measured ladders (g1 x d^(L-1) by ladder; empty until they write it). Both read only
     // from the works' opening (levelGain, the levels' owner) and stripped at release.stage 1.
+    // s2i-book (28 Nov; RULING2.md 30.3): THE BOOK, every level's gain from the works' opening: gain = s1 x d^(L-1) x I, by ladder
+    // { s1: [rung 3, rung 4, rung 5] (a share of rated income; 0 = not sold at that rung; null = no yard measured it: the rung reads
+    // its nearest), d, from, to }. WRITTEN BY yard-bot.ts --book write (the table beside it: scripts/content/bots/plates.json
+    // bookShares; build-yard.py checks the two agree and every ladder held at the works has an entry or a reason it has none).
     minShareI: 0.01,
     book: {},
   },

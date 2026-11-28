@@ -788,10 +788,10 @@ const LADDERS: { ladder: string; at: 'r3s1' | 'r4entry'; role?: 'driver' | 'cutt
   { ladder: 'hand', at: 'r3s1', role: 'hand' },
   { ladder: 'partner.garage', at: 'r4entry', partner: 'partner.garage' },
 ];
-/** The ladders rated income's engineer reported FAILING the driver-level check (notes/s2e-rate.md, G2 R): only these are written into the content's levels.book by --book write. */
-const BOOK_FAILING = ['driver'];
 /** The full measurement (RULING2.md 28.8, after a13a006): EVERY sold item's row and price is written, unless it misses the entry rule (then its row and price stand and it is reported to the lead). */
-const WRITE_ITEMS: string[] | null = ['induction', 'rotary', 'copper'];
+// s2i-book (RULING2.md 30.1): the three prices that moved by more than their error and a tenth, from the same fifteen seeds
+// (P1..P5 of s2g-measure): the analyser, the plasma (its third moment) and the shredder line; the halls were written by s2g-measure.
+const WRITE_ITEMS: string[] | null = ['analyser', 'plasma', 'shredder'];
 /** The lead's line of 18:30 (3): the rotary hall stays as it is for the table whatever its mean (he rules on it with the fifteen seeds). */
 const STAND_ITEMS: string[] = [];
 const f2s = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : '-');
@@ -803,11 +803,21 @@ function ladderTarget(g: R.SalvageGame, L: (typeof LADDERS)[number]): LevelTarge
   return m ? ({ kind: 'crew', id: m.id } as LevelTarget) : null;
 }
 function levelOf(g: R.SalvageGame, t: LevelTarget): number {
+  // s2i-book: a first-yard machine's level too (it read 0, so stepUp never measured a machine: the borrower's rows had none)
+  if (t.kind === 'machine') return g.salvage.machines[t.machine]?.owned ? g.salvage.machines[t.machine].level ?? 0 : 0;
   return t.kind === 'partner' ? g.salvage.partners[t.partner]?.level ?? 0 : t.kind === 'crew' ? g.salvage.crew.find((m) => m.id === t.id)?.level ?? 0 : 0;
+}
+/**
+ * s2i-book: a book entry that SELLS a ladder in a measuring branch at the given share of I (RULING2.md 30.3's shape { s1, d,
+ * from, to }, `to` far off so no step is the top), with the old shape's g1 beside it so the same tool runs on a copy of the
+ * tree from before the book's rule (a measurement on the stage as last measured).
+ */
+function sellingEntry(s1: number, g1: number): Record<string, number> {
+  return { s1, d: 1, from: 1, to: 1e9, g1 };
 }
 function stepUp(cfg: R.SalvageConfig, g: R.SalvageGame, t: LevelTarget, ladder: string): R.SalvageGame | null {
   const lv = cfg.salvage.levels as unknown as { book?: Record<string, unknown> };
-  const sell = { ...cfg, salvage: { ...cfg.salvage, levels: { ...cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [ladder]: { g1: 1e6, d: 1 } } } } } as R.SalvageConfig;
+  const sell = { ...cfg, salvage: { ...cfg.salvage, levels: { ...cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [ladder]: sellingEntry(1000, 1e6) } } } } as R.SalvageConfig;
   const ck = levelCheck(sell, g, t);
   if (ck.price === null || ck.refusal) return null;
   const after = R.level(sell, g, t, ck.price, g.salvage.t);
@@ -871,6 +881,8 @@ function personSitting(cfg: R.SalvageConfig, snap: BotSnap, opts: BotOptions, se
 type BorrowLevel = { target: LevelTarget; label: string; L: number; gain: number; share: number; sold: boolean; price: number; dE: number; dEshare: number; dT: number; dTshare: number; calcT: number };
 type BorrowRow = { n: number; h: number; rung: number; I: number; cash: number; E0: number; T0: number; cap0: number; levels: BorrowLevel[] };
 function levelTargets(g: R.SalvageGame): { t: LevelTarget; label: string }[] {
+  // s2i-book: --borrower machines measures the first yard's three machines' levels only (the ladders with no data in hand)
+  if (arg('borrower') === 'machines') return (['stripper', 'bench', 'crucible'] as const).filter((m) => g.salvage.machines[m]?.owned).map((m) => ({ t: { kind: 'machine', machine: m } as LevelTarget, label: m }));
   return [
     ...g.salvage.crew.map((m) => ({ t: { kind: 'crew', id: m.id } as LevelTarget, label: `${m.role}:${m.id}` })),
     ...Object.keys(g.salvage.partners).filter((p) => g.salvage.partners[p]?.open).map((p) => ({ t: { kind: 'partner', partner: p } as LevelTarget, label: p })),
@@ -909,7 +921,7 @@ function forceLevels(b: Bot, list: LevelTarget[]): string[] {
     const q = levelQuote(b.cfg, b.g, t);
     if (!q) { out.push(`${JSON.stringify(t)}: no level`); continue; }
     const lv = b.cfg.salvage.levels as unknown as { book?: Record<string, unknown> };
-    const sell = { ...b.cfg, salvage: { ...b.cfg.salvage, levels: { ...b.cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [levelLadderOf(b.g.salvage, t)]: { g1: Math.max(q.gain, 2e-6), d: 1 } } } } } as R.SalvageConfig;
+    const sell = { ...b.cfg, salvage: { ...b.cfg.salvage, levels: { ...b.cfg.salvage.levels, minShareI: 0, book: { ...(lv.book ?? {}), [levelLadderOf(b.g.salvage, t)]: sellingEntry(Math.max(q.gain, 2e-6) / Math.max(1e-9, q.I), Math.max(q.gain, 2e-6)) } } } } as R.SalvageConfig;
     const ck = levelCheck(sell, b.g, t);
     if (ck.price === null || ck.refusal) { out.push(`${JSON.stringify(t)}: refused ${ck.refusal?.key ?? '-'} (price ${q.price}, cash ${Math.round(b.g.cash)})`); continue; }
     const cash0 = b.g.cash;
@@ -1940,7 +1952,10 @@ function writePlates(all: Summary[], gameFile: string, write: boolean): string[]
     const tSe = se ? dE / se : NaN;
     // s2g-measure (RULING2.md 29.3): THE ENTRY RULE'S FORM on the lasting gain: the mean at least 2 % of the yard's income AND
     // at least two standard errors above zero
-    const entryOk = !!E0 && dE >= 0.02 * E0 && Number.isFinite(tSe) && tSe >= 2;
+    // s2i-book (RULING2.md 30.1, THE ENTRY RULE'S LAST FORM): or, AT THE BAR, a mean within one standard error of 2 % that is
+    // at least four standard errors above zero with no seed below zero (build-yard.py's check (3) reads the same)
+    const atBar = !!E0 && se !== null && dE >= 0.02 * E0 - se && Number.isFinite(tSe) && tSe >= 4 && belowZero === 0;
+    const entryOk = (!!E0 && dE >= 0.02 * E0 && Number.isFinite(tSe) && tSe >= 2) || atBar;
     // RULING2.md 28.7: prices written ONLY for the hook-lift, the analyser, the induction hall and the rotary hall (the plasma's
     // and the line's stand until they are measured in their new form); the entry rule's verdict is printed for every item
     // s2g-measure (after ruling 29): prices written ONLY for the three halls (the other items' prices stand), each only if it passes
@@ -2013,23 +2028,143 @@ function bookTable(all: Summary[]): Record<string, BookT> {
 }
 
 /**
- * --book write: the content's levels.book (src/config/salvage.content.ts) gets the measured ladder ONLY for the ladders rated
- * income's engineer reported failing the driver-level check (BOOK_FAILING; ruling 27.4: the book is read for a ladder where
- * the check fails); one exact replacement of the `book:` line, then `python3 scripts/content/build-yard.py` writes game.json.
+ * s2i-book (RULING2.md 30.3): THE BOOK AS SHARES. Every measured step of a ladder, as a share of the yard's RATED income at
+ * its moment (the one I the rule multiplies by: gain = s1 x d^(L-1) x I), from two sources in the runs read:
+ * - `book` rows (--book, the normal hand): three steps from the level held, L0, L0 + 1, L0 + 2, at the ladder's planned moment;
+ * - `borrow` rows (--borrower): one step of every level the cards show, at the returns of sittings 3 and 4, by target (a crew
+ *   member's step is its role's ladder: two cutters give two points of `cutter`).
+ * A cluster is one run's yard (bot and seed) of one source.
  */
-function writeBook(all: Summary[]): string[] {
-  const t = bookTable(all);
-  // s2e-measure (28.4 c): EVERY ladder whose calculated gain is outside 0.7 to 1.4 of its measured first step (and a book
-  // entry kept where the measurement has no row)
-  void BOOK_FAILING;
-  const want = Object.fromEntries(Object.entries(t).filter(([, v]) => v.fails && v.g1 > 0 && v.gains[0] >= 0.01 * v.I).map(([k, v]) => [k, { g1: v.g1, d: v.d, at: v.at }]));
+type BookObs = { ladder: string; rung: number; cluster: string; L: number; share: number; src: 'book' | 'borrow' };
+function bookObs(all: Summary[]): BookObs[] {
+  const out: BookObs[] = [];
+  for (const r of all) {
+    const yardOf = `${r.spec.bot ?? 'normal'}:${r.spec.seed}`;
+    for (const q of (r.extra.book as BookRow[] | undefined) ?? []) {
+      q.gains.forEach((g, k) => {
+        if (Number.isFinite(g) && q.I > 0) out.push({ ladder: q.ladder, rung: q.rung, cluster: `book:${yardOf}`, L: q.L0 + k, share: g / q.I, src: 'book' });
+      });
+    }
+    for (const b of (r.extra.borrow as BorrowRow[] | undefined) ?? []) {
+      for (const l of b.levels) {
+        const t = l.target;
+        const ladder = t.kind === 'crew' ? l.label.split(':')[0] : t.kind === 'partner' ? t.partner : t.kind === 'machine' ? t.machine : t.kind === 'plate' ? t.plate : 'reuse';
+        if (Number.isFinite(l.dEshare)) out.push({ ladder, rung: b.rung, cluster: `borrow:${yardOf}`, L: l.L, share: l.dEshare, src: 'borrow' });
+      }
+    }
+  }
+  return out;
+}
+/** The book's decay bounds (build-yard.py checks d within 0.5 to 1) and the decay not believed from three noisy steps (30.3, the step's text). */
+const BOOK_D_MIN = 0.5;
+const BOOK_D_TRUST = 0.95;
+/** The crew ladders whose three-step rows give the pooled decay. */
+const BOOK_CREW = ['cutter', 'hand', 'driver'];
+/** Fewer yards than this at a rung: no standard error worth the name, so the step is not shown two s.e. above zero there. */
+const BOOK_MIN_YARDS = 3;
+/**
+ * The fitted decay of mean step profiles (each its own amplitude, one common d; least squares on a grid of 0.001 from 0.5 to
+ * 1): profiles are the mean share of the first, second and third step over a ladder's three-step rows, each divided by its
+ * own mean so that ladders of different size weigh alike when pooled.
+ */
+function fitDecay(profiles: number[][]): number {
+  let best = { d: 1, sse: Infinity };
+  for (let i = 0; i <= 500; i++) {
+    const d = BOOK_D_MIN + i / 1000;
+    let sse = 0;
+    for (const p of profiles) {
+      const w = p.map((_, k) => d ** k);
+      const a = p.reduce((s, y, k) => s + y * w[k], 0) / w.reduce((s, x) => s + x * x, 0);
+      sse += p.reduce((s, y, k) => s + (y - a * w[k]) ** 2, 0);
+    }
+    if (sse < best.sse - 1e-15) best = { d, sse };
+  }
+  return best.d;
+}
+function stepProfile(obs: BookObs[], ladder: string): number[] | null {
+  const xs = obs.filter((o) => o.src === 'book' && o.ladder === ladder);
+  if (!xs.length) return null;
+  const byCl = new Map<string, BookObs[]>();
+  for (const o of xs) byCl.set(o.cluster, [...(byCl.get(o.cluster) ?? []), o]);
+  const prof = [0, 1, 2].map((k) => {
+    const v = [...byCl.values()].map((os) => { const L0 = Math.min(...os.map((o) => o.L)); return os.find((o) => o.L === L0 + k)?.share ?? NaN; }).filter(Number.isFinite);
+    return v.length ? v.reduce((a, x) => a + x, 0) / v.length : NaN;
+  });
+  if (prof.some((v) => !Number.isFinite(v))) return null;
+  const m = prof.reduce((a, x) => a + x, 0) / 3;
+  return m > 0 ? prof.map((v) => v / m) : null;
+}
+type BookRung = { yards: number; s1: number; se: number; below0: number; sold: boolean; bySrc: Record<string, { yards: number; s1: number }> };
+type BookFit = { d: number; dFitted: number | null; pooled: boolean; from: number; to: number; rungs: Record<number, BookRung>; s1: (number | null)[]; sold: boolean };
+function bookFit(all: Summary[]): { pooledD: number; fits: Record<string, BookFit> } {
+  const obs = bookObs(all);
+  const crewProfiles = BOOK_CREW.map((l) => stepProfile(obs, l)).filter((p): p is number[] => !!p);
+  const pooledD = crewProfiles.length ? fitDecay(crewProfiles) : 1;
+  const fits: Record<string, BookFit> = {};
+  for (const ladder of [...new Set(obs.map((o) => o.ladder))].sort()) {
+    const xs = obs.filter((o) => o.ladder === ladder);
+    const prof = stepProfile(obs, ladder);
+    const dFitted = prof ? fitDecay([prof]) : null;
+    const pooled = dFitted === null || dFitted > BOOK_D_TRUST;
+    const d = pooled ? pooledD : dFitted!;
+    const rungs: Record<number, BookRung> = {};
+    const s1: (number | null)[] = [];
+    for (const rung of [3, 4, 5]) {
+      const at = xs.filter((o) => o.rung === rung);
+      if (!at.length) { s1.push(null); continue; }
+      // one value a yard: the mean of its steps brought back to level 1 (share / d^(L-1)); s1 the mean over yards, its s.e.
+      const per = (os: BookObs[]) => { const m = new Map<string, number[]>(); for (const o of os) m.set(o.cluster, [...(m.get(o.cluster) ?? []), o.share / d ** (Math.max(1, o.L) - 1)]); return [...m.values()].map((v) => v.reduce((a, x) => a + x, 0) / v.length); };
+      const ys = per(at);
+      const m = ys.reduce((a, x) => a + x, 0) / ys.length;
+      const se = ys.length > 1 ? Math.sqrt(ys.reduce((a, x) => a + (x - m) ** 2, 0) / (ys.length - 1) / ys.length) : Infinity;
+      const sold = ys.length >= BOOK_MIN_YARDS && m > 0 && m >= 2 * se;
+      const bySrc: BookRung['bySrc'] = {};
+      for (const src of ['book', 'borrow'] as const) { const v = per(at.filter((o) => o.src === src)); if (v.length) bySrc[src] = { yards: v.length, s1: v.reduce((a, x) => a + x, 0) / v.length }; }
+      rungs[rung] = { yards: ys.length, s1: m, se, below0: ys.filter((y) => y < 0).length, sold, bySrc };
+      s1.push(sold ? +m.toFixed(4) : 0);
+    }
+    const Ls = xs.map((o) => o.L);
+    fits[ladder] = { d: +d.toFixed(3), dFitted, pooled, from: Math.min(...Ls), to: Math.max(...Ls) + 2, rungs, s1, sold: s1.some((v) => (v ?? 0) > 0) };
+  }
+  return { pooledD, fits };
+}
+
+/**
+ * --book (print) / --book write (s2i-book; RULING2.md 30.3): the book as shares from the runs read (bookFit), printed by ladder
+ * and rung; with `write`, the content's levels.book (src/config/salvage.content.ts, one exact replacement of the one-line
+ * `book:` entry) gets { s1: [rung 3, rung 4, rung 5], d, from, to } for every ladder SOLD at some rung (s1 0 where its step
+ * is not two standard errors above zero, or fewer than three yards measured it; null where no run measured that rung: the
+ * rule then reads its nearest rung's); a ladder sold at no rung gets no entry (not sold at the works). Then
+ * `python3 scripts/content/build-yard.py` writes game.json and checks the book.
+ */
+function writeBook(all: Summary[], write: boolean): string[] {
+  const { pooledD, fits } = bookFit(all);
+  const pc = (v: number) => (Number.isFinite(v) ? `${(100 * v).toFixed(2)} %` : '-');
+  const lines = [`   THE BOOK AS SHARES (RULING2.md 30.3; gain = s1 x d^(L-1) x I): the crew ladders' pooled decay ${pooledD.toFixed(3)}`];
+  for (const [k, f] of Object.entries(fits)) {
+    lines.push(`     ${k.padEnd(18)} d ${f.d}${f.pooled ? ` (POOLED: fitted ${f.dFitted === null ? 'none (no three-step rows)' : f.dFitted.toFixed(3)})` : ' (fitted)'}  levels ${f.from} to ${f.to - 2}: from ${f.from} to ${f.to}  s1 [${f.s1.map((v) => (v === null ? 'null' : v)).join(', ')}]  ${f.sold ? 'SOLD' : 'NOT SOLD at the works'}`);
+    for (const [r, x] of Object.entries(f.rungs)) lines.push(`        rung ${r}: ${x.yards} yards  s1 ${pc(x.s1)} (s.e. ${pc(x.se)}, ${Number.isFinite(x.se) && x.se > 0 ? (x.s1 / x.se).toFixed(1) : '-'} s.e. above zero, ${x.below0} yards below zero)  ${Object.entries(x.bySrc).map(([s, v]) => `${s} ${v.yards} yards ${pc(v.s1)}`).join(', ')}  ${x.sold ? 'sold' : x.yards < BOOK_MIN_YARDS ? 'NOT SOLD (fewer than three yards)' : 'NOT SOLD (not two s.e. above zero)'}`);
+  }
+  if (!write) return lines;
   const file = path.join(ROOT, 'src/config/salvage.content.ts');
   const src = fs.readFileSync(file, 'utf8');
   const re = /\n    book: \{[^\n]*\},\n/;
-  if (!re.test(src)) return ['levels.book: the `book:` line of salvage.content.ts was not found; nothing written'];
-  const body = Object.entries(want).map(([k, v]) => `${JSON.stringify(k)}: { g1: ${v.g1}, d: ${v.d}, at: ${JSON.stringify(v.at)} }`).join(', ');
+  if (!re.test(src)) return [...lines, 'levels.book: the `book:` line of salvage.content.ts was not found; nothing written'];
+  const want = Object.entries(fits).filter(([, f]) => f.sold);
+  const body = want.map(([k, f]) => `${JSON.stringify(k)}: { s1: [${f.s1.map((v) => (v === null ? 'null' : String(v))).join(', ')}], d: ${f.d}, from: ${f.from}, to: ${f.to} }`).join(', ');
   fs.writeFileSync(file, src.replace(re, `\n    book: {${body ? ` ${body} ` : ''}},\n`));
-  return [`levels.book written (${Object.keys(want).join(', ') || 'nothing'}): run python3 scripts/content/build-yard.py`];
+  // the table beside the plates (scripts/content/bots/plates.json `bookShares`): build-yard.py checks the content's book against it
+  const pj = path.join(ROOT, 'scripts/content/bots/plates.json');
+  const tab = JSON.parse(fs.readFileSync(pj, 'utf8')) as Record<string, unknown>;
+  const rnd = (v: number) => (Number.isFinite(v) ? +v.toFixed(5) : null);
+  tab.bookShares = {
+    $comment: 's2i-book (RULING2.md 30.3): the book as shares, written by yard-bot.ts --book write from the runs read (book rows: three steps from the level held at the planned moment; borrow rows: one step of every level the cards show at sittings 3 and 4). Per ladder and rung: yards measured, s1 (the mean over yards of share / d^(L-1), share = the measured lasting gain over rated income at the moment), its standard error, yards below zero, sold (at least three yards, s1 above zero and at least two s.e. above it). d fitted on the three-step rows\' mean profile, or the crew ladders\' pooled decay where none or above 0.95. from / to: the lowest level measured and the highest + 2. The content\'s levels.book holds the sold ladders\' { s1, d, from, to } exactly.',
+    pooledD: +pooledD.toFixed(3),
+    runs: [...new Set(all.map((r) => `${r.spec.bot ?? 'normal'}:${r.spec.seed}`))].length,
+    ladders: Object.fromEntries(Object.entries(fits).map(([k, f]) => [k, { s1: f.s1, d: f.d, from: f.from, to: f.to, sold: f.sold, pooled: f.pooled, dFitted: f.dFitted === null ? null : +f.dFitted.toFixed(3), rungs: Object.fromEntries(Object.entries(f.rungs).map(([r, x]) => [r, { yards: x.yards, s1: rnd(x.s1), se: rnd(x.se), below0: x.below0, sold: x.sold, bySrc: Object.fromEntries(Object.entries(x.bySrc).map(([s, v]) => [s, { yards: v.yards, s1: rnd(v.s1) }])) }])) }])),
+  };
+  fs.writeFileSync(pj, `${JSON.stringify(tab, null, 1)}\n`);
+  return [...lines, `levels.book written (${want.map(([k]) => k).join(', ') || 'nothing'}) and plates.json bookShares: run python3 scripts/content/build-yard.py`];
 }
 
 function runOne(base: R.SalvageConfig, spec: Spec): Summary {
@@ -2620,7 +2755,7 @@ async function main(): Promise<void> {
     soldKeys = new Set(soldItems(cfgG).map((i) => i.key));
     contentAtRunsKappa = ((cfgG.salvage as unknown as { rate?: { kappa?: (number | null)[] } }).rate?.kappa ?? null);
     const platesLines = arg('plates') ? writePlates(all2, gameFile, arg('plates') === 'write') : null;
-    const bookLines = arg('book') === 'write' ? writeBook(all2) : [];
+    const bookLines = arg('book') ? writeBook(all2, arg('book') === 'write') : [];
     const json2 = arg('json');
     if (json2) fs.writeFileSync(path.resolve(json2), JSON.stringify(all2));
     const seeds2 = from ? [...new Set(all2.map((r) => r.spec.seed))].sort((a, b) => a - b) : seeds;

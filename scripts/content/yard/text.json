@@ -140,7 +140,7 @@
     { "term": "Analyser", "fromRung": 3, "line": "A hand-held instrument that names a metal's alloy in seconds." },
     { "term": "Assay", "line": "A lab test that measures how much metal a lot holds." },
     { "term": "Bag-house filter", "fromRung": 3, "line": "Fabric filters that catch the dust in a furnace's fumes." },
-    { "term": "Bale", "fromRung": 3, "line": "Light iron pressed into a dense block for loading." },
+    { "term": "Bale", "fromRung": 3, "item": "baler", "line": "Light iron pressed into a dense block for loading." },
     { "term": "Bare bright", "line": "Clean, bare, unalloyed copper wire: the best copper grade." },
     { "term": "Bay", "line": "Where one grade waits, weighed in, for the merchant's flatbed." },
     { "term": "Brass", "line": "An alloy of copper and zinc." },
@@ -152,7 +152,7 @@
     { "term": "Depolluted", "line": "A car with its fluids, battery, tyres and airbags taken out." },
     { "term": "Depollution bay", "fromRung": 3, "line": "Where a car's fluids, battery and airbags are taken out." },
     { "term": "Dross", "line": "The crust skimmed off molten metal; it still holds metal." },
-    { "term": "Eddy current", "fromRung": 3, "line": "A spinning magnet that throws non-ferrous metal out of a stream." },
+    { "term": "Eddy current", "fromRung": 3, "item": "eddy", "line": "A spinning magnet that throws non-ferrous metal out of a stream." },
     { "term": "Ferrous", "line": "Holding iron, so a magnet picks it up." },
     { "term": "Foundry", "line": "A works that melts metal and casts it into shapes." },
     { "term": "Grade", "line": "A named kind of scrap that is bought and sold as one." },
@@ -172,14 +172,14 @@
     { "term": "Radiation portal", "line": "A gate that checks every load for radioactive sources." },
     { "term": "Rota", "line": "The board in the office that shows who works the yard." },
     { "term": "Salt flux", "fromRung": 3, "line": "Salt that covers molten aluminium in a rotary furnace." },
-    { "term": "Sensor sorter", "fromRung": 3, "line": "A machine that sorts metals by sight with jets of air." },
+    { "term": "Sensor sorter", "fromRung": 3, "item": "sorter", "line": "A machine that sorts metals by sight with jets of air." },
     { "term": "Shred", "fromRung": 3, "line": "Fist-sized pieces of steel from a shredder." },
     { "term": "Shredder", "line": "A large mill that tears car bodies into small pieces." },
     { "term": "Stainless", "line": "Steel with chromium and nickel that resists rust." },
     { "term": "Stripper", "line": "A machine that cuts insulation off cable to free the copper." },
     { "term": "Supply deal", "line": "An agreement to deliver a grade each day at a price locked at signing." },
-    { "term": "Twitch", "fromRung": 3, "line": "Shredded aluminium sorted from zorba." },
+    { "term": "Twitch", "fromRung": 3, "item": "twitch", "line": "Shredded aluminium sorted from zorba." },
     { "term": "Weighbridge", "line": "The large scale a truck drives over, loaded and empty." },
-    { "term": "Zorba", "fromRung": 3, "line": "The mixed non-ferrous metal from a shredder." }
+    { "term": "Zorba", "fromRung": 3, "item": "zorba", "line": "The mixed non-ferrous metal from a shredder." }
   ]
 }

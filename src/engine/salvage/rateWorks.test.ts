@@ -73,12 +73,18 @@ function steps(cfg: SalvageConfig, g0: SalvageGame): [string, SalvageGame][] {
   return out;
 }
 
-function noFall(cfg: SalvageConfig, g: SalvageGame): { n: number; falls: string[] } {
+function noFall(cfg0: SalvageConfig, g: SalvageGame): { n: number; falls: string[]; levels: number } {
+  // s2i-levels (RULING2.md 30.3): from the works' opening a level is sold only by the book; a test book sells every ladder of
+  // the state (just above the 1 % bar) so that every level is in the walk (the book prices; it moves no I).
+  const book: Record<string, { s1: number; d: number; from: number; to: number }> = {};
+  for (const m of g.salvage.crew) book[levelLadderOf(g.salvage, { kind: 'crew', id: m.id })] = { s1: 0.011, d: 1, from: 1, to: 99 };
+  for (const id of ['stripper', 'bench', 'crucible', ...Object.keys(g.salvage.partners)]) book[id] = { s1: 0.011, d: 1, from: 1, to: 99 };
+  const cfg = { ...cfg0, salvage: { ...cfg0.salvage, levels: { ...cfg0.salvage.levels, book } } } as SalvageConfig;
   const I0 = I(cfg, g);
   const falls: string[] = [];
   const all = steps(cfg, g);
   for (const [what, h] of all) if (I(cfg, h) < I0 - 0.005) falls.push(`${what}: ${I0} -> ${I(cfg, h)}`);
-  return { n: all.length, falls };
+  return { n: all.length, falls, levels: all.filter(([w]) => w.startsWith('level')).length };
 }
 
 /** One bots' state of the shipped content at stage 2: the normal hand, seed 1, played to the works' opening, then one absence (a rung-3 return). */
@@ -237,7 +243,7 @@ describe('levelGain (RULING2.md 30.3, s2i-levels): THE BOOK for every ladder, s1
     expect(levelGain(c0, s, tg, 1000)).toBe(0);
   });
 
-  it('s1 by rung [r3, r4, r5]: the rung's own number; a rung without one reads its nearest other rung's (the lower on a tie)', () => {
+  it('s1 by rung [r3, r4, r5]: the rung\'s own number; a rung without one reads its nearest other rung\'s (the lower on a tie)', () => {
     const cfg = worksCfg();
     const g = r4Game();
     const c = C(cfg, g);
@@ -283,6 +289,7 @@ describe('no purchase, hire or level lowers I (ruling 17; every step of the walk
     expect(worksOpened(g.salvage)).toBe(true);
     const r = noFall(cfg, g);
     expect(r.n).toBeGreaterThan(5);
+    expect(r.levels).toBeGreaterThan(0);
     expect(r.falls).toEqual([]);
   }, 240_000);
 });

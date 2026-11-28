@@ -396,6 +396,45 @@ export const TEXT_KEYS = {
   ],
   /** 2.16, 4.9: rewarded ads. */
   ad: ['card.ad.spot', 'card.ad.bonus', 'card.ad.video', 'card.ad.take', 'card.ad.amount', 'card.ad.notReady'],
+
+  // ============================================================================ STAGE 2 SCREENS (WORDS-SETUP, 28 November; PLAN2 2.2)
+  // The 17 word families of the works' screens: each group's words live in src/ui/salvage/strings/<family>.ts (spread into
+  // TEXT by strings.ts) and its boxes in src/ui/salvage/rooms/<family>.ts; from wave 1 each family's package owns its two
+  // files, and a new key of a family is added here by the batch's SEAM row (a `[seam]` line in requests.md).
+  /** plots family (src/ui/salvage/strings/plots.ts; rooms ../../ui/salvage/rooms/plots.ts): PLAN2 2.2, WORDS-SETUP. */
+  famPlots: ['card.works.earns', 'card.works.pays', 'card.works.arrivesIn', 'card.works.step.locked', 'card.works.step.forSale', 'card.works.step.arriving', 'card.works.step.startUp', 'card.works.step.working', 'card.notice.levelsWorks'],
+  /** halls family (src/ui/salvage/strings/halls.ts; rooms ../../ui/salvage/rooms/halls.ts): PLAN2 2.2, WORDS-SETUP. */
+  famHalls: ['card.works.selfPour', 'card.heat.empty', 'card.heat.filling', 'card.heat.heating', 'card.heat.ready', 'card.heat.pour', 'card.heat.cooling', 'card.heat.fromBays', 'card.heat.ingots', 'card.works.recipeInUse', 'card.works.recipePin', 'chip.poured', 'chip.cooling'],
+  /** line family (src/ui/salvage/strings/line.ts; rooms ../../ui/salvage/rooms/line.ts): PLAN2 2.2, WORDS-SETUP. */
+  famLine: ['title.works.shredderLine', 'card.line.every', 'card.line.nextCar', 'card.line.cashShort', 'card.line.apronTaken', 'card.line.coming', 'card.line.stageWhole', 'card.line.stageDraining', 'card.line.stageShell'],
+  /** pieces family (src/ui/salvage/strings/pieces.ts; rooms ../../ui/salvage/rooms/pieces.ts): PLAN2 2.2, WORDS-SETUP. */
+  famPieces: ['card.lot.needsPlasma', 'title.pad', 'card.pad.count', 'card.pad.next', 'card.pad.full', 'card.pad.waitsTier', 'card.pad.incoming', 'title.floor', 'card.floor.group', 'card.floor.total', 'card.floor.empty'],
+  /** sale family (src/ui/salvage/strings/sale.ts; rooms ../../ui/salvage/rooms/sale.ts): PLAN2 2.2, WORDS-SETUP. */
+  famSale: ['card.yardSale.visitor', 'card.yardSale.slotFree', 'card.yardSale.cornerHead', 'board.pageDark'],
+  /** bank family (src/ui/salvage/strings/bank.ts; rooms ../../ui/salvage/rooms/bank.ts): PLAN2 2.2, WORDS-SETUP. */
+  famBank: ['hud.loanPlate', 'chip.repaid'],
+  /** shop family (src/ui/salvage/strings/shop.ts; rooms ../../ui/salvage/rooms/shop.ts): PLAN2 2.2, WORDS-SETUP. */
+  famShop: ['card.shop.priceWait'],
+  /** packcode family (src/ui/salvage/strings/packcode.ts; rooms ../../ui/salvage/rooms/packcode.ts): PLAN2 2.2, WORDS-SETUP. */
+  famPackcode: ['card.code.clear', 'card.code.hide', 'card.code.show'],
+  /** age family (src/ui/salvage/strings/age.ts; rooms ../../ui/salvage/rooms/age.ts): PLAN2 2.2, WORDS-SETUP. */
+  famAge: ['card.age.clear', 'card.age.kept', 'hud.bonus'],
+  /** away family (src/ui/salvage/strings/away.ts; rooms ../../ui/salvage/rooms/away.ts): PLAN2 2.2, WORDS-SETUP. */
+  famAway: ['away.tile.money', 'away.tile.pours', 'away.tile.pieces', 'away.tile.table', 'away.tile.grew', 'away.tile.loan', 'away.tile.repaid', 'away.tile.amount', 'away.tile.times', 'away.tile.of', 'away.tile.count', 'material.lightiron', 'material.castiron', 'material.steel', 'material.alu', 'material.brass', 'material.copper', 'material.stainless', 'material.bronze', 'material.lead', 'away.grewMaterial'],
+  /** count family (src/ui/salvage/strings/count.ts; rooms ../../ui/salvage/rooms/count.ts): PLAN2 2.2, WORDS-SETUP. */
+  famCount: ['away.countHour', 'away.countSold'],
+  /** goal family (src/ui/salvage/strings/goal.ts; rooms ../../ui/salvage/rooms/goal.ts): PLAN2 2.2, WORDS-SETUP. */
+  famGoal: ['clip.goalsWorks', 'table.rungWaits'],
+  /** hud family (src/ui/salvage/strings/hud.ts; rooms ../../ui/salvage/rooms/hud.ts): PLAN2 2.2, WORDS-SETUP. */
+  famHud: ['ticket.bankSplitOne', 'ticket.crateLine'],
+  /** world family (src/ui/salvage/strings/world.ts; rooms ../../ui/salvage/rooms/world.ts): PLAN2 2.2, WORDS-SETUP. */
+  famWorld: ['plate.works.selfPour', 'plate.works.charge', 'plate.works.baysEmpty', 'plate.works.keptShort', 'plate.works.nextCar', 'plate.works.carCash', 'plate.works.apronTaken', 'plate.pad.next', 'plate.pad.full', 'plate.pad.noKind', 'plate.rack.empty', 'plate.rack.next', 'plate.bunker.full', 'tag.driver.bridge'],
+  /** opening family (src/ui/salvage/strings/opening.ts; rooms ../../ui/salvage/rooms/opening.ts): PLAN2 2.2, WORDS-SETUP. */
+  famOpening: ['opening.strip', 'opening.stripLine'],
+  /** dev family (src/ui/salvage/strings/dev.ts; rooms ../../ui/salvage/rooms/dev.ts): PLAN2 2.2, WORDS-SETUP. */
+  famDev: ['dev.section', 'dev.country', 'dev.slotLoan', 'dev.slotRung', 'dev.slotPour', 'dev.back', 'dev.timer', 'dev.timerRunning', 'dev.timerResult', 'dev.timerStale', 'dev.timerSlices', 'dev.pretend'],
+  /** hints family (src/ui/salvage/strings/hints.ts; rooms ../../ui/salvage/rooms/hints.ts): PLAN2 2.2, WORDS-SETUP. */
+  famHints: ['hint.borrow', 'hint.startUp', 'hint.pour', 'hint.letChoose', 'hint.plasma', 'hint.rack', 'hint.sort', 'hint.garage'],
 } as const;
 
 type Values<T> = T extends readonly (infer U)[] ? U : never;

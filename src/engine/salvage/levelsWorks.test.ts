@@ -387,6 +387,25 @@ describe("the headroom U from the works' opening (2.15; D11: what pays back with
     }
   }, 240_000);
 
+  it('U counts exactly the levels the cards sell: a ladder taken out of the book lowers U by what its sold steps cost, and only then', () => {
+    const g = r4Game();
+    const book = testBook(g);
+    const cfg = withBook(worksCfg(), 0.01, book);
+    const u = headroomU(cfg, g);
+    for (const lad of Object.keys(book)) {
+      const ts = targets(g).filter((t) => levelLadderOf(g.salvage, t) === lad);
+      if (!ts.length) continue;
+      const sells = ts.some((t) => {
+        const ch = levelCheck(cfg, g, t);
+        return ch.state === 'buy' || ch.state === 'cantAfford';
+      });
+      const { [lad]: _gone, ...rest } = book;
+      const u2 = headroomU(withBook(worksCfg(), 0.01, rest), g);
+      if (sells) expect(u2, lad).toBeLessThan(u);
+      else expect(u2, lad).toBe(u);
+    }
+  }, 240_000);
+
   it('a dark item (its gate past the ladder) counts nothing', () => {
     const cfg = withShare(worksCfg(), 0.01);
     const g = r4Game();
@@ -409,34 +428,83 @@ describe("the headroom U from the works' opening (2.15; D11: what pays back with
 // ============================================================================ one bots' state of the shipped content at stage 2
 
 describe("a bots' state of the shipped content read at stage 2 (the normal hand, seed 1, the first return after the works' opening)", () => {
-  it('every level sold costs tau_3 x its gain (or the floor), every other is "Not the limit now"; buying each sold level charges the card\'s price and lowers no I', () => {
+  it('its own book and a test book: every level sold costs tau_3 x the book\'s gain, every other is "Not the limit now"; buying each sold level charges the card\'s price and lowers no I', () => {
     const NOW = Date.UTC(2026, 10, 25, 9, 0, 0);
-    const cfg = seededCfg(shipped2Config((x) => SalvageSchema.parse(x)), 1);
-    const b = newBot(cfg, startGame(cfg, NOW), NOW, { hand: 'normal', habit: 'goal', route: 'A', seed: 1 } as never);
+    const cfgS = seededCfg(shipped2Config((x) => SalvageSchema.parse(x)), 1);
+    const b = newBot(cfgS, startGame(cfgS, NOW), NOW, { hand: 'normal', habit: 'goal', route: 'A', seed: 1 } as never);
     playUntil(b, (bb) => worksOpened(bb.g.salvage), 3600);
     newSitting(b);
     away(b, 11.75 * 3600);
     void playTo;
     const g = { ...b.g, cash: 1e9 };
     expect(worksOpened(g.salvage)).toBe(true);
+    const share = (C(cfgS, g).levels as { minShareI?: number }).minShareI ?? 0;
     let sold = 0;
-    for (const t of targets(g)) {
-      const q = levelQuote(cfg, g, t);
-      if (!q) continue;
-      const e = expected(cfg, g, t);
-      expect({ t, price: q.price, sold: q.sold }).toEqual({ t, price: e.price, sold: e.sold });
-      const ch = levelCheck(cfg, g, t);
-      if (!q.sold) {
-        expect(ch.refusal?.key).toBe('notLimit');
-        continue;
+    for (const cfg of [cfgS, withBook(cfgS, share, testBook(g))]) {
+      for (const t of targets(g)) {
+        const q = levelQuote(cfg, g, t);
+        if (!q) continue;
+        const e = expected(cfg, g, t);
+        expect({ t, gain: q.gain, price: q.price, sold: q.sold }).toEqual({ t, ...e });
+        const ch = levelCheck(cfg, g, t);
+        if (!q.sold) {
+          expect(ch.refusal?.key).toBe('notLimit');
+          continue;
+        }
+        if (ch.state !== 'buy') continue;
+        sold++;
+        const after = level(cfg, g, t, ch.price!, g.salvage.t);
+        expect(g.cash - after.cash).toBeCloseTo(q.price, 6);
+        expect(I(cfg, after)).toBeGreaterThanOrEqual(I(cfg, g) - 0.005);
       }
-      if (ch.state !== 'buy') continue;
-      sold++;
-      const after = level(cfg, g, t, ch.price!, g.salvage.t);
-      expect(g.cash - after.cash).toBeCloseTo(q.price, 6);
-      expect(I(cfg, after)).toBeGreaterThanOrEqual(I(cfg, g) - 0.005);
+      expect(headroomU(cfg, g)).toBe(headroomU(cfg, { ...g, cash: 0 }));
     }
     expect(sold).toBeGreaterThan(0);
-    expect(headroomU(cfg, g)).toBe(headroomU(cfg, { ...g, cash: 0 }));
   }, 300_000);
+});
+
+// ============================================================================ no jump (the test that would have caught 30.3's fault)
+
+/** Every ladder of the state sold by a test book (2 % of I, decay 0.9), for the no-jump test. */
+function everyLadder(g: SalvageGame): Record<string, BookEntry> {
+  const out: Record<string, BookEntry> = {};
+  for (const t of targets(g)) out[levelLadderOf(g.salvage, t)] = { s1: 0.02, d: 0.9, from: 1, to: 40 };
+  return out;
+}
+
+describe('NO JUMP (RULING2.md 30.3): one level of ANOTHER ladder moves this ladder\'s quote by no more than I\'s own change', () => {
+  for (const name of ['seed1-s4', 'seed1-s6'] as const) {
+    it(`${name} (the shipped content read at stage 2; its own book and a book of every ladder)`, () => {
+      const j = JSON.parse(fs.readFileSync(new URL(`./__fixtures__/s2e-fix1/${name}.json`, import.meta.url), 'utf8'));
+      const g = { ...(j.g as SalvageGame), cash: 1e9 };
+      const cfgS = seededCfg(shipped2Config((x) => SalvageSchema.parse(x)), j.seed ?? 1);
+      expect(worksOpened(g.salvage)).toBe(true);
+      const share = (C(cfgS, g).levels as { minShareI?: number }).minShareI ?? 0;
+      let pairs = 0;
+      for (const cfg of [cfgS, withBook(cfgS, share, everyLadder(g))]) {
+        const ts = targets(g);
+        const I0 = Math.max(0, I(cfg, g));
+        const before = new Map(ts.map((t) => [JSON.stringify(t), levelQuote(cfg, g, t, I0)]));
+        for (const y of ts) {
+          const chy = levelCheck(cfg, g, y);
+          if (chy.state === 'top' || chy.refusal?.key === 'notOwned') continue;
+          const h = levelled(g, y);
+          const I1 = Math.max(0, I(cfg, h));
+          for (const x of ts) {
+            if (levelLadderOf(g.salvage, x) === levelLadderOf(g.salvage, y)) continue;
+            const q0 = before.get(JSON.stringify(x));
+            const q1 = levelQuote(cfg, h, x, I1);
+            if (!q0 || !q1) continue;
+            expect(q1.L).toBe(q0.L);
+            // the gain moves with I only: |dgain| = s1 d^(L-1) |dI| <= |dI|, and its share of I does not move
+            expect(Math.abs(q1.gain - q0.gain), `${JSON.stringify(x)} after ${JSON.stringify(y)}`).toBeLessThanOrEqual(Math.abs(I1 - I0) + 1e-6);
+            if (q0.gain > 0) expect(q1.gain / I1).toBeCloseTo(q0.gain / I0, 9);
+            else expect(q1.gain).toBe(0);
+            if (q0.sold && q1.sold) pairs++;
+          }
+        }
+      }
+      expect(pairs).toBeGreaterThan(0);
+    }, 300_000);
+  }
 });

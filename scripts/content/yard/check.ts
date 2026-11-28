@@ -50,7 +50,25 @@ import { advance, BOLD_FACTOR, SAFETY } from '../office/fit';
 import { denylistOf, denyMatcher, textOfData } from '../../lib/bundleRules';
 import { INTERFACE_LABELS } from '../../lib/fingerprint';
 import { TEXT_KEYS } from '../../../src/engine/salvage/types';
-import { S, TEXT, TEXT_PENDING, WORLD_LABELS, namesFromRegister } from '../../../src/ui/salvage/strings';
+import { FAMILIES, GLOSSARY_ITEM_STANDIN, S, TEXT, TEXT_PENDING, WORLD_LABELS, namesFromRegister } from '../../../src/ui/salvage/strings';
+// WORDS-SETUP (PLAN2 2.2, 2.5, F12): the rooms of the 17 word families, pure .ts the views import too (never a .tsx).
+import * as ROOMS_PLOTS from '../../../src/ui/salvage/rooms/plots';
+import * as ROOMS_HALLS from '../../../src/ui/salvage/rooms/halls';
+import * as ROOMS_LINE from '../../../src/ui/salvage/rooms/line';
+import * as ROOMS_PIECES from '../../../src/ui/salvage/rooms/pieces';
+import * as ROOMS_SALE from '../../../src/ui/salvage/rooms/sale';
+import * as ROOMS_BANK from '../../../src/ui/salvage/rooms/bank';
+import * as ROOMS_SHOP from '../../../src/ui/salvage/rooms/shop';
+import * as ROOMS_PACKCODE from '../../../src/ui/salvage/rooms/packcode';
+import * as ROOMS_AGE from '../../../src/ui/salvage/rooms/age';
+import * as ROOMS_AWAY from '../../../src/ui/salvage/rooms/away';
+import * as ROOMS_COUNT from '../../../src/ui/salvage/rooms/count';
+import * as ROOMS_GOAL from '../../../src/ui/salvage/rooms/goal';
+import * as ROOMS_HUD from '../../../src/ui/salvage/rooms/hud';
+import * as ROOMS_WORLD from '../../../src/ui/salvage/rooms/world';
+import * as ROOMS_OPENING from '../../../src/ui/salvage/rooms/opening';
+import * as ROOMS_DEV from '../../../src/ui/salvage/rooms/dev';
+import * as ROOMS_HINTS from '../../../src/ui/salvage/rooms/hints';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const games = require('../../lib/games.js') as { listGames(): string[]; readGameJson(id: string): unknown };
 
@@ -113,8 +131,10 @@ export interface Box {
   lineChars?: number;
   /** The screen shrinks the text to fit, down to this many points (hud/metrics.ts fitText, the BuyButton's adjustsFontSizeToFit; MIN_PT 11): the text must fit at that size at least. */
   shrinkTo?: number;
-  /** The box is this file's assumption (yard-stage1.md gives no number): the reason. */
+  /** The box is this file's assumption (yard-stage1.md gives no number): the reason. Never for a works key (cards 3.3): a family's rooms have none. */
   assumed?: string;
+  /** Drawn in small capitals: measured as capitals (rooms/away.ts tiles). */
+  caps?: boolean;
   /**
    * The box is a fixed screen part sized by 4.1 / 4.3 / 4.4 whose own sample text (numbers the rules
    * format) cannot fit it at font scale 1.3: a width or line miss is a LAYOUT note for the screen's
@@ -301,7 +321,54 @@ const BOX_OF: [RegExp, keyof typeof BOXES][] = [
   [/^refusal\./, 'rowNote'],
 ];
 
+/**
+ * WORDS-SETUP (PLAN2 2.2, 2.5; cards 3.3 rule 1): the word families of the works' screens. A key of src/ui/salvage/strings/<f>.ts
+ * is fitted ONLY in a room of src/ui/salvage/rooms/<f>.ts (its `KEYS` lines, first match), whose sizes the screen imports
+ * from the same file; a family key no line names is a finding (`rooms`), never a fallback box. The rooms join BOXES as
+ * `<family>.<room>`; each family's SAMPLES join ARG_OVERRIDE.
+ */
+type FamilyRooms = { ROOMS: Record<string, Box>; KEYS: readonly (readonly [RegExp, string])[]; SAMPLES: Record<string, Record<string, string>> };
+export const FAMILY_ROOMS: Record<keyof typeof FAMILIES, FamilyRooms> = {
+  plots: ROOMS_PLOTS,
+  halls: ROOMS_HALLS,
+  line: ROOMS_LINE,
+  pieces: ROOMS_PIECES,
+  sale: ROOMS_SALE,
+  bank: ROOMS_BANK,
+  shop: ROOMS_SHOP,
+  packcode: ROOMS_PACKCODE,
+  age: ROOMS_AGE,
+  away: ROOMS_AWAY,
+  count: ROOMS_COUNT,
+  goal: ROOMS_GOAL,
+  hud: ROOMS_HUD,
+  world: ROOMS_WORLD,
+  opening: ROOMS_OPENING,
+  dev: ROOMS_DEV,
+  hints: ROOMS_HINTS,
+};
+/** The package that owns each family from wave 1 (PLAN2 2.2), for `--todo`. */
+export const FAMILY_OWNER: Record<keyof typeof FAMILIES, string> = {
+  plots: 'CRD-PLOTS', halls: 'CRD-HALLS', line: 'CRD-LINE', pieces: 'CRD-PIECES', sale: 'CRD-SALE', bank: 'CRD-BANK', shop: 'CRD-SHOP', packcode: 'CRD-PACKCODE', age: 'CRD-AGE',
+  away: 'CRD-AWAY', count: 'CRD-COUNT', goal: 'CRD-GOAL', hud: 'CRD-HUDROWS', world: 'WLD-LABELS', opening: 'WLD-OPENING', dev: 'MOD-TIMER, then MOD-SLOTS', hints: 'HNT',
+};
+/** Each family key's family. */
+export const FAMILY_OF = new Map<string, keyof typeof FAMILIES>(
+  (Object.keys(FAMILIES) as (keyof typeof FAMILIES)[]).flatMap((f) => Object.keys(FAMILIES[f]).map((k) => [k, f] as [string, keyof typeof FAMILIES])),
+);
+for (const [f, r] of Object.entries(FAMILY_ROOMS)) for (const [name, room] of Object.entries(r.ROOMS)) BOXES[`${f}.${name}`] = room;
+
+/** A family key's room name (`<family>.<room>`), or null when its family's rooms name none. */
+export function familyRoom(key: string): string | null {
+  const f = FAMILY_OF.get(key);
+  if (!f) return null;
+  const hit = FAMILY_ROOMS[f].KEYS.find(([re]) => re.test(key));
+  return hit ? `${f}.${hit[1]}` : null;
+}
+
 export function boxOf(key: string): Box {
+  const room = familyRoom(key);
+  if (room) return BOXES[room];
   for (const [re, b] of BOX_OF) if (re.test(key)) return BOXES[b];
   return BOXES.rowLine;
 }
@@ -326,7 +393,7 @@ interface TextJson {
   objects: Record<string, { name: string; long: string }>;
   lessons: Record<string, { ticket: string; help: string }>;
   partners: Record<string, { card: string; line: string }>;
-  glossary: { term: string; line: string }[];
+  glossary: { term: string; line: string; fromRung?: number; item?: string }[];
 }
 
 const readJson = <T>(f: string): T => JSON.parse(fs.readFileSync(f, 'utf8')) as T;
@@ -544,6 +611,7 @@ const ARG_OVERRIDE: Record<string, Record<string, string>> = {
   'card.agreements.left': { share: 'a fifth' },
   'card.shop.look': { name: 'Yard decorations: Bench corner' },
 };
+for (const r of Object.values(FAMILY_ROOMS)) Object.assign(ARG_OVERRIDE, r.SAMPLES);
 
 const HOLE = /\{([A-Za-z0-9_.]+)(?:\|(?:short|cap))?\}/g;
 
@@ -583,8 +651,8 @@ export const BANNED = ['bet', 'bets', 'betting', 'stake', 'stakes', 'odds', 'inv
  * debt's card never say "stock" (nor invest, returns, shares or dividend, banned everywhere above).
  */
 export const SCOPED_BANNED: { keys: RegExp; words: RegExp; why: string }[] = [
-  { keys: /^(card\.finance\.|card\.letter\.|card\.agreements\.|money\.bank\.|money\.loan\.|away\.bank|away\.loanLeft|ticket\.bankSplit|help\.bank)/, words: /%\s*a\s+year|\bper\s+(year|annum)\b|\binterest\s+rate\b|\ba\s+year\b/i, why: 'a yearly rate on a loan card (RULING2 28.2 e)' },
-  { keys: /^(advice\.|goal\.|refusal\.|away\.|card\.agreements\.|money\.bank\.|card\.finance\.|card\.letter\.)/, words: /(?<![\p{L}\p{N}])stocks?(?![\p{L}\p{N}])/iu, why: '"stock" in the advice line, a goal, a refusal, the away report or a debt\'s card (2.13 f)' },
+  { keys: /^(card\.finance\.|card\.letter\.|card\.agreements\.|money\.bank\.|money\.loan\.|away\.bank|away\.loanLeft|ticket\.bankSplit|help\.bank|hud\.loan|away\.tile\.loan|chip\.repaid|hint\.borrow)/, words: /%\s*a\s+year|\bper\s+(year|annum)\b|\binterest\s+rate\b|\ba\s+year\b/i, why: 'a yearly rate on a loan card (RULING2 28.2 e)' },
+  { keys: /^(advice\.|goal\.|refusal\.|away\.|card\.agreements\.|money\.bank\.|card\.finance\.|card\.letter\.|hud\.loan|chip\.repaid|hint\.)/, words: /(?<![\p{L}\p{N}])stocks?(?![\p{L}\p{N}])/iu, why: '"stock" in the advice line, a goal, a refusal, the away report or a debt\'s card (2.13 f)' },
 ];
 export function scopedFindings(where: string, key: string, text: string): Finding[] {
   const plain = text.replace(HOLE, ' ');
@@ -716,7 +784,7 @@ export function ticketHeights(inp: Inputs, args: Record<string, string>): { kind
 
 const CODE_DIRS = ['src/ui/salvage', 'src/engine/salvage', 'src/engine/salvage.ts', 'src/modes/salvage'];
 /** Files that define the words or the key list (a key there is not a use). The art kit draws, it never prints a key. */
-const NOT_A_USE = [/src\/ui\/salvage\/strings\.ts$/, /src\/engine\/salvage\/types\.ts$/, /src\/engine\/salvage\/textKeys\.ts$/, /src\/ui\/salvage\/art\//, /\.test\.tsx?$/];
+const NOT_A_USE = [/src\/ui\/salvage\/strings\.ts$/, /src\/ui\/salvage\/strings\//, /src\/ui\/salvage\/rooms\//, /src\/engine\/salvage\/types\.ts$/, /src\/engine\/salvage\/textKeys\.ts$/, /src\/ui\/salvage\/art\//, /\.test\.tsx?$/];
 
 function codeFiles(): string[] {
   const out: string[] = [];
@@ -791,8 +859,32 @@ export const TODO_OWNER: [RegExp, string][] = [
   [/^(card\.(sell|sign|deal\w*)|board\.\w+|table\.\w+|opens\.\w+|away\.\w+|clip\.\w+|help\.\w+|line\.(shortened|fictional))$/, 'overlays-b: PriceBoard, Bay, SupplyDeal, IndustryTable, RungSign, AwayCard, Clipboard, Settings, Help'],
 ];
 export function todoOwner(key: string): string {
+  const f = FAMILY_OF.get(key);
+  if (f) return `stage 2 screens: ${FAMILY_OWNER[f]} (src/ui/salvage/strings/${f}.ts)`;
   for (const [re, o] of TODO_OWNER) if (re.test(key)) return o;
   return 'unassigned';
+}
+
+// ================================================================================================ the glossary's items
+
+/**
+ * WORDS-SETUP (critic I7): a term of a dark item carries `item` (a works plate, a shop key or a grade of the content), and
+ * Help leaves it out while the item is dark (strings.ts glossaryShown). Until the content schema keeps `item`, Help reads it
+ * from strings.ts GLOSSARY_ITEM_STANDIN: the two must agree, and every item must name something the content has.
+ */
+export function glossaryFindings(glossary: TextJson['glossary']): Finding[] {
+  const out: Finding[] = [];
+  const g = games.readGameJson(GAME) as { salvage?: { works?: { plates?: Record<string, unknown> }; grades?: Record<string, unknown>; shop?: { key: string }[]; worksLayer?: { grades?: Record<string, unknown>; shop?: { key: string }[] } } };
+  const sv = g.salvage ?? {};
+  const known = new Set<string>([...Object.keys(sv.works?.plates ?? {}), ...Object.keys(sv.grades ?? {}), ...Object.keys(sv.worksLayer?.grades ?? {}), ...(sv.shop ?? []).map((i) => i.key), ...(sv.worksLayer?.shop ?? []).map((i) => i.key)]);
+  for (const e of glossary) {
+    const where = `text.json glossary (${e.term})`;
+    if (e.item !== undefined && !known.has(e.item)) out.push({ rule: 'glossary', where, text: e.item, reason: 'its item names no works plate, shop key or grade of the content' });
+    const standin = GLOSSARY_ITEM_STANDIN[e.term];
+    if ((standin ?? undefined) !== e.item && (standin !== undefined || e.item !== undefined)) out.push({ rule: 'glossary', where, text: e.item ?? '(none)', reason: `strings.ts GLOSSARY_ITEM_STANDIN says ${standin ?? '(none)'}: the two must agree until the schema keeps \`item\`` });
+  }
+  for (const t of Object.keys(GLOSSARY_ITEM_STANDIN)) if (!glossary.some((e) => e.term === t)) out.push({ rule: 'glossary', where: 'strings.ts GLOSSARY_ITEM_STANDIN', text: t, reason: 'a term the glossary does not have' });
+  return out;
 }
 
 // ================================================================================================ run
@@ -823,10 +915,11 @@ export function runAll(): Report {
     findings.push(...scopedFindings(where, key, text));
     const { out, unknown } = widest(key, text, inp, args);
     for (const h of unknown) findings.push({ rule: 'name', where, text, reason: `{${h}} is neither an argument this check knows nor a register id in names.json byId` });
-    findings.push(...fitFindings(where, out, box, layout));
+    const drawn = box.caps ? out.toUpperCase() : out;
+    findings.push(...fitFindings(where, drawn, box, layout));
     const font = box.pt * FONT_SCALE;
-    const lines = wrap(out, font, box.w, box.bold).lines;
-    measured.push({ where, text: out, width: measure(out, font, box.bold), lines: lines.length, box: `${Math.round(box.w)} pt × ${box.lines} at ${font.toFixed(1)} pt` });
+    const lines = wrap(drawn, font, box.w, box.bold).lines;
+    measured.push({ where, text: drawn, width: measure(drawn, font, box.bold), lines: lines.length, box: `${Math.round(box.w)} pt × ${box.lines} at ${font.toFixed(1)} pt` });
   };
 
   // strings.ts
@@ -868,6 +961,10 @@ export function runAll(): Report {
     check(`text.json partners.${id}.line`, '', p.line, BOXES.effect);
   }
   inp.text.glossary.forEach((e, i) => check(`text.json glossary[${i}] (${e.term})`, '', `${e.term}: ${e.line}`, BOXES.glossLine));
+  findings.push(...glossaryFindings(inp.text.glossary));
+
+  // WORDS-SETUP: every key of a family is fitted in a room of its own family (cards 3.3: no assumed box for a works key)
+  for (const k of FAMILY_OF.keys()) if (!familyRoom(k)) findings.push({ rule: 'rooms', where: `strings/${FAMILY_OF.get(k)}.ts '${k}'`, text: k, reason: `no line of rooms/${FAMILY_OF.get(k)}.ts KEYS names its room` });
 
   // the register: rival chips (S17), the names a player reads (fit where they print)
   for (const e of inp.register.names) {
