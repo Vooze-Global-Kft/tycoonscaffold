@@ -1847,9 +1847,9 @@ function decide2(b: Bot): boolean {
   }
   // s2e-bots (yard-stage2-economy.md 2.10, D4; gate G8): THE BOSS'S OWN HAND. Every oversize piece waiting on the pad that
   // his tool can open is cut, whatever the goal (a person who comes back to pieces on the pad cuts them: 2 to 3 a return,
-  // 4 to 10 s each); once a sitting he sorts the picking table if it holds things; and once a sitting he sets each hall on
-  // the recipe whose input the bays hold most of (s2e-rate's request: the card names the recipes; a person does not leave a
-  // hall on brass while bronze solids pile up). Each is a habit of the bot, not a rule.
+  // 4 to 10 s each); once a sitting he sorts the picking table if it holds things. He never taps a hall's recipe: from
+  // ruling 29.1 a hall chooses its own at each heat's start (the old tapping habit, recipeHabit, runs only with the test
+  // option pinRecipe). Each is a habit of the bot, not a rule.
   if (lotHabit(b)) return true;
   if (crateHabit(b)) return true;
   if (recipeHabit(b)) return true;
