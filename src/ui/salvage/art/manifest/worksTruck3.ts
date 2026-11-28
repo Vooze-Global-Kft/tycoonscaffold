@@ -45,11 +45,11 @@ export const TRUCK3_LOAD_K = 0.45;
 // boxes measured on the BAKED drawing (points round the anchor at the bake scale, ink + 2 pt), per baked heading
 /* MEASURED-START */
 const BOX: Record<string, Bounds[]> = {
-  'vehicle.truckBridge': [B(-40, -90, 80, 130), B(-80, -90, 160, 130), B(-80, -90, 160, 130), B(-80, -90, 160, 130), B(-40, -90, 80, 130)],
-  'vehicle.truckBridge.bare': [B(-40, -90, 80, 130), B(-80, -90, 160, 130), B(-80, -90, 160, 130), B(-80, -90, 160, 130), B(-40, -90, 80, 130)],
-  'vehicle.truckBridge.hook': [B(-200, -90, 290, 130)],
-  'vehicle.truckBridge.tip': [B(-110, -120, 200, 160)],
-  'vehicle.skip.load.bridge': [B(-25, -30, 50, 40)],
+  'vehicle.truckBridge': [B(-21, -56, 42, 88), B(-48, -54, 97, 84), B(-49, -41, 99, 56), B(-47, -56, 96, 87), B(-21, -56, 42, 89)],
+  'vehicle.truckBridge.bare': [B(-21, -46, 42, 78), B(-48, -45, 97, 75), B(-49, -41, 99, 56), B(-47, -56, 96, 87), B(-21, -56, 42, 89)],
+  'vehicle.truckBridge.hook': [B(-114, -41, 164, 56)],
+  'vehicle.truckBridge.tip': [B(-67, -59, 117, 74)],
+  'vehicle.skip.load.bridge': [B(-18, -13, 36, 21)],
 };
 /* MEASURED-END */
 

@@ -18,6 +18,11 @@ export const HALLS = {
   // H2: the recipe rows
   'card.works.recipeInUse': 'In use',
   'card.works.recipePin': 'Keep on it', // a tap pins the recipe (setPlateRecipe); "Let the hall choose" gives it back
+  // CRD-HALLS (RULING2 29.1 made plain on the card): under "The hall chooses: {recipe}" / "Kept on {recipe} by you"
+  'card.works.chooseHow': 'At each heat the hall takes the recipe that pays most. Tap one to keep it on that.',
+  'card.works.keptHow': 'While you keep it, the hall no longer takes the one that pays most.',
+  // H5: a tap on another recipe while a charge stands (actionsWorks.ts setPlateRecipe: the charge goes back to its bays)
+  'card.works.chargeAsk': 'Put the charge back in its bays?',
   // H6 and 6.4: world chips over a hall
   'chip.poured': 'Poured · {kg} {grade}', // kg: { mass_g }, grade: { grade }
   'chip.cooling': 'Cooling · {t}', // the second channel beside the cooling tint (6.4); t: { secs }

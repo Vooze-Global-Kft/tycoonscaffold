@@ -490,10 +490,15 @@ export function drawBridgeTruck(c: SkCanvas, v: View3q, heading: number, o: { sk
   hookArm(c, v, F, o.arm ?? armDown());
   if (o.skip !== 'none') drawBridgeSkip(c, v, heading, { u0: BRIDGE.skipU, z0: BRIDGE.bedZ });
   o.after?.();
-  if (!cabFirst) rakedCab(c, v, F, driver);
+  // the near mudguard and side kit over the skip's foot, under a cab that is nearer the eye than they are
   mudguard(c, v, F, nearSign);
   sideKit(c, v, F, heading, true);
-  for (const [u, s] of wheels) if (Math.sign(s) === nearSign) wheel(c, v, F.at(u, s, R), F.f, R, sideOf(s));
+  // coming at the eye end-on, the front axle's tread blocks stand behind the cab's front (its top is over the cab's foot)
+  const frontUnder = !cabFirst && F.fy > 0.3 && facing(v, F.l) < 0.3 && facing(v, [-F.l[0], -F.l[1], 0]) < 0.3;
+  const front = BRIDGE.axles[0];
+  if (frontUnder) for (const [u, s] of wheels) if (Math.sign(s) === nearSign && u === front) wheel(c, v, F.at(u, s, R), F.f, R, sideOf(s));
+  if (!cabFirst) rakedCab(c, v, F, driver);
+  for (const [u, s] of wheels) if (Math.sign(s) === nearSign && !(frontUnder && u === front)) wheel(c, v, F.at(u, s, R), F.f, R, sideOf(s));
 }
 
 /** The centre of the skip's open top on the truck, points from the anchor (where `vehicle.skip.load.bridge` goes). */

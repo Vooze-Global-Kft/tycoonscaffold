@@ -24,6 +24,10 @@ import { box, builder, discPath, faceFill, facePath, facing, fill, hazard, oval,
 import { drawPublicCar, headingRad } from './vehicles.draw';
 
 const INK = YARD.ink;
+/** The deck's chequer plate. */
+const DECK = '#737B82';
+/** The loader crane: a light grey (it stands out of the near-white cab behind which it folds; the tint shades it). */
+const CRANE = '#B8C0C7';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The model (metres along the heading from the footprint centre: u forward, s to the left hand, which is SOUTH for a
@@ -67,10 +71,10 @@ export const RING_Z = 1.9;
 
 /** The tints per sender (content partner ids): the near-white body and crane modulated by these, never a real livery. */
 export const LORRY_TINTS: Readonly<Record<string, string>> = {
-  'partner.garage': '#B5584A',
-  'partner.plumbing': '#6F8FB8',
-  'partner.boatyard': '#3E7E86',
-  partnerDemolition: '#D9963F',
+  'partner.garage': '#D88A78',
+  'partner.plumbing': '#9DB4D6',
+  'partner.boatyard': '#86B8B8',
+  partnerDemolition: '#E8B870',
 };
 /** The body's baked colour (the manifest's tint field). */
 export const LORRY_BASE = YARD.cab;
@@ -347,17 +351,17 @@ function drawCrane(c: SkCanvas, v: View3q, F: Frame, colour: string, frame: Cran
   // the lift ram from the column to the main boom's middle (dark rod in a body-coloured barrel)
   const mid: V3 = [(c0[0] + k[0]) / 2, (c0[1] + k[1]) / 2, (c0[2] + k[2]) / 2];
   const ramFoot = P([LORRY.colU + 0.05, 0, LORRY.slewZ - 0.75]);
-  member(c, v, ramFoot, [(ramFoot[0] + mid[0]) / 2, (ramFoot[1] + mid[1]) / 2, (ramFoot[2] + mid[2]) / 2], 2.6, colour);
-  line(c, v, ramFoot, mid, 1.2, YARD.steelDark);
-  member(c, v, c0, k, 5, colour);
+  member(c, v, ramFoot, [(ramFoot[0] + mid[0]) / 2, (ramFoot[1] + mid[1]) / 2, (ramFoot[2] + mid[2]) / 2], 4, colour);
+  line(c, v, ramFoot, mid, 1.8, YARD.steelDark);
+  member(c, v, c0, k, 9, colour);
   // the jib: the outer section to its middle, the telescope's inner section (narrower) to the tip
   const jm: V3 = [k[0] + (t[0] - k[0]) * 0.55, k[1] + (t[1] - k[1]) * 0.55, k[2] + (t[2] - k[2]) * 0.55];
-  member(c, v, k, jm, 4, colour);
-  member(c, v, jm, t, 2.8, shade(colour, -0.12));
+  member(c, v, k, jm, 7.5, colour);
+  member(c, v, jm, t, 5.5, shade(colour, -0.12));
   // the knuckle's pin
   const [kx, ky] = P2(v, k);
-  c.drawPath(oval(kx, ky, 2.4, 2.4), fill(YARD.steelDark));
-  c.drawPath(oval(kx, ky, 2.4, 2.4), stroke(INK, 0.8));
+  c.drawPath(oval(kx, ky, 3.4, 3.4), fill(YARD.steelDark));
+  c.drawPath(oval(kx, ky, 3.4, 3.4), stroke(INK, 0.8));
   // the hook: a block under the tip, then (hooked) a short chain to the load's ring
   const [tx, ty] = P2(v, t);
   c.drawPath(segment(tx, ty, tx, ty + 4), stroke(INK, 1));
@@ -411,8 +415,8 @@ interface LorryOpts {
 
 /**
  * The crane lorry at a heading (radians): far wheels and outriggers, the chassis, the cab first when it is the farther
- * end, the deck and its headboard, the load on it, the crane, the cab when it is the nearer end, the near outriggers and
- * wheels, then the booms (they stand highest). Footprint LORRY.len x LORRY.wid; anchor the centre.
+ * end, the deck and its headboard, the load on it, the crane's column, the booms, the cab when it is the nearer end,
+ * the near outriggers and wheels. Footprint LORRY.len x LORRY.wid; anchor the centre.
  */
 export function drawCraneLorry(c: SkCanvas, v: View3q, heading: number, o: LorryOpts = {}): void {
   const F = frameOf(heading);
@@ -433,8 +437,10 @@ export function drawCraneLorry(c: SkCanvas, v: View3q, heading: number, o: Lorry
   const deckU = (LORRY.deckFront + LORRY.deckTail) / 2;
   fbox(c, v, F, deckU, 0, LORRY.deckZ - 0.14, deckLen, LORRY.wid, 0.14, colour, {
     onTop: (q) => {
-      faceFill(c, v, subQuad(q, 0.02, 0.98, 0.06, 0.94), YARD.wood);
-      for (const t of [0.25, 0.5, 0.75]) faceFill(c, v, subQuad(q, 0.02, 0.98, t - 0.006, t + 0.006), shade(YARD.wood, -0.25));
+      // a steel chequer-plate floor (dark: it stays steel under the sender's tint), its seams
+      faceFill(c, v, subQuad(q, 0.02, 0.98, 0.06, 0.94), DECK);
+      for (const t of [0.25, 0.5, 0.75]) faceFill(c, v, subQuad(q, 0.02, 0.98, t - 0.006, t + 0.006), shade(DECK, -0.3));
+      for (let i = 1; i < 12; i++) faceFill(c, v, subQuad(q, i / 12 - 0.004, i / 12 + 0.004, 0.1, 0.9), shade(DECK, 0.12));
       // the low ramps' hinge plate at the tail
       faceFill(c, v, subQuad(q, 0.0, 0.04, 0.08, 0.92), YARD.steel);
     },
@@ -443,7 +449,7 @@ export function drawCraneLorry(c: SkCanvas, v: View3q, heading: number, o: Lorry
       if (Math.abs(n[0] * F.fx + n[1] * F.fy) < 0.5) for (const t of [0.15, 0.4, 0.65, 0.9]) faceFill(c, v, subQuad(q, t - 0.012, t + 0.012, 0.2, 0.8), YARD.steelDark);
     },
   });
-  const crane = () => drawCrane(c, v, F, colour, frame, 'column');
+  const crane = () => drawCrane(c, v, F, CRANE, frame, 'column');
   const headboard = () => fbox(c, v, F, LORRY.deckFront - 0.04, 0, LORRY.deckZ, 0.08, LORRY.wid - 0.1, 0.55, YARD.galvanised, { line: 1 });
   // the column stands ahead of the headboard: whichever is farther goes first
   if (F.fx >= 0) {
@@ -455,10 +461,11 @@ export function drawCraneLorry(c: SkCanvas, v: View3q, heading: number, o: Lorry
     headboard();
     if (o.load) loadOnDeck(c, v, F, o.load);
   }
+  // the booms stand highest; when the cab is the nearer end it covers their foot, so they go before it
+  drawCrane(c, v, F, CRANE, frame, 'booms');
   if (!cabFirst) cab(c, v, F, colour);
   for (const u of LORRY.outU) outrigger(c, v, F, u, nearSign, rigged);
   for (const [u, s] of wheels) if (Math.sign(s) === nearSign) wheel(c, v, F.at(u, s, LORRY.wheelR), F.f, LORRY.wheelR, sideOf(s));
-  drawCrane(c, v, F, colour, frame, 'booms');
 }
 
 function loadOnDeck(c: SkCanvas, v: View3q, F: Frame, load: LoadFrame): void {
