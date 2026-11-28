@@ -55,6 +55,8 @@ export { awayMoneyView, earnedLooks, restartPackLost, shopOf, type AwayMoneyView
 export { debtOnScreen } from './salvage/frameMoney';
 // rules-works asked (requests.md 11:10): the works' checks and actions for the cards and the screens.
 export { plateBuyCheck, plateLevelCheck, setPlateRecipe, setRoute } from './salvage/actionsWorks';
+// C-TYPES (s2g-halls asked, requests.md 27 Nov 21:05): the hall card's "Let the hall choose".
+export { letHallChoose } from './salvage/actionsWorks';
 // join2b (rules-works asked, requests.md 11:10 and 11:55): the forklift's "Step out" and the merged map (the camera's west edge).
 export { stepOutForklift } from './salvage/actionsWorks';
 export { mapAt } from './salvage/positions';

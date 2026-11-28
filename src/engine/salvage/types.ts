@@ -642,7 +642,7 @@ export interface SeenState {
 }
 
 /** What kind of vehicle or walker a purchase or an arrival comes by (sound `arrival`, the frame's `arrivals`). */
-export type ArrivalKind = 'dropoff' | 'van' | 'machineFlatbed' | 'truck' | 'crew';
+export type ArrivalKind = 'dropoff' | 'van' | 'machineFlatbed' | 'truck' | 'crew' | 'recovery' | 'lowLoader';
 
 /** A purchase bought and paid, not yet here (2.15): it is owned, and works, from `at`. */
 export interface Arriving {
@@ -790,10 +790,10 @@ export type SalvageEvent =
   | { type: 'machineState'; machine: MachineId; status: MachineStatus }
   | { type: 'machineOut'; machine: MachineId; grade: GradeId; g: number }
   // v3: `plate` names a hall's heat (2.19); absent = the first yard's crucible.
-  | { type: 'heatStart'; recipe: RecipeId; g: number; plate?: PlateId }
+  | { type: 'heatStart'; recipe: RecipeId; g: number; plate?: PlateId; /** C-TYPES: a hall's heat's planned end (yard second). */ t1?: number }
   | { type: 'readyToPour'; plate?: PlateId }
   | { type: 'pour'; ingots: number; grade: GradeId; short_g: number; dross_g: number; first: boolean; by: 'boss' | string; plate?: PlateId }
-  | { type: 'cooled' }
+  | { type: 'cooled'; /** C-TYPES: the hall whose ingots cooled; absent = the crucible. */ plate?: PlateId }
   // partners, skips, the truck (2.7)
   | { type: 'skipFull'; partner: PartnerId; slot: number }
   | { type: 'hookRing'; partner: PartnerId; slot: number; t0: number; t1: number }
@@ -828,7 +828,7 @@ export type SalvageEvent =
   | { type: 'plateArrived'; plate: PlateId }
   /** Started up ("Commissioned · {plate}" on the chip): by the boss standing at it, or by itself at its date. */
   | { type: 'commissioned'; plate: PlateId; by: 'boss' | 'self' }
-  | { type: 'plateState'; plate: PlateId; status: MachineStatus }
+  | { type: 'plateState'; plate: PlateId; status: MachineStatus; /** C-TYPES: the plate's look as the frame draws it. */ look?: WorksLook }
   | { type: 'plateOut'; plate: PlateId; grade: GradeId; g: number }
   /** A weigh-in line graded by the analyser: `from` the piece's own grade, `grade` its assay grade. */
   | { type: 'analysed'; grade: GradeId; from: GradeId }
@@ -1091,6 +1091,8 @@ export interface CardRow {
   state?: RowState;
   /** owner1 H6: a crew member's row while he waits with nothing to do: why (card.crewWhy.*, the bubble's words). */
   why?: Txt;
+  /** C-TYPES (PLAN2 2.1): a Buy row's measured gain and payback (the rack's and the park's rows), or null / absent. */
+  earns?: EarnsView | null;
 }
 
 /**
@@ -1187,6 +1189,10 @@ export interface CardData {
   ageQuestion?: AgeQuestionCard;
   packCode?: PackCodeCard;
   bonus?: BonusCard;
+  /** C-TYPES (PLAN2 2.1): the oversize pad's card (kind 'lot' opened without a piece). */
+  pad?: PadCard;
+  /** C-TYPES (PLAN2 2.1): a strip on the card (the levels' notice on the rota, partners and park after the works open). */
+  notice?: Txt;
   /**
    * 4.1.3 (D77, L4): this card SHOWS A DEBT (the finance card, a works card's bankLeft row, the Agreements
    * page, an away card with a bank line): no shop entry and no ad button on it, and the bottom bar's ad
@@ -1529,9 +1535,9 @@ export interface Span {
 }
 
 /** A pose of a person (the art's poses; the work poses by tool). */
-export type Pose = 'stand' | 'walk' | 'push' | 'carry' | 'feed' | 'pour' | 'weigh' | 'spanner' | 'sledge' | 'grinder' | 'torch' | 'drive';
+export type Pose = 'stand' | 'walk' | 'push' | 'carry' | 'feed' | 'pour' | 'weigh' | 'spanner' | 'sledge' | 'grinder' | 'torch' | 'drive' | 'plasma' | 'analyse';
 /** A tool a person works with (by the piece's family, 2.4). */
-export type ToolKind = 'spanner' | 'sledge' | 'grinder' | 'torch';
+export type ToolKind = 'spanner' | 'sledge' | 'grinder' | 'torch' | 'plasma';
 /** The look family of a carried load (the art's LoadFamily; content `grades.<id>.load`). */
 export type LoadFamily = 'fe' | 'ci' | 'cu' | 'br' | 'al' | 'cab' | 'mot' | 'hms';
 
@@ -1575,12 +1581,24 @@ export interface FrameTable {
   works?: FrameWorks[];
   /** The forklift when owned and here. */
   forklift?: FrameForklift | null;
-  /** Members of the public on their dated walk (wicket, card reader, wicket; the path is the frame's, inside the public bay). */
-  visitors?: Span[];
-  /** The reclamation dealer's van while it comes, loads and goes, else null. */
-  van?: { phase: 'in' | 'load' | 'out'; span: Span } | null;
-  /** The picking table's plate ("Picking table · {n} things"), from rung 3. */
-  crate?: { x: number; y: number; n: number } | null;
+  /**
+   * Members of the public on their dated walk (wicket, card reader, wicket; the path is the frame's, inside the public bay).
+   * C-TYPES (PLAN2 2.1): retyped from Span[] to FrameVisitor[] (it was never written).
+   */
+  visitors?: FrameVisitor[];
+  /** The reclamation dealer's van while it comes, loads and goes, else null. C-TYPES: `stop` where it stands to load (metres). */
+  van?: { phase: 'in' | 'load' | 'out'; span: Span; stop?: { x: number; y: number } } | null;
+  /** The picking table's plate ("Picking table · {n} things"), from rung 3. C-TYPES: `max` the table's places. */
+  crate?: { x: number; y: number; n: number; max?: number } | null;
+  // ---- C-TYPES (PLAN2 2.1; screens of stage 2): absent below the works' opening and while the thing is not owned.
+  /** The shredder line: the car at the depollution bay and its stage, the shredder's run, and why no car comes. */
+  line?: FrameLine;
+  /** The oversize pad: pieces on it, its places, the next piece's date, and why nothing comes (null while one comes or is cut). */
+  pad?: { n: number; max: number; nextAt: number | null; why: Txt | null };
+  /** The Yard sale's rack: things set out, its places, the next visitor's date, and why nobody comes. */
+  rack?: { n: number; max: number; nextVisitorAt: number | null; why: Txt | null };
+  /** The works' bunker: kilograms in it, its capacity, and why it does not fill. */
+  bunker?: { kg: number; max_kg: number; why: Txt | null };
   /** The magnet crane's move under way: from, to, its span (a planned run shows the move under way, as crew legs do). */
   crane?: { from: { x: number; y: number }; to: { x: number; y: number }; span: Span; g: number } | null;
   /**
@@ -1721,6 +1739,8 @@ export interface FrameBay {
   forDeal: { a_g: number; q_g: number } | null;
   forCrucible: { a_g: number; b_g: number } | null;
   aside_g: number;
+  /** C-TYPES (PLAN2 2.1): "For the {hall} a / b kg" (a hall's charge kept from this bay), or null / absent. */
+  forPlate?: { plate: PlateId; a_g: number; b_g: number } | null;
 }
 
 export interface FrameCrew {
@@ -1775,6 +1795,8 @@ export interface FrameTruck {
   /** The hook ring's span while the boss swaps a skip. `hook` @deprecated: 0 to 1 sampled at t. */
   hookSpan: Span | null;
   hook: number | null;
+  /** C-TYPES (PLAN2 2.1): the body drawn, named by the shop key owned ('truckBridge': the three-axle hook-lift); absent = 'truck'. */
+  model?: 'truck' | 'truckBridge';
 }
 
 export interface FrameFlatbed {
@@ -1812,6 +1834,8 @@ export interface FrameArrival {
   path?: { x: number; y: number }[];
   at?: number[];
   stop?: { x: number; y: number };
+  /** C-TYPES (PLAN2 2.1, D2): the thing on its bed (the garage's car, the heavy piece) until set-down; written by FIX-PASS. */
+  carries?: { uid: string; obj: ObjectId } | null;
 }
 
 export interface FrameSkip {
@@ -2195,6 +2219,13 @@ export interface WorksCard {
   };
   /** Financed and open: "Bank loan · §{left} left of §{T}" (opens Agreements; the card showsDebt) and the ring's share. */
   bank: { left: number; T: number; ring: number } | null;
+  // ---- C-TYPES (PLAN2 2.1): optional until cardsWorks.ts writes them (C-CARDS-a).
+  /** A hall's heat: the SAME object as `FrameWorks.heat`. */
+  heat?: HeatView;
+  /** An unbought sold item: its measured gain and payback, from the same figure its price is made of (ruling 28.5 b). */
+  earns?: EarnsView | null;
+  /** A truck-fed station (the depollution bay): why no car comes, as the frame's `line.recovery`. */
+  recovery?: RecoveryView;
 }
 
 /** 4.5: the finance card's five lines and the rule line; `sign` carries the terms as shown. */
@@ -2258,6 +2289,9 @@ export interface LotCard {
   /** About § once cut, at p̄ (the only "about"). */
   valueOnceCut: number;
   cut_s: number;
+  /** C-TYPES (PLAN2 2.1): the tool tier the piece needs (content `objects.<obj>.tier`) and whether the yard's tier reaches it. */
+  needsTier?: number;
+  tierOwned?: boolean;
 }
 
 /** 4.7: the picking table ("Picking table · {n} things" / "Stand here · {s} s a thing"). No time, nothing expires. */
@@ -2391,6 +2425,105 @@ export interface FrameWorks {
   /** A heat's, a pour's or a car's span. */
   span: Span | null;
   trayShare: number;
+  // ---- C-TYPES (PLAN2 2.1): optional until frameWorks.ts writes them (C-FRAMEWORKS).
+  /** The plate's words while it does not work (the chip's "Waiting for brass · 380 / 600 kg"); null while working. */
+  why?: Txt | null;
+  /** Installed and not yet started: the yard second it starts up by itself (commissionAt), else null. */
+  startsAt?: number | null;
+  /** A hall's heat (a batch plate): the SAME object as `WorksCard.heat` (heatView.ts). */
+  heat?: HeatView;
+}
+
+/**
+ * C-TYPES (PLAN2 2.1): a hall's heat as the world and the card both read it (ONE object, made by the pure heatView.ts).
+ * `chosenBy` 'hall' while no tap pins the recipe (RULING2 29.1), 'you' while one does. `span` the phase's own span;
+ * `selfPourAt` the yard second it pours by itself (null: it waits for a pourer or is not ready); `ingots` while they cool.
+ */
+export interface HeatView {
+  phase: 'empty' | 'filling' | 'heating' | 'ready' | 'pour' | 'cooling';
+  recipe: RecipeId | null;
+  chosenBy: 'hall' | 'you';
+  charge_g: number;
+  cap_g: number;
+  chargeGrade: GradeId | null;
+  span: Span | null;
+  firstPoured: boolean;
+  selfPourAt: number | null;
+  pourer: 'boss' | 'self' | null;
+  ingots: { grade: GradeId; n: number; span: Span | null } | null;
+}
+
+/**
+ * C-TYPES (PLAN2 2.1): why the garage's recovery truck brings no car now, in the frame (`FrameLine.recovery`) and on the
+ * line's card (`WorksCard.recovery`). `nextAt` the yard second of the next car (null: none planned); `waitsFor` 'period'
+ * (the garage's pace), 'cash' (the car's price; `short` the § missing), 'apron' (the bay's apron is taken), 'coming'
+ * (a car is on its way, landing at `arrivesAt`: written by FIX-PASS, D2), or null while nothing waits.
+ */
+export interface RecoveryView {
+  nextAt: number | null;
+  waitsFor: 'period' | 'cash' | 'apron' | 'coming' | null;
+  arrivesAt: number | null;
+  short: number | null;
+}
+
+/** C-TYPES (PLAN2 2.1): the shredder line in the frame (`FrameTable.line`). */
+export interface FrameLine {
+  /** The car at the depollution bay: whole on the apron, draining, or a drained shell, with its stage's span. */
+  car: { uid: string; stage: 'whole' | 'draining' | 'shell'; span: Span | null } | null;
+  /** The shredder's run while it shreds, else null. */
+  shredding: Span | null;
+  recovery: RecoveryView;
+}
+
+/**
+ * C-TYPES (PLAN2 2.1): one member of the public on the Yard sale's dated walk: in through the wicket at t0, pays at the
+ * card reader at payAt, out at t1 carrying `obj` (its mass `g`, grams).
+ */
+export interface FrameVisitor {
+  id: string;
+  t0: number;
+  payAt: number;
+  t1: number;
+  obj: ObjectId;
+  g: number;
+}
+
+/** C-TYPES (PLAN2 2.1): "Next: {item} · +§x an hour", the measured gain the price is made of (ruling 28.5 b) and its payback. */
+export interface EarnsView {
+  gain_h: number;
+  payback_h: number;
+}
+
+/**
+ * C-TYPES (PLAN2 2.1): the oversize pad's card (`CardData.pad`; opened as `{kind:'lot'}` without a piece, no new CardKind).
+ * `nextInS` seconds to the next piece (null: none planned); `waitsForTier` the tool tier the next piece needs and the yard
+ * has not (null: none missing); `incoming` a piece on the low-loader's way (its object and landing second; FIX-PASS, D2).
+ */
+export interface PadCard {
+  n: number;
+  max: number;
+  nextInS: number | null;
+  waitsForTier: number | null;
+  incoming: { kind: ObjectId; at: number } | null;
+}
+
+/** C-TYPES (PLAN2 2.1): the counted return's progress (yard seconds counted of all, money sold so far). */
+export interface AwayProgress {
+  doneS: number;
+  ofS: number;
+  sold: number;
+}
+
+/**
+ * C-TYPES (PLAN2 2.1; wiring a.5): the time away as ONE pass, stepped: `step(untilYardS)` runs it up to that yard second
+ * of the absence; `done` once all is counted; `finish()` the state as one pass would give it. The facade's `awayJob` is
+ * C-AWAY's.
+ */
+export interface AwayJob {
+  step(untilYardS: number): void;
+  readonly done: boolean;
+  progress(): AwayProgress;
+  finish(): SalvageGame;
 }
 
 export interface FrameForklift {

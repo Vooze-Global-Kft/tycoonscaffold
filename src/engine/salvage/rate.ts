@@ -4,7 +4,7 @@
  * rungs, rivals passed, the deal offer, partners opening, goals by id. Owner: rules-sim.
  */
 import { checkGoals } from './goals';
-import { levelled, rungReached } from './ladder';
+import { rungReached } from './ladder';
 import { passedNow } from './rivals';
 import { CHECK_EVERY_S, count, dayAt, type Ctx } from './clock';
 import { assayOf, convAssay, cutTime, driverRoundF, laneM, legM, machineShares, pieceCount, pieceSpec, routeM, specsOf, toolP } from './content';
@@ -20,7 +20,7 @@ import { routesChanged } from './memo';
 import { worksOpen, worksOwn } from './works';
 import { shareIAt } from './reuse';
 import { floorSlots, pointOf, thingPos } from './positions';
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import { driverRoundS, fairPick, fairTripsOf, fairWaitNext, fullerFirst } from './truck';
 import { worksDropoffPeriod } from './things';
 import type { LevelTarget, MachineId, SalvageConfig, SalvageGame } from './types';
@@ -1585,28 +1585,57 @@ function levelOf(s: Ctx['s'], target: LevelTarget): number | null {
   return s.reuse?.level ?? null;
 }
 
+/** One ladder's entry in the content's book (`levels.book`, schema.salvage.ts; RULING2.md 30.3). */
+export type BookEntry = { s1: number | (number | null)[]; d: number; from: number; to: number };
+
+/** The book's entry for a target's ladder (levelLadderOf), or null where the book has none. */
+export function bookEntry(c: Ctx['c'], s: Ctx['s'], target: LevelTarget): BookEntry | null {
+  const book = (c.levels as { book?: Record<string, BookEntry> }).book;
+  return book?.[levelLadderOf(s, target)] ?? null;
+}
+
 /**
- * THE ONE MEASURE OF A LEVEL'S GAIN (RULING2.md 27.2 d and 27.4; yard-stage2-economy.md 2.3, 2.11, 2.13), § an hour: what
- * every level's price, its card ("+§x an hour on your yard's figures") and the advice line read from the works' opening.
- * - THE GAIN BOOK, for a ladder with an entry in the content's `levels.book` ({g1, d}, written by the bots where the
- *   driver-level check of G2 R fails for that ladder): the measured ladder g1 x d^(L-1), L the level now (the first step
- *   bought, 1 to 2, gains g1).
- * - ELSE THE CALCULATED GAIN on the player's own state: rated income's replay (replayIncome: the yard's assets all in use,
- *   before E6's envelope; kappa_r included) with the level one step up less now, never below 0.
- * A pure function of the content and the state's assets. Below the works' opening no first-yard rule reads it (the first
- * yard prices its levels by levels.margin_per_kg, ladder.ts levelPrice, pinned); the book is stripped at release.stage 1.
+ * The book's first-step share at a rung (RULING2.md 30.3, the lead's note (1) of s2i-levels): `s1` one number for every rung,
+ * or [rung 3, rung 4, rung 5]; a rung with no number (null) reads its NEAREST other rung's, the lower on a tie (`from` says
+ * which rung's number was read; the account names every ladder that borrows). A rung below 3 reads rung 3's, above 5 rung 5's.
  */
-export function levelGain(c: Ctx['c'], s: Ctx['s'], target: LevelTarget): number {
+export function bookShare(e: BookEntry, rung: number): { s1: number; from: number } {
+  if (!Array.isArray(e.s1)) return { s1: e.s1, from: Math.floor(rung) };
+  const i = Math.min(2, Math.max(0, Math.floor(rung) - 3));
+  for (let k = 0; k <= 2; k++) {
+    for (const j of [i - k, i + k]) {
+      const v = e.s1[j];
+      if (j >= 0 && j <= 2 && typeof v === 'number' && Number.isFinite(v)) return { s1: v, from: j + 3 };
+    }
+  }
+  return { s1: 0, from: Math.floor(rung) };
+}
+
+/**
+ * THE ONE MEASURE OF A LEVEL'S GAIN FROM THE WORKS' OPENING (RULING2.md 30.3, replacing 27.4's "the calculated gain where the
+ * check passes"), § an hour: what every level's price, its card ("about +§x an hour") and the advice line read.
+ * gain = s1 x d^(L-1) x I: the content's book entry for the target's ladder (levelLadderOf), s1 its first-step share at the
+ * yard's rung (bookShare), d its decay, L the level now (the step bought takes it from L to L + 1; L below 1 reads 1), I rated
+ * income (given by the caller, who reads it ONCE for a card's list or a walk up a ladder; else ratedIncome on this state).
+ * 0 (the ladder is NOT SOLD) where the book has no entry, where the rung's s1 is 0 or less, and at or past the entry's `to`
+ * (ladder.ts levelCheck: topLevel). 0 below the works' opening (the first yard prices its levels by levels.margin_per_kg,
+ * ladder.ts firstYardLevelPrice, pinned; the book is stripped at release.stage 1). THE REPLAY WITH A LEVEL ONE STEP UP IS
+ * READ BY NO PRICE: it moves rated income by about 5 % for reasons that are not the level (30.3; the lead's probes). A pure
+ * function of the content and the state's assets (through I).
+ */
+export function levelGain(c: Ctx['c'], s: Ctx['s'], target: LevelTarget, I?: number): number {
+  if (!worksOpened(s)) return 0;
   const L = levelOf(s, target);
   if (L === null) return 0;
-  const book = (c.levels as { book?: Record<string, { g1: number; d: number }> }).book;
-  const e = book?.[levelLadderOf(s, target)];
-  if (e && Number.isFinite(e.g1) && e.d > 0) return Math.max(0, e.g1 * e.d ** (Math.max(1, L) - 1));
-  const up = levelled({ salvage: s } as unknown as SalvageGame, target).salvage;
-  return Math.max(0, replayIncome(c, up) - replayIncome(c, s));
+  const e = bookEntry(c, s, target);
+  if (!e || !(e.d > 0)) return 0;
+  const { s1 } = bookShare(e, s.ladder.rung);
+  if (!(s1 > 0) || L >= e.to) return 0;
+  const inc = I ?? Math.max(0, ratedIncome(c, s));
+  return Math.max(0, s1 * e.d ** (Math.max(1, L) - 1) * inc);
 }
 
 /** Facade `levelGain(cfg, g, target)`: the content at the state (layer.ts contentAt). */
-export function levelGainCfg(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): number {
-  return levelGain(contentAt(cfg.salvage, g.salvage), g.salvage, target);
+export function levelGainCfg(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, I?: number): number {
+  return levelGain(contentAt(cfg.salvage, g.salvage), g.salvage, target, I);
 }

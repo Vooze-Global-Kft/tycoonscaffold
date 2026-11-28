@@ -11,7 +11,7 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { driverRoundF } from './content';
 import { roundMoney } from './money';
 import { pointOf } from './positions';
-import { levelGain, ratedCapacity, ratedIncome, replayIncome } from './rate';
+import { bookEntry, levelGain, ratedCapacity, ratedIncome, replayIncome } from './rate';
 import type { CrewRole, LevelTarget, MachineId, PartnerId, RefusalKey, RowState, SalvageConfig, SalvageGame, ShopItem, ShopKey, TextKey, Txt, TxtArgs } from './types';
 
 /** What a purchase check returns: the price it would charge (null: nothing to charge), the first refusal, the row's state. */
@@ -383,11 +383,13 @@ export function worksTauH(c: SalvageContent, rung: number): number | null {
 /**
  * A LEVEL AS THE WORKS PRICE IT (s2e-levels; yard-stage2-economy.md 2.6.4 and 2.11; RULING2.md 27.2 a and c, 27.3 D5,
  * 27.4), from the works' opening, for every level but a plate's (crew, first-yard machines, open partners, the driver):
- * - gain = rate.ts `levelGain` (THE ONE MEASURE: the gain book where `levels.book` has the ladder, else the calculated
- *   gain: the replay with the level one step up less now), § an hour on the player's own yard;
- * - I = rated income now (rate.ts ratedIncome on the state's content), unless the caller passes it (the headroom's walk);
- * - SOLD only while gain ≥ `levels.minShareI` × I and gain > 0 (absent minShareI: any gain above 0); otherwise "Not the
- *   limit now" and NEVER sold at the floor;
+ * - I = rated income now (rate.ts ratedIncome on the state's content), READ ONCE, unless the caller passes it (the headroom's
+ *   walk up a ladder, the advice's list: one I for every step);
+ * - gain = rate.ts `levelGain` with that I (THE ONE MEASURE, RULING2.md 30.3: THE BOOK's s1 x d^(L-1) x I for every ladder;
+ *   0 where the book has no entry or s1 is 0: not sold), § an hour; the replay with a level one step up prices nothing;
+ * - SOLD only while gain ≥ `levels.minShareI` × I, gain > 0 AND tau_r × gain above the floor's price (absent minShareI: any
+ *   gain above 0); otherwise "Not the limit now" (`notLimit`, with the gain) and NEVER sold at the floor;
+ * - a book ladder at or past its entry's `to` has no next level (null here; levelCheck: `topLevel`);
  * - price = roundPrice(max(levels.floor × floorGrowth^(L−1), tau_r × gain)), tau_r = `tau_h` at the yard's rung (a rung
  *   without one: levels.tau.cap minutes);
  * - payback_h = price ÷ gain: what the card prints ("pays for itself in about N hours of the yard's running").
@@ -409,7 +411,7 @@ export interface LevelQuote {
   price: number;
   /** price ÷ gain, hours (Infinity at a zero gain). */
   paybackH: number;
-  /** Sold now: gain ≥ minShareI × I and gain > 0. */
+  /** Sold now: gain ≥ minShareI × I, gain > 0 and tau_r × gain above the floor. */
   sold: boolean;
   /** The floor, not tau_r × gain, set the price. */
   floorBound: boolean;
@@ -419,16 +421,24 @@ export function levelQuote(cfg: SalvageConfig, g: SalvageGame, target: LevelTarg
   if (target.kind === 'plate' || !worksOpened(g.salvage)) return null;
   const c = contentAt(cfg.salvage, g.salvage);
   const L = levelNow(g, target);
-  if (L === null || L < 1 || L >= maxLevelOf(c, g, target)) return null;
+  if (L === null || L < 1 || L >= maxLevelOf(c, g, target) || bookTop(c, g, target, L)) return null;
   const { floor: f0, growth } = levelFloor(c);
   const floor = f0 * growth ** (L - 1);
   const tauH = worksTauH(c, g.salvage.ladder.rung) ?? c.levels.tau.cap / 60;
-  const gain = levelGain(c, g.salvage, target);
   const I = Inow ?? Math.max(0, ratedIncome(c, g.salvage));
+  const gain = levelGain(c, g.salvage, target, I);
   const share = (c.levels as { minShareI?: number }).minShareI ?? 0;
-  const sold = gain > 1e-6 && gain >= share * I - 1e-9;
+  const floorBound = floor >= tauH * gain;
+  const sold = gain > 1e-6 && gain >= share * I - 1e-9 && !floorBound;
   const price = roundPrice(Math.max(floor, tauH * gain));
-  return { L, gain, I, tauH, floor, price, paybackH: gain > 1e-6 ? price / gain : Infinity, sold, floorBound: floor >= tauH * gain };
+  return { L, gain, I, tauH, floor, price, paybackH: gain > 1e-6 ? price / gain : Infinity, sold, floorBound };
+}
+
+/** s2i-levels (RULING2.md 30.3): a ladder the book sells no further than its entry's `to` is at its top at L ≥ to (from the works' opening; not a plate's). */
+function bookTop(c: SalvageContent, g: SalvageGame, target: LevelTarget, L: number): boolean {
+  if (target.kind === 'plate' || !worksOpened(g.salvage)) return false;
+  const e = bookEntry(c, g.salvage, target);
+  return e !== null && L >= e.to;
 }
 
 /** s2e-levels: the refusal of a level that is not worth having now ("Not the limit now", with its gain); refusals.ts lists it (s2e-join). */
@@ -459,7 +469,7 @@ export function levelCheckAt(cfg: SalvageConfig, g: SalvageGame, target: LevelTa
   if (L === null || L < 1 || (target.kind === 'plate' && g.salvage.works[target.plate]?.phase !== 'running')) return { price: null, refusal: { key: 'notOwned', args: {} }, state: 'locked' };
   const gate = gateRefusal(c, g, c.levels.opens);
   if (gate) return { price: null, refusal: gate, state: 'locked' };
-  if (L >= maxLevelOf(c, g, target)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
+  if (L >= maxLevelOf(c, g, target) || bookTop(c, g, target, L)) return { price: null, refusal: { key: 'topLevel', args: {} }, state: 'top' };
   if (target.kind !== 'plate' && worksOpened(g.salvage)) {
     const q = levelQuote(cfg, g, target, Inow)!;
     if (!q.sold) return { price: null, refusal: { key: NOT_LIMIT, args: { x: { money: q.gain } } }, state: 'locked' };

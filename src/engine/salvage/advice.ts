@@ -13,7 +13,7 @@ import { awayCapS } from './away';
 import { loanHintDue, loanOffered, platePrice, saveUpSeconds } from './bank';
 import { goalBuyNow, goalSpecs } from './goals';
 import { contentAt, worksOpened } from './layer';
-import { boughtState, buyCheck, buyGain, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
+import { boughtState, buyCheck, buyGain, cashRefusal, crewKeys, gateRung, hiredState, hireCheck, itemName, levelCheck, levelCheckAt, materialsOf, ratedGain, roleOfKey, rungGrams, rungsOf, shopItems, thetaOf, topRungOf } from './ladder';
 import { roundMoney } from './money';
 import { levelGain, levelGainCfg, ratedIncome } from './rate';
 import { incomeRate } from './tick';
@@ -161,7 +161,7 @@ export function binding(cfg: SalvageConfig, g: SalvageGame): Binding {
  * the stocks say. The first yard (the works not opened): the stocks' reading (binding), as merged.
  */
 export function levelBinds(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, b = binding(cfg, g)): boolean {
-  // s2e-advice (RULING2 27.2 d): the one measure, rate.ts levelGain (the gain book where it has the ladder).
+  // s2e-advice (RULING2 27.2 d), s2i-levels (30.3): the one measure, rate.ts levelGain (the book's s1 x d^(L-1) x I).
   if (worksOpened(g.salvage)) return target.kind !== 'reuse' && levelGainCfg(cfg, g, target) > 1e-6;
   if (target.kind === 'machine') return b.machines.includes(target.machine);
   if (target.kind === 'partner') return b.partners.includes(target.partner);
@@ -322,8 +322,8 @@ const bestOf = (list: Cand[]): Cand | null => list.reduce<Cand | null>((b, x) =>
  * EVERYTHING SOLD NOW with a calculated gain above 0 (no budget, no window): every plate for sale (bank.ts platePrice), every
  * shop item its check prices (not owned, arriving, locked or info), the next hire of each role, the next level of every crew
  * member, first-yard machine, open partner and running plate that its check sells (s2e-levels: a level not worth having is
- * refused `notLimit`, state locked, so never named). Gains: a level's is rate.ts levelGain (the gain book where it has the
- * ladder); a purchase's is its MEASURED gain, the one its price is made of (content gain_h, ladder.ts buyGain; s2e-fix1,
+ * refused `notLimit`, state locked, so never named). Gains: a level's is rate.ts levelGain (THE BOOK's s1 x d^(L-1) x I, I read
+ * once for the list: RULING2.md 30.3; a plate's level reads the book too, and none is in it); a purchase's is its MEASURED gain, the one its price is made of (content gain_h, ladder.ts buyGain; s2e-fix1,
  * RULING2 28.5 b), else the replay with it bought less now (ladder.ts ratedGain); a hire's the replay. A level whose gain is under
  * `levels.minShareI` x I is not named either (27.2 c). Never a product of the store, a pack or the shop: those are not shop
  * items (2.13 (f)).
@@ -359,16 +359,17 @@ function worksCandidates(cfg: SalvageConfig, g: SalvageGame): Cand[] {
     add({ action: { act: 'buy', item: it.key, price: ch.price }, open: cardForItem(it), price: ch.price, line: { key: 'advice.buy', args: { item: { text: itemName(it.key) }, x: { money: ch.price } } } }, buyGain(cfg, g, it.key), it.key);
   }
   const minShare = (c.levels as { minShareI?: number }).minShareI ?? 0;
-  const I = minShare > 0 ? Math.max(0, ratedIncome(c, s)) : 0;
+  // s2i-levels (RULING2.md 30.3): I read ONCE for the list; every level's check and gain read it (levelCheckAt, levelGain).
+  const I = Math.max(0, ratedIncome(c, s));
   const targets: { t: LevelTarget; name: TextKey; open: CardRef; level: number }[] = [];
   for (const m of s.crew) targets.push({ t: { kind: 'crew', id: m.id }, name: `role.${m.role}` as TextKey, open: { kind: 'office', tab: 'rota' }, level: m.level });
   for (const id of ['stripper', 'bench', 'crucible'] as const) if (s.machines[id].owned) targets.push({ t: { kind: 'machine', machine: id }, name: itemName(id), open: { kind: 'office', tab: 'processBoard' }, level: s.machines[id].level });
   for (const [pid, p] of Object.entries(s.partners)) if (p.open) targets.push({ t: { kind: 'partner', partner: pid }, name: 'item.skip', open: { kind: 'office', tab: 'partners' }, level: p.level });
   for (const [pid, w] of Object.entries(s.works)) if (w.phase === 'running') targets.push({ t: { kind: 'plate', plate: pid }, name: `title.works.${pid}` as TextKey, open: { kind: 'works', plate: pid }, level: w.level ?? 1 });
   for (const x of targets) {
-    const ch = levelCheck(cfg, g, x.t);
+    const ch = x.t.kind === 'plate' ? levelCheck(cfg, g, x.t) : levelCheckAt(cfg, g, x.t, I);
     if (ch.price === null || ch.state === 'locked' || ch.state === 'top' || ch.state === 'info') continue;
-    const gain = levelGain(c, s, x.t);
+    const gain = levelGain(c, s, x.t, I);
     if (minShare > 0 && gain < minShare * I - 1e-9) continue;
     add({ action: { act: 'level', target: x.t, price: ch.price }, open: x.open, price: ch.price, line: { key: 'advice.level', args: { item: { text: x.name }, n: { n: x.level + 1 }, x: { money: ch.price } } } }, gain, null);
   }

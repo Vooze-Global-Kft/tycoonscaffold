@@ -640,11 +640,26 @@ export const LevelsSchema = z.object({
    */
   minShareI: z.number().min(0).max(1).optional(),
   /**
-   * STAGE 2 (s2e-content; RULING2.md 27.4): the gain book, the bots' measured ladder by level ladder id (a crew role, a partner,
-   * `driver`, ...): g(L) = g1 x d^(L-1), § an hour; `levelGain` reads it for a ladder whose rated check fails. Empty until the bots
-   * write it. Read only from the works' opening; stageView strips it at release.stage 1.
+   * STAGE 2 (s2i-levels; RULING2.md 30.3): THE BOOK, every level's gain from the works' opening, by level ladder id (rate.ts
+   * levelLadderOf: a crew role `cutter` / `hand` / `driver`, a first-yard machine's id, a partner's id, a plate's id, `reuse`):
+   * gain = s1 x d^(L-1) x I (I rated income, L the level now). `s1` the measured first step as a SHARE of the yard's income at the
+   * moment measured: one number for every rung, or [rung 3, rung 4, rung 5] (null: no number measured for that rung; that rung
+   * reads its nearest other rung's, the lower on a tie: rate.ts bookShare); 0 = NOT SOLD (at that rung). `d` the measured decay;
+   * `from` the lowest level the bots measured it at (a record, read by no rule); `to` the last level sold (a level at `to` is
+   * the top: two steps past what the bots measured). A ladder with no entry is NOT SOLD at the works. Written by the bots
+   * (s2i-book). Read only from the works' opening; stageView strips it at release.stage 1.
    */
-  book: z.record(z.string(), z.object({ g1: z.number().nonnegative(), d: z.number().positive().max(1), at: z.string().optional() })).optional(),
+  book: z
+    .record(
+      z.string(),
+      z.object({
+        s1: z.union([z.number().nonnegative(), z.array(z.number().nonnegative().nullable()).length(3)]),
+        d: z.number().positive().max(1),
+        from: z.number().positive(),
+        to: z.number().int().positive(),
+      }),
+    )
+    .optional(),
 });
 export type LevelsDef = z.infer<typeof LevelsSchema>;
 
