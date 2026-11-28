@@ -918,6 +918,9 @@ function borrowRow(cfg: R.SalvageConfig, g0: R.SalvageGame, opts: BotOptions, n:
     const bk = bookAt(cfg, g, t);
     // s2i-measure (M1): `--borrower sold` measures the levels the cards sell and the book's ladders missing at this rung
     if (arg('borrower') === 'sold' && !q.sold && !(bk.entry && !bk.own)) continue;
+    // s2i-measure: --borrowOnly a,b measures only those ladders (the book's corrected entries measured again)
+    const only = arg('borrowOnly');
+    if (only && !only.split(',').includes(bk.ladder)) continue;
     const st = stepUp(cfg, g, t, levelLadderOf(g.salvage, t));
     if (!st) continue;
     const E1 = lastingE(cfg, st, opts, null, 3600);
@@ -2449,7 +2452,7 @@ async function runAll(gameFile: string, specs: Spec[], jobs: number): Promise<Su
       }
       out[i] = await new Promise<Summary>((resolve, reject) => {
         // The stage-2 switches reach the child too (content2-bots): --stage, --cache (the shared first parts), --plates, --sittings, --nohand; s2e-bots: --book, --person.
-        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json', 'items', 'borrower', 'forceLevels', 'probe', 'borrowAt', 'isteps'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
+        const pass = ['stage', 'cache', 'plates', 'sittings', 'nohand', 'walk2', 'book', 'person', 'bench', 'plasmaOnly', 'plasma3', 'dump', 'json', 'items', 'borrower', 'forceLevels', 'probe', 'borrowAt', 'isteps', 'borrowOnly'].flatMap((k) => (arg(k) !== null ? [`--${k}`, arg(k)!] : []));
         const p = spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--game', gameFile, ...pass, '--one', JSON.stringify(specs[i])], { stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env } });
         let buf = '';
         p.stdout.on('data', (d) => (buf += d));
@@ -2817,7 +2820,7 @@ async function main(): Promise<void> {
     for (const n of asked) if (DROPPED2[n]) process.stderr.write(`dropped ${n}: ${DROPPED2[n]}\n`);
     const names = asked.filter((n) => !DROPPED2[n]);
     let specs2: Spec[] = [];
-    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('items') ? `i${arg('items')}` : ''}${arg('borrower') ? `B${arg('borrower') === 'true' ? '' : arg('borrower')}${arg('borrowAt') ?? ''}` : ''}${arg('isteps') ? 'I' : ''}${arg('forceLevels') ? `F${createHash('sha1').update(fs.readFileSync(path.resolve(arg('forceLevels')!))).digest('hex').slice(0, 8)}` : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
+    for (const seed of seeds) for (const bot of names) specs2.push({ kind: 'stage2', minutes: 60, hand: 'normal', habit: 'goal', route: 'A', seed, bot, gate: bot === 'normal', tag: `${gameHash.slice(0, 12)}${arg('plates') ? 'p' : ''}${arg('items') ? `i${arg('items')}` : ''}${arg('borrower') ? `B${arg('borrower') === 'true' ? '' : arg('borrower')}${arg('borrowAt') ?? ''}${arg('borrowOnly') ?? ''}` : ''}${arg('isteps') ? 'I' : ''}${arg('forceLevels') ? `F${createHash('sha1').update(fs.readFileSync(path.resolve(arg('forceLevels')!))).digest('hex').slice(0, 8)}` : ''}${arg('plasmaOnly') ? 'o' : ''}${arg('dump') ? `d${arg('dump')}` : ''}${arg('walk2') ? 'w' : ''}${arg('book') ? 'b' : ''}${arg('person') ? 'q' : ''}${arg('bench') ? 'x' : ''}${S2_SITTINGS}` });
     const sh = arg('shard');
     if (sh) {
       const [i, n] = sh.split('/').map(Number);
