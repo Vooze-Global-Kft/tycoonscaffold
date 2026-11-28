@@ -26,8 +26,8 @@
  */
 import { DEPTH_BAND, along, heading8, pathLen } from './actors';
 
-/** At most this many points of a vehicle's path (./actors.ts PATH_MAX). */
-const PATH_MAX_PTS = 12;
+/** At most this many points of a vehicle's path (./actors.ts PATH_MAX, equal: worksHooks.test.ts; C-WORLD-1: 16, was 12). */
+export const PATH_MAX_PTS = 16;
 
 /** Seconds the UI clock takes to absorb an error (the steering's time constant). */
 export const TAU_S = 0.5;

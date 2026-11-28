@@ -898,9 +898,10 @@ export const ROOF = 6;
 /**
  * At most this many roofs (the frame loop's per-roof scratch). C-WORLD-1: the works add up to seven (the three halls' sheds,
  * the bays' lean-to, the two stillage roofs, the Yard sale's canopy: ./worksTable.ts worksRoofSpots); worksHooks.test.ts
- * checks the first yard's roofs plus every works roof the content can hold stay within it.
+ * checks the first yard's roofs plus every works roof the content can hold stay within it: 24 (was 16; the shipped first
+ * yard has 10 roofs, the works 7 more; the cap never bound the first yard, so its table is unchanged).
  */
-export const ROOF_MAX = 16;
+export const ROOF_MAX = 24;
 /** A roof's ink while somebody stands under it (about a third) and the seconds its ink takes to change. */
 export const ROOF_SEE = 1 / 3;
 export const ROOF_EASE_S = 0.2;
@@ -1142,6 +1143,11 @@ export interface ActorTable {
   flatbedWorkScale: number;
   /** The vest colours of the roles (hand, cutter, driver) as 0xRRGGBB. */
   vests: number[];
+  /**
+   * C-WORLD-1: the truck's cells per TRUCK_MODELS row (row 0 holds the very arrays above: truck, truckBare, truckHook,
+   * skipLoad, shTruck, truckScale). body/bare/shadow per heading8; hook (and tip) frames east; half: half length, half width.
+   */
+  models: { body: number[]; bare: number[]; hook: number[]; tip: number[]; skipLoad: number[]; shadow: number[]; scale: number; vbox: number; vboxBare: number; vboxHook: number; half: number[] }[];
 }
 
 export function actorTable(res: Resolver, vests: { hand: string; cutter: string; driver: string }): ActorTable {
@@ -1152,7 +1158,8 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
       for (let f = 0; f < 4; f++)
         for (let h = 0; h < 4; h++) {
           const id = `person.${who === 0 ? 'boss' : 'crew'}.${POSES[p]}`;
-          person.push(f < POSE_FRAMES[p] ? res(id, f, h) : -1);
+          // C-WORLD-1: the works' poses (P_WORKS_FIRST on) are baked in 8 headings: the 4-scheme heading h is 8-scheme h x 2.
+          person.push(f < POSE_FRAMES[p] ? res(id, f, p >= P_WORKS_FIRST ? h * 2 : h) : -1);
           if (who === 1) vest.push(f < POSE_FRAMES[p] ? res(`person.crew.vest.${POSES[p]}`, f, h) : -1);
         }
   const hand: number[] = [];
@@ -1174,6 +1181,16 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
   const cargoOff: number[] = [];
   for (let h = 0; h < 4; h++) cargoOff.push(...flatbedBedCentre(V, headingRad(h * 2)));
   cargoOff.push(...flatbedBedCentre(V, headingRad(2)));
+  const truckHook = [0, 1, 2, 3].map((f) => res('vehicle.truck.hook', f, 0));
+  const skipLoad = [0, 1, 2, 3].map((f) => res('vehicle.skip.load', f, 0));
+  const truckScale = scaleOf('vehicle.truck');
+  const models: ActorTable['models'] = TRUCK_MODELS.map((m, i) => {
+    if (i === 0) return { body: truck, bare: truckBare, hook: truckHook, tip: [], skipLoad, shadow: shTruck, scale: truckScale, vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
+    const frames = (id: string | null) => (id ? (entryOf(id)?.frames ?? []).map((_, f) => res(id, f, 1)) : []);
+    const eight = (id: string) => Array.from({ length: 8 }, (_, h) => res(id, 0, h));
+    const sh = eight('shadow.truck3').map((c, h) => (c >= 0 ? c : shTruck[h]));
+    return { body: eight(m.body), bare: eight(m.bare), hook: frames(m.hook), tip: frames(m.tip), skipLoad: (entryOf(m.load)?.frames ?? []).map((_, f) => res(m.load, f, 0)), shadow: sh, scale: scaleOf(m.body), vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
+  });
   return {
     person,
     vest,
@@ -1183,7 +1200,7 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
     truck,
     truckBare,
     skipTop,
-    skipLoad: [0, 1, 2, 3].map((f) => res('vehicle.skip.load', f, 0)),
+    skipLoad,
     flatbed: four('vehicle.flatbed'),
     flatbedWorking: res('vehicle.flatbed.working', 0, 0),
     crane: [0, 1, 2].map((f) => res('vehicle.flatbed.crane', f, 0)),
@@ -1200,12 +1217,13 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
     shSack: [0, 1, 2, 3].map((h) => res('shadow.sack', 0, h * 2)),
     shTrolley: [0, 1, 2, 3].map((h) => res('shadow.trolley', 0, h * 2)),
     shSkip: res('shadow.skip', 0, 0),
-    truckHook: [0, 1, 2, 3].map((f) => res('vehicle.truck.hook', f, 0)),
+    truckHook,
     carrierScale: scaleOf('carrier.sack'),
     vehicleScale: scaleOf('vehicle.flatbed'),
-    truckScale: scaleOf('vehicle.truck'),
+    truckScale,
     flatbedWorkScale: scaleOf('vehicle.flatbed.working'),
     vests: [hexInt(vests.hand), hexInt(vests.cutter), hexInt(vests.driver)],
+    models,
   };
 }
 
@@ -1219,6 +1237,18 @@ export const SHADOW_CELLS: readonly { kind: 'person' | 'truck' | 'flatbed' | 'va
   { kind: 'skip', headings: [0] },
   { kind: 'sack', headings: [0, 2, 4, 6] },
   { kind: 'trolley', headings: [0, 2, 4, 6] },
+];
+
+/**
+ * C-WORLD-1: the works' shadow kinds (the three-axle hook-lift, the crane lorry, the Yard sale's visitor), baked into sheet S
+ * AFTER the first yard's cells and only under stageOn() (./useYard.ts bakeShadows), so a first-yard player's sheet S is the
+ * one it always was. `as`: the first yard's kind whose shape stands in until the art draws the works' own (vehicles.draw.ts
+ * drawActorShadow knows only its kinds); `k`: its size against that kind's.
+ */
+export const WORKS_SHADOW_CELLS: readonly { kind: 'truck3' | 'cranelorry' | 'visitor'; as: (typeof SHADOW_CELLS)[number]['kind']; k: number; headings: number[] }[] = [
+  { kind: 'truck3', as: 'truck', k: 1.3, headings: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { kind: 'cranelorry', as: 'truck', k: 1.5, headings: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { kind: 'visitor', as: 'person', k: 1, headings: [0] },
 ];
 
 /** The 8-scheme heading (0 s, 1 se, 2 e, ... 7 sw) of an angle (radians, x east, y south). */
@@ -1287,8 +1317,8 @@ export function personInto(L: DrawList, V: Float64Array, T: ActorTable, who: num
   'worklet';
   const north = h === 2;
   const f = Math.min(frame, POSE_FRAMES[pose] - 1);
-  let pc = T.person[((who * 9 + pose) * 4 + f) * 4 + h];
-  if (pc < 0) pc = T.person[((who * 9 + P_STAND) * 4) * 4 + h];
+  let pc = T.person[((who * N_POSES + pose) * 4 + f) * 4 + h];
+  if (pc < 0) pc = T.person[((who * N_POSES + P_STAND) * 4) * 4 + h];
   const hc = who === 0 && hand >= 0 ? T.hand[hand * 4 + h] : -1;
   let cc = -1;
   let cdx = 0;

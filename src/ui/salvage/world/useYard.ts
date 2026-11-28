@@ -8,6 +8,14 @@
  * a mirrored sprite never throws its shadow west). It is idempotent; the loading animation calls it two
  * frames after its canvas first draws, and a timer calls it after 1500 ms if nobody has. `atlasProgress()`
  * (atlas.ts) feeds the loading animation's calm loop; `yardArtReady()` says when the yard can draw.
+ *
+ * THE WORKS' SHEETS (C-WORLD-1; PLAN2 2.8 and 6.1): sheets C and D are baked ONLY under stageOn() (the works' development
+ * switch) and only once the save's rung is 2 or more, from the content's SOLD entries only (./worksTable.ts worksBakeList),
+ * in 4 ms slices (atlas.ts bakeWorksSheets). A save already at rung 2 or more bakes them before the art is ready (behind
+ * the loading curtain); a session that reaches rung 2 bakes them in the background and the art is replaced once
+ * (`onYardArtChange`). The works' shadow kinds (actors.ts WORKS_SHADOW_CELLS) go into sheet S after the first yard's cells,
+ * likewise only under stageOn(). With the switch off (every store build, the owner's phone today) the bake is exactly
+ * the first yard's: A, B, G, the floor and S, sheets C and D null (`bakePlanOf`; worksHooks.test.ts).
  */
 import { Skia, type SkCanvas, type SkImage } from '@shopify/react-native-skia';
 import { useEffect, useState } from 'react';
@@ -16,8 +24,10 @@ import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { drawActorShadow } from '../art/vehicles.draw';
 import { yardSwitches } from '../dev/switches';
-import { SHADOW_CELLS, type SheetLike } from './actors';
-import { bakeImage, bakeManifest, propSig, type ManifestAtlas, type SpriteSheet } from './atlas';
+import { stageOn } from '../../../modes/salvage/stage';
+import { SHADOW_CELLS, WORKS_SHADOW_CELLS, type SheetLike } from './actors';
+import { bakeImage, bakeManifest, bakeWorksSheets, propSig, WORKS_SLICE_MS, type ManifestAtlas, type SpriteSheet, type WorksAtlases } from './atlas';
+import { worksBakeList } from './worksTable';
 import { bakeGround, type GroundTile } from './ground';
 import { yardLayout, type YardLayout } from './yard';
 
@@ -51,8 +61,11 @@ export interface ShadowSheet extends SheetLike {
 }
 
 export interface YardArt {
-  /** Sheets by index: A, B, G (the manifest's) and S (the world's shadows); null where a bake failed. */
-  sheets: [ManifestAtlas | null, ManifestAtlas | null, ManifestAtlas | null, ShadowSheet | null];
+  /**
+   * Sheets by index (actors.ts SHEETS): A, B, G (the manifest's), S (the world's shadows), then the works' C and D
+   * (null unless baked: stageOn() and rung 2 or more); null where a bake failed.
+   */
+  sheets: [ManifestAtlas | null, ManifestAtlas | null, ManifestAtlas | null, ShadowSheet | null, ManifestAtlas | null, ManifestAtlas | null];
   ground: GroundTile | null;
   /** The ground work's single sheet: gone (the yard draws the manifest's sheets). Kept null so old callers compile. */
   sheet: SpriteSheet | null;
@@ -70,15 +83,30 @@ const SHADOW_BOX: Record<string, [number, number, number, number]> = {
   skip: [-62, -40, 150, 85],
   sack: [-50, -40, 100, 80],
   trolley: [-60, -45, 120, 90],
+  // C-WORLD-1: the works' kinds (baked only under stageOn(); actors.ts WORKS_SHADOW_CELLS).
+  truck3: [-150, -105, 340, 215],
+  cranelorry: [-175, -120, 390, 250],
+  visitor: [-20, -14, 48, 30],
 };
 
-/** Bakes the world's shadow sheet: one cell per kind and heading (`shadow.<kind>#0#<heading8>`). */
-export function bakeShadows(density = SHADOW_DENSITY): ShadowSheet | null {
-  const cells: { key: string; kind: (typeof SHADOW_CELLS)[number]['kind']; h: number; b: [number, number, number, number]; w: number; hh: number }[] = [];
+type ShadowCell = { key: string; kind: (typeof SHADOW_CELLS)[number]['kind']; h: number; b: [number, number, number, number]; w: number; hh: number; k: number };
+
+/**
+ * Bakes the world's shadow sheet: one cell per kind and heading (`shadow.<kind>#0#<heading8>`). `works` (only under
+ * stageOn()): the works' kinds, packed AFTER the first yard's cells (their places and the sheet's first rows unchanged).
+ */
+export function bakeShadows(density = SHADOW_DENSITY, works: typeof WORKS_SHADOW_CELLS = []): ShadowSheet | null {
+  const cells: ShadowCell[] = [];
   for (const s of SHADOW_CELLS)
     for (const h of s.headings) {
       const b = SHADOW_BOX[s.kind];
-      cells.push({ key: `shadow.${s.kind}#0#${h}`, kind: s.kind, h, b, w: Math.ceil(b[2] * density) + 4, hh: Math.ceil(b[3] * density) + 4 });
+      cells.push({ key: `shadow.${s.kind}#0#${h}`, kind: s.kind, h, b, w: Math.ceil(b[2] * density) + 4, hh: Math.ceil(b[3] * density) + 4, k: 1 });
+    }
+  const extra: ShadowCell[] = [];
+  for (const s of works)
+    for (const h of s.headings) {
+      const b = SHADOW_BOX[s.kind];
+      extra.push({ key: `shadow.${s.kind}#0#${h}`, kind: s.as, h, b, w: Math.ceil(b[2] * density) + 4, hh: Math.ceil(b[3] * density) + 4, k: s.k });
     }
   // Shelf packing, 1024 wide.
   const side = 1024;
@@ -86,7 +114,7 @@ export function bakeShadows(density = SHADOW_DENSITY): ShadowSheet | null {
   let y = 0;
   let shelf = 0;
   const placed: { c: (typeof cells)[number]; x: number; y: number }[] = [];
-  for (const c of cells.sort((a, b) => b.hh - a.hh)) {
+  for (const c of [...cells.sort((a, b) => b.hh - a.hh), ...extra.sort((a, b) => b.hh - a.hh)]) {
     if (x + c.w > side) {
       x = 0;
       y += shelf;
@@ -108,7 +136,7 @@ export function bakeShadows(density = SHADOW_DENSITY): ShadowSheet | null {
       const ay = 2 - c.b[1] * density;
       cv.save();
       cv.translate(px + ax, py + ay);
-      cv.scale(density, density);
+      cv.scale(density * c.k, density * c.k);
       try {
         drawActorShadow(cv, v, c.kind, c.h);
       } catch (e) {
@@ -127,6 +155,54 @@ let art: YardArt | null = null;
 let started = false;
 let waitingCfg = false;
 const waiters = new Set<() => void>();
+/** C-WORLD-1: called each time the art is REPLACED after it was ready (the works' sheets baked in the background). */
+const changers = new Set<() => void>();
+
+/**
+ * What a bake does (pure; worksHooks.test.ts): the first yard's sheets always; the works' shadow kinds when the switch is on;
+ * sheets C and D 'now' (behind the curtain) when the switch is on and the save is at rung 2 or more, 'later' (in the
+ * background once rung 2 is reached) when the switch is on below it, else 'never'.
+ */
+export function bakePlanOf(stage: boolean, rung: number): { sheets: readonly ('A' | 'B' | 'G' | 'S')[]; worksShadows: boolean; works: 'now' | 'later' | 'never' } {
+  return { sheets: ['A', 'B', 'G', 'S'], worksShadows: stage, works: !stage ? 'never' : rung >= 2 ? 'now' : 'later' };
+}
+
+const rungNow = (): number => {
+  const g = useGame.getState().game as R.SalvageGame | null | undefined;
+  return g?.salvage?.ladder?.rung ?? 0;
+};
+
+/** The development line of a bake (the same words as before for the first yard; the works' part only when C or D baked). */
+export function bakeLineOf(a: YardArt, m: { ms: number; A: ManifestAtlas | null; B: ManifestAtlas | null; G: ManifestAtlas | null }, floorMs: number, density: number, w: WorksAtlases | null): string {
+  const sheet = (x: ManifestAtlas | null, n: string) => (x ? `${n} ${x.width}x${x.height}@${x.density}` : `${n} -`);
+  const works = w ? `; works ${Math.round(w.ms)} ms in ${WORKS_SLICE_MS} ms slices: ${sheet(w.C, 'C')}, ${sheet(w.D, 'D')}, ${w.cells} cells` : '';
+  return `[yard] art baked in ${a.bakeMs} ms (manifest ${Math.round(m.ms)} ms in slices beside the loading animation; ${sheet(m.A, 'A')}, ${sheet(m.B, 'B')}, ${sheet(m.G, 'G')}; floor and shadows ${floorMs} ms; density ${density}${works})`;
+}
+
+/** C-WORLD-1: bakes the works' sheets C and D (sold entries only) and returns them; only under stageOn(). */
+function bakeWorks(cfg: R.SalvageConfig): Promise<WorksAtlases> {
+  return bakeWorksSheets(SHEET_DENSITY, worksBakeList(cfg.salvage), WORKS_SLICE_MS);
+}
+
+/** Puts the works' sheets into the art (a new object, so every reader rebuilds once) and tells the listeners. */
+function withWorks(w: WorksAtlases): void {
+  if (!art) return;
+  art = { ...art, sheets: [art.sheets[0], art.sheets[1], art.sheets[2], art.sheets[3], w.C, w.D] };
+  if (__DEV__) console.info(`[yard] works sheets baked in ${Math.round(w.ms)} ms in ${WORKS_SLICE_MS} ms slices (C ${w.C ? `${w.C.width}x${w.C.height}` : '-'}, D ${w.D ? `${w.D.width}x${w.D.height}` : '-'}, ${w.cells} cells)`);
+  changers.forEach((f) => f());
+}
+
+/** Under stageOn() below rung 2: waits for rung 2, then bakes C and D in the background (once). */
+function bakeWorksAtRung2(cfg: R.SalvageConfig): void {
+  const go = () => void bakeWorks(cfg).then(withWorks).catch((e) => console.warn('salvage: the works art could not be baked', e));
+  if (rungNow() >= 2) return go();
+  const off = useGame.subscribe((st) => {
+    const g = st.game as R.SalvageGame | null | undefined;
+    if ((g?.salvage?.ladder?.rung ?? 0) < 2) return;
+    off();
+    go();
+  });
+}
 
 /**
  * Starts the yard's bake (idempotent; see the header). Call it from the loading animation once its first
@@ -152,24 +228,33 @@ export function startYardBake(): void {
   const t0 = Date.now();
   if (__DEV__) console.info(`[yard] bake started ${typeof performance !== 'undefined' ? Math.round(performance.now()) : 0} ms after the page began`);
   const y = yardFor(cfg);
+  // C-WORLD-1: what this bake does (the switch off: exactly the first yard's, as before).
+  const plan = bakePlanOf(stageOn(), rungNow());
   bakeManifest(SHEET_DENSITY)
-    .then((m) => {
+    .then(async (m) => {
       let ground: GroundTile | null = null;
       let shadows: ShadowSheet | null = null;
       try {
         ground = bakeGround(y, DENSITY);
-        shadows = bakeShadows();
+        shadows = plan.worksShadows ? bakeShadows(SHADOW_DENSITY, WORKS_SHADOW_CELLS) : bakeShadows();
       } catch (e) {
         console.warn('salvage: the yard floor or shadows could not be baked', e);
       }
-      art = { sheets: [m.A, m.B, m.G, shadows], ground, sheet: null, bakeMs: Date.now() - t0 };
-      // The debug line the loading engineer and the lead asked for: how long the gate is held by the bake, and why.
-      if (__DEV__) {
-        const sheet = (a: ManifestAtlas | null, n: string) => (a ? `${n} ${a.width}x${a.height}@${a.density}` : `${n} -`);
-        console.info(`[yard] art baked in ${art.bakeMs} ms (manifest ${Math.round(m.ms)} ms in slices beside the loading animation; ${sheet(m.A, 'A')}, ${sheet(m.B, 'B')}, ${sheet(m.G, 'G')}; floor and shadows ${Date.now() - t0 - Math.round(m.ms)} ms; density ${DENSITY})`);
+      const floorMs = Date.now() - t0 - Math.round(m.ms);
+      let works: WorksAtlases | null = null;
+      if (plan.works === 'now') {
+        try {
+          works = await bakeWorks(cfg);
+        } catch (e) {
+          console.warn('salvage: the works art could not be baked', e);
+        }
       }
+      art = { sheets: [m.A, m.B, m.G, shadows, works?.C ?? null, works?.D ?? null], ground, sheet: null, bakeMs: Date.now() - t0 };
+      // The debug line the loading engineer and the lead asked for: how long the gate is held by the bake, and why.
+      if (__DEV__) console.info(bakeLineOf(art, m, floorMs, DENSITY, works));
       waiters.forEach((f) => f());
       waiters.clear();
+      if (plan.works === 'later') bakeWorksAtRung2(cfg);
     })
     .catch((e) => console.warn('salvage: the yard art could not be baked', e));
 }
@@ -194,12 +279,19 @@ export const sigOf = (y: YardLayout) => (i: number) => propSig(y.props[i]);
 // The fallback: if the loading animation has not started the bake by then.
 setTimeout(startYardBake, 1500);
 
-/** The baked art of the yard; null until it is ready. */
+/** C-WORLD-1: calls `f` each time the ready art is replaced (the works' sheets baked later). Returns an unsubscribe. */
+export function onYardArtChange(f: () => void): () => void {
+  changers.add(f);
+  return () => changers.delete(f);
+}
+
+/** The baked art of the yard; null until it is ready (and the new art when the works' sheets land, under stageOn()). */
 export function useYardArt(_y: YardLayout): YardArt | null {
   const [a, setA] = useState<YardArt | null>(art);
   useEffect(() => {
     if (a) return;
     return onYardArt(() => setA(art));
   }, [a]);
+  useEffect(() => (stageOn() ? onYardArtChange(() => setA(art)) : undefined), []);
   return a;
 }
