@@ -18,9 +18,18 @@ import { reconcileSalvage } from './save';
 import { ageBandOf, ageDue, codeHash, EXPIRE_MS, expireState, headroomU, HOUR_MS, packHours, packS, quoteFn, settleState, standingS, WAIT_MS } from './shop';
 import type { GameConfig } from '../../config/schema';
 import type { GameState } from '../types';
-import type { ProductArrival, QuoteOutcome, SalvageEvent, SalvageGame } from './types';
+import type { ProductArrival, QuoteOutcome, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
-const cfg = shopCfg();
+/** s2i-levels (RULING2.md 30.3): a TEST BOOK selling every ladder of the content (2 % of I, decay 0.9; no shipped number): from the works' opening a level is sold only by the book, and the frozen content has none. */
+function withLadderBook(cfg: SalvageConfig, s1 = 0.02, d = 0.9): SalvageConfig {
+  const c = cfg.salvage;
+  const ids = ['cutter', 'hand', 'driver', 'stripper', 'bench', 'crucible', ...Object.keys(c.partners), ...Object.keys((c.worksLayer as { partners?: object } | undefined)?.partners ?? {})];
+  const book = Object.fromEntries(ids.map((id) => [id, { s1, d, from: 1, to: 99 }]));
+  return { ...cfg, salvage: { ...c, levels: { ...c.levels, book } } } as SalvageConfig;
+}
+
+// d 0.5: the headroom holds a few packs but never the 20-hour one (its S above U), as these tests were written on
+const cfg = withLadderBook(shopCfg(), 0.02, 0.5);
 const US = { country: 'US' };
 const T0 = SHOP_NOW;
 const DAY = 24 * HOUR_MS;

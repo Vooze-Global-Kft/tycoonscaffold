@@ -94,7 +94,7 @@ describe('go: the plan', () => {
 
 describe('go: the script with --print starts nothing', () => {
   const runPrint = (extra: Record<string, string>, args: string[] = []) => {
-    const env: Record<string, string | undefined> = { ...process.env, ...extra };
+    const env: NodeJS.ProcessEnv = { ...process.env, ...extra };
     delete env.EXPO_PUBLIC_YARD_STAGE;
     if (!('STAGE' in extra)) delete env.STAGE;
     return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'go.js'), '--print', ...args], { env, encoding: 'utf8', timeout: 10_000 });

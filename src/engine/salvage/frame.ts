@@ -9,15 +9,22 @@ import type { SalvageContent } from '../../config/schema.salvage';
 import { dayWord, priceOf, sellAmount, sellOn } from './board';
 import { frameMoney } from './frameMoney';
 import { frameWorks } from './frameWorks';
-import { contentAt } from './layer';
-import { lineAmount } from './money';
-import { owner1Rules, tierOf } from './content';
+import { contentAt, worksOpened } from './layer';
+import { lineAmount, roundMoney } from './money';
+import { carrierCap_g, owner1Rules, plateDef, tierOf } from './content';
 import { idleWhyOf } from './crew';
 import { bossHandleS, hookRefusal } from './truck';
 import { fullestSkip } from './partners';
 import { placeCardKind, skipLabelOf } from './cards';
 import { truckFree } from './hand';
 import { chevronOf } from './goals';
+// C-FRAME (PLAN2 2.2): the works' readers the frame asks (tags, oversize pieces, the halls' charge, the drop-off's pace).
+import type { Ctx } from './clock';
+import { bossFresh } from './clock';
+import { hallCap_g } from './halls';
+import { lotValue } from './lots';
+import { FIRST_UID, rackCap, rackCount, tagFigures, tagUid, tagged } from './reuse';
+import { worksDropoffPeriod } from './things';
 import { bayOrder, bayPos, bayStocked, circleCount, circlePos, drivePath, insideFence, isStillage, lanePath, machinePos, pathSplit, pathTimes, piecePos, placeNear, pointOf, skipZone, spotPos, stopOf, thingPos, tripLandingOf, tripPhasePath } from './positions';
 import type {
   FrameArrival,
@@ -76,9 +83,16 @@ export function loadFamily(c: SalvageContent, grade: string): LoadFamily {
   }
 }
 
-/** The tool a piece of this grade is worked with (2.4: the work animation follows the piece's family). */
-export function toolFor(c: SalvageContent, obj: string, grade: string | null): ToolKind {
+/**
+ * The tool a piece of this grade is worked with (2.4: the work animation follows the piece's family). C-FRAME (PLAN2
+ * 2.2, ruling 28.7 a): a piece of the plasma cutter's tier (content `tools.plasma.tier`, the works layer's) is cut with
+ * the plasma once it is owned (`owned`: the yard's shop keys), else the torch: the same rule as the lots' tier. Without
+ * `owned` (and on the first yard's content, which has no plasma) the first yard's tools, unchanged.
+ */
+export function toolFor(c: SalvageContent, obj: string, grade: string | null, owned?: readonly string[]): ToolKind {
   const tier = c.objects[obj]?.tier ?? 1;
+  const plasma = c.tools.plasma?.tier;
+  if (owned && plasma !== undefined && tier >= plasma && owned.includes('plasma')) return 'plasma';
   if (tier >= 3) return 'torch';
   if (tier === 2) return c.grades[grade ?? '']?.material === 'castiron' ? 'sledge' : 'grinder';
   return 'spanner';
@@ -117,8 +131,17 @@ function machineLook(g: SalvageGame, id: MachineId): MachineLook {
   return m.status === 'working' ? 'working' : m.status === 'trayFull' ? 'trayFull' : 'idle';
 }
 
-const poseOf = (act: string, tool: ToolKind | null, loaded: boolean, moving: boolean): Pose => {
+/**
+ * The boss's pose by his act. C-FRAME (PLAN2 2.2): the works' acts: commission (standing at the plate; at the analyser,
+ * a plate of kind `assay`, the analyse pose), rack (push), lot (the tool the piece is cut with: plasma or torch), crate
+ * (feed). The first yard's acts as before.
+ */
+const poseOf = (act: string, tool: ToolKind | null, loaded: boolean, moving: boolean, c?: SalvageContent, target?: string | null): Pose => {
   if (act === 'work' && tool) return tool;
+  if (act === 'commission') return c && target && plateDef(c, target)?.kind === 'assay' ? 'analyse' : 'stand';
+  if (act === 'rack') return 'push';
+  if (act === 'lot') return tool ?? 'torch';
+  if (act === 'crate') return 'feed';
   if (act === 'feed' || act === 'strip') return 'feed';
   if (act === 'weigh') return 'weigh';
   if (act === 'drive' || act === 'hook' || act === 'tip') return 'drive';
@@ -184,9 +207,14 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       work: ring ? Math.max(0, Math.min(1, ring.p0 + (1 - ring.p0) * ((t - ring.t0) / Math.max(1e-6, ring.t1 - ring.t0)))) : null,
       grade: th.by && spec ? spec[0] : null,
       by: th.by,
+      // C-FRAME (PLAN2 2.2, 4.7): an oversize piece's plate: its sender, its fixed mass and about § once cut (lots.ts
+      // lotValue, the card's own figure). Only a lot carries it (stage 2: nothing is a lot in the first yard).
+      ...(th.at.at === 'lot' ? { lot: { sender: th.sender ?? null, g: th.g ?? o?.gross_g ?? 0, value: roundMoney(lotValue({ c }, th)) } } : {}),
     };
   });
   if (!reuseThings) THINGS.set(s.things, { c, crew: s.crew, act: s.act, tier: s.tier, rings: things.some((f) => f.ring !== null), out: things });
+  // C-FRAME (PLAN2 2.2, 4.6): the Yard sale's tags, from the works' opening only (below it nothing is tagged: the list as built).
+  const thingsOut = worksOpened(s) && c.reuse ? withTags(c, g, things) : things;
 
   const piecesHit = PIECES.get(s.pieces);
   const pieces: FramePiece[] = piecesHit && piecesHit.c === c && piecesHit.things === s.things ? piecesHit.out : s.pieces.map((pc) => {
@@ -247,7 +275,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     return {
       grade: gr,
       kind,
-      look: def?.bay?.sprite ?? (kind === 'heap' ? `plant.heap.${gr}` : kind === 'cage' ? 'plant.cage.converter' : 'plant.stillage'),
+      // C-FRAME (PLAN2 2.2, 2.7 worksStore / worksLine): the works' bay kinds without a sprite of their own take their kind's look.
+      look: def?.bay?.sprite ?? (kind === 'heap' ? `plant.heap.${gr}` : kind === 'cage' ? 'plant.cage.converter' : (WORKS_BAY_LOOK[kind] ?? 'plant.stillage')),
       x: p.x,
       y: p.y,
       share: Math.min(1, b.g / Math.max(1, cap)),
@@ -262,6 +291,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
       forDeal: deal,
       forCrucible: cru,
       aside_g,
+      // C-FRAME (PLAN2 2.2): "For the {hall} a / b kg": a hall's charge kept from this bay (works.ts refreshReserves). Stage 2 only.
+      ...(b.reserved ? forPlateOf(c, s, b.reserved) : {}),
     };
   });
 
@@ -270,12 +301,15 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const to = spotPos(c, m.to, s.things, s.truck);
     const loadOut = m.load.map((p) => ({ uid: p.uid, sprite: pieceSprite(c, p, objOfPiece), grade: p.grade, g: p.g, load: loadFamily(c, p.grade), ...(p.whole ? { thing: c.objects[p.whole]?.sprite ?? `thing.${p.whole}` } : {}) }));
     const cutting = m.cut ? byUid.get(m.cut.thing) : undefined;
-    const tool = m.role === 'cutter' && m.phase === 'work' && cutting ? toolFor(c, cutting.obj, pieceAt(c.objects[cutting.obj]?.pieces ?? [], cutting.cut)?.[0] ?? null) : null;
+    const tool = m.role === 'cutter' && m.phase === 'work' && cutting ? toolFor(c, cutting.obj, pieceAt(c.objects[cutting.obj]?.pieces ?? [], cutting.cut)?.[0] ?? null, s.owned) : null;
     const moving = m.phase === 'walkTo' || m.phase === 'walkBack';
     const pose: Pose = tool ?? (m.job === 'pour' ? 'pour' : moving ? (m.load.length ? 'push' : 'walk') : m.phase === 'pick' || m.phase === 'drop' ? 'feed' : 'stand');
     const why = idleWhyOf(c, s, m);
     const idleText = why ? ({ key: (why.why === 'tool' ? ((why.tier ?? 2) >= 3 ? 'card.crewWhy.tool3' : 'card.crewWhy.tool2') : `card.crewWhy.${why.why}`) as TextKey }) : null;
-    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut, ...(why && idleText ? { idleWhy: why.why, idleText } : {}) };
+    // C-FRAME (PLAN2 2.2, s2c-plan-world 2.4): the hired driver waiting while the bridge partners' skips fill says so
+    // (stand-in idleWhy 'nothing' until types.ts FrameCrew.idleWhy gains its own value: requests.md [seam] 28 Nov, C-FRAME).
+    const bridge = !why && m.role === 'driver' ? driverBridgeWhy(c, s, m) : null;
+    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut, ...(why && idleText ? { idleWhy: why.why, idleText } : bridge ? { idleWhy: 'nothing' as const, idleText: bridge } : {}) };
   });
 
   const tk = s.truck;
@@ -312,6 +346,8 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     // owner1 T3: the boss's hook ring lasts truck.bossHandle_s (hookSince is his alone).
     hookSpan: tk.hookSince !== null ? { t0: tk.hookSince, t1: tk.hookSince + bossHook } : null,
     hook: tk.hookSince !== null ? Math.max(0, Math.min(1, (t - tk.hookSince) / Math.max(1e-6, bossHook))) : null,
+    // C-FRAME (PLAN2 2.1 S4): the body drawn, named by the shop key owned; written from the works' opening (absent = 'truck').
+    ...(worksOpened(s) ? { model: s.owned.includes('truckBridge') ? ('truckBridge' as const) : ('truck' as const) } : {}),
   };
 
   const yardV = owner1Rules(c) ? c.truck.yardV : undefined;
@@ -406,7 +442,9 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
   const target = act.target;
   const workThing = act.kind === 'work' && target ? byUid.get(target) : undefined;
   const workSpec = workThing ? pieceAt(c.objects[workThing.obj]?.pieces ?? [], workThing.cut) : null;
-  const tool = workThing ? toolFor(c, workThing.obj, workSpec?.[0] ?? null) : null;
+  // C-FRAME (PLAN2 2.2): cutting an oversize piece (act `lot`), the boss holds the tool of its tier (plasma or torch).
+  const lotThing = act.kind === 'lot' && target ? byUid.get(target) : undefined;
+  const tool = workThing ? toolFor(c, workThing.obj, workSpec?.[0] ?? null, s.owned) : lotThing ? toolFor(c, lotThing.obj, null, s.owned) : null;
   const ring = workThing ? workRing(workThing.uid) : act.endsAt !== null ? { t0: act.since, t1: act.endsAt, p0: 0 } : null;
   const pk = place ? c.map.places[place]?.card : false;
   const boss: FrameBoss = {
@@ -416,7 +454,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     act: act.kind,
     target,
     tool,
-    pose: poseOf(act.kind, tool, s.load.length > 0, pr.moving),
+    pose: poseOf(act.kind, tool, s.load.length > 0, pr.moving, c, target),
     grade: workSpec?.[0] ?? null,
     ring,
     near: workThing ? { kind: 'thing', id: workThing.uid } : place ? { kind: 'place', id: place } : null,
@@ -439,7 +477,7 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     fixtures.push({ id: `sign.rung${s.ladder.rung}`, sprite: 'plant.sign.rung', x: board.x, y: board.y - 1 });
   }
 
-  return { t, epoch: s.epoch, boss, things, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: null, arrivals, fixtures, skips, labels, chevron: chevronOf({ salvage: c } as SalvageConfig, g), circles, foreman: { active, left_s: left } };
+  return { t, epoch: s.epoch, boss, things: thingsOut, pieces, load, machines, bays, crew, truck, flatbed, dropoffCar: dropoffCarOf(c, s), arrivals, fixtures, skips, labels, chevron: chevronOf({ salvage: c } as SalvageConfig, g), circles, foreman: { active, left_s: left } };
 }
 
 /**

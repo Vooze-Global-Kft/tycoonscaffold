@@ -30,6 +30,14 @@ import { restartKeeps } from './state2Money';
 import { newBot, playTo, startGame } from './bot';
 import type { LevelTarget, SalvageConfig, SalvageEvent, SalvageGame } from './types';
 
+/** s2i-levels (RULING2.md 30.3): a TEST BOOK selling every ladder of the content (2 % of I, decay 0.9; no shipped number): from the works' opening a level is sold only by the book, and the frozen content has none. */
+function withLadderBook(cfg: SalvageConfig, s1 = 0.02): SalvageConfig {
+  const c = cfg.salvage;
+  const ids = ['cutter', 'hand', 'driver', 'stripper', 'bench', 'crucible', ...Object.keys(c.partners), ...Object.keys((c.worksLayer as { partners?: object } | undefined)?.partners ?? {})];
+  const book = Object.fromEntries(ids.map((id) => [id, { s1, d: 0.9, from: 1, to: 99 }]));
+  return { ...cfg, salvage: { ...c, levels: { ...c.levels, book } } } as SalvageConfig;
+}
+
 const RAW = JSON.parse(fs.readFileSync(new URL('../../../games/scrap-yard/game.json', import.meta.url), 'utf8'));
 const NOW = Date.UTC(2026, 10, 27, 9);
 /** The shipped content as the owner's phone reads it (release.stage as shipped: 1). */
@@ -185,7 +193,7 @@ describe('M8: the day\'s ceiling holds at every rung (ads.ts dayRoom)', () => {
 describe('M10: the ceiling before the money, from the works\' opening (headroom U never depends on the cash)', () => {
   it('a ceiling-bound works yard: U with cash 0 equals U with cash 10^9, and a ceiling refusal reads the same at both', async () => {
     const { ratedCapacity } = await import('./rate');
-    const base = shopCfg();
+    const base = withLadderBook(shopCfg());
     const g = shopGame({ cash: 0 });
     const R0 = ratedCapacity(base, g);
     const cfg = { ...base, salvage: { ...base.salvage, ceilings_t_h: base.salvage.ceilings_t_h.map(() => R0) } } as SalvageConfig;

@@ -31,6 +31,16 @@ import { dropoffArrive, dropoffCount, thingGone, worksDropoffPeriod } from './th
 import type { LevelTarget, SalvageConfig, SalvageGame } from './types';
 
 const base = worksCfg();
+
+/** s2i-levels (RULING2.md 30.3): a TEST BOOK selling every ladder of the content (2 % of I, decay 0.9; no shipped number): from the works' opening a level is sold only by the book, and the frozen content has none. */
+function withLadderBook(cfg: SalvageConfig, s1 = 0.02): SalvageConfig {
+  const c = cfg.salvage;
+  const ids = ['cutter', 'hand', 'driver', 'stripper', 'bench', 'crucible', ...Object.keys(c.partners), ...Object.keys((c.worksLayer as { partners?: object } | undefined)?.partners ?? {})];
+  const book = Object.fromEntries(ids.map((id) => [id, { s1, d: 0.9, from: 1, to: 99 }]));
+  return { ...cfg, salvage: { ...c, levels: { ...c.levels, book } } } as SalvageConfig;
+}
+/** The works' content with that book (fastFull's levels; one object). */
+const LEVELLED = withLadderBook(base);
 /** A config with works.dropoffPeriod_s set (or removed with `undefined`): a new content object, so the rules' caches are its own. */
 function withKey(p: number | (number | null)[] | undefined, c0: SalvageConfig = base): SalvageConfig {
   const w = { ...c0.salvage.works! } as Record<string, unknown>;
@@ -87,8 +97,8 @@ function fastFull(): SalvageGame {
   }
   for (let j = 0; j < 5; j++)
     for (const m of g.salvage.crew.filter((q) => q.role === 'hand' || q.role === 'cutter')) {
-      const ck = levelCheck(base, g, { kind: 'crew', id: m.id });
-      if (ck.price !== null && !ck.refusal) g = level(base, g, { kind: 'crew', id: m.id }, ck.price, g.salvage.t);
+      const ck = levelCheck(LEVELLED, g, { kind: 'crew', id: m.id });
+      if (ck.price !== null && !ck.refusal) g = level(LEVELLED, g, { kind: 'crew', id: m.id }, ck.price, g.salvage.t);
     }
   g = R.jump(base, g, g.salvage.t + 60);
   FAST = fillDropoff(g);
