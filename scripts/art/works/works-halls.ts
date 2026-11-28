@@ -122,24 +122,30 @@ export async function run(x: WorksSheetCtx): Promise<void> {
     x.caption(c, 'first yard: crucible idle / pour', 1330, 800);
   }, 2);
   // phone size: 1 pt = 1 px and the world zoomed so a hall's furnace is about 60 px tall (0.85 of the ground work's 40 pt a metre)
-  await x.write('works-halls-60.png', 1180, 380, (c) => {
-    x.title(c, 'phone size (a furnace about 60 px): pour, heating; the first yard\'s crucible corner at the same zoom');
+  await x.write('works-halls-60.png', 1320, 400, (c) => {
+    x.title(c, 'phone size (1 pt = 1 px, zoom 0.85: a furnace about 60 px): rotary, induction, copper pouring; the first yard\'s crucible corner at the same zoom');
     const z = 0.85;
     kinds.forEach((k, i) => {
-      x.put(c, 130 + i * 330, 210, () => {
+      x.put(c, 170 + i * 380, 230, () => {
         c.scale(z, z);
-        putHall(c, k, 'pour', 1);
-      });
-      x.put(c, 270 + i * 330, 210, () => {
-        c.scale(z * 0.5, z * 0.5);
-        putHall(c, k, 'heat', 0);
+        putHall(c, k, i === 1 ? 'heat' : 'pour', 1);
       });
     });
-    x.put(c, 1110, 210, () => {
+    x.put(c, 1230, 230, () => {
       c.scale(z, z);
       SD.drawCrucibleState(c, V, 'pour', 0);
       PD.drawMould(c, V, { ox: PD.MOULD_X * 1.2 + 0.5, oy: 0.36, poured: [0.2, 0.8] });
       SD.drawHood(c, V, true);
+    });
+  }, 1);
+  await x.write('works-halls-60b.png', 1320, 400, (c) => {
+    x.title(c, 'phone size: induction pouring, rotary and copper heating');
+    const z = 0.85;
+    kinds.forEach((k, i) => {
+      x.put(c, 170 + i * 380, 230, () => {
+        c.scale(z, z);
+        putHall(c, k, i === 1 ? 'pour' : 'heat', 0);
+      });
     });
   }, 1);
 }

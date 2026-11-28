@@ -276,8 +276,8 @@ export function drawHallShed(c: SkCanvas, v: View3q, kind: HallKind): void {
   faceFill(c, v, head, CLAD, LINE_W);
   const ribs = Math.round(w / 0.32);
   for (let i = 1; i < ribs; i++) faceFill(c, v, subQuad(head, i / ribs - 0.004, i / ribs + 0.004, 0.2, 0.7), shade(CLAD, -0.12));
-  faceFill(c, v, subQuad(head, 0, 1, 0.7, 1), FASCIA[kind], LINE_W);
-  faceFill(c, v, subQuad(head, 0, 1, 0.74, 0.8), shade(FASCIA[kind], 0.25), 0);
+  faceFill(c, v, subQuad(head, 0, 1, 0.36, 0.72), FASCIA[kind], LINE_W);
+  faceFill(c, v, subQuad(head, 0, 1, 0.4, 0.46), shade(FASCIA[kind], 0.25), 0);
   {
     const p = subQuad(head, 0.004, 0.996, 0, 0.2).map((q) => proj(v, ...q));
     hazard(c, poly(p.flat()), 4, 0.9);
@@ -328,14 +328,14 @@ export function drawHallShed(c: SkCanvas, v: View3q, kind: HallKind): void {
       c.drawPath(segment(a[0], a[1], b[0], b[1]), stroke(shade(sheet, -0.14), 1));
       c.drawPath(segment(a[0] + 1.2, a[1], b[0] + 1.2, b[1]), stroke(YARD.galvanisedLight, 0.8));
     }
-  // roof lights on the south slope (translucent sheets: pale, never shining)
-  const lights = kind === 'rotary' ? 3 : 2;
-  for (let i = 0; i < lights; i++) {
-    const s0 = (i + 0.5) / lights - 0.07;
-    const q = subQuad(south, s0, s0 + 0.14, 0.22, 0.78);
-    faceFill(c, v, q, mix(YARD.glass, '#FFFFFF', 0.45), 1);
-    faceFill(c, v, subQuad(q, 0.15, 0.4, 0.1, 0.9), '#FFFFFF', 0, 0.35);
-  }
+  // roof lights: narrow translucent strips from eave to ridge on both slopes (pale, never shining)
+  const lights = kind === 'rotary' ? 4 : 3;
+  for (const q0 of [south, north])
+    for (let i = 0; i < lights; i++) {
+      const s0 = (i + 0.5) / lights - 0.025;
+      const q = subQuad(q0, s0, s0 + 0.05, 0.06, 0.94);
+      faceFill(c, v, q, mix(YARD.glass, '#FFFFFF', q0 === south ? 0.45 : 0.3), 1);
+    }
   // the ridge vent: a low louvred box along the ridge (air, never smoke)
   {
     const L = w * 0.56;
@@ -371,7 +371,7 @@ export function drawHallShed(c: SkCanvas, v: View3q, kind: HallKind): void {
 // The induction furnace: a crucible in a water-cooled coil box, tilting about its spout
 // -------------------------------------------------------------------------------------------------------------------
 
-const IND = { pivot: [0.72, 0, 1.38] as V3, lip: [0.86, 0, 1.38] as V3, tilt: 55 };
+const IND = { pivot: [0.72, 0, 1.38] as V3, lip: [0.86, 0, 1.38] as V3, tilt: 40 };
 
 function inductionBody(c: SkCanvas, v: View3q, f: FurnaceFrame): void {
   const lidOn = f === 'hot';
@@ -483,7 +483,7 @@ export function drawInductionFurnace(c: SkCanvas, v: View3q, f: FurnaceFrame): [
   box(c, v, { len: 0.16, wid: 0.16, h: IND.pivot[2] - 0.14, ox: IND.pivot[0], oy: 0.58, z: 0.14, color: YARD.machineDark, line: 1 });
   box(c, v, { len: 0.26, wid: 0.2, h: 0.16, ox: IND.pivot[0], oy: 0.58, z: IND.pivot[2] - 0.1, color: YARD.machine, line: 1, bevel: true });
   // the fume hood over the mouth (fixed), the duct up into the roof
-  fumeHood(c, v, -0.75, 0.95, -0.75, 0.6, 2.15, hot, 1.3);
+  fumeHood(c, v, -0.5, 0.7, -0.6, 0.45, 2.5, hot, 1.0);
   return rot(proj(v, ...IND.lip), P, deg);
 }
 

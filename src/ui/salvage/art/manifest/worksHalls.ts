@@ -27,6 +27,18 @@ const B = (x: number, y: number, w: number, h: number): Bounds => ({ x, y, w, h 
 // `HALLS_MEASURE=1 npx tsx scripts/art/yard-sheets.ts <dir> works-halls`; do not edit by hand)
 // prettier-ignore
 const MEASURED: Record<string, [number, number, number, number]> = {
+  'works.hall.rotary.shed': [-97, -142, 200, 196],
+  'works.hall.rotary.furnace': [-44, -71, 100, 90],
+  'works.hall.rotary.glow': [-35, -43, 90, 70],
+  'works.hall.rotary.stream': [-60, -50, 40, 63],
+  'works.hall.induction.shed': [-72, -120, 150, 167],
+  'works.hall.induction.furnace': [-33, -69, 73, 88],
+  'works.hall.induction.glow': [-25, -37, 62, 61],
+  'works.hall.induction.stream': [-53, -59, 41, 72],
+  'works.hall.copper.shed': [-72, -120, 150, 167],
+  'works.hall.copper.furnace': [-34, -68, 85, 87],
+  'works.hall.copper.glow': [-29, -40, 66, 68],
+  'works.hall.copper.stream': [-38, -52, 40, 65],
 };
 
 /** Until measured: a generous box (the measuring run draws on a larger canvas whatever this says). */
