@@ -37,14 +37,18 @@ import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ARRIVAL, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, ROOF_MAX, VBOX_FLATBED, VBOX_FLATBED_WORKING, VBOX_TRAILER, VBOX_TRUCK, VBOX_TRUCK_BARE, VBOX_TRUCK_HOOK, VBOX_VAN, actorTable, vehicleBoxes, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
-import { VB_SLOTS, VB_STRIDE, arrivalAt, behindStanding, bodyInto, bossDriveV, vehicleCovers, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, pressGetIn, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
+import { ARRIVAL, ARRIVAL_UNKNOWN, ARRIVAL_WORKS_FIRST, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, ROOF_MAX, VBOX_FLATBED, VBOX_FLATBED_WORKING, VBOX_TRAILER, VBOX_VAN, actorTable, vehicleBoxes, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
+import { VB_STRIDE, arrivalAt, behindStanding, bodyInto, bossDriveV, vehicleCovers, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, pressGetIn, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
 import { blocked, moveBody, nearestAct } from './collide';
 import { DEAD, STAND_MS, STICK_R, presenceStep, stick } from './stick';
 import { useYardArt, type YardArt } from './useYard';
-import { rulesItems } from './useRulesTable';
+import { NO_WORKS, WORKS_VEHICLE_CODE, rulesItems, rulesWorks, type WorksPack } from './useRulesTable';
+import { CC_DRAWS, CC_N, CC_ON, CC_STATICS, countFrame } from './costCounters';
+import { worksVehiclesInto } from './worksVehicleMotion';
+import { visitorsInto } from './worksPeopleMotion';
+import { stageOn } from '../../../modes/salvage/stage';
 import type { SpriteSheet } from './atlas';
 import type { YardLayout } from './yard';
 
@@ -92,6 +96,9 @@ export interface FrameStats {
   actors: number;
   sprites: number;
   runs?: number;
+  /** C-WORLD-2 (PLAN2 6.1; under the works' switch only): atlas draws and the map's statics tested this frame (./costCounters.ts). */
+  draws?: number;
+  statics?: number;
 }
 
 export interface YardAnim {
@@ -165,6 +172,8 @@ interface DrawKit {
   VX: number[];
   /** owner2-fix P3: the south edge of the lane's north hedge (metres; NaN: no lane). */
   HS: number;
+  /** C-WORLD-2: half length and half width of the works' crane lorry (recovery, low-loader) and the dealer's van (the manifest's footprints). */
+  WVD: number[];
 }
 
 /** A vehicle sprite and its shadow. */
@@ -172,6 +181,99 @@ function vehicleInto(L: DrawList, SH: DrawList, V: Float64Array, cell: number, s
   'worklet';
   addTo(SH, V, 0, shadow, wx, wy, 0, 0, 1, -1, 1);
   addTo(L, V, key, cell, wx, wy, 0, 0, scale, -1, 1);
+}
+
+// =====================================================================================================
+// C-WORLD-2 (PLAN2 2.8; critic-build F2, F3): THE FRAME LOOP'S HOOKS FOR THE WORKS. With the switch off (stageOn()
+// false: every store build, the owner's phone today) each of them takes today's path number for number: the truck is
+// TRUCK_MODELS' row 0 (the very arrays of today), the arrivals keep 4 slots, nothing is handed on (no code at or past
+// ARRIVAL_WORKS_FIRST exists below the works' opening), the works' pack stays NO_WORKS, no cost counter is written.
+// =====================================================================================================
+
+/** Slots of the vehicles' memory (previous place, drawn range, see-through ink) before the arrivals': truck 0, flatbed 1, van 2, its trailer 3. */
+export const FIRST_SLOTS = 4;
+/** The arrivals' slots from the works' opening (critic-build F3: the recovery truck, the low-loader and the dealer's van beside the first yard's). */
+export const ARRIVAL_SLOTS = 6;
+/** The first yard's arrival slots (today's `4 + Math.min(3, o / ARRIVAL)`). */
+export const ARRIVAL_SLOTS_FIRST_YARD = 4;
+/** Every slot the loop's scratch keeps (the first yard uses the first FIRST_SLOTS + ARRIVAL_SLOTS_FIRST_YARD, as today's motion.ts VB_SLOTS). */
+export const LOOP_SLOTS = FIRST_SLOTS + ARRIVAL_SLOTS;
+/** Vehicle bodies the step aside and the collider read a frame: the four of the first yard, six arrivals, two spare. */
+export const VB_BODIES = 12;
+/**
+ * The view array the frame loop hands every works worklet: V[0..7] the view as addTo reads it (camX, camY, ppm, tilt,
+ * lift, SW, SH, zoom); then, for a vehicle handed to ./worksVehicleMotion.ts worksVehiclesInto, its DATED place this
+ * frame as the arrivals' own ./motion.ts arrivalAt gives it (the frame loop holds the paths): x, y (metres), heading4,
+ * the share of its phase (0..1), its slot. The works' file draws there and never computes another place.
+ */
+export const VW_X = 8;
+export const VW_Y = 9;
+export const VW_H4 = 10;
+export const VW_U = 11;
+export const VW_SLOT = 12;
+export const VW_N = 16;
+
+/** The dealer's van's kind code in the works' pack (./useRulesTable.ts WORKS_VEHICLE_CODE). */
+const WORKS_VAN_CODE = WORKS_VEHICLE_CODE.dealerVan;
+
+/** The slot of the arrival with index i (its offset / ARRIVAL) when n arrival slots are kept: today's formula for n = 4. */
+export function arrivalSlot(i: number, n: number): number {
+  'worklet';
+  return FIRST_SLOTS + Math.min(n - 1, i);
+}
+
+/** Is an arrival's kind code one the works draw (recovery, lowLoader, and every code the table does not know)? */
+export function handedOn(kind: number): boolean {
+  'worklet';
+  return kind >= ARRIVAL_WORKS_FIRST || kind === ARRIVAL_UNKNOWN;
+}
+
+/** The works' pack holds nothing to draw (the works' worklets are not called). */
+export function worksEmpty(W: WorksPack): boolean {
+  'worklet';
+  return W === NO_WORKS || (W.vehicles.length === 0 && W.visitors.length === 0);
+}
+
+/** One row of the actor table's truck models (./actors.ts ActorTable `models`). */
+type ModelRow = ReturnType<typeof actorTable>['models'][number];
+
+/**
+ * The truck's model row for RulesScene.truckModel (absent: 0, today's truck). A row whose body is not baked yet (sheet D
+ * before its bake, or the switch off: its cells are -1) falls back to row 0, so the truck is always drawn, and drawn
+ * with the sizes of what is drawn.
+ */
+export function truckModelRow(models: readonly ModelRow[], code: number | undefined): ModelRow {
+  'worklet';
+  if (code === undefined || code <= 0) return models[0];
+  const m = models[code];
+  return m !== undefined && m.body[0] >= 0 && m.body[2] >= 0 ? m : models[0];
+}
+
+/**
+ * One works vehicle (an arrival handed on, or an entry of the works' pack in the arrivals' layout): its dated place by
+ * ./motion.ts arrivalAt written into V (VW_*), worksVehiclesInto draws it, and when it drew anything the slot keeps its
+ * drawn range (VR: the see-through ink over the boss) and its body goes into VB (the step aside, the boss's collider) with
+ * the half-sizes `hl`, `hw` of its kind. Returns the new body count; cnt[0] the vehicles drawn. A worklet; no allocation.
+ */
+export function worksVehicleOne(L: DrawList, SHD: DrawList, V: Float64Array, AR: number[], o: number, AP: number[], AT: number[], tNow: number, dt: number, P: number[], TA: number[], o4: number[], tmp2: number[], f2: number[], VB: Float64Array, nvb: number, PV: Float64Array, VR: Int32Array, slot: number, hl: number, hw: number, cnt: number[]): number {
+  'worklet';
+  const ph = AR[o + 1];
+  const span = AR[o + 7] - AR[o + 6];
+  const h4 = arrivalAt(o4, tmp2, P, TA, AR, o, AP, AT, tNow);
+  V[VW_X] = o4[0];
+  V[VW_Y] = o4[1];
+  V[VW_H4] = h4;
+  V[VW_U] = span > 0 ? Math.max(0, Math.min(1, (tNow - AR[o + 6]) / span)) : 1;
+  V[VW_SLOT] = slot;
+  const i0 = L.n;
+  const nd = worksVehiclesInto(L, SHD, V, AR, o, tNow, dt);
+  cnt[0] = nd;
+  if (!(nd > 0)) return nvb;
+  VR[slot * 3] = i0;
+  VR[slot * 3 + 1] = L.n;
+  VR[slot * 3 + 2] = nvb;
+  facing8(f2, (ph === 1 ? 1 : h4) * 2);
+  return bodyInto(VB, nvb, PV, slot, o4[0], o4[1], f2[0], f2[1], hl, hw, dt, 0, undefined, 0, o4[1] + 1);
 }
 
 /** The sampling of every atlas draw (one object for every run, not one a run). */
@@ -336,10 +438,13 @@ export function useYardLoop(opts: {
       const f = entryOf(id)?.footprint;
       return [(f?.w ?? w) / 2, (f?.d ?? d) / 2];
     };
+    // VD[0..1] stay today's truck's (the hedge's sort reads the model row's own half below: row 0 is the same numbers).
     const VD = [...half('vehicle.truck', 4.6, 2), ...half('vehicle.flatbed', 4.6, 2), ...half('vehicle.van', 3.4, 1.8), ...half('vehicle.trailer', 1.6, 1.3)];
+    // C-WORLD-2: the works' vehicles' halves (the art's footprints; the fall-backs are C-ART's placeholders' footprints).
+    const WVD = [...half('vehicle.cranelorry', 7, 2.5), ...half('vehicle.van.dealer', 3.4, 1.8)];
     const hedgeD = entryOf('lane.hedge')?.footprint.d ?? 0;
     const HS = yard.lane.length === 4 ? yard.lane[2] - 0.6 + hedgeD / 2 : NaN;
-    return { statics, T, images, rects, dens, roofs, roofOf, PB: personBox(), VD, VX: vehicleBoxes(yard.tilt), HS };
+    return { statics, T, images, rects, dens, roofs, roofOf, PB: personBox(), VD, VX: vehicleBoxes(yard.tilt), HS, WVD };
   }, [art, content, yard]);
 
   // H8: the pools, the statics and the sheets live in ONE shared value, set once per bake, so the frame
@@ -449,6 +554,10 @@ export function useYardLoop(opts: {
   const staleS = content ? content.feel.staleS : NaN;
   const standMs = staleS > 0 ? Math.min(STAND_MS, (staleS * 1000) / 2) : 100;
   const workDelay = content ? content.feel.workDelay : NaN;
+  // C-WORLD-2: the works' development switch, read once per mount (a constant of the run); off: every hook takes today's path.
+  const works = useMemo(() => stageOn(), []);
+  const arrN = works ? ARRIVAL_SLOTS : ARRIVAL_SLOTS_FIRST_YARD;
+  const nSlots = FIRST_SLOTS + arrN;
 
   const onFrame = useCallback(
     (info: FrameInfo) => {
@@ -466,7 +575,7 @@ export function useYardLoop(opts: {
         st[31] = NaN;
         st[32] = NaN;
         st[33] = NaN;
-        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(8), lastR: null, pics: [], pres: new Float64Array([0, 0, 0, 0, NaN, NaN, NaN]), xy: [] as number[], runPool: { x: [], r: [], c: [] }, clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN], vb: new Float64Array(12 * VB_STRIDE), pv: new Float64Array(VB_SLOTS * 2).fill(NaN), aside: new Float64Array(128), f2: [0, 0, 0, 0], roofL: new Int32Array(ROOF_MAX).fill(-1), roofA: new Float64Array(ROOF_MAX).fill(1), nvb: 0, vr: new Int32Array(VB_SLOTS * 3).fill(-1), vehA: new Float64Array(VB_SLOTS).fill(1) };
+        S = { st, D: makeListW(CAP_DECAL, 0), SHD: makeListW(CAP_SHADOW, CAP_DECAL), L: makeListW(CAP_SORT, CAP_DECAL + CAP_SHADOW), buckets: new Float64Array(15), cam: [0, 0, 0, 0], out: [0, 0], o4: [0, 0, 0, 0], path: new Array(PATH_MAX * 2).fill(0), view: new Float64Array(VW_N), lastR: null, pics: [], pres: new Float64Array([0, 0, 0, 0, NaN, NaN, NaN]), xy: [] as number[], runPool: { x: [], r: [], c: [] }, clk: makeClock(), face: [NaN, 0], t4: [0, 0, 0, 0], tmp2: [0, 0, 0, 0], legK: new Float64Array(2 * 64), tA: new Array(PATH_MAX).fill(0), truckK: [NaN, NaN, NaN], vb: new Float64Array(VB_BODIES * VB_STRIDE), pv: new Float64Array(LOOP_SLOTS * 2).fill(NaN), aside: new Float64Array(128), f2: [0, 0, 0, 0], roofL: new Int32Array(ROOF_MAX).fill(-1), roofA: new Float64Array(ROOF_MAX).fill(1), nvb: 0, vr: new Int32Array(LOOP_SLOTS * 3).fill(-1), vehA: new Float64Array(LOOP_SLOTS).fill(1), cc: new Float64Array(CC_N), cnt: [0] };
         scratch.value = S;
       }
       const st = S.st;
@@ -923,8 +1032,19 @@ export function useYardLoop(opts: {
         }
         // Purchases on their way: the van to the rack, the machine flatbed's crane over a pad (./motion.ts arrivalAt).
         const AR = Rv.arrivals;
+        const WVD = K !== null ? K.WVD : NO_ITEMS;
         for (let o = 0; o + ARRIVAL - 1 < AR.length; o += ARRIVAL) {
           const kind = AR[o];
+          // C-WORLD-2 (F3): the works' kinds (recovery, lowLoader) and every unknown one go to ./worksVehicleMotion.ts.
+          if (works && handedOn(kind)) {
+            const slot = arrivalSlot(o / ARRIVAL, arrN);
+            nvb = worksVehicleOne(L, SHD, V, AR, o, Rv.arrivalPath, Rv.arrivalAt, tNow, dt, P, S.tA, o4, S.tmp2, f2, VB, nvb, PV, VR, slot, WVD[0], WVD[1], S.cnt);
+            if (S.cnt[0] > 0) {
+              seen |= 1 << slot;
+              actors += S.cnt[0];
+            }
+            continue;
+          }
           if (kind !== 0 && kind !== 1) continue;
           const ph = AR[o + 1];
           const span = AR[o + 7] - AR[o + 6];
@@ -943,7 +1063,7 @@ export function useYardLoop(opts: {
               addTo(L, V, ay + 1 + 2e-4, T.crane[Math.min(2, Math.floor(u * 3))], ax, ay, 0, 0, T.flatbedWorkScale, -1, 1);
             } else addTo(L, V, ay + 1, T.flatbed[h4], ax, ay, 0, 0, T.vehicleScale, -1, 1);
           }
-          const slot = 4 + Math.min(3, o / ARRIVAL);
+          const slot = arrivalSlot(o / ARRIVAL, arrN);
           facing8(f2, (ph === 1 ? 1 : h4) * 2);
           VR[slot * 3] = i0;
           VR[slot * 3 + 1] = L.n;
@@ -953,9 +1073,27 @@ export function useYardLoop(opts: {
           seen |= 1 << slot;
           actors++;
         }
+        // C-WORLD-2: the works' own vehicles (the dealer's van; ./useRulesTable.ts worksPack), in the arrivals' layout and
+        // the slots after them; nothing is called while the pack is empty (below the works' opening: always).
+        const WK = works ? rulesWorks.value : NO_WORKS;
+        if (!worksEmpty(WK)) {
+          const WV = WK.vehicles;
+          const nAr = Math.floor(AR.length / ARRIVAL);
+          for (let o = 0; o + ARRIVAL - 1 < WV.length; o += ARRIVAL) {
+            const slot = arrivalSlot(nAr + o / ARRIVAL, arrN);
+            const van = WV[o] === WORKS_VAN_CODE;
+            nvb = worksVehicleOne(L, SHD, V, WV, o, NO_ITEMS, NO_ITEMS, tNow, dt, P, S.tA, o4, S.tmp2, f2, VB, nvb, PV, VR, slot, van ? WVD[2] : WVD[0], van ? WVD[3] : WVD[1], S.cnt);
+            if (S.cnt[0] > 0) {
+              seen |= 1 << slot;
+              actors += S.cnt[0];
+            }
+          }
+        }
         // The truck: driven by the boss (here), on the driver's trip (pictured from its leg), or parked.
         if (truckOwned) {
           const TR = Rv.truck;
+          // C-WORLD-2 (F2): the truck's body from the model table (row 0: today's arrays and sizes, bit for bit).
+          const TM = works ? truckModelRow(T.models, Rv.truckModel) : T.models[0];
           let tx = st[2];
           let ty = st[3];
           let h8 = heading8(st[4]);
@@ -978,24 +1116,25 @@ export function useYardLoop(opts: {
           if (HSk === HSk && tx > YW - 3) {
             const ca = Math.abs(Math.sin((h8 * Math.PI) / 4));
             const sa = Math.abs(Math.cos((h8 * Math.PI) / 4));
-            const northY = ty - (VD[0] * sa + VD[1] * ca);
+            const northY = ty - (TM.half[0] * sa + TM.half[1] * ca);
             if (northY < HSk) key = Math.min(key, northY);
           }
           const i0 = L.n;
-          let tbox = (VBOX_TRUCK * 8 + h8) * 4;
+          let tbox = (TM.vbox * 8 + h8) * 4;
           if (hook >= 0) {
-            vehicleInto(L, SHD, V, T.truckHook[hook], T.shTruck[2], T.truckScale, tx, ty, key);
-            tbox = VBOX_TRUCK_HOOK * 32;
-          } else if (TR[4] === 0 && T.truckBare[h8] >= 0) {
+            vehicleInto(L, SHD, V, TM.hook[hook], TM.shadow[2], TM.scale, tx, ty, key);
+            tbox = TM.vboxHook * 32;
+          } else if (TR[4] === 0 && TM.bare[h8] >= 0) {
             // No skip on the hook (L16): the bare frame of this heading.
-            vehicleInto(L, SHD, V, T.truckBare[h8], T.shTruck[h8], T.truckScale, tx, ty, key);
-            tbox = (VBOX_TRUCK_BARE * 8 + h8) * 4;
+            vehicleInto(L, SHD, V, TM.bare[h8], TM.shadow[h8], TM.scale, tx, ty, key);
+            tbox = (TM.vboxBare * 8 + h8) * 4;
           } else if (TR[4] === 0 && (h8 === 2 || h8 === 1 || h8 === 3)) {
-            vehicleInto(L, SHD, V, T.truckHook[0], T.shTruck[2], T.truckScale, tx, ty, key);
-            tbox = VBOX_TRUCK_HOOK * 32;
+            vehicleInto(L, SHD, V, TM.hook[0], TM.shadow[2], TM.scale, tx, ty, key);
+            tbox = TM.vboxHook * 32;
           } else {
-            vehicleInto(L, SHD, V, T.truck[h8], T.shTruck[h8], T.truckScale, tx, ty, key);
-            if (TR[10] >= 0) addTo(L, V, key + 1e-4, T.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
+            vehicleInto(L, SHD, V, TM.body[h8], TM.shadow[h8], TM.scale, tx, ty, key);
+            // The skip's load: today's truck's offsets (the hook-lift's own are WLD-VEHICLES1's, in its row).
+            if (TR[10] >= 0) addTo(L, V, key + 1e-4, TM.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
           }
           // The boss's own truck faces where he steers it (st[4]); the driver's as drawn.
           if (driving) {
@@ -1005,14 +1144,14 @@ export function useYardLoop(opts: {
           VR[0] = i0;
           VR[1] = L.n;
           VR[2] = nvb;
-          nvb = bodyInto(VB, nvb, PV, 0, tx, ty, f2[0], f2[1], VD[0], VD[1], dt, 0, VX, tbox, key);
+          nvb = bodyInto(VB, nvb, PV, 0, tx, ty, f2[0], f2[1], TM.half[0], TM.half[1], dt, 0, VX, tbox, key);
           seen |= 1;
           actors++;
         }
         // The boss on foot collides with these next frame (their places then are a frame old: under a centimetre a frame for a standing one).
         S.nvb = nvb;
         // A vehicle not drawn this frame has no previous place for the next one.
-        for (let q = 0; q < VB_SLOTS; q++) {
+        for (let q = 0; q < nSlots; q++) {
           if ((seen & (1 << q)) === 0) {
             PV[q * 2] = NaN;
             PV[q * 2 + 1] = NaN;
@@ -1065,6 +1204,9 @@ export function useYardLoop(opts: {
           moved = a === a ? !(p === p) || Math.abs(a - p) > MOVE_EPS_M : p === p;
         }
         if (moved) crewXY.value = XY.slice(0, nXY);
+        // C-WORLD-2: the Yard sale's visitors (./worksPeopleMotion.ts), drawn after the vehicles; not called while the
+        // works' pack is empty (below the works' opening: always).
+        if (WK.visitors.length > 0) actors += visitorsInto(L, SHD, V, WK.visitors, tNow);
         // The boss, on foot: walking or pushing, working by tool, pouring, standing; his hand load on his back.
         if (st[5] === 0) {
           const carrier = B[0] > 0 ? B[0] - 1 : -1;
@@ -1093,7 +1235,7 @@ export function useYardLoop(opts: {
         // owner2-fix P2: A PLAYER ALWAYS SEES HIMSELF behind a vehicle too: a vehicle whose picture is drawn after the
         // boss on foot and covers his drawn box is drawn see-through, eased, as a roof is (actors.ts roofInk).
         if (K !== null) {
-          for (let q = 0; q < VB_SLOTS; q++) {
+          for (let q = 0; q < nSlots; q++) {
             const i0 = VR[q * 3];
             const covered = st[5] === 0 && i0 >= 0 && vehicleCovers(VB, VR[q * 3 + 2] * VB_STRIDE, st[0], st[1], st[1] + 0.25, tilt, K.PB);
             const a = roofInk(S.vehA[q], covered, dt);
@@ -1162,12 +1304,17 @@ export function useYardLoop(opts: {
             frames += b[q * 3];
             whole++;
           }
-          stats.value = { fps: whole > 0 ? frames / whole : 0, worstMs: worst, actors, sprites: D.n + SHD.n + L.n, runs };
+          stats.value = works ? { fps: whole > 0 ? frames / whole : 0, worstMs: worst, actors, sprites: D.n + SHD.n + L.n, runs, draws: S.cc[CC_DRAWS], statics: S.cc[CC_STATICS] } : { fps: whole > 0 ? frames / whole : 0, worstMs: worst, actors, sprites: D.n + SHD.n + L.n, runs };
+        }
+        // C-WORLD-2 (PLAN2 6.1): the cost counters, written only while the development panel measures (and the switch is on).
+        if (works) {
+          S.cc[CC_ON] = 1;
+          countFrame(S.cc, runs, D.n + SHD.n + L.n, actors, Math.floor(statics.length / ITEM), runs);
         }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draw, ctl, motion, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck, enterRules, enter, standMs, workDelay],
+    [draw, ctl, motion, works, arrN, nSlots, bossV, bossYardV, crewXY, body, camera, northSy, wallY, solids, acts, hPts, hLen, hPhase, ppm, tilt, lift, YW, YD, pxH, SW, SH, measure, sampleJS, drivingJS, topPx, room, lane, drawW, north, pts, soundStep, soundTruck, stepOutRules, seatAck, enterRules, enter, standMs, workDelay],
   );
   const cb = useFrameCallback(onFrame, false);
   useEffect(() => {
