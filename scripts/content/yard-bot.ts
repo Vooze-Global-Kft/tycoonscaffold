@@ -2177,8 +2177,44 @@ function bookFit(all: Summary[]): { pooledD: number; fits: Record<string, BookFi
  * rule then reads its nearest rung's); a ladder sold at no rung gets no entry (not sold at the works). Then
  * `python3 scripts/content/build-yard.py` writes game.json and checks the book.
  */
+/**
+ * s2i-measure (RULING2.md 30.3, M1): THE BOOK CORRECTED ONCE FROM THE MEASUREMENT AGAINST IT. With `--bookNew a.json,b.json`
+ * the book is fitted from the other runs read (--from: it is the book as written) and only these cells are taken from the new
+ * runs' steps (every level the cards sold, and the book's missing rungs, at sittings 3, 4, 6, 7): a rung the old runs measured
+ * on fewer than three yards (the book's missing rung), and each `--bookFix ladder:rung` (a ladder outside 0.7 to 1.4). The cell
+ * is fitted as bookFit fits it (one value a yard, share / d^(L-1) with the ladder's d as written; sold with three yards and two
+ * standard errors), `to` reaches two levels past the highest level the new runs measured. Nothing else of the book moves.
+ */
+let bookNewRuns: Summary[] = [];
+function correctedFit(all: Summary[]): { pooledD: number; fits: Record<string, BookFit> } {
+  if (!bookNewRuns.length) return bookFit(all);
+  const isNew = new Set(bookNewRuns);
+  const base = bookFit(all.filter((r) => !isNew.has(r)));
+  const obs = bookObs(bookNewRuns);
+  const fix = new Set((arg('bookFix') ?? '').split(',').filter(Boolean));
+  for (const [ladder, f] of Object.entries(base.fits)) {
+    if (!f.sold && ![3, 4, 5].some((r) => fix.has(`${ladder}:${r}`))) continue;
+    const xs = obs.filter((o) => o.ladder === ladder);
+    for (const rung of [3, 4, 5]) {
+      const at = xs.filter((o) => o.rung === rung);
+      const missing = (f.rungs[rung]?.yards ?? 0) < BOOK_MIN_YARDS;
+      if (!at.length || !(missing || fix.has(`${ladder}:${rung}`))) continue;
+      const m0 = new Map<string, number[]>();
+      for (const o of at) m0.set(o.cluster, [...(m0.get(o.cluster) ?? []), o.share / f.d ** (Math.max(1, o.L) - 1)]);
+      const ys = [...m0.values()].map((v) => v.reduce((a, x) => a + x, 0) / v.length);
+      const m = ys.reduce((a, x) => a + x, 0) / ys.length;
+      const se = ys.length > 1 ? Math.sqrt(ys.reduce((a, x) => a + (x - m) ** 2, 0) / (ys.length - 1) / ys.length) : Infinity;
+      const sold = ys.length >= BOOK_MIN_YARDS && m > 0 && m >= 2 * se;
+      f.rungs[rung] = { yards: ys.length, s1: m, se, below0: ys.filter((y) => y < 0).length, sold, bySrc: { m1: { yards: ys.length, s1: m } } };
+      f.s1[rung - 3] = sold ? +m.toFixed(4) : 0;
+      f.to = Math.max(f.to, Math.max(...at.map((o) => o.L)) + 2);
+    }
+    f.sold = f.s1.some((v) => (v ?? 0) > 0);
+  }
+  return base;
+}
 function writeBook(all: Summary[], write: boolean): string[] {
-  const { pooledD, fits } = bookFit(all);
+  const { pooledD, fits } = correctedFit(all);
   const pc = (v: number) => (Number.isFinite(v) ? `${(100 * v).toFixed(2)} %` : '-');
   const lines = [`   THE BOOK AS SHARES (RULING2.md 30.3; gain = s1 x d^(L-1) x I): the crew ladders' pooled decay ${pooledD.toFixed(3)}`];
   for (const [k, f] of Object.entries(fits)) {
@@ -2789,7 +2825,10 @@ async function main(): Promise<void> {
     }
     // --from a.json,b.json: print the report again from runs already made (no play).
     const from = arg('from');
-    const all2 = from ? from.split(',').flatMap((f) => JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')) as Summary[]) : await runAll(gameFile, specs2, Number(arg('jobs', '2')));
+    const all1 = from ? from.split(',').flatMap((f) => JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')) as Summary[]) : await runAll(gameFile, specs2, Number(arg('jobs', '2')));
+    // s2i-measure: --bookNew runs (read beside --from) correct the book's cells named by correctedFit
+    bookNewRuns = (arg('bookNew') ?? '').split(',').filter(Boolean).flatMap((f) => JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')) as Summary[]);
+    const all2 = [...all1, ...bookNewRuns];
     cfgPacks = packProducts(loadCfg(gameFile));
     const cfgG = loadCfg(gameFile);
     soldKeys = new Set(soldItems(cfgG).map((i) => i.key));
