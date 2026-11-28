@@ -100,7 +100,7 @@ const LINTEL = 9;
  * The scene is laid out in metres from the hall's apron point exactly as the world stacks it (halls.draw.ts HALL_POUR: the
  * furnace and its glow at `furnace`, the stream at the apron point, the drop at `pour` over the moulds) and fitted to the window.
  */
-function drawWindow(
+export function drawWindow(
   c: SkCanvas,
   kind: HallKind,
   p: HallPicture,
@@ -129,7 +129,7 @@ function drawWindow(
   // the scene's box in points at the view's true size (ppm 40), then fitted inside the frame
   const x0 = Math.min(fx - 1.9, cx - CHARGE.len / 2 - 0.3) * v.ppm;
   const x1 = (mx + mw / 2 + 0.3) * v.ppm;
-  const y0 = proj(v, 0, fy, 2.6)[1];
+  const y0 = proj(v, 0, fy, 2.8)[1];
   const y1 = proj(v, 0, 0.7, 0)[1];
   const iw = w - 2 * FRAME;
   const ih = h - 2 * FRAME - LINTEL;

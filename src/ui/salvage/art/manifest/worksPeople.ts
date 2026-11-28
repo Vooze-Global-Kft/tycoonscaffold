@@ -3,6 +3,10 @@
  * additive tool in ../people.draw.ts): visitors of the Yard sale (only inside the railed public bay), the boss's plasma and
  * analyse poses (Pose 'plasma' | 'analyse'), the reclamation dealer's van, the plasma unit on its rack.
  *
+ * ART-PEOPLE (batch 1b) drew them (../visitors.draw.ts; the boss's two poses are ../people.draw.ts with its additive option
+ * `tool`): ids, sheet, headings and anchors are C-ART's; the visitor's frames grew from C-ART's six by push (4) and carry
+ * (4), appended; the boss's poses bake s, e and n only (1 and 3 are TINY: the actor table asks h x 2); bounds are measured.
+ *
  * C-ART (PLAN2 2.7, batch 0b) put every entry in with its FINAL id, group, sheet, footprint (metres), frames (by name, in
  * order), headings, mirrorWest, tint, drawScale (baked at k of true size: drawScale 1/k) and slots, and a LABELLED
  * PLACEHOLDER (`wk` below: the footprint on the ground, the baked box, the entry's name in stencil, a dot per frame, a
@@ -14,118 +18,133 @@
  * 2048 x 2048 at density 2) and budgeted by `npx tsx scripts/art/yard-sheets.ts <out> budget-C budget-D`.
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
-import { stencil, stencilWidth } from '../letters';
 import { YARD } from '../palette';
-import { facePath, fill, proj, rect, stroke, type View3q } from '../pen';
+import { fill, rect, type View3q } from '../pen';
+import { VISITOR_BASE, VISITOR_FRAMES, drawBossAnalyse, drawBossPlasma, drawDealerVan, drawPlasmaRack, drawVisitor, vanHeadingRad, visitorPoseOf } from '../visitors.draw';
 import type { Bounds, WorksEntry, WorksSheet } from './index';
 
-// -----------------------------------------------------------------------------------------------------
-// The placeholder kit (C-ART; the same few lines in every works part, so each art package owns its whole file and
-// drops them when its last entry is drawn). Pure Skia; nothing here is read by the first yard.
-// -----------------------------------------------------------------------------------------------------
 type Draw = (c: SkCanvas, v: View3q, frame: number, heading: number) => void;
-const PPM = 40;
-const TILT = 0.7;
-const LIFT = Math.sqrt(1 - TILT * TILT);
 const B = (x: number, y: number, w: number, h: number): Bounds => ({ x, y, w, h });
-/** The cell of a heading the entry is never drawn at (a 4-heading entry used only east and west): a dot. */
+/** The cell of a heading the entry is never drawn at (the boss's works poses are asked at s, e, n only): a dot. */
 const TINY = B(-3, -3, 6, 6);
+const tiny: Draw = (c) => c.drawPath(rect(-2, -2, 4, 4), fill(YARD.hivisDark));
 
-interface Spec {
-  /** height in metres (the box's top; with the low sun's shadow to the east) */
-  h: number;
-  /** baked at k of true size (drawScale 1/k), as the first yard's statics (plant.ts `entry`) */
-  k?: number;
-  headings?: 1 | 4 | 8;
-  mirrorWest?: boolean;
-  tint?: string;
-  /** slots as fractions of the baked box [fx, fy, fw, fh] (the art package places them exactly) */
-  slots?: Record<string, [number, number, number, number]>;
-  /** the baked headings drawn in full; any other baked heading is a TINY cell (never drawn by the world) */
-  only?: number[];
-  /** false for an actor (a vehicle, a person): its ground shadow is the world's (sheet S), not the sprite's */
-  sun?: boolean;
-}
+// MEASURED BOUNDS (ink at the baked size plus a 2 pt margin, one box per BAKED heading; TINY cells listed as [-3, -3, 6, 6]:
+// `flock /tmp/itf-heavy.lock npx tsx scripts/art/yard-sheets.ts <dir> works-people` prints this table and says FAIL when
+// a drawing leaves it; WRITE_BOUNDS=1 writes it here)
+// prettier-ignore
+const MEASURED: Record<string, [number, number, number, number][]> = {
+};
+// END MEASURED BOUNDS
 
-/** The box (points round the anchor, baked at k) of a footprint w x d m standing h m high, for every heading it turns to. */
-function boxOf(w: number, d: number, h: number, k: number, turns: boolean, sunOn: boolean): Bounds {
-  const hw = turns ? Math.hypot(w, d) / 2 : w / 2;
-  const hd = turns ? hw : d / 2;
-  const sun = sunOn ? Math.min(h * 0.42, 0.8) : 0;
-  const x0 = -hw * PPM - 2;
-  const x1 = (hw + sun) * PPM + 2;
-  const y0 = -(hd * TILT + h * LIFT) * PPM - 2;
-  const y1 = (hd * TILT + 0.1) * PPM + 2;
-  const fx = Math.floor(x0 * k);
-  const fy = Math.floor(y0 * k);
-  return B(fx, fy, Math.ceil(x1 * k) - fx, Math.ceil(y1 * k) - fy);
-}
+/** The dealer's van bakes as the first yard's vans (people.ts VEHICLE_K). */
+export const DEALER_VAN_K = 0.45;
 
-const bakedOf = (headings: 1 | 4 | 8, mirrorWest: boolean): number[] =>
-  mirrorWest && headings === 4 ? [0, 1, 2] : mirrorWest && headings === 8 ? [0, 1, 2, 3, 4] : Array.from({ length: headings }, (_, i) => i);
-
-/** A labelled placeholder: the footprint on the ground, the baked box, the entry's name, a dot per frame, the heading. */
-function placeholder(b: Bounds, w: number, d: number, k: number, label: string, headings: number): Draw {
-  return (c, v, frame, heading) => {
+const union = (bs: readonly Bounds[]): Bounds => {
+  const real = bs.filter((b) => b !== TINY && !(b.w === 6 && b.h === 6 && b.x === -3));
+  const xs = real.length ? real : bs;
+  const x = Math.min(...xs.map((b) => b.x));
+  const y = Math.min(...xs.map((b) => b.y));
+  return B(x, y, Math.max(...xs.map((b) => b.x + b.w)) - x, Math.max(...xs.map((b) => b.y + b.h)) - y);
+};
+const measured = (id: string, n: number, fallback: Bounds[]): Bounds[] => {
+  const m = MEASURED[id];
+  return m && m.length === n ? m.map(([x, y, w, h]) => B(x, y, w, h)) : fallback;
+};
+const scaled =
+  (k: number, draw: Draw): Draw =>
+  (c, v, f, h) => {
     c.save();
-    c.clipRect({ x: b.x + 0.5, y: b.y + 0.5, width: b.w - 1, height: b.h - 1 }, 1, true);
-    const fp = facePath(v, [[-w / 2 * k, -d / 2 * k, 0], [w / 2 * k, -d / 2 * k, 0], [w / 2 * k, d / 2 * k, 0], [-w / 2 * k, d / 2 * k, 0]]);
-    c.drawPath(fp, fill(YARD.hivisLight, 0.55));
-    c.drawPath(fp, stroke(YARD.ink, 0.8));
-    c.drawPath(rect(b.x + 1.5, b.y + 1.5, b.w - 3, b.h - 3), stroke(YARD.hivisDark, 1));
-    const size = Math.min(9, (b.h - 8) / 2.5, (b.w - 8) / Math.max(1, stencilWidth(label, 1)));
-    if (size >= 2.5) stencil(c, label, b.x + b.w / 2, b.y + b.h / 2 - size / 2, size, YARD.ink, { align: 'center' });
-    for (let i = 0; i <= frame && i < 12; i++) c.drawPath(rect(b.x + 3 + i * 3, b.y + 3, 2, 2), fill(YARD.ink));
-    if (headings > 1) {
-      const a = (heading * 2 * Math.PI) / headings;
-      const r = Math.min(b.w, b.h) * 0.3;
-      const [x0, y0] = proj(v, 0, 0, 0);
-      c.drawPath(rect(x0 + Math.sin(a) * r - 1.5, y0 + Math.cos(a) * r * TILT - 1.5, 3, 3), fill(YARD.skip));
-    }
+    c.scale(k, k);
+    draw(c, v, f, h);
     c.restore();
   };
-}
-
-/** One works entry with its final id, frames, headings and anchor, and a placeholder of its footprint's box. */
-function wk(sheet: WorksSheet, id: string, group: string, fp: [number, number], frames: readonly string[], s: Spec): WorksEntry {
-  const k = s.k ?? 1;
-  const headings = s.headings ?? 1;
-  const mirrorWest = s.mirrorWest ?? false;
-  const bounds = boxOf(fp[0], fp[1], s.h, k, headings > 1 && !s.only, s.sun ?? true);
-  const label = id.replace(/^(works|vehicle|person|thing|lane|ui|piece|plant)\./, '').replace(/\./g, ' ').toUpperCase();
-  const full = placeholder(bounds, fp[0], fp[1], k, label, headings);
-  const only = s.only;
-  const tiny: Draw = (c) => c.drawPath(rect(-2, -2, 4, 4), fill(YARD.hivisDark));
-  const slots = s.slots && Object.fromEntries(Object.entries(s.slots).map(([n, [fx, fy, fw, fh]]) => [n, B(bounds.x + fx * bounds.w, bounds.y + fy * bounds.h, fw * bounds.w, fh * bounds.h)]));
-  return {
-    id,
-    group,
-    sheet,
-    footprint: { w: fp[0], d: fp[1] },
-    bounds,
-    ...(only ? { boundsByHeading: bakedOf(headings, mirrorWest).map((h) => (only.includes(h) ? bounds : TINY)) } : {}),
-    frames,
-    headings,
-    ...(mirrorWest ? { mirrorWest } : {}),
-    ...(s.tint ? { tint: s.tint } : {}),
-    ...(k !== 1 ? { drawScale: 1 / k } : {}),
-    ...(slots ? { slots } : {}),
-    draw: only ? (c, v, f, h) => (only.includes(h) ? full(c, v, f, h) : tiny(c, v, f, h)) : full,
-  };
-}
 
 const S: WorksSheet = 'D';
+/** The 8-scheme's baked headings 0 s, 2 e, 4 n as a person's direction (1 and 3 are TINY for the boss's poses). */
+const DIR8: Record<number, 's' | 'e' | 'n'> = { 0: 's', 2: 'e', 4: 'n' };
+
+const PERSON_FB = [B(-24, -64, 48, 70), B(-24, -64, 48, 70), B(-24, -64, 48, 70), B(-24, -64, 48, 70), B(-24, -64, 48, 70)];
+const visitorBoxes = measured('person.visitor', 5, PERSON_FB);
+const plasmaBoxes = measured('person.boss.plasma', 5, [B(-40, -66, 80, 80), TINY, B(-40, -66, 80, 80), TINY, B(-40, -66, 80, 80)]);
+const analyseBoxes = measured('person.boss.analyse', 5, [B(-24, -60, 48, 66), TINY, B(-24, -60, 48, 66), TINY, B(-24, -60, 48, 66)]);
+const vanBoxes = measured('vehicle.van.dealer', 3, [B(-40, -50, 80, 70), B(-60, -50, 120, 70), B(-40, -50, 80, 70)]);
+const rackBox = measured('works.plasma.rack', 1, [B(-24, -50, 48, 60)]);
 
 /** Visitors, the boss's new poses, the dealer's van and the plasma unit's rack. */
 export const WORKS_PEOPLE: WorksEntry[] = [
-  // a member of the public (no vest, no hard hat), clothing baked light and tinted per visitor (four tints): walk 4, stand, pay
-  wk(S, 'person.visitor', 'person', [0.6, 0.5], ['walk1', 'walk2', 'walk3', 'walk4', 'stand', 'pay'], { sun: false, h: 1.8, headings: 8, mirrorWest: true, tint: '#F1F2EE' }),
-  // the boss with the plasma cutter (face shield down; the lead to the unit on its trolley; a bright arc and a short fan of spray)
-  wk(S, 'person.boss.plasma', 'person', [1.2, 0.8], ['cut1', 'cut2'], { sun: false, h: 1.8, headings: 8, mirrorWest: true }),
-  // the boss holding the analyser at the scale house's window while the commissioning ring fills (never pointed at a person)
-  wk(S, 'person.boss.analyse', 'person', [0.6, 0.5], ['hold'], { sun: false, h: 1.8, headings: 8, mirrorWest: true }),
-  // the reclamation dealer's van (tinted as the purchase van) with its rear doors shut or open
-  wk(S, 'vehicle.van.dealer', 'vehicle', [3.4, 1.8], ['shut', 'open'], { sun: false, h: 2.2, k: 0.45, headings: 4, mirrorWest: true, tint: '#F1F2EE' }),
-  // the plasma unit on the tool rack once owned (a fixture)
-  wk(S, 'works.plasma.rack', 'plant', [0.6, 0.5], ['idle'], { h: 1 }),
+  // a member of the public (no vest, no hard hat): jacket baked near white and tinted per visitor (visitors.draw
+  // VISITOR_TINTS; the dealer's two people DEALER_TINT); walk 4, stand, pay (C-ART's six) and, appended, push 4 (a sack
+  // truck's grip: the first yard's carrier.sack at CARRIER_AHEAD) and carry 4 (a boxed buy in both arms, baked in);
+  // 8 headings, s se e ne n baked from one turned body, west mirrored
+  {
+    id: 'person.visitor',
+    group: 'person',
+    sheet: S,
+    footprint: { w: 0.6, d: 0.5 },
+    bounds: union(visitorBoxes),
+    boundsByHeading: visitorBoxes,
+    frames: VISITOR_FRAMES,
+    headings: 8,
+    mirrorWest: true,
+    tint: VISITOR_BASE,
+    draw: (c, v, f, h) => {
+      const { pose, step } = visitorPoseOf(f);
+      drawVisitor(c, v, h, pose, step);
+    },
+  },
+  // the boss with the plasma cutter (dark visor down; the lead to the unit on its trolley beside him; a bright arc point
+  // and a short fan of molten spray): cut1, cut2 at s, e, n (the actor table asks 8-scheme h x 2: 0, 2, 4, and 6 mirrored)
+  {
+    id: 'person.boss.plasma',
+    group: 'person',
+    sheet: S,
+    footprint: { w: 1.2, d: 0.8 },
+    bounds: union(plasmaBoxes),
+    boundsByHeading: plasmaBoxes,
+    frames: ['cut1', 'cut2'],
+    headings: 8,
+    mirrorWest: true,
+    draw: (c, v, f, h) => (DIR8[h] ? drawBossPlasma(c, v, DIR8[h], f) : tiny(c, v, f, h)),
+  },
+  // the boss holding the analyser to the sample at the scale house's window (never pointed at a person): s, e, n
+  {
+    id: 'person.boss.analyse',
+    group: 'person',
+    sheet: S,
+    footprint: { w: 0.6, d: 0.5 },
+    bounds: union(analyseBoxes),
+    boundsByHeading: analyseBoxes,
+    frames: ['hold'],
+    headings: 8,
+    mirrorWest: true,
+    draw: (c, v, f, h) => (DIR8[h] ? drawBossAnalyse(c, v, DIR8[h]) : tiny(c, v, f, h)),
+  },
+  // the reclamation dealer's van (the first yard's panel van, body baked near white for DEALER_TINT) with its rear doors
+  // shut (driving, a driver in the cab) or swung open (standing on the kerb, the load space showing)
+  {
+    id: 'vehicle.van.dealer',
+    group: 'vehicle',
+    sheet: S,
+    footprint: { w: 3.4, d: 1.8 },
+    bounds: union(vanBoxes),
+    boundsByHeading: vanBoxes,
+    frames: ['shut', 'open'],
+    headings: 4,
+    mirrorWest: true,
+    tint: VISITOR_BASE,
+    drawScale: 1 / DEALER_VAN_K,
+    draw: scaled(DEALER_VAN_K, (c, v, f, h) => drawDealerVan(c, v, vanHeadingRad(h), f === 1)),
+  },
+  // the plasma unit on its trolley at the tool rack once owned (a fixture; its own small shadow, as a static)
+  {
+    id: 'works.plasma.rack',
+    group: 'plant',
+    sheet: S,
+    footprint: { w: 0.6, d: 0.5 },
+    bounds: rackBox[0],
+    frames: ['idle'],
+    headings: 1,
+    draw: (c, v) => drawPlasmaRack(c, v),
+  },
 ];

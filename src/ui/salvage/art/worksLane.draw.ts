@@ -351,14 +351,16 @@ export function drawPlumbingSite(c: SkCanvas, v: View3q): void {
   }
   freckles(c, proj(v, -4.5, y, 1.2)[0], proj(v, -4.5, y, 1.2)[1], 120, 20, 12, shade(P.wall, -0.12), 9);
   // the roller door, the trade counter's glass door and its window
-  shutter(c, v, y, -6.3, -3.6, 2.0);
-  face(c, v, y, -2.95, -2.05, 0, 1.95, YARD.machineDark, 1);
-  face(c, v, y, -2.85, -2.15, 0.15, 1.85, YARD.glass, 0.8);
-  face(c, v, y, -1.7, -0.55, 0.75, 1.8, YARD.glassDark, 1);
-  face(c, v, y, -1.7, -0.55, 1.4, 1.8, YARD.glass, 0, 0.6);
+  // (west to east: the counter's window, its glass door, then the roller door, so the van parked west hides the window,
+  // never the door the stock goes in by)
+  shutter(c, v, y, -3.3, -0.65, 2.0);
+  face(c, v, y, -4.45, -3.65, 0, 1.95, YARD.machineDark, 1);
+  face(c, v, y, -4.35, -3.75, 0.15, 1.85, YARD.glass, 0.8);
+  face(c, v, y, -6.35, -4.85, 0.75, 1.8, YARD.glassDark, 1);
+  face(c, v, y, -6.35, -4.85, 1.4, 1.8, YARD.glass, 0, 0.6);
   // the window's display: a few fittings on a shelf
-  for (let i = 0; i < 4; i++) {
-    const [fx, fy] = proj(v, -1.55 + i * 0.28, y, 0.95);
+  for (let i = 0; i < 5; i++) {
+    const [fx, fy] = proj(v, -6.15 + i * 0.28, y, 0.95);
     c.drawPath(rrect(fx - 2.5, fy - 5, 5, 5, 1), fill(i % 2 ? TONE.brass : YARD.copper));
   }
   fascia(c, v, y, PLUMB_FASCIA, P.band, (cx, cy, s) => plumbingMark(c, cx, cy, s));
