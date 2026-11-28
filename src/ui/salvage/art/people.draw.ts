@@ -95,6 +95,13 @@ export interface PersonOptions {
    * it (arms, tools, apron, head) cut out: the overlay the atlas modulates to a role's vest colour.
    */
   vestOnly?: boolean;
+  /**
+   * The works' tools in the boss's hand (stage 2, ART-PEOPLE; absent: the first yard's drawing, unchanged): 'plasma'
+   * with the pose 'torch' draws the plasma cutter (one lead to the unit on the ground, a bright arc point and a short
+   * fan of molten spray from the kerf, no sparkle) instead of the oxy-propane torch; 'analyser' with the pose 'stand'
+   * draws the hand-held analyser held out and pointed down at the sample (never at a person), safety glasses on.
+   */
+  tool?: 'plasma' | 'analyser';
 }
 
 /** The near-white of the vest overlay (manifest tint): modulated by the atlas to the role's vest. */
@@ -585,6 +592,64 @@ function heldCable(c: SkCanvas, x0: number, y0: number, x1: number, y1: number):
   c.drawPath(circle(x1 + (x1 > x0 ? 1.6 : -1.6), y1, 1.5), stroke(INK, 0.7));
 }
 
+/**
+ * The works' plasma cutter (stage 2, `tool: 'plasma'`): a short dark torch from the hand (x, y) to its copper shield cup
+ * at (nx, ny), ONE black lead falling back to the ground at hoseX (the unit stands beside him: the caller draws it);
+ * while cutting, a bright arc point at the cup and a short fan of molten spray blown down out of the kerf. No sparkle,
+ * no star: drops and short streaks only, varied by the frame.
+ */
+function plasmaTorch(c: SkCanvas, x: number, y: number, nx: number, ny: number, hoseX: number, phase: number): void {
+  const lead = builder().moveTo(x - 2, y + 1).quadTo(x - 7, y + 15, hoseX, -0.6).build();
+  c.drawPath(lead, stroke(INK, 3.4));
+  c.drawPath(lead, stroke(YARD.pvc, 2));
+  const ang = Math.atan2(ny - y, nx - x);
+  const cx = Math.cos(ang);
+  const cy = Math.sin(ang);
+  // the handle and the torch head (dark grey), then the copper cup
+  c.drawPath(segment(x - 3, y, nx, ny), stroke(INK, 4.4));
+  c.drawPath(segment(x - 3, y, nx, ny), stroke(YARD.machineDark, 3));
+  c.drawPath(segment(x - 1, y - 1, x + (nx - x) * 0.5, y + (ny - y) * 0.5 - 1), stroke(YARD.pvcGrey, 0.9));
+  const cupX = nx + cx * 2.2;
+  const cupY = ny + cy * 2.2;
+  c.drawPath(segment(nx, ny, cupX, cupY), stroke(INK, 3.6));
+  c.drawPath(segment(nx, ny, cupX, cupY), stroke(YARD.copperLight, 2.2));
+  // the arc: a small blue-white halo round a white point, just past the cup
+  const ax = cupX + cx * 1.6;
+  const ay = cupY + cy * 1.6;
+  c.drawPath(circle(ax, ay, 3.4), fill('#BFD8FF', 0.55));
+  c.drawPath(circle(ax, ay, 1.7), fill('#FFFFFF'));
+  plasmaSpray(c, ax, ay + 1.2, phase, cx >= 0 ? 1 : -1, 1);
+}
+
+/** The molten spray blown down out of a plasma kerf: a short fan of drops and streaks (glow colours), varied by phase. */
+function plasmaSpray(c: SkCanvas, x0: number, y0: number, phase: number, dirX = 1, reach = 1): void {
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI * (0.38 + 0.2 * hash01(i, 21, phase));
+    const len = (4 + 5 * hash01(i, 22, phase)) * reach;
+    const x1 = x0 + Math.cos(a) * len * dirX * 0.8;
+    const y1 = y0 + Math.sin(a) * len;
+    c.drawPath(segment(x0, y0, x1, y1), stroke(i % 2 ? YARD.glow : YARD.glowHot, 1.1));
+    c.drawPath(circle(x1 + Math.cos(a) * 1.6 * dirX, y1 + 1.4, 0.75), fill(i % 3 ? YARD.glowHot : YARD.glow));
+  }
+}
+
+/**
+ * The works' hand-held analyser (stage 2, `tool: 'analyser'`) in the hand at (x, y), turned `deg` (0 points forward, 90
+ * straight down): a pale grey pistol body with its nose window and the lit reading screen on its back. Pointed down at
+ * the sample, never at a person.
+ */
+function analyserGun(c: SkCanvas, x: number, y: number, deg: number): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(deg, 0, 0);
+  part(c, rrect(-1.6, 0, 3.2, 5, 1.2), YARD.ink, 0.8);
+  part(c, rrect(-4.5, -3.2, 13, 5.2, 2.2), YARD.galvanisedLight, 1.1);
+  part(c, rrect(-4, -4.6, 5, 2.2, 0.8), YARD.ledCase, 0.8);
+  c.drawRect({ x: -3.4, y: -4.1, width: 3.8, height: 1.2 }, fill(YARD.led, 0.9));
+  part(c, rrect(8, -2.2, 2.6, 3.2, 1), YARD.steelDark, 0.9);
+  c.restore();
+}
+
 // ---------------------------------------------------------------------------
 // The person
 // ---------------------------------------------------------------------------
@@ -629,7 +694,10 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
   const hipY = -20 - bob + crouch;
   const T = -35 - bob + crouch * 1.2;
   const hy = -42.5 - bob + crouch * 1.2;
-  const eyes: Eyes =
+  const tool = o.tool;
+  const plasma = tool === 'plasma' && pose === 'torch';
+  const analyser = tool === 'analyser' && pose === 'stand';
+  const eyes: Eyes = analyser ? 'glasses' : plasma ? 'visor' :
     pose === 'grinder' || pose === 'pour' || o.shield ? 'shield' : pose === 'torch' ? 'visor' : pose === 'sledge' || pose === 'spanner' ? 'glasses' : 'bare';
   const apron = o.apron || pose === 'pour';
   const glove = apron ? YARD.apron : YARD.glove;
@@ -667,7 +735,8 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
   } else if (dir === 'n') {
     // seen from behind, hands working in front are hidden: the arms go forward past the body
     if (pose === 'sledge' && f === 1) sledge(c, 0, T + 8, 0, T - 2);
-    if (pose === 'grinder' || pose === 'torch') sparkFan(c, 0, -4, spark, 1, 7, 0.8);
+    if (plasma) plasmaSpray(c, 0, -4, f, 1, 0.8);
+    else if (pose === 'grinder' || pose === 'torch') sparkFan(c, 0, -4, spark, 1, 7, 0.8);
   } else if (dir === 's') {
     if (pose === 'sledge' && f === 0) sledge(c, 0, T - 11, 1, T - 22);
   }
@@ -764,10 +833,14 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
         break;
       case 'torch':
         arm(c, sx, sy, uX + 11, T + 11);
-        torch(c, uX + 11, T + 11, uX + 21, T + 18, -9, f);
+        if (plasma) plasmaTorch(c, uX + 11, T + 11, uX + 19, T + 18, -9, f);
+        else torch(c, uX + 11, T + 11, uX + 21, T + 18, -9, f);
         break;
       default:
-        arm(c, 1, sy, 1 + swing * 6, T + 15);
+        if (analyser) {
+          arm(c, sx, sy, uX + 10, T + 9);
+          analyserGun(c, uX + 10, T + 9, 28);
+        } else arm(c, 1, sy, 1 + swing * 6, T + 15);
     }
   } else if (dir === 's') {
     const sx = shX;
@@ -816,11 +889,18 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
       case 'torch':
         arm(c, -sx, sy, -3, T + 13);
         arm(c, sx, sy, 3, T + 14);
-        torch(c, 2, T + 14, 4, T + 25, 9, f);
+        if (plasma) plasmaTorch(c, 2, T + 14, 4, T + 23, 9, f);
+        else torch(c, 2, T + 14, 4, T + 25, 9, f);
         break;
       default:
-        arm(c, -sx, sy, -sx - 1.8, T + 15 + swing * 1.5);
-        arm(c, sx, sy, sx + 1.8, T + 15 - swing * 1.5);
+        if (analyser) {
+          arm(c, sx, sy, sx + 1.8, T + 15);
+          arm(c, -sx, sy, -4.5, T + 11);
+          analyserGun(c, -4.5, T + 11, 72);
+        } else {
+          arm(c, -sx, sy, -sx - 1.8, T + 15 + swing * 1.5);
+          arm(c, sx, sy, sx + 1.8, T + 15 - swing * 1.5);
+        }
     }
   } else {
     const sx = shX;
@@ -847,8 +927,14 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
         arm(c, sx, sy, sx - 2.5, T + (pose === 'spanner' ? 10 : 6), true, glove);
         break;
       default:
-        arm(c, -sx, sy, -sx - 1.8, T + 15 + swing * 1.5);
-        arm(c, sx, sy, sx + 1.8, T + 15 - swing * 1.5);
+        if (analyser) {
+          // from behind: the reading hand held out in front, out of sight; the other arm hangs
+          arm(c, -sx, sy, -sx + 2.5, T + 7);
+          arm(c, sx, sy, sx + 1.8, T + 15);
+        } else {
+          arm(c, -sx, sy, -sx - 1.8, T + 15 + swing * 1.5);
+          arm(c, sx, sy, sx + 1.8, T + 15 - swing * 1.5);
+        }
     }
   }
 
@@ -870,7 +956,8 @@ function personBody(c: SkCanvas, v: View3q, o: PersonOptions, look: PersonLook):
     c.drawPath(circle(1.5, T - 11, 2.6), stroke(INK, 1));
   }
   if (dir === 'n' && pose === 'sledge' && f === 0) sledge(c, 0, T - 10, 0, T - 22);
-  if (dir === 's' && (pose === 'torch' || pose === 'grinder')) {
+  if (dir === 's' && plasma) plasmaSpray(c, 4.5, T + 26, f, 1, 0.6);
+  else if (dir === 's' && (pose === 'torch' || pose === 'grinder')) {
     // a few sparks fall in front of the boots
     sparkFan(c, pose === 'torch' ? 5 : -8, pose === 'torch' ? T + 30 : T + 19, spark, 1, 4, 0.5);
   }

@@ -1048,10 +1048,15 @@ export interface TruckModel {
   /** Fall-back length and width (metres) while the body's entry is unknown (frameLoop.ts's 4.6 x 2 for today's). */
   len: number;
   wid: number;
+  /**
+   * o4-world F2: the heading8 the hook and tip frames are drawn facing (both rows' art is east-only: eastOnly in the
+   * manifests). The frame loop turns the truck's picture to it, a heading at a time, before those frames show.
+   */
+  hookFace: number;
 }
 export const TRUCK_MODELS: readonly TruckModel[] = [
-  { model: 'truck', body: 'vehicle.truck', bare: 'vehicle.truck.bare', hook: 'vehicle.truck.hook', tip: null, load: 'vehicle.skip.load', vbox: VBOX_TRUCK, vboxBare: VBOX_TRUCK_BARE, vboxHook: VBOX_TRUCK_HOOK, len: 4.6, wid: 2 },
-  { model: 'truckBridge', body: 'vehicle.truckBridge', bare: 'vehicle.truckBridge.bare', hook: 'vehicle.truckBridge.hook', tip: 'vehicle.truckBridge.tip', load: 'vehicle.skip.load.bridge', vbox: VBOX_BRIDGE, vboxBare: VBOX_BRIDGE_BARE, vboxHook: VBOX_BRIDGE_HOOK, len: 6.2, wid: 2.4 },
+  { model: 'truck', body: 'vehicle.truck', bare: 'vehicle.truck.bare', hook: 'vehicle.truck.hook', tip: null, load: 'vehicle.skip.load', vbox: VBOX_TRUCK, vboxBare: VBOX_TRUCK_BARE, vboxHook: VBOX_TRUCK_HOOK, len: 4.6, wid: 2, hookFace: 2 },
+  { model: 'truckBridge', body: 'vehicle.truckBridge', bare: 'vehicle.truckBridge.bare', hook: 'vehicle.truckBridge.hook', tip: 'vehicle.truckBridge.tip', load: 'vehicle.skip.load.bridge', vbox: VBOX_BRIDGE, vboxBare: VBOX_BRIDGE_BARE, vboxHook: VBOX_BRIDGE_HOOK, len: 6.2, wid: 2.4, hookFace: 2 },
 ];
 /** FrameTruck.model -> its row in TRUCK_MODELS (RulesScene.truckModel). */
 export const TRUCK_MODEL_CODE: Readonly<Record<string, number>> = { truck: 0, truckBridge: 1 };
@@ -1148,7 +1153,7 @@ export interface ActorTable {
    * C-WORLD-1: the truck's cells per TRUCK_MODELS row (row 0 holds the very arrays above: truck, truckBare, truckHook,
    * skipLoad, shTruck, truckScale). body/bare/shadow per heading8; hook (and tip) frames east; half: half length, half width.
    */
-  models: { body: number[]; bare: number[]; hook: number[]; tip: number[]; skipLoad: number[]; shadow: number[]; scale: number; vbox: number; vboxBare: number; vboxHook: number; half: number[] }[];
+  models: { body: number[]; bare: number[]; hook: number[]; tip: number[]; skipLoad: number[]; shadow: number[]; scale: number; vbox: number; vboxBare: number; vboxHook: number; half: number[]; hookFace: number }[];
 }
 
 /**
@@ -1192,12 +1197,12 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
   const skipLoad = [0, 1, 2, 3].map((f) => res('vehicle.skip.load', f, 0));
   const truckScale = scaleOf('vehicle.truck');
   const models: ActorTable['models'] = TRUCK_MODELS.map((m, i) => {
-    if (i === 0) return { body: truck, bare: truckBare, hook: truckHook, tip: [], skipLoad, shadow: shTruck, scale: truckScale, vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
+    if (i === 0) return { body: truck, bare: truckBare, hook: truckHook, tip: [], skipLoad, shadow: shTruck, scale: truckScale, vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m), hookFace: m.hookFace };
     const ask = (id: string, f: number, h: number) => (works ? res(id, f, h) : -1);
     const frames = (id: string | null) => (id ? (entryOf(id)?.frames ?? []).map((_, f) => ask(id, f, 1)) : []);
     const eight = (id: string) => Array.from({ length: 8 }, (_, h) => ask(id, 0, h));
     const sh = eight('shadow.truck3').map((c, h) => (c >= 0 ? c : shTruck[h]));
-    return { body: eight(m.body), bare: eight(m.bare), hook: frames(m.hook), tip: frames(m.tip), skipLoad: (entryOf(m.load)?.frames ?? []).map((_, f) => ask(m.load, f, 0)), shadow: sh, scale: scaleOf(m.body), vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
+    return { body: eight(m.body), bare: eight(m.bare), hook: frames(m.hook), tip: frames(m.tip), skipLoad: (entryOf(m.load)?.frames ?? []).map((_, f) => ask(m.load, f, 0)), shadow: sh, scale: scaleOf(m.body), vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m), hookFace: m.hookFace };
   });
   return {
     person,
@@ -1478,6 +1483,111 @@ export function sortRuns(L: DrawList, a: number, b: number): void {
   while (i < b && j < n) o[k++] = before(L, tmp[i], tmp[j]) ? tmp[i++] : tmp[j++];
   while (i < b) o[k++] = tmp[i++];
   while (j < n) o[k++] = tmp[j++];
+}
+
+/**
+ * o4-world F5 (the owner's review, point 1 "laggy"; o3-diag-world: 31 atlas draws at the gate on "back", the plan's
+ * budget is 20): THE HOP PASS. sortRuns' order breaks a run wherever one depth band holds sprites of both sheets, so a
+ * band's few people or pieces between two runs of the plant opens two more draws. Two sprites whose DRAWN rectangles do
+ * not meet (HOP_MARGIN_PT apart) may be drawn in either order without moving a pixel (each covers only its own
+ * rectangle), so a run of at most HOP_RUN_MAX sprites lying between two runs of one other sheet (and mirroring) moves
+ * after the run that follows it when none of its rectangles meets any of that run's; repeated, at most HOP_PASSES times,
+ * until nothing moves. Only the order of non-meeting sprites changes: the picture is the same, pixel for pixel
+ * (o4-world/prove-hop.ts draws whole frames both ways with the baked sheets).
+ */
+export const HOP_RUN_MAX = 6;
+export const HOP_PASSES = 20;
+/** Points between two drawn rectangles that may change order (a sprite's edge pixels, antialiased, stay inside its rectangle rounded out). */
+export const HOP_MARGIN_PT = 1;
+
+/** Do the drawn rectangles of items a and b of L meet (HOP_MARGIN_PT apart or less)? A cell the sheets do not hold meets everything. */
+function rectsMeet(L: DrawList, a: number, b: number, rects: readonly (readonly number[])[], dens: readonly number[]): boolean {
+  'worklet';
+  const pa = L.cell[a];
+  const sa = Math.floor(pa / CELL_BASE);
+  const ra = pa - sa * CELL_BASE;
+  const Ra = rects[sa];
+  const oa = (ra >> 1) * 6;
+  const pb = L.cell[b];
+  const sb = Math.floor(pb / CELL_BASE);
+  const rb = pb - sb * CELL_BASE;
+  const Rb = rects[sb];
+  const ob = (rb >> 1) * 6;
+  if (Ra === undefined || Rb === undefined || Ra.length < oa + 6 || Rb.length < ob + 6) return true;
+  const ka = L.k[a] / dens[sa];
+  const kb = L.k[b] / dens[sb];
+  const wa = Ra[oa + 2] * ka;
+  const wb = Rb[ob + 2] * kb;
+  // As drawRuns places them: a mirrored cell is drawn flipped about its anchor.
+  const ax0 = (ra & 1) === 1 ? L.sx[a] + Ra[oa + 4] * ka - wa : L.sx[a] - Ra[oa + 4] * ka;
+  const bx0 = (rb & 1) === 1 ? L.sx[b] + Rb[ob + 4] * kb - wb : L.sx[b] - Rb[ob + 4] * kb;
+  const ay0 = L.sy[a] - Ra[oa + 5] * ka;
+  const by0 = L.sy[b] - Rb[ob + 5] * kb;
+  const m = HOP_MARGIN_PT;
+  return !(ax0 + wa + m <= bx0 || bx0 + wb + m <= ax0 || ay0 + Ra[oa + 3] * ka + m <= by0 || by0 + Rb[ob + 3] * kb + m <= ay0);
+}
+
+/** The run key of a packed cell as drawRuns breaks runs: sheet and mirroring. */
+function runKeyOf(p: number): number {
+  'worklet';
+  const sheet = Math.floor(p / CELL_BASE);
+  return sheet * 2 + ((p - sheet * CELL_BASE) & 1);
+}
+
+/**
+ * The hop pass over a sorted list (after sortRuns, before drawRuns): reorders L.order (see HOP_RUN_MAX). `rects` and
+ * `dens` per sheet as drawRuns reads them (six numbers per cell: x, y, w, h, ax, ay; the sheet's density). Uses L.sk
+ * (run starts) and L.tmp (a block's copy) as scratch: both are sortRuns' and free once it has run. Returns the
+ * rectangle tests made (the cost: o4-world measured it in node). A worklet; no allocation.
+ */
+export function hopRuns(L: DrawList, rects: readonly (readonly number[])[], dens: readonly number[]): number {
+  'worklet';
+  const o = L.order;
+  const n = L.n;
+  const RS = L.sk;
+  const T = L.tmp;
+  let tests = 0;
+  for (let pass = 0; pass < HOP_PASSES; pass++) {
+    let nr = 0;
+    let prev = -1;
+    for (let i = 0; i < n; i++) {
+      const rk = runKeyOf(L.cell[o[i]]);
+      if (rk !== prev) {
+        RS[nr++] = i;
+        prev = rk;
+      }
+    }
+    if (nr < 3) break;
+    let moved = false;
+    for (let k = 1; k + 1 < nr; k++) {
+      const s1 = RS[k];
+      const s2 = RS[k + 1];
+      const s3 = k + 2 < nr ? RS[k + 2] : n;
+      const len1 = s2 - s1;
+      if (len1 > HOP_RUN_MAX || runKeyOf(L.cell[o[RS[k - 1]]]) !== runKeyOf(L.cell[o[s2]])) continue;
+      let clash = false;
+      for (let a = s1; a < s2 && !clash; a++) {
+        for (let b = s2; b < s3; b++) {
+          tests++;
+          if (rectsMeet(L, o[a], o[b], rects, dens)) {
+            clash = true;
+            break;
+          }
+        }
+      }
+      if (clash) continue;
+      // Swap the blocks [s1, s2) and [s2, s3): the short run goes after the one that followed it.
+      const len2 = s3 - s2;
+      for (let q = 0; q < len1; q++) T[q] = o[s1 + q];
+      for (let q = 0; q < len2; q++) o[s1 + q] = o[s2 + q];
+      for (let q = 0; q < len1; q++) o[s1 + len2 + q] = T[q];
+      RS[k + 1] = s1 + len2;
+      moved = true;
+      k++;
+    }
+    if (!moved) break;
+  }
+  return tests;
 }
 
 /**

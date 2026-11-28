@@ -18,8 +18,13 @@
  *
  * WHAT IT DOES NOT SEE (said where it is used): the stick, the boss's own drive and walk, the presence samples, the
  * sound, the pour nudge of the camera and the camera's ease (the camera is the settled follow view), the stress
- * helpers' cycle runs on `clock`. A change to ./frameLoop.ts's own drawing code is NOT seen: this file is its copy at
- * ff064ce (scene.mts warns when frameLoop.ts differs from the record's tree). Pure; deterministic.
+ * helpers' cycle runs on `clock`. A change to ./frameLoop.ts's own drawing code is NOT seen: this file is its copy (scene.mts
+ * warns when frameLoop.ts differs from the record's tree). o4-world brought the copy up to frameLoop.ts as C-WORLD-2 left
+ * it (the truck from the model table's row 0, the arrival slot formula at four slots; the works' hooks are off: the
+ * harness draws with the switch off) and then mirrored its own changes: the truck's turn to the hook frames' heading
+ * (F2) and the hop pass (F5). Both follow the TREE handed in: a tree whose actor table has no `models` (ff064ce) is
+ * drawn with ff064ce's truck block, one whose actors.ts has no `hopRuns` without the hop pass, so the same harness still
+ * draws the archive as the archive drew. Pure; deterministic.
  */
 import type { SalvageContent } from '../../../config/schema.salvage';
 import type * as R from '../../../engine/salvage';
@@ -40,8 +45,8 @@ export interface HarnessMods {
   Y: typeof YardMod;
   /** The rules' frame (src/engine/salvage.ts `frame`). */
   frame: (cfg: R.SalvageConfig, g: R.SalvageGame) => R.FrameTable;
-  /** ./atlas.ts planSheet (its cells give the baked index; nothing is drawn). */
-  planSheet: (sheet: 'A' | 'B' | 'G', want: number) => { cells: readonly { id: string; frame: number; heading: number }[] };
+  /** ./atlas.ts planSheet (its cells give the baked index and, o4-world, the cells' rectangles the hop pass reads; nothing is drawn). */
+  planSheet: (sheet: 'A' | 'B' | 'G', want: number) => { density?: number; cells: readonly { id: string; frame: number; heading: number; x?: number; y?: number; w?: number; h?: number; ax?: number; ay?: number }[] };
   /** The vests of the roles (../art/palette.ts YARD.vestYardHand, vestCutter, vestDriver). */
   vests: { hand: string; cutter: string; driver: string };
   /** art/manifest/things OBJECT_SPRITE (a thing's entry by its object), for the unknown-id check; optional. */
@@ -123,21 +128,30 @@ export interface FrameDraw {
   vb: Float64Array;
   nvb: number;
   scene: RulesScene;
+  /** o4-world: the hop pass's rectangle tests this frame (0 without it). */
+  hopTests: number;
+  /** o4-world: the driver's or parked truck as drawn: its facing memory's heading8, the heading its picture faces, the hook frame (-1: none); null when not drawn. */
+  truck: { h8: number; art: number; hook: number } | null;
 }
 
 /**
  * The sheets as the world reads them, built in node: A, B and G from ./atlas.ts planSheet at density 2 (the phone's
  * SHEET_DENSITY at 2x and 3x; the index is the plan's cell order, as atlas.ts finish() makes it), S (the actor shadows)
- * one cell per actors.ts SHADOW_CELLS kind and heading. `rects` is empty: nothing is drawn, only resolved.
+ * one cell per actors.ts SHADOW_CELLS kind and heading. Nothing is drawn, only resolved; o4-world: `rects` are the plan's
+ * cells (x, y, w, h, ax, ay as atlas.ts finish() writes them) and `density` the plan's, as drawRuns and the hop pass read
+ * them (S's rects stay empty: shadows are never in the sorted list).
  */
 export function nodeSheets(mods: HarnessMods, density = 2): SheetLike[] {
   const out: SheetLike[] = [];
   for (const s of ['A', 'B', 'G'] as const) {
     const index: Record<string, number> = {};
-    mods.planSheet(s, density).cells.forEach((c, i) => {
+    const rects: number[] = [];
+    const plan = mods.planSheet(s, density);
+    plan.cells.forEach((c, i) => {
       index[`${c.id}#${c.frame}#${c.heading}`] = i;
+      rects.push(c.x ?? 0, c.y ?? 0, c.w ?? 0, c.h ?? 0, c.ax ?? 0, c.ay ?? 0);
     });
-    out.push({ density, rects: [], index });
+    out.push({ density: plan.density ?? density, rects, index });
   }
   const index: Record<string, number> = {};
   let i = 0;
@@ -170,7 +184,12 @@ const bump = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1
 export function makeHarness(mods: HarnessMods, c: SalvageContent, view: HarnessView): Harness {
   const { A, M, Cam, Co, Y } = mods;
   const yard = Y.yardLayout(c);
-  const base = A.makeResolver(nodeSheets(mods));
+  const sheets = nodeSheets(mods);
+  const base = A.makeResolver(sheets);
+  // drawRuns' and the hop pass's view of the sheets (frameLoop.ts `baked`: rects, dens).
+  const rects = sheets.map((s) => s.rects);
+  const dens = sheets.map((s) => s.density);
+  const hopRuns = typeof A.hopRuns === 'function' ? A.hopRuns : null;
   const misses: Misses = { table: new Map(), statics: new Map(), scene: new Map() };
   let phase: keyof Misses = 'table';
   const seen = new Set<string>();
@@ -533,9 +552,13 @@ export function makeHarness(mods: HarnessMods, c: SalvageContent, view: HarnessV
       seenV |= 1 << slot;
       actors++;
     }
-    // The truck.
+    let truckDrawn: FrameDraw['truck'] = null;
+    // The truck (frameLoop.ts: `const TM = works ? truckModelRow(T.models, Rv.truckModel) : T.models[0]`; the harness draws
+    // with the switch off: row 0, today's arrays. A tree without the model table (ff064ce): its own arrays and truck block).
     if (truckOwned) {
       const TR = Rv.truck;
+      const TM = T.models !== undefined ? T.models[0] : { body: T.truck, bare: T.truckBare, hook: T.truckHook, shadow: T.shTruck, skipLoad: T.skipLoad, scale: T.truckScale, vbox: A.VBOX_TRUCK, vboxBare: A.VBOX_TRUCK_BARE, vboxHook: A.VBOX_TRUCK_HOOK, half: [VD[0], VD[1]], hookFace: undefined as number | undefined };
+      const hookFace = TM.hookFace;
       let tx = st.tx;
       let ty = st.ty;
       let h8 = A.heading8(st.ta);
@@ -547,42 +570,52 @@ export function makeHarness(mods: HarnessMods, c: SalvageContent, view: HarnessV
         h8 = t4[2] === t4[2] ? t4[2] : S.face[0] === S.face[0] ? S.face[0] : TR[3];
         hook = t4[3];
       }
-      h8 = M.turnFacing(S.face, h8, clock, driving || snap || hook >= 0);
+      // o4-world F2 (frameLoop.ts): the hook and tip frames' heading is wanted while they are; the turn is drawn first.
+      if (hookFace !== undefined) {
+        if (hook >= 0) h8 = hookFace;
+        h8 = M.turnFacing(S.face, h8, clock, driving || snap);
+        if (hook >= 0 && h8 !== hookFace) hook = -1;
+      } else h8 = M.turnFacing(S.face, h8, clock, driving || snap || hook >= 0);
       let key = ty + 1;
       if (HS === HS && tx > YW - 3) {
         const ca = Math.abs(Math.sin((h8 * Math.PI) / 4));
         const sa = Math.abs(Math.cos((h8 * Math.PI) / 4));
-        const northY = ty - (VD[0] * sa + VD[1] * ca);
+        const northY = ty - (TM.half[0] * sa + TM.half[1] * ca);
         if (northY < HS) key = Math.min(key, northY);
       }
       const i0 = L.n;
-      let tbox = (A.VBOX_TRUCK * 8 + h8) * 4;
+      let tbox = (TM.vbox * 8 + h8) * 4;
+      let pic = h8;
       const vehicleInto = (cell: number, shadow: number) => {
         A.addTo(SHD, V, 0, shadow, tx, ty, 0, 0, 1, -1, 1);
-        A.addTo(L, V, key, cell, tx, ty, 0, 0, T.truckScale, -1, 1);
+        A.addTo(L, V, key, cell, tx, ty, 0, 0, TM.scale, -1, 1);
       };
       if (hook >= 0) {
-        vehicleInto(T.truckHook[hook], T.shTruck[2]);
-        tbox = A.VBOX_TRUCK_HOOK * 32;
-      } else if (TR[4] === 0 && T.truckBare[h8] >= 0) {
-        vehicleInto(T.truckBare[h8], T.shTruck[h8]);
-        tbox = (A.VBOX_TRUCK_BARE * 8 + h8) * 4;
+        vehicleInto(TM.hook[hook], TM.shadow[2]);
+        tbox = TM.vboxHook * 32;
+        pic = hookFace ?? h8;
+      } else if (TR[4] === 0 && TM.bare[h8] >= 0) {
+        vehicleInto(TM.bare[h8], TM.shadow[h8]);
+        tbox = (TM.vboxBare * 8 + h8) * 4;
       } else if (TR[4] === 0 && (h8 === 2 || h8 === 1 || h8 === 3)) {
-        vehicleInto(T.truckHook[0], T.shTruck[2]);
-        tbox = A.VBOX_TRUCK_HOOK * 32;
+        vehicleInto(TM.hook[0], TM.shadow[2]);
+        tbox = TM.vboxHook * 32;
+        pic = hookFace ?? h8;
       } else {
-        vehicleInto(T.truck[h8], T.shTruck[h8]);
-        if (TR[10] >= 0) A.addTo(L, V, key + 1e-4, T.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
+        vehicleInto(TM.body[h8], TM.shadow[h8]);
+        if (TR[10] >= 0) A.addTo(L, V, key + 1e-4, TM.skipLoad[TR[10]], tx, ty, T.skipTop[h8 * 2], T.skipTop[h8 * 2 + 1], T.vehicleScale, -1, 1);
       }
       if (driving) {
         f2[0] = Math.cos(st.ta);
         f2[1] = Math.sin(st.ta);
-      } else M.facing8(f2, h8);
+      } else M.facing8(f2, pic);
       VR[0] = i0;
       VR[1] = L.n;
       VR[2] = nvb;
+      // `art`: the heading the drawn picture faces (the hook and tip frames' own: east); `h8`: the facing memory's.
       vehicles.push({ kind: 'truck', slot: 0, x: tx, y: ty, o: nvb * VB_STRIDE });
-      nvb = M.bodyInto(VB, nvb, PV, 0, tx, ty, f2[0], f2[1], VD[0], VD[1], dt, 0, VX, tbox, key);
+      truckDrawn = { h8, art: pic === h8 && (hook >= 0 || tbox === TM.vboxHook * 32) ? 2 : pic, hook };
+      nvb = M.bodyInto(VB, nvb, PV, 0, tx, ty, f2[0], f2[1], TM.half[0], TM.half[1], dt, 0, VX, tbox, key);
       seenV |= 1;
       actors++;
     }
@@ -674,6 +707,8 @@ export function makeHarness(mods: HarnessMods, c: SalvageContent, view: HarnessV
 
     // --- one picture: decals, shadows, then the sorted list in runs ------------------------------------------
     A.sortRuns(L, runA, runB);
+    // o4-world F5 (frameLoop.ts): the hop pass, when the tree has it.
+    const hopTests = hopRuns !== null ? hopRuns(L, rects, dens) : 0;
     const runD = countRuns(D, false);
     const runS = countRuns(SHD, false);
     const runL = countRuns(L, true);
@@ -696,6 +731,8 @@ export function makeHarness(mods: HarnessMods, c: SalvageContent, view: HarnessV
         cam: [camX, camY, zoom],
         body: [bx, by, st.driving],
       },
+      hopTests,
+      truck: truckDrawn,
       decal: rows(D, false),
       shadow: rows(SHD, false),
       sorted: rows(L, true),

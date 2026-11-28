@@ -37,7 +37,7 @@ import { YARD } from '../art/palette';
 import { yardSound } from '../hud/pump';
 import { useGame } from '../../../state/store';
 import * as R from '../../../engine/salvage';
-import { ARRIVAL, ARRIVAL_UNKNOWN, ARRIVAL_WORKS_FIRST, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, ROOF_MAX, VBOX_FLATBED, VBOX_FLATBED_WORKING, VBOX_TRAILER, VBOX_VAN, actorTable, vehicleBoxes, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
+import { ARRIVAL, ARRIVAL_UNKNOWN, ARRIVAL_WORKS_FIRST, ITEM, PATH_MAX, L_DECAL, NO_SCENE, POSE_FRAMES, P_FEED, P_POUR, P_PUSH, P_STAND, P_WALK, ROOF, ROOF_MAX, VBOX_FLATBED, VBOX_FLATBED_WORKING, VBOX_TRAILER, VBOX_VAN, actorTable, vehicleBoxes, addTo, along, entryOf, heading4, heading8, makeListW, makeResolver, pathLen, personBox, personInto, presortItems, roofInk, roofTable, sortRuns, hopRuns, staticItems, underRoof, type DrawList, type RulesScene } from './actors';
 import { VB_STRIDE, arrivalAt, behindStanding, bodyInto, bossDriveV, vehicleCovers, carAt, crewAt, facing8, flatbedAway, legStart, makeClock, pressGetIn, rulesClock, stepAside, truckAt, truckFrom, turnFacing } from './motion';
 import { EDGE_ROOM_M, FOLLOW_Y, cameraBounds, followCam, zoomedBounds } from './camera';
 import { heroCam } from './heroFrame';
@@ -1107,8 +1107,13 @@ export function useYardLoop(opts: {
             h8 = t4[2] === t4[2] ? t4[2] : S.face[0] === S.face[0] ? S.face[0] : TR[3];
             hook = t4[3];
           }
+          // o4-world F2 ("truck animation ... laggy"): the hook and tip frames face the art's way (TM.hookFace, east): while
+          // the rules want them the wanted heading is that one, the turn to it is DRAWN first (a heading every STEP_S) and
+          // the frames show only once the picture faces it; leaving, the facing turns back the same way.
+          if (hook >= 0) h8 = TM.hookFace;
           // The facing turns through the eight headings, never flips (the boss's wheel turns it itself).
-          h8 = turnFacing(S.face, h8, clock, driving || snap || hook >= 0);
+          h8 = turnFacing(S.face, h8, clock, driving || snap);
+          if (hook >= 0 && h8 !== TM.hookFace) hook = -1;
           let key = ty + 1;
           // owner2-fix P3: a truck slanted through the gate pokes its north corner into the lane's north hedge row: while
           // it does, it sorts from that corner, so the hedge and the gate's post are drawn over the part behind them.
@@ -1121,9 +1126,12 @@ export function useYardLoop(opts: {
           }
           const i0 = L.n;
           let tbox = (TM.vbox * 8 + h8) * 4;
+          // o4-world F2: the heading the picture faces (the body the step aside and the boss's collider read is the picture's).
+          let pic = h8;
           if (hook >= 0) {
             vehicleInto(L, SHD, V, TM.hook[hook], TM.shadow[2], TM.scale, tx, ty, key);
             tbox = TM.vboxHook * 32;
+            pic = TM.hookFace;
           } else if (TR[4] === 0 && TM.bare[h8] >= 0) {
             // No skip on the hook (L16): the bare frame of this heading.
             vehicleInto(L, SHD, V, TM.bare[h8], TM.shadow[h8], TM.scale, tx, ty, key);
@@ -1131,6 +1139,7 @@ export function useYardLoop(opts: {
           } else if (TR[4] === 0 && (h8 === 2 || h8 === 1 || h8 === 3)) {
             vehicleInto(L, SHD, V, TM.hook[0], TM.shadow[2], TM.scale, tx, ty, key);
             tbox = TM.vboxHook * 32;
+            pic = TM.hookFace;
           } else {
             vehicleInto(L, SHD, V, TM.body[h8], TM.shadow[h8], TM.scale, tx, ty, key);
             // The skip's load: today's truck's offsets (the hook-lift's own are WLD-VEHICLES1's, in its row).
@@ -1140,7 +1149,7 @@ export function useYardLoop(opts: {
           if (driving) {
             f2[0] = Math.cos(st[4]);
             f2[1] = Math.sin(st[4]);
-          } else facing8(f2, h8);
+          } else facing8(f2, pic);
           VR[0] = i0;
           VR[1] = L.n;
           VR[2] = nvb;
@@ -1262,6 +1271,8 @@ export function useYardLoop(opts: {
 
       // --- one picture: decals, shadows, then the sorted list in runs ---------------------------------------
       sortRuns(L, runA, runB);
+      // o4-world F5: short runs hop past a following run they do not touch (./actors.ts hopRuns): fewer draws, the same pixels.
+      if (K !== null) hopRuns(L, K.rects, K.dens);
       let runs = 0;
       const PO = S.runPool;
       const picture = createPicture((cv) => {

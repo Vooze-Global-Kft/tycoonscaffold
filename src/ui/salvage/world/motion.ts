@@ -270,7 +270,16 @@ export function truckAt(out: number[], tmp: number[], TR: number[], TP: number[]
   const leg = TR[6];
   if (leg < 0) return false;
   const np = Math.min(TR[11], PATH_MAX_PTS);
-  if (TA !== undefined && np >= 1 && TA.length >= np) return truckTimed(out, tmp, TR, TP, TA, np, tNow, from);
+  if (TA !== undefined && np >= 1 && TA.length >= np) {
+    // o4-world F3 ("trucks are sometimes speeding"): a dated drive first seen `lag` late whose phase then STANDS for at
+    // least the lag (the tip: about 10 s at the floor) is drawn at its own dates shifted by the lag, at its own speed,
+    // never squeezed into what is left of it (warpTau: 4.5 to 5.3 m/s on the tip's 3 m). It arrives the lag later on
+    // screen (under LATE_MAX_S); the standing frames (the tip's) follow by the same lag. A drive that ends with its
+    // phase (park) keeps the warp: shifted, it would still be short of its end when the rules end the leg.
+    const lag = from - TA[0];
+    if (np >= 2 && lag > 0 && TR[8] - TA[np - 1] >= lag) return truckTimed(out, tmp, TR, TP, TA, np, tNow - lag, NaN);
+    return truckTimed(out, tmp, TR, TP, TA, np, tNow, from);
+  }
   const t0 = from === from ? Math.max(TR[7], from) : TR[7];
   const t1 = TR[8];
   const driveEnd = TR[12] === TR[12] && TR[12] !== undefined ? Math.min(t1, TR[12]) : t1;
@@ -549,6 +558,16 @@ export const ASIDE_HARD_M = 3;
 export const ASIDE_EASE_S = 0.08;
 /** The share of the way out a person drawn INSIDE a body moves in one frame (all of it: only when a body appears on him, a leg switch of the truck at the tipping floor). */
 export const ASIDE_FAST = 1;
+/**
+ * o4-world (the owner's review, point 1 "helper laggy", "freeze and only restart"; o3-diag-world F1): the drawn offset
+ * from a person's rules place changes at most at a walking pace, metres a second, both out and back (a person held
+ * beside a passing vehicle walks back to his place, he does not dart 1 to 6 m in a fifth of a second; a box that
+ * changes when a vehicle stops or starts moves him at a walk, not in the 0.08 s ease). The ease and ASIDE_FAST win
+ * whenever the walking step would leave him inside a vehicle's drawn body.
+ */
+export const ASIDE_WALK_V = 2.5;
+/** o4-world F1 (ii): an offset under this many metres is no side to keep (a standing box then picks its nearest edge). */
+export const ASIDE_SIDE_M = 0.3;
 /** Below this speed (m/s) a vehicle stands: nobody steps aside from it. */
 export const MOVING_V = 0.3;
 /** Vehicle slots of the previous-place memory: the truck, the flatbed, the van, its trailer, four arrivals. */
@@ -636,7 +655,11 @@ export function asideTarget(out: number[], px: number, py: number, VB: number[] 
       else if (dE <= 0) edge = 1;
       else if (dN <= 0) edge = 2;
       else if (dS <= 0) edge = 3;
-      else {
+      else if (ox0 * ox0 + oy0 * oy0 > ASIDE_SIDE_M * ASIDE_SIDE_M) {
+        // o4-world F1 (ii): drawn off to one side already (a moving body's step aside, the frame it stops or starts):
+        // that side's edge, never the nearest one through the body (the flip through the truck at the weighbridge).
+        edge = Math.abs(ox0) > Math.abs(oy0) ? (ox0 < 0 ? 0 : 1) : oy0 < 0 ? 2 : 3;
+      } else {
         let m = dW;
         if (dE < m) {
           m = dE;
@@ -777,9 +800,28 @@ export function stepAside(out: number[], OFF: Float64Array, i: number, px: numbe
   // Drawn inside a body right now (a vehicle that moved off or turned the very frame he stood by it): out faster.
   const cx = px + OFF[i * 2];
   const cy = py + OFF[i * 2 + 1];
-  for (let q = 0; q < n && e < ASIDE_FAST; q++) if (insideBody(VB, q * VB_STRIDE, cx, cy)) e = ASIDE_FAST;
-  const ox = OFF[i * 2] + (out[0] - OFF[i * 2]) * e;
-  const oy = OFF[i * 2 + 1] + (out[1] - OFF[i * 2 + 1]) * e;
+  let inside = false;
+  for (let q = 0; q < n && !inside; q++) if (insideBody(VB, q * VB_STRIDE, cx, cy)) inside = true;
+  if (inside) e = Math.max(e, ASIDE_FAST);
+  let ox = OFF[i * 2] + (out[0] - OFF[i * 2]) * e;
+  let oy = OFF[i * 2 + 1] + (out[1] - OFF[i * 2 + 1]) * e;
+  // o4-world F1 (i), (iii): at most a walking pace, out or back, unless that step would leave him inside a body.
+  if (!snap && !inside) {
+    const sx = ox - OFF[i * 2];
+    const sy = oy - OFF[i * 2 + 1];
+    const st = Math.sqrt(sx * sx + sy * sy);
+    const cap = ASIDE_WALK_V * dt;
+    if (st > cap) {
+      const nx = OFF[i * 2] + (sx / st) * cap;
+      const ny = OFF[i * 2 + 1] + (sy / st) * cap;
+      let clash = false;
+      for (let q = 0; q < n && !clash; q++) if (insideBody(VB, q * VB_STRIDE, px + nx, py + ny)) clash = true;
+      if (!clash) {
+        ox = nx;
+        oy = ny;
+      }
+    }
+  }
   OFF[i * 2] = ox;
   OFF[i * 2 + 1] = oy;
   out[0] = px + ox;
