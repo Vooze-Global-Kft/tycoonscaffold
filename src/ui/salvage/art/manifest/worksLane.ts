@@ -26,6 +26,9 @@ const V: View3q = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
 // this table and says FAIL when a drawing leaves it; WRITE_BOUNDS=1 writes it here)
 // prettier-ignore
 const MEASURED: Record<string, [number, number, number, number]> = {
+  'lane.site.garage': [-143, -100, 286, 159],
+  'lane.site.plumbing': [-143, -96, 295, 155],
+  'lane.sign.axle10t': [-17, -73, 60, 83],
 };
 // END MEASURED BOUNDS
 

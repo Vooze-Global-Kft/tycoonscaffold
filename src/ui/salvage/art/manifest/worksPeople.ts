@@ -34,6 +34,11 @@ const tiny: Draw = (c) => c.drawPath(rect(-2, -2, 4, 4), fill(YARD.hivisDark));
 // a drawing leaves it; WRITE_BOUNDS=1 writes it here)
 // prettier-ignore
 const MEASURED: Record<string, [number, number, number, number][]> = {
+  'person.visitor': [[-15, -54, 30, 59], [-16, -54, 35, 59], [-12, -54, 33, 58], [-17, -54, 36, 59], [-15, -54, 30, 59]],
+  'person.boss.plasma': [[-14, -54, 55, 62], [-3, -3, 6, 6], [-41, -54, 70, 58], [-3, -3, 6, 6], [-14, -54, 54, 61]],
+  'person.boss.analyse': [[-14, -57, 30, 61], [-3, -3, 6, 6], [-12, -57, 35, 61], [-3, -3, 6, 6], [-14, -57, 30, 61]],
+  'vehicle.van.dealer': [[-21, -57, 42, 77], [-48, -39, 80, 54], [-21, -36, 42, 64]],
+  'works.plasma.rack': [[-16, -34, 43, 44]],
 };
 // END MEASURED BOUNDS
 
