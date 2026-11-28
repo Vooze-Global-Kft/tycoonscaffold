@@ -162,7 +162,11 @@ describe('F2: the truck model table', () => {
     expect(m0.shadow).toBe(T.shTruck);
     expect(m0.scale).toBe(T.truckScale);
     expect(T.models[1].body.every((c) => c === -1)).toBe(true);
-    const on = A.actorTable(namedRes(['A', 'B', 'G', 'S', 'C', 'D']).res, { hand: '#00FF00', cutter: '#0000FF', driver: '#00FFFF' });
+    // with the switch off the table asks no works id at all (the first yard's requests, in its order)
+    const asked: string[] = [];
+    A.actorTable((id, f = 0, h = 0) => (asked.push(`${id}#${f}#${h}`), res(id, f, h)), { hand: '#00FF00', cutter: '#0000FF', driver: '#00FFFF' }, false);
+    expect(asked.filter((k) => MF.WORKS_MANIFEST.some((e) => k.startsWith(`${e.id}#`)) || k.startsWith('shadow.truck3') || /person\.\w+\.(plasma|analyse)#/.test(k))).toEqual([]);
+    const on = A.actorTable(namedRes(['A', 'B', 'G', 'S', 'C', 'D']).res, { hand: '#00FF00', cutter: '#0000FF', driver: '#00FFFF' }, true);
     expect(on.models[1].body.every((c) => c >= 0)).toBe(true);
     expect(on.models[1].hook.length).toBe(4);
     expect(on.models[1].tip.length).toBe(3);
@@ -233,7 +237,7 @@ describe('F4: poses appended at the end', () => {
         }
     expect(drawn(0, A.P_PLASMA, 1)[0].split('#')[0]).toBe('person.boss.stand');
     const on = namedRes(['A', 'B', 'G', 'S', 'D']);
-    const T2 = A.actorTable(on.res, { hand: '#00FF00', cutter: '#0000FF', driver: '#00FFFF' });
+    const T2 = A.actorTable(on.res, { hand: '#00FF00', cutter: '#0000FF', driver: '#00FFFF' }, true);
     L.n = 0;
     A.personInto(L, V, T2, 0, A.P_PLASMA, 1, 1, -1, -1, 0, -1, 10, 10, 10);
     // the 4-scheme east (1) is the 8-scheme east (2) of the works' 8-heading entry

@@ -35,6 +35,7 @@ import { loadFamily, type LoadFamily } from '../art/people.draw';
 import { laneDrawEnd, laneGeo, laneSigns, mapDriveLine, mapNorth, type LaneGeo } from './yard';
 import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
+import { stageOn } from '../../../modes/salvage/stage';
 import { floorItems, worksItems } from './worksScene';
 import { worksRoofSpots, type RoofSpot } from './worksTable';
 
@@ -1150,7 +1151,12 @@ export interface ActorTable {
   models: { body: number[]; bare: number[]; hook: number[]; tip: number[]; skipLoad: number[]; shadow: number[]; scale: number; vbox: number; vboxBare: number; vboxHook: number; half: number[] }[];
 }
 
-export function actorTable(res: Resolver, vests: { hand: string; cutter: string; driver: string }): ActorTable {
+/**
+ * C-WORLD-1: `works` (default stageOn()): ask the resolver for the works' cells (the new poses, the hook-lift's row). Off,
+ * the table asks exactly the first yard's ids in the first yard's order (the works' cells are -1 without being asked), so
+ * a first-yard player's table, and the cost harness's record of what it asked, are as before.
+ */
+export function actorTable(res: Resolver, vests: { hand: string; cutter: string; driver: string }, works: boolean = stageOn()): ActorTable {
   const person: number[] = [];
   const vest: number[] = [];
   for (let who = 0; who < 2; who++)
@@ -1159,8 +1165,9 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
         for (let h = 0; h < 4; h++) {
           const id = `person.${who === 0 ? 'boss' : 'crew'}.${POSES[p]}`;
           // C-WORLD-1: the works' poses (P_WORKS_FIRST on) are baked in 8 headings: the 4-scheme heading h is 8-scheme h x 2.
-          person.push(f < POSE_FRAMES[p] ? res(id, f, p >= P_WORKS_FIRST ? h * 2 : h) : -1);
-          if (who === 1) vest.push(f < POSE_FRAMES[p] ? res(`person.crew.vest.${POSES[p]}`, f, h) : -1);
+          const ask = f < POSE_FRAMES[p] && (p < P_WORKS_FIRST || works);
+          person.push(ask ? res(id, f, p >= P_WORKS_FIRST ? h * 2 : h) : -1);
+          if (who === 1) vest.push(ask ? res(`person.crew.vest.${POSES[p]}`, f, h) : -1);
         }
   const hand: number[] = [];
   for (const fam of HAND_FAMILIES) for (let h = 0; h < 4; h++) hand.push(res(`load.hand.${fam}`, 0, h));
@@ -1186,10 +1193,11 @@ export function actorTable(res: Resolver, vests: { hand: string; cutter: string;
   const truckScale = scaleOf('vehicle.truck');
   const models: ActorTable['models'] = TRUCK_MODELS.map((m, i) => {
     if (i === 0) return { body: truck, bare: truckBare, hook: truckHook, tip: [], skipLoad, shadow: shTruck, scale: truckScale, vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
-    const frames = (id: string | null) => (id ? (entryOf(id)?.frames ?? []).map((_, f) => res(id, f, 1)) : []);
-    const eight = (id: string) => Array.from({ length: 8 }, (_, h) => res(id, 0, h));
+    const ask = (id: string, f: number, h: number) => (works ? res(id, f, h) : -1);
+    const frames = (id: string | null) => (id ? (entryOf(id)?.frames ?? []).map((_, f) => ask(id, f, 1)) : []);
+    const eight = (id: string) => Array.from({ length: 8 }, (_, h) => ask(id, 0, h));
     const sh = eight('shadow.truck3').map((c, h) => (c >= 0 ? c : shTruck[h]));
-    return { body: eight(m.body), bare: eight(m.bare), hook: frames(m.hook), tip: frames(m.tip), skipLoad: (entryOf(m.load)?.frames ?? []).map((_, f) => res(m.load, f, 0)), shadow: sh, scale: scaleOf(m.body), vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
+    return { body: eight(m.body), bare: eight(m.bare), hook: frames(m.hook), tip: frames(m.tip), skipLoad: (entryOf(m.load)?.frames ?? []).map((_, f) => ask(m.load, f, 0)), shadow: sh, scale: scaleOf(m.body), vbox: m.vbox, vboxBare: m.vboxBare, vboxHook: m.vboxHook, half: truckHalf(m) };
   });
   return {
     person,
