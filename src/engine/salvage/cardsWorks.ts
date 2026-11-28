@@ -10,15 +10,20 @@
  */
 import { bankRow, loanFoot } from './bank';
 import { plateBuyCheck, plateLevelCheck } from './actionsWorks';
-import { refusalTxt } from './ladder';
+import { measuredGain, refusalTxt } from './ladder';
 import { hallBusy } from './halls';
-import { contentAt } from './layer';
+import { contentAt, worksOpened } from './layer';
 import { begin, dayAt } from './clock';
-import { lotValue } from './lots';
+import { lotsWaiting, lotValue } from './lots';
 import { carLabelPrice, recoveryOf } from './works';
 import { preparedLines, rackCap } from './reuse';
 import { roundMoney } from './money';
-import type { CardButton, CardContext, CardData, CardRef, CrateCard, LotCard, SalvageConfig, SalvageGame, TextKey, WorksCard, YardSaleCard } from './types';
+import { heatView } from './heatView';
+import { recoveryView } from './frameWorks';
+import { thingsAt } from './lookup';
+import type { SalvageContent } from '../../config/schema.salvage';
+import type { Ctx } from './clock';
+import type { CardButton, CardContext, CardData, CardRef, CrateCard, EarnsView, LotCard, PadCard, SalvageConfig, SalvageGame, TextKey, WorksCard, YardSaleCard } from './types';
 
 /** The card kinds this file answers (cards.ts dispatches them). */
 export const WORKS_CARD_KINDS = ['works', 'yardSale', 'lot', 'crate'] as const;
@@ -90,7 +95,19 @@ export function worksCardOf(cfg: SalvageConfig, g: SalvageGame, plate: string): 
   const buy: CardButton | null =
     !w && buyCh.price !== null ? { label: { key: 'card.buy' as TextKey, args: { x: { money: buyCh.price } } }, action: { act: 'buy', item: plate, price: buyCh.price }, refusal: buyCh.state === 'cantAfford' ? refusalTxt(buyCh) : null } : null;
   const lf = !w ? loanFoot(cfg, g, plate) : { loan: null, loanShort: null, saveUp_s: null };
+  // C-CARDS-a (PLAN2 2.1; cards contract C2 to C4): the hall's heat (the frame's own object), what an unbought plate earns
+  // (the measured gain its price is made of), and the truck-fed station's car and recovery truck (the frame's own reader).
+  const extra: Pick<WorksCard, 'heat' | 'earns' | 'recovery' | 'car'> = {};
+  if (!w && worksOpened(g.salvage)) extra.earns = earnsOf(c, plate, buyCh.price);
+  const hv = d.kind === 'batch' ? heatView(c, g.salvage, plate) : null;
+  if (hv) extra.heat = hv;
+  if (w && recoveryOf(c, plate)) {
+    const x = readCtx(c, g);
+    extra.recovery = recoveryView(x, plate, w, g.salvage.t);
+    extra.car = apronCar(c, g, plate, w);
+  }
   return {
+    ...extra,
     plate,
     kind: d.kind,
     state,
@@ -139,6 +156,71 @@ function recipeByOf(w: SalvageGame['salvage']['works'][string], plate: string): 
   };
 }
 
+// ---------------------------------------------------------------------------------------- C-CARDS-a (PLAN2 2.1, batch 0c)
+
+/**
+ * WHAT A PURCHASE EARNS (PLAN2 2.1 `EarnsView`; cards contract C3; critic I11): the MEASURED gain the item's price is made of
+ * (RULING2.md 28.5 b: content `gain_h`, ladder.ts measuredGain, the figure the advice line and the headroom read) and the
+ * hours it takes to pay back the price the Buy charges (price ÷ gain). Null where the content names no measured gain (a
+ * first-yard item, a level, a hire: those are not made of one) or no price stands. `c` is the content the state reads
+ * (layer.ts contentAt). Nothing is computed from the replay here: the card says the number the price was made of.
+ */
+export function earnsOf(c: SalvageContent, item: string, price: number | null): EarnsView | null {
+  const gain = measuredGain(c, item);
+  if (gain === null || !(gain > 0) || price === null || !Number.isFinite(price)) return null;
+  return { gain_h: gain, payback_h: price / gain };
+}
+
+/** A read-only Ctx over the state as it stands (frameWorks.ts readCtx's twin: no clone, only the rules' READ functions are given it). */
+function readCtx(c: SalvageContent, g: SalvageGame): Ctx {
+  const s = g.salvage;
+  return { cfg: { mode: 'salvage', salvage: c } as unknown as Ctx['cfg'], c, s, cash: g.cash, earned: 0, ev: [], live: false, ms0: s.clock.highMs, t0: s.t, away: null, dirty: false, prices: new Map(), rung0: s.ladder.rung };
+}
+
+/**
+ * The car being drained on station `plate`'s apron (WorksCard.car: "End-of-life car · ref. {ref}" and the drain's end), or
+ * null. `ref` is the car object's treatment record (content `objects.<obj>.source.ref`, the tickets' own), else the thing's
+ * uid. A car standing whole on the apron (not yet draining) has no drain's end: null here; the recovery's `waitsFor`
+ * 'apron' says the apron is taken.
+ */
+function apronCar(c: SalvageContent, g: SalvageGame, plate: string, w: SalvageGame['salvage']['works'][string]): WorksCard['car'] {
+  if (!w.car) return null;
+  const th = thingsAt(g.salvage.things, 'apron').find((q) => q.uid === w.car!.thing && q.at.at === 'apron' && q.at.plate === plate);
+  if (!th) return null;
+  const o = c.objects[th.obj] as { source?: { ref?: string } } | undefined;
+  return { thing: th.uid, ref: o?.source?.ref ?? th.uid, endsAt: w.car.end };
+}
+
+/** Does the yard own a line of a lot kind (lots.ts ownsLine's rule; private there, frameWorks.ts mirrors it too: a [seam] asks lots.ts to export it). */
+function ownsLine(s: SalvageGame['salvage'], line: readonly string[]): boolean {
+  if (!line.length) return true;
+  for (const id of line) if ((s.machines as Record<string, { owned: boolean } | undefined>)[id]?.owned || s.works[id]) return true;
+  return false;
+}
+
+/**
+ * THE OVERSIZE PAD'S CARD (PLAN2 2.1 `PadCard`; cards contract C5): opened as `{kind:'lot'}` without a piece (or with one no
+ * longer there). Pieces waiting and its places (the frame's `pad.n`/`max`), seconds to the next piece (lots.nextAt; null:
+ * none planned), and `waitsForTier`: while no kind the yard owns a line of can be opened with its tool tier (lots.ts lotArrive
+ * then draws nothing), the lowest tier such a kind needs; null otherwise. `incoming` is FIX-PASS's (D2): always null here.
+ * Null without oversize pieces in the content (the first yard).
+ */
+export function padCardOf(cfg: SalvageConfig, g: SalvageGame): PadCard | null {
+  const c = contentAt(cfg.salvage, g.salvage);
+  const s = g.salvage;
+  if (!c.lots || !s.lots) return null;
+  const n = lotsWaiting({ s });
+  let open = false;
+  let need: number | null = null;
+  for (const k of c.lots.kinds) {
+    const o = c.objects[k.obj];
+    if (!o || !ownsLine(s, k.line)) continue;
+    if (o.tier <= s.tier) open = true;
+    else if (need === null || o.tier < need) need = o.tier;
+  }
+  return { n, max: c.lots.max, nextInS: s.lots.nextAt !== null ? Math.max(0, s.lots.nextAt - s.t) : null, waitsForTier: open ? null : need, incoming: null };
+}
+
 /** A card of the works (cards.ts cardOf for WORKS_CARD_KINDS). The works card carries `works` (worksCardOf); the Yard sale, an oversize piece and the picking table are wave 2's (the title only). */
 export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext): CardData {
   void now;
@@ -149,8 +231,14 @@ export function cardOfWorks(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, no
     const yc = yardSaleCardOf(cfg, g);
     if (yc) card.yardSale = yc;
   } else if (ref.kind === 'lot') {
-    const lc = lotCardOf(cfg, g, ref.k);
+    // C-CARDS-a (PLAN2 2.1): the pad's card is `{kind:'lot'}` without a piece (no new CardKind): kind 'lot', `pad` filled, no `lot`.
+    const k = (ref as { k?: number }).k;
+    const lc = typeof k === 'number' ? lotCardOf(cfg, g, k) : null;
     if (lc) card.lot = lc;
+    else {
+      const pc = padCardOf(cfg, g);
+      if (pc) card.pad = pc;
+    }
   } else if (ref.kind === 'crate') {
     const cc = crateCardOf(cfg, g);
     if (cc) card.crate = cc;
@@ -211,7 +299,10 @@ export function lotCardOf(cfg: SalvageConfig, g: SalvageGame, k: number): LotCar
   const c = contentAt(cfg.salvage, g.salvage);
   const th = g.salvage.things.find((t) => t.at.at === 'lot' && t.at.k === k);
   if (!th || !c.lots) return null;
-  return { uid: th.uid, obj: th.obj, sender: th.sender ?? null, g: th.g ?? c.objects[th.obj]?.gross_g ?? 0, valueOnceCut: roundMoney(lotValue({ c }, th)), cut_s: c.lots.kinds.find((q) => q.obj === th.obj)?.cut_s ?? c.lots.cut_s[0] };
+  // C-CARDS-a (PLAN2 2.1): the tool tier the piece needs (content objects.<obj>.tier) and whether the yard's tier reaches it (lots.ts's own test).
+  const tier = c.objects[th.obj]?.tier;
+  const tierLine = typeof tier === 'number' ? { needsTier: tier, tierOwned: tier <= g.salvage.tier } : {};
+  return { uid: th.uid, obj: th.obj, sender: th.sender ?? null, g: th.g ?? c.objects[th.obj]?.gross_g ?? 0, valueOnceCut: roundMoney(lotValue({ c }, th)), cut_s: c.lots.kinds.find((q) => q.obj === th.obj)?.cut_s ?? c.lots.cut_s[0], ...tierLine };
 }
 
 /** The picking table's card (4.7): how many things, its room, seconds a thing, the things oldest first. No time: nothing expires. */

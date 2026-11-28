@@ -5,8 +5,7 @@
  * Read once at load: the config is parsed once at install (returning.ts), so a later change of the address would not
  * reach it anyway. Owner: C-MODE.
  */
-// Not re-exported from './stage': on the web Metro resolves './stage' to THIS file (a self-import overflows the stack).
-export const STAGE_VAR = 'EXPO_PUBLIC_YARD_STAGE';
+// (Never import './stage' here: on the web Metro resolves './stage' to THIS file, and a self-import overflows the stack.)
 
 function read(): boolean {
   try {

@@ -6,13 +6,14 @@
  * nothing but numbers (through the facade's formatters) and computes nothing.
  */
 import { cardOfMoney, moneyOver, MONEY_CARD_KINDS } from './cardsMoney';
-import { cardOfWorks, WORKS_CARD_KINDS } from './cardsWorks';
+import { cardOfWorks, earnsOf, WORKS_CARD_KINDS } from './cardsWorks';
+import { ratedIncome } from './rate';
 import { contentAt, worksOpened } from './layer';
 import type { SalvageContent } from '../../config/schema.salvage';
 import { binding, levelBinds, reserve } from './advice';
 import { marketDay, marketTime, priceBoard, priceOf } from './board';
 import { goalListOf, goalOf as goalOfCfg } from './goals';
-import { buyCheck, crewKeys, gateRefusal, gateRung, hireCheck, itemName, levelAddsKgMin, levelCheck, levelQuote, refusalTxt, route, rungSign, shopItem, shopItems, topRungOf, type PurchaseCheck } from './ladder';
+import { buyCheck, crewKeys, gateRefusal, gateRung, hireCheck, itemName, levelAddsKgMin, levelCheck, levelCheckAt, levelQuote, refusalTxt, route, rungSign, shopItem, shopItems, topRungOf, type PurchaseCheck } from './ladder';
 import { driverRoundF, machineShares } from './content';
 import { awayCapH } from './away';
 import { roundMoney } from './money';
@@ -79,17 +80,41 @@ function effectOf(key: string): TextKey | null {
   return (TEXT_KEYS.item as readonly string[]).includes(k) ? (k as TextKey) : null;
 }
 
+/**
+ * C-CARDS-a (PLAN2 2.1 `CardRow.earns`; critic I11): FROM THE WORKS' OPENING a Buy row of the tool rack or the truck park
+ * carries what the purchase earns, the measured gain its price is made of and its payback at the row's own price
+ * (cardsWorks.ts earnsOf; RULING2.md 28.5 b); null where the content names no measured gain. Below the opening the row is
+ * left exactly as it was (no field added: the first yard's card model does not move).
+ */
+function withEarns(cfg: SalvageConfig, g: SalvageGame, r: CardRow): CardRow {
+  if (!worksOpened(g.salvage) || !r.button || r.button.action.act !== 'buy') return r;
+  r.earns = earnsOf(contentAt(cfg.salvage, g.salvage), r.button.action.item, r.button.action.price);
+  return r;
+}
+
+/**
+ * C-CARDS-a (s2i-levels section 1, "The card"; RULING2.md 30.3): rated income READ ONCE per list from the works' opening,
+ * passed to every level row of that list (ladder.ts levelCheckAt and levelQuote take it). The same number levelQuote reads
+ * itself (max(0, ratedIncome of the state's content)): only the second computation per row goes. Undefined below the opening.
+ */
+function listI(cfg: SalvageConfig, g: SalvageGame): number | undefined {
+  return worksOpened(g.salvage) ? Math.max(0, ratedIncome(contentAt(cfg.salvage, g.salvage), g.salvage)) : undefined;
+}
+
 // ============================================================================ the tool rack
 
 /** The tool rack (4.3): per tool and carrier, in tier order: the spanners and the frame came with the yard. */
 function rackRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   const c = cfg.salvage;
   const rows: CardRow[] = [row('spanners', { key: 'item.spanners' }, { key: 'effect.spanners' }, null, 'owned', { key: 'card.cameWithYard' })];
-  const tools = shopItems(c).filter((i) => i.kind === 'tool' && i.place === 'rack');
-  for (const it of tools) rows.push(shopRow(cfg, g, it.key, effectOf(it.key)));
+  // C-CARDS-a: from the works' opening an item gated past the stage's top rung is dark (not sold): never listed (parkRows' rule;
+  // the works layer's pallet is gated rung 99). Below the opening every item is listed as before.
+  const sold = (i: { gate?: string | null }) => !worksOpened(g.salvage) || gateRung(i.gate) <= topRungOf(c);
+  const tools = shopItems(c).filter((i) => i.kind === 'tool' && i.place === 'rack' && sold(i));
+  for (const it of tools) rows.push(withEarns(cfg, g, shopRow(cfg, g, it.key, effectOf(it.key))));
   rows.push(row('frame', { key: 'item.frame' }, { key: 'effect.frame' }, null, 'owned', { key: 'card.cameWithYard' }));
-  const carriers = shopItems(c).filter((i) => i.kind === 'carry');
-  for (const it of carriers) rows.push(shopRow(cfg, g, it.key, effectOf(it.key)));
+  const carriers = shopItems(c).filter((i) => i.kind === 'carry' && sold(i));
+  for (const it of carriers) rows.push(withEarns(cfg, g, shopRow(cfg, g, it.key, effectOf(it.key))));
   return rows;
 }
 
@@ -124,9 +149,10 @@ function driverTripS(cfg: SalvageConfig, g: SalvageGame, m: CrewMember): number 
 }
 
 /** A level row (crew, machine, partner): the level's state from levelCheck, "not the bottleneck now" when it binds nothing (E19). */
-function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
+function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number, I?: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
   // s2e-levels: from the works' opening a level is sold only while worth having, and its row prints what it earns (levelWorksLine).
-  if (target.kind !== 'plate' && target.kind !== 'reuse' && worksOpened(g.salvage)) return levelButtonWorks(cfg, g, target, level);
+  // C-CARDS-a: `I` the list's rated income read once (listI; undefined: each reader reads it itself, as before).
+  if (target.kind !== 'plate' && target.kind !== 'reuse' && worksOpened(g.salvage)) return levelButtonWorks(cfg, g, target, level, I);
   let ch = levelCheck(cfg, g, target);
   if (ch.state === 'buy' && !levelBinds(cfg, g, target, binding(cfg, g))) ch = { ...ch, state: 'notBottleneck' };
   const adds = levelAddsKgMin(cfg, g, target);
@@ -147,8 +173,8 @@ function levelButton(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, le
  * limit now · +§x an hour", no Buy, no [1]. Empty below the works' opening, for a plate's level, and where the target has no
  * next level. Every number is a typed argument (the screens format, never compute).
  */
-export function levelWhyLines(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): Txt[] {
-  const q = levelQuote(cfg, g, target);
+export function levelWhyLines(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, I?: number): Txt[] {
+  const q = levelQuote(cfg, g, target, I);
   if (!q) return [];
   if (!q.sold) return [{ key: 'refusal.notLimit' as TextKey, args: { x: { money: q.gain } } }];
   return [
@@ -158,16 +184,16 @@ export function levelWhyLines(cfg: SalvageConfig, g: SalvageGame, target: LevelT
 }
 
 /** The first of levelWhyLines (the row's line), or null. */
-export function levelWorksLine(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget): Txt | null {
-  return levelWhyLines(cfg, g, target)[0] ?? null;
+export function levelWorksLine(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, I?: number): Txt | null {
+  return levelWhyLines(cfg, g, target, I)[0] ?? null;
 }
 
 /** levelButton from the works' opening: the check's state and Buy as levelCheck gives them (no "not the bottleneck" step: a level sold is worth having), the works' line. */
-function levelButtonWorks(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
-  const ch = levelCheck(cfg, g, target);
+function levelButtonWorks(cfg: SalvageConfig, g: SalvageGame, target: LevelTarget, level: number, I?: number): { ch: PurchaseCheck; button: CardButton | null; line: Txt | null } {
+  const ch = levelCheckAt(cfg, g, target, I);
   const button = purchaseButton(ch, 'card.level', { act: 'level', target, price: ch.price ?? 0 }, { n: { n: level }, m: { n: level + 1 } });
   const rungGate = ch.state === 'locked' && ch.refusal?.key === 'rung' ? ch.refusal.args.t : null;
-  const line: Txt | null = rungGate ? { key: 'card.levelOpensAt', args: { t: rungGate } } : ch.state === 'buy' || ch.state === 'cantAfford' ? levelWorksLine(cfg, g, target) : refusalTxt(ch);
+  const line: Txt | null = rungGate ? { key: 'card.levelOpensAt', args: { t: rungGate } } : ch.state === 'buy' || ch.state === 'cantAfford' ? levelWorksLine(cfg, g, target, I) : refusalTxt(ch);
   return { ch, button, line };
 }
 
@@ -204,9 +230,10 @@ function rotaRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   const c = cfg.salvage;
   const s = g.salvage;
   const out: CardRow[] = [];
+  const I = listI(cfg, g);
   for (const role of ROLES) {
     for (const m of s.crew.filter((x) => x.role === role)) {
-      const lv = levelButton(cfg, g, { kind: 'crew', id: m.id }, m.level);
+      const lv = levelButton(cfg, g, { kind: 'crew', id: m.id }, m.level, I);
       // W5: a yard hand "Carries {kg} a trip", a cutter "Cuts with the yard's best tool" (its name passed as {tool}), a driver his round.
       const tool = bestToolKey(c, g);
       const rate: Txt =
@@ -244,6 +271,7 @@ function partnerRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
   const c = cfg.salvage;
   const s = g.salvage;
   const out: CardRow[] = [];
+  const I = listI(cfg, g);
   for (const [id, p] of Object.entries(s.partners)) {
     const def = c.partners[id];
     const card: Txt = { key: 'card.businessCard', args: { contact: { name: CONTACT[id] ?? id }, partner: { name: id } } };
@@ -259,9 +287,9 @@ function partnerRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
       const line: Txt = lab.state === 'filling' ? { key: 'refusal.filling', args: { t: { secs: lab.fullInS ?? 0 } } } : lab.refusal ?? { key: 'card.skipReady' };
       out.push(row(`${id}.${sk.slot}`, lab.state === 'trial' ? { key: 'card.skipTrial', args: { partner: { name: id } } } : lab.state === 'full' ? { key: 'card.skipState', args: { partner: { name: id } } } : { key: 'title.place', args: { place: { name: id } } }, line, { label: { key: 'open' }, action: { act: 'open', card: { kind: 'skip', partner: id, slot: sk.slot } }, refusal: null }, 'info', lab.state === 'filling' ? null : { key: 'card.skipNet', args: { kg: { mass_g: lab.net_g, step: 'bridge' } } }));
     }
-    const lv = levelButton(cfg, g, { kind: 'partner', partner: id }, p.level);
+    const lv = levelButton(cfg, g, { kind: 'partner', partner: id }, p.level, I);
     // s2e-levels: from the works' opening the row's second line says how soon the step pays for itself (levelWhyLines[1]).
-    const pays = worksOpened(s) && (lv.ch.state === 'buy' || lv.ch.state === 'cantAfford') ? (levelWhyLines(cfg, g, { kind: 'partner', partner: id })[1] ?? null) : null;
+    const pays = worksOpened(s) && (lv.ch.state === 'buy' || lv.ch.state === 'cantAfford') ? (levelWhyLines(cfg, g, { kind: 'partner', partner: id }, I)[1] ?? null) : null;
     out.push(row(`${id}.another`, { key: 'item.skip' }, lv.line, lv.button ? { ...lv.button, label: { key: 'card.buy', args: { x: { money: lv.ch.price ?? 0 } } } } : null, lv.ch.state, pays));
   }
   if (s.ladder.rung >= 2 || s.deal.step !== null) out.push(row('deal', { key: 'title.deal' }, dealLine(cfg, g), { label: { key: 'open' }, action: { act: 'open', card: { kind: 'deal' } }, refusal: null }, 'info'));
@@ -506,11 +534,11 @@ function machineData(cfg: SalvageConfig, g: SalvageGame, ids: MachineId[], title
 const plate = (id: string, name: TextKey, state: Plate['state'], line: Txt | null, opens: CardRef | null, button: CardButton | null = null): Plate => ({ id, name: { key: name }, state, line, opens, button });
 
 /** A machine plate: lit (the hand stripper), owned with its level and the next level's price, buyable with its price, or locked with its condition. */
-function machinePlate(cfg: SalvageConfig, g: SalvageGame, id: MachineId, name: TextKey): Plate {
+function machinePlate(cfg: SalvageConfig, g: SalvageGame, id: MachineId, name: TextKey, I?: number): Plate {
   const at: CardRef = { kind: 'machine', machine: id };
   const m = g.salvage.machines[id];
   if (m.owned) {
-    const lv = levelButton(cfg, g, { kind: 'machine', machine: id }, m.level);
+    const lv = levelButton(cfg, g, { kind: 'machine', machine: id }, m.level, I);
     const line: Txt = lv.ch.price !== null && lv.ch.state !== 'locked' && lv.ch.state !== 'top' ? { key: 'plate.levelPrice', args: { n: { n: m.level + 1 }, x: { money: lv.ch.price } } } : { key: 'plate.owned', args: { n: { n: m.level } } };
     return plate(id === 'hand_stripper' ? 'handStripper' : id, name, 'owned', line, at, lv.button);
   }
@@ -525,6 +553,7 @@ export function processBoardOf(cfg: SalvageConfig, g: SalvageGame): ProcessBoard
   const s = g.salvage;
   const cr = s.machines.crucible;
   const at: CardRef = { kind: 'machine', machine: 'crucible' };
+  const I = listI(cfg, g);
   const hand: Plate = plate('handStripper', 'plate.handStripper', 'lit', { key: 'card.cameWithYard' }, { kind: 'machine', machine: 'hand_stripper' });
   const brass: Plate = cr.owned ? plate('brass', 'plate.brass', 'owned', null, at) : plate('brass', 'plate.brass', 'locked', { key: 'plate.needsCrucible' }, at);
   let alu: Plate;
@@ -540,9 +569,9 @@ export function processBoardOf(cfg: SalvageConfig, g: SalvageGame): ProcessBoard
   }
   return {
     rows: [
-      { id: 'cable', plates: [hand, machinePlate(cfg, g, 'stripper', 'plate.stripper')] },
-      { id: 'motors', plates: [machinePlate(cfg, g, 'bench', 'plate.bench')] },
-      { id: 'melt', plates: [machinePlate(cfg, g, 'crucible', 'plate.crucible'), brass, alu] },
+      { id: 'cable', plates: [hand, machinePlate(cfg, g, 'stripper', 'plate.stripper', I)] },
+      { id: 'motors', plates: [machinePlate(cfg, g, 'bench', 'plate.bench', I)] },
+      { id: 'melt', plates: [machinePlate(cfg, g, 'crucible', 'plate.crucible', I), brass, alu] },
       { id: 'greyed', plates: (['bronze', 'lead', 'lithium', 'pgm', 'tungsten'] as const).map((id) => plate(id, `plate.${id}`, 'greyed', null, null)) },
     ],
     bars: [
@@ -557,14 +586,14 @@ export function processBoardOf(cfg: SalvageConfig, g: SalvageGame): ProcessBoard
 
 /** The truck park's row: the truck (Buy, on its way, owned). */
 function parkRows(cfg: SalvageConfig, g: SalvageGame): CardRow[] {
-  const rows = shopItem(cfg.salvage, 'truck') ? [shopRow(cfg, g, 'truck', 'effect.truck')] : [];
+  const rows = shopItem(cfg.salvage, 'truck') ? [withEarns(cfg, g, shopRow(cfg, g, 'truck', 'effect.truck'))] : [];
   // s2e-join (s2e-bank's request; yard-stage2-economy.md 2.14.5): from the works' opening every other vehicle the park
   // sells (the three-axle hook-lift) has its Buy row here, beside the finance row cardsMoney.ts moneyOver adds. The card's
   // content is contentAt's (cardOfCfg); a vehicle not sold (gated past the ladder) is not listed. The first yard: unchanged.
   if (worksOpened(g.salvage)) {
     for (const it of shopItems(cfg.salvage)) {
       if (it.key === 'truck' || it.kind !== 'vehicle' || it.place !== 'park' || gateRung(it.gate) > topRungOf(cfg.salvage)) continue;
-      rows.push(shopRow(cfg, g, it.key, effectOf(it.key)));
+      rows.push(withEarns(cfg, g, shopRow(cfg, g, it.key, effectOf(it.key))));
     }
   }
   return rows;

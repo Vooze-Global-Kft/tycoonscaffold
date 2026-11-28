@@ -22,7 +22,7 @@ import { salvageEngineMode, withSalvageContent } from '../../engine/salvageMode'
 import type { GameState } from '../../engine/types';
 import { camPoint, withSwitches, WORKS_PRESETS } from './presets.web';
 import { deferAway, resetPendingForTests, salvageReturningEngine, setSaveSlot, stage2Config } from './returning';
-import { STAGE_VAR, stageOn } from './stage';
+import { stageOn } from './stage';
 import { stage2RawOf } from './stage2Raw';
 
 // The store (returning.ts imports it) in node, as returning.test.ts stands it up.
@@ -53,7 +53,6 @@ const sharedProducts = (cfg: { monetization: unknown }) => ((cfg.monetization as
 
 describe('stageOn', () => {
   it('is off in node, off with only one half, on with __DEV__ and EXPO_PUBLIC_YARD_STAGE=2', () => {
-    expect(STAGE_VAR).toBe('EXPO_PUBLIC_YARD_STAGE');
     setSwitch(undefined, undefined);
     expect(stageOn()).toBe(false);
     setSwitch(undefined, '2');

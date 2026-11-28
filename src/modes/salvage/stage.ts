@@ -15,9 +15,8 @@
  * Owner: C-MODE.
  */
 
-/** The name of the variable scripts/go.js sets (kept in one place for the tests; the switch below must name it literally, Metro inlines only `process.env.EXPO_PUBLIC_*` written out). */
-export const STAGE_VAR = 'EXPO_PUBLIC_YARD_STAGE';
-
+// No exported constant names the variable: a release export must not hold its name at all (the check refuses it), and
+// Metro inlines only `process.env.EXPO_PUBLIC_*` written out, as below.
 /** The works (stage 2) are switched on for this development run. */
 export function stageOn(): boolean {
   return typeof __DEV__ !== 'undefined' && !!__DEV__ && process.env.EXPO_PUBLIC_YARD_STAGE === '2';
