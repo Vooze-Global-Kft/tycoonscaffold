@@ -33,7 +33,7 @@ import { SalvageSchema } from '../../../src/config/schema.salvage';
 import { shipped2Config } from '../../../src/engine/fixtures/shipped2';
 import { WORKS_FILE_MARKER, WORKS_NAMES as WORKS_PRESETS, worksContentHash, type WorksName as WorksPreset, type WorksRecord, type WorksRecording } from '../../../src/engine/fixtures/salvage';
 import * as R from '../../../src/engine/salvage';
-import { parkVehicles, letterDue } from '../../../src/engine/salvage/bank';
+import { financeTerms, letterDue, loanOffered, parkVehicles, shownOf } from '../../../src/engine/salvage/bank';
 import { away, newBot, newSitting, playUntil, resumeBot, snapBot, startGame, type Bot, type BotOptions } from '../../../src/engine/salvage/bot';
 import { soldPlates } from '../../../src/engine/salvage/frameWorks';
 import { contentAt, worksOpened } from '../../../src/engine/salvage/layer';
@@ -115,7 +115,9 @@ function put(name: WorksPreset, g: SalvageGame, now: number, what: string, event
   log(`${name} at yard ${(g.salvage.t / 3600).toFixed(2)} h, rung ${g.salvage.ladder.rung}, cash ${Math.round(g.cash)}${missed ? ` (MISSED: ${missed})` : ''}: ${what}`);
 }
 
-const snapOf = (b: Bot, last: Map<string, SalvageEvent>, name: WorksPreset, what: string, bot = 'normal', missed: string | null = null) => {
+/** The hand that is playing (a branch names itself: a longer sitting, a press). */
+let LABEL = 'normal';
+const snapOf = (b: Bot, last: Map<string, SalvageEvent>, name: WorksPreset, what: string, bot = LABEL, missed: string | null = null) => {
   for (const e of b.ev) last.set(e.type, e);
   put(name, b.g, b.now, what, eventsFor(name, last), bot, missed);
 };
@@ -209,6 +211,66 @@ function packsBranch(b: Bot, last: Map<string, SalvageEvent>): boolean {
   return true;
 }
 
+/**
+ * w4loan at rung 4: a works card offers the Bank loan (loanOffered: the letter seen, the plate dearer than cash less the
+ * reserve) and the player signs it as shown (signFinance); the same hand plays on until a sale pays the bank its share.
+ */
+function loanBranch(b: Bot, last: Map<string, SalvageEvent>): boolean {
+  const g = b.g;
+  const s = g.salvage;
+  for (const plate of soldPlates(contentAt(cfg.salvage, s))) {
+    if (s.works[plate] || !loanOffered(cfg, g, plate)) continue;
+    const tm = financeTerms(cfg, g, plate);
+    if (!tm) continue;
+    const ev: SalvageEvent[] = [];
+    const g1 = R.signFinance(cfg, g, plate, shownOf(tm), s.t, ev);
+    if (!g1.salvage.bank.agreement) continue;
+    const br = resumeBot(cfg, snapBot(b), b.opts);
+    br.g = g1;
+    const bl = keeping(br);
+    for (const [k, e] of last) bl.set(k, e);
+    for (const e of ev) bl.set(e.type, e);
+    const t1 = s.t;
+    playUntil(br, (bb) => (bb.g.salvage.bank.agreement?.taken ?? 0) > 0, t1 + PLAY_S);
+    const a = br.g.salvage.bank.agreement;
+    if (!a || a.taken <= 0) continue;
+    for (const e of br.ev) bl.set(e.type, e);
+    put('w4loan', br.g, br.now, `rung ${br.g.salvage.ladder.rung}: the ${plate} financed at its card (signFinance as shown), ${(br.g.salvage.t - t1).toFixed(0)} s later a sale paid the bank its share (${Math.round(a.taken)} of ${Math.round(a.T)} repaid)`, eventsFor('w4loan', bl), 'normal, then the Bank loan signed at a works card');
+    return true;
+  }
+  return false;
+}
+
+let lineNear: { g: SalvageGame; now: number; ev: SalvageEvent[]; what: string } | null = null;
+let lineCash: { g: SalvageGame; now: number; ev: SalvageEvent[]; what: string } | null = null;
+
+/** A live-only moment is pending in this state (the sitting's 15 minutes may end before it: a longer sitting is played in a branch). */
+function pendingLive(g: SalvageGame): string[] {
+  const s = g.salvage;
+  const w = (id: string) => s.works[id];
+  const out2: string[] = [];
+  if (!out.w3lot && s.ladder.rung === 3 && owns(g, 'plasma') && s.lots.nextAt !== null && s.lots.nextAt - s.t < 2 * 3600) out2.push('w3lot');
+  if (!out.w4pour && w('induction') && !w('induction').heat?.firstPoured) out2.push('w4pour');
+  if (!out.w4hall && halls(g).length + Object.values(s.works).filter((x) => !!x.heat && x.phase !== 'running').length >= 3 && Object.values(s.works).some((x) => !!x.heat && !x.heat.firstPoured)) out2.push('w4hall');
+  if (!out.w4arrive && Object.values(s.works).some((x) => !!x.heat && x.phase === 'arriving')) out2.push('w4arrive');
+  if (!out.w4line && w('shredder') && w('depollution')) out2.push('w4line');
+  return out2;
+}
+
+/** The same hand plays on live (a longer sitting) from a copy, until the pending moments are met or `cap` seconds. */
+function longerSitting(b: Bot, last: Map<string, SalvageEvent>, entry: { snap: ReturnType<typeof snapBot> | null }, cap: number): void {
+  const want = pendingLive(b.g);
+  if (!want.length) return;
+  const br = resumeBot(cfg, snapBot(b), b.opts);
+  const bl = keeping(br);
+  for (const [k, e] of last) bl.set(k, e);
+  const t1 = br.g.salvage.t;
+  LABEL = 'normal, a longer sitting';
+  playUntil(br, (bb) => (scanNormal(bb, bl, entry), want.every((n) => out[n as WorksPreset])), t1 + cap);
+  LABEL = 'normal';
+  log(`longer sitting from yard ${(t1 / 3600).toFixed(2)} h for ${want.join(', ')}: ${((br.g.salvage.t - t1) / 60).toFixed(0)} min, met ${want.filter((n) => out[n as WorksPreset]).join(', ') || 'none'}`);
+}
+
 // ------------------------------------------------------------------------------------------------ the normal run
 
 function scanNormal(b: Bot, last: Map<string, SalvageEvent>, rung4Entry: { snap: ReturnType<typeof snapBot> | null }): void {
@@ -224,36 +286,41 @@ function scanNormal(b: Bot, last: Map<string, SalvageEvent>, rung4Entry: { snap:
     }
     if (!out.w3save && s.bank.letterSeen && throttled('w3save', g, 20)) {
       const a = adviceOf(g, b.now);
-      if (a && a.kind !== 'waiting' && a.works?.saveUp_s && a.loanHint && a.works.meanwhile) snapOf(b, last, 'w3save', `saving for ${'item' in a.action ? a.action.item : '?'} (Save up ${Math.round(a.works.saveUp_s)} s), the loan sentence, For now ${'item' in a.works.meanwhile.action ? a.works.meanwhile.action.item : '?'}`);
+      if (a && a.kind !== 'waiting' && a.works?.saveUp_s && a.loanHint && a.works.meanwhile) snapOf(b, last, 'w3save', `saving for ${'item' in a.action ? a.action.item : '?'} (Save up ${Math.round(a.works.saveUp_s)} s), the loan sentence, For now ${'item' in a.works.meanwhile.action ? a.works.meanwhile.action.item : JSON.stringify(a.works.meanwhile.action)}`);
     }
   }
   if (r === 3 && !out.w3letter && !s.bank.letterSeen && parkVehicles(cfg, g, 'park').some((k) => letterDue(cfg, g, k))) snapOf(b, last, 'w3letter', `rung 3, the letter not seen; cash ${Math.round(g.cash)} pays the hook-lift's deposit and reserve, not its price: opening the park card makes the letter due`);
   if (r === 3 && !out.w3sale && rackCount({ s }) > 0 && s.reuse.nextAt !== null && s.reuse.nextAt - s.t > 15 && s.reuse.nextAt - s.t <= 20) snapOf(b, last, 'w3sale', `the rack holds ${rackCount({ s })}; the next visitor in ${(s.reuse.nextAt - s.t).toFixed(1)} s`);
   if (r === 3 && !out.w3van && s.reuse.vanAt !== null && s.reuse.vanAt - s.t > 10 && s.reuse.vanAt - s.t <= 20) snapOf(b, last, 'w3van', `the dealer's van due in ${(s.reuse.vanAt - s.t).toFixed(1)} s`);
-  if (r === 3 && !out.w3lot && owns(g, 'plasma') && s.lots.nextAt !== null && s.lots.nextAt - s.t > 30 && s.lots.nextAt - s.t <= 60) snapOf(b, last, 'w3lot', `the plasma owned; the next lot in ${(s.lots.nextAt - s.t).toFixed(1)} s`);
+  if (r === 3 && !out.w3lot && owns(g, 'plasma') && s.lots.nextAt !== null && s.lots.nextAt - s.t > 20 && s.lots.nextAt - s.t <= 60) snapOf(b, last, 'w3lot', `the plasma owned; the next lot in ${(s.lots.nextAt - s.t).toFixed(1)} s`);
   if (r >= 4) {
     if (!rung4Entry.snap) rung4Entry.snap = snapBot(b);
     if (!out.w4entry) snapOf(b, last, 'w4entry', `rung ${r} reached (the first state at it), the induction hall ${owns(g, 'induction') ? 'OWNED' : 'for sale'}, cash ${Math.round(g.cash)}`, 'normal', owns(g, 'induction') ? 'the induction hall is already owned' : null);
     if (!out.w4arrive) {
-      const arr = Object.entries(s.works).find(([, w]) => !!w.heat && w.phase === 'arriving' && w.since - s.t > 5);
-      if (arr) snapOf(b, last, 'w4arrive', `the machine flatbed bringing ${arr[0]}'s crates: it sets down in ${(arr[1].since - s.t).toFixed(1)} s`);
+      const arr = Object.entries(s.works).find(([, w]) => !!w.heat && w.phase === 'arriving' && w.commissionAt !== null && w.commissionAt - s.t > 5 && w.commissionAt - s.t <= 30);
+      if (arr) snapOf(b, last, 'w4arrive', `the machine flatbed bringing ${arr[0]}'s crates: they are set down in ${(arr[1].commissionAt! - s.t).toFixed(1)} s`);
     }
     if (!out.w4pour) pourBranch(b, last);
     if (!out.w4hall) hallBranch(b, last);
     if (!out.w4line && s.works.depollution?.car && s.t < s.works.depollution.car.end && throttled('w4line', g, 5)) {
       const f = R.frame(cfg, g);
       if (f.line?.car?.stage === 'draining' && f.line.recovery.waitsFor === 'cash') snapOf(b, last, 'w4line', `the line running, a car draining (${(s.works.depollution.car.end - s.t).toFixed(0)} s left), the recovery truck waits for cash (short ${Math.round(f.line.recovery.short ?? 0)})`);
+      else if (f.line?.car?.stage === 'draining' && f.line.recovery.waitsFor === 'apron' && f.line.recovery.nextAt !== null && f.line.recovery.nextAt <= s.t) lineNear ??= { g: structuredClone(g), now: b.now, ev: eventsFor('w4line', new Map([...last, ...b.ev.map((e) => [e.type, e] as const)])), what: `the line running, a car draining (${(s.works.depollution.car.end - s.t).toFixed(0)} s left), the next car due (its date passed: the apron is taken)` };
+    }
+    if (!out.w4line && !lineCash && s.works.shredder?.phase === 'running' && throttled('w4lineCash', g, 5)) {
+      const f = R.frame(cfg, g);
+      if (f.line?.recovery.waitsFor === 'cash') lineCash = { g: structuredClone(g), now: b.now, ev: eventsFor('w4line', new Map([...last, ...b.ev.map((e) => [e.type, e] as const)])), what: `the line running, the apron free, the recovery truck waits for cash (short ${Math.round(f.line.recovery.short ?? 0)})` };
     }
     if (!out.w4packs && throttled('w4packs', g, 60)) packsBranch(b, last);
+    if (!out.w4loan && !s.bank.agreement && s.bank.letterSeen && throttled('w4loan', g, 60)) loanBranch(b, last);
     const sold = soldPlates(contentAt(cfg.salvage, s));
     if (!out.w4all && sold.every((id) => s.works[id]?.phase === 'running') && s.things.length >= 240) snapOf(b, last, 'w4all', `all ${sold.length} sold plates running, ${s.things.length} things in the yard`);
   }
-  if (r >= 5) {
-    if (!out.w5) snapOf(b, last, 'w5', `rung ${r} reached (the first state at it)`);
-    if (!out.w5wait && throttled('w5wait', g, 20)) {
-      const a = adviceOf(g, b.now);
-      if (a && a.kind === 'waiting') snapOf(b, last, 'w5wait', `rung ${r}, the waiting advice (${a.line.key})`);
-    }
+  if (r >= 5 && !out.w5) snapOf(b, last, 'w5', `rung ${r} reached (the first state at it)`);
+  // w5wait: the waiting advice (adviceWait names the NEXT rung, so at the stage's top, 5, there is none): the yard waiting for rung 5.
+  if (r === 4 && !out.w5wait && throttled('w5wait', g, 20)) {
+    const a = adviceOf(g, b.now);
+    if (a && a.kind === 'waiting') snapOf(b, last, 'w5wait', `rung ${r}, the waiting advice for rung ${a.rung} (${a.line.key}${a.material ? `, ${a.material}` : ''})`);
   }
 }
 
@@ -270,7 +337,7 @@ function normalRun(): void {
   scan(3600);
   let w4backDone = false;
   let pastFive = 0;
-  for (let k = 1; k <= SITTINGS && pastFive < 2; k++) {
+  for (let k = 1; k <= SITTINGS && pastFive < 1; k++) {
     newSitting(b);
     away(b, AWAY_S);
     for (const e of b.ev) last.set(e.type, e);
@@ -280,10 +347,15 @@ function normalRun(): void {
       w4backDone = true;
       snapOf(b, last, 'w4back', `rung 4 at a sitting's end (sitting ${k}): the phone put down here; the preview counts 8 h away from it (counting=run&countingH=8)`);
     }
+    longerSitting(b, last, entry, 2 * 3600);
     if (b.g.salvage.ladder.rung >= 5) pastFive += 1;
     log(`sitting ${k}: yard ${(b.g.salvage.t / 3600).toFixed(2)} h, rung ${b.g.salvage.ladder.rung}, recorded ${Object.keys(out).length}`);
   }
   // Fallbacks for the moments the play did not meet exactly (said in `missed`).
+  if (!out.w4line && (lineNear || lineCash)) {
+    const n = (lineCash ?? lineNear)!;
+    put('w4line', n.g, n.now, n.what, n.ev, 'normal', lineCash ? 'no car drains while the recovery waits for cash (frameWorks recoveryView reads a taken apron first, so a draining car and "cash short" never hold together): recorded with the apron free and "Waiting for cash"' : 'the recovery never waited for cash with the line running: recorded with a car draining and the next car due');
+  }
   if (!out.w3) {
     const ob = resumeBot(cfg, opening, b.opts);
     put('w3', ob.g, ob.now, 'works open (the opening state itself), the plots for sale, the hook-lift unbought', eventsFor('w3', openingLast), 'normal', 'no state at rung 3 with the hook-lift unbought had an advice the cash pays now: the opening state');
@@ -362,7 +434,7 @@ function openRun(): void {
   // The first yard's save, as the phone keeps it, loaded by the works' build (save.ts reconcileSalvage at stage 2).
   const saved = JSON.parse(JSON.stringify({ ...b.g, lastSavedAt: b.g.salvage.clock.highMs }));
   const base = { ...saved, salvage: undefined };
-  const g = R.reconcileSalvage(cfg, base, saved.salvage, b.g.salvage.clock.highMs) as SalvageGame;
+  const g = R.reconcileSalvage(cfg, base, saved, b.g.salvage.clock.highMs) as SalvageGame;
   if (worksOpened(g.salvage)) throw new Error('w3open: the loaded save is already open');
   for (const e of b.ev) last.set(e.type, e);
   put('w3open', g, b.now, `a first-yard save at rung ${g.salvage.ladder.rung} (yard ${(g.salvage.t / 60).toFixed(1)} min), loaded at stage 2: backFieldOpen not yet emitted; the works open at its first live tick`, eventsFor('w3open', last), 'normal on the first yard (release.stage 1)');
@@ -373,7 +445,7 @@ function openRun(): void {
 log(`content hash ${HASH}; device time ${new Date(NOW).toISOString()}; seed ${SEED}`);
 openRun();
 normalRun();
-loanRun();
+if (!out.w4loan) loanRun();
 const missing = WORKS_PRESETS.filter((n) => !out[n]);
 const file: WorksRecording = {
   marker: WORKS_FILE_MARKER,

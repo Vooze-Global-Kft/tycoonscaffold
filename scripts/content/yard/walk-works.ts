@@ -12,7 +12,8 @@
  *   (iii) ABSOLUTE SPEED CAPS on every drawn vehicle between two ticks (the truck on every leg phase, the merchant's
  *         flatbed, the public's car and trailer, every arrival): content truck.yardV while both places are inside the
  *         fence (x <= yard.width), truck.v x truck.laneMaxF outside (the content's own upper bound on the lane). A sample
- *         across an epoch, or a vehicle that appears or goes, is not a speed. Counted per vehicle-tick over its cap.
+ *         across an epoch, or a vehicle that appears or goes, is not a speed. Counted per vehicle-tick more than 2 % over
+ *         its cap (the band under 2 % is sampling and rounding of the dated paths: counted apart and printed).
  *   (iv)  A PERSON INSIDE A VEHICLE OUTLINE: a drawn person (crew after their step aside, the boss on foot) inside a drawn
  *         vehicle body's footprint (./motion.ts insideBody). Counted per person-tick.
  *   (v)   REQUESTED IDS UNRESOLVED: distinct ids the rules' scene or the map asked the sheets for that resolve to -1, and
@@ -165,6 +166,10 @@ export function presetState(T: Tree, name: string, cam?: string | null): { cfg: 
 const STILL_M = 0.05;
 const STILL_S = 3;
 const FLIP_S = 1;
+/** A drawn vehicle within this share over its cap between two ticks is sampling and rounding (counted apart, not in (iii)). */
+const SPEED_TOL = 0.02;
+/** A drawn person faster than this between two ticks has jumped (printed, not one of the six counts). */
+const PERSON_JUMP_V = 6;
 /** Works looks that are themselves a state the player reads (moving, for sale, locked): a plate in them is not "standing". */
 const WORKS_BUSY = new Set(['working', 'heating', 'pour', 'cooling', 'arriving', 'buyable', 'padlock']);
 
@@ -180,6 +185,9 @@ export interface WalkResult {
   caps: { yardV: number; laneMax: number; laneNote: string };
   maxSpeed: Record<string, { inside: number; outside: number }>;
   personMaxV: number;
+  personMaxAt: string;
+  personJumps: number;
+  speedWithinTol: number;
   unresolved: string[];
   tableMisses: string[];
   examples: Record<string, string[]>;
@@ -205,6 +213,9 @@ export function walk(T: Tree, o: { preset: string; cam?: string | null; minutes:
   const idle: WalkResult['idle'] = {};
   const maxSpeed: WalkResult['maxSpeed'] = {};
   let personMaxV = 0;
+  let personMaxAt = '';
+  let personJumps = 0;
+  let withinTol = 0;
   const cost = { draws: [Infinity, 0] as [number, number], sprites: [Infinity, 0] as [number, number], actors: [Infinity, 0] as [number, number], statics: [Infinity, 0] as [number, number] };
   // (i) per crew id / works plate: anchor place, since, flagged
   const still = new Map<string, { x: number; y: number; since: number; flagged: boolean; why: boolean }>();
@@ -250,7 +261,7 @@ export function walk(T: Tree, o: { preset: string; cam?: string | null; minutes:
         R0.idle++;
         if (m.idleWhy || m.idleText) R0.withWhy++;
       }
-      trackStill(`crew ${m.id} (${role}, ${m.job})`, p.x, p.y, t, why, `${m.phase} at ${fmt(p.x)},${fmt(p.y)}`);
+      trackStill(`crew ${m.id} (${role}, ${m.job})`, p.x, p.y, t, why, `${m.phase} at ${fmt(p.x)},${fmt(p.y)} (leg ${fmt(m.from.x)},${fmt(m.from.y)} -> ${fmt(m.to.x)},${fmt(m.to.y)} over t ${fmt(m.t0)}..${fmt(m.t1)})`);
       void q;
     });
     for (const w of f.works ?? []) {
@@ -280,10 +291,10 @@ export function walk(T: Tree, o: { preset: string; cam?: string | null; minutes:
         const ms0 = (maxSpeed[leg] ??= { inside: 0, outside: 0 });
         if (inside) ms0.inside = Math.max(ms0.inside, sp);
         else ms0.outside = Math.max(ms0.outside, sp);
-        if (sp > cap + 1e-6) {
+        if (sp > cap * (1 + SPEED_TOL)) {
           counts.speed++;
           addEx('speed', `t ${fmt(t)} ${leg} ${fmt(sp)} m/s ${inside ? 'inside' : 'outside'} (cap ${fmt(cap)}) from ${fmt(pv.x)},${fmt(pv.y)} to ${fmt(v.x)},${fmt(v.y)}`);
-        }
+        } else if (sp > cap + 1e-6) withinTol++;
       }
       prevV.set(key, { x: v.x, y: v.y, epoch: ep });
     }
@@ -294,7 +305,14 @@ export function walk(T: Tree, o: { preset: string; cam?: string | null; minutes:
         continue;
       }
       const pp = prevP.get(p.id);
-      if (pp && pp.epoch === ep) personMaxV = Math.max(personMaxV, Math.hypot(p.x - pp.x, p.y - pp.y) / dt);
+      if (pp && pp.epoch === ep) {
+        const v = Math.hypot(p.x - pp.x, p.y - pp.y) / dt;
+        if (v > personMaxV) {
+          personMaxV = v;
+          personMaxAt = `t ${fmt(t)} ${p.who} ${p.id} (${p.role}) from ${fmt(pp.x)},${fmt(pp.y)} to ${fmt(p.x)},${fmt(p.y)}`;
+        }
+        if (v > PERSON_JUMP_V) personJumps++;
+      }
       prevP.set(p.id, { x: p.x, y: p.y, epoch: ep });
     }
 
@@ -329,6 +347,9 @@ export function walk(T: Tree, o: { preset: string; cam?: string | null; minutes:
     caps: { yardV, laneMax, laneNote },
     maxSpeed,
     personMaxV,
+    personMaxAt,
+    personJumps,
+    speedWithinTol: withinTol,
     unresolved,
     tableMisses: [...H.misses.table.keys()],
     examples: ex,
@@ -376,11 +397,11 @@ export function report(r: WalkResult): string {
   L.push(`WALK ${r.preset}${r.cam ? ` cam=${r.cam}` : ''}: ${r.minutes} min, ${r.ticks} frames at 100 ms${r.note ? ` (NOTE: ${r.note})` : ''}`);
   L.push(`  (i)   still over 3 s without a why:  ${r.counts.still}   (${r.stillSeconds.toFixed(1)} s in all)`);
   L.push(`  (ii)  look A -> B -> A within 1 s:   ${r.counts.flips}`);
-  L.push(`  (iii) over an absolute speed cap:    ${r.counts.speed}   (yardV ${r.caps.yardV} m/s inside the fence; lane ${r.caps.laneMax} m/s = ${r.caps.laneNote})`);
+  L.push(`  (iii) over an absolute speed cap:    ${r.counts.speed}   (yardV ${r.caps.yardV} m/s inside the fence; lane ${r.caps.laneMax} m/s = ${r.caps.laneNote}; more than ${SPEED_TOL * 100} % over; ${r.speedWithinTol} vehicle-ticks within that band)`);
   L.push(`  (iv)  person inside a vehicle:       ${r.counts.inside}`);
   L.push(`  (v)   requested ids unresolved:      ${r.counts.unresolved}`);
   L.push(`  (vi)  idle share per crew role:      ${idle || 'no crew'}`);
-  L.push(`  fastest drawn speeds (m/s): ${Object.entries(r.maxSpeed).map(([k, v]) => `${k} in ${v.inside.toFixed(2)} / out ${v.outside.toFixed(2)}`).join('; ') || 'no vehicle moved'}; fastest person ${r.personMaxV.toFixed(2)}`);
+  L.push(`  fastest drawn speeds (m/s): ${Object.entries(r.maxSpeed).map(([k, v]) => `${k} in ${v.inside.toFixed(2)} / out ${v.outside.toFixed(2)}`).join('; ') || 'no vehicle moved'}; fastest person ${r.personMaxV.toFixed(2)} (${r.personMaxAt || '-'}); person-ticks faster than ${PERSON_JUMP_V} m/s (jumps, info): ${r.personJumps}`);
   L.push(`  frame cost over the run (min..max): draws ${r.cost.draws.join('..')}, sprites ${r.cost.sprites.join('..')}, actors ${r.cost.actors.join('..')}, statics tested ${r.cost.statics.join('..')}`);
   for (const [k, list] of Object.entries(r.examples)) for (const s of list) L.push(`  e.g. ${k}: ${s}`);
   for (const s of r.unresolved) L.push(`  unresolved: ${s}`);

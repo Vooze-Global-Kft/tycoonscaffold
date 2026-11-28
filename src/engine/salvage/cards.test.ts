@@ -628,18 +628,41 @@ describe('C-CARDS-b: a stage-2 goal\'s step (cards contract C7) from the rules\'
 
   it('every step any of these states gives is a key the words hold (no line the screen cannot print)', () => {
     const gs = [r3Works(), r4Game(), lots4b(), rackFull(), ...(['empty', 'filling', 'heating', 'ready', 'cooling', 'pinned'] as const).map(hallAt2)];
-    for (const g of gs) for (const d of goalSpecs(C2(W, g)).stage2) expect(keyIn(stepOf(g, d.done)), d.id).toBe(true);
+    // goals.json's own stage-2 list (the works' test content carries none)
+    const list = (JSON.parse(readFileSync(join(__dirname, '../../../scripts/content/yard/goals.json'), 'utf8')) as { stage2: { id: string; done: string }[] }).stage2;
+    let steps = 0;
+    for (const g of gs)
+      for (const d of list) {
+        const st = stepOf(g, d.done);
+        if (st) steps++;
+        expect(keyIn(st), d.id).toBe(true);
+      }
+    expect(steps).toBeGreaterThan(0);
   });
 
-  it('the goal card carries the step of its current goal (loadStep first, as owner1 T2)', () => {
-    for (const g of [r3Works(), r4Game(), lots4b(), rackFull(), hallAt2('ready')]) {
-      const goal = goalOfRules(W, g);
-      if (!goal) continue;
-      const sp = goalSpecs(W.salvage);
-      const d = [...sp.goals, ...sp.dayOne, ...sp.stage2].find((q) => q.id === goal.id)!;
-      const ws = worksGoalStep(W, g, d);
-      if (ws) expect(goal.step).toEqual(ws);
-      expect(keyIn(goal.step)).toBe(true);
+  it('the goal card carries the step of its current goal (a stage-2 list on the works\' test content)', () => {
+    // the works' test content has no stage-2 list: two goals of goals.json's grammar put in (the start-up, a first pour)
+    const spec = (id: string, done: string, target: string) => ({ id, text: 'goal.widen', target, via: null, done, buy: null, optional: false, stall: null });
+    const k = { ...W, salvage: { ...W.salvage, stage2: [spec('startAnalyser', 'commissioned:analyser', 'scalehouse'), spec('pourRotary', 'poured:rotary', 'rotary.apron')] } } as unknown as SalvageConfig;
+    const sp = goalSpecs(k.salvage);
+    const at = (g: SalvageGame, f: (s: SalvageGame['salvage']) => void = () => {}) =>
+      edit2(g, (s) => {
+        s.goals = { ...s.goals, done: [...sp.goals, ...sp.dayOne].map((d) => d.id), skipped: [] };
+        f(s);
+      });
+    const a = at(r4Game(), (s) => {
+      s.works.analyser.phase = 'installed';
+    });
+    expect(goalOfRules(k, a)!.id).toBe('startAnalyser');
+    expect(goalOfRules(k, a)!.step).toEqual(stepOf(a, 'commissioned:analyser', k));
+    expect(goalOfRules(k, a)!.step).not.toBeUndefined();
+    for (const ph of ['filling', 'heating', 'ready'] as const) {
+      const g = at(hallAt2(ph), (s) => {
+        s.goals.done.push('startAnalyser');
+      });
+      expect(goalOfRules(k, g)!.id).toBe('pourRotary');
+      expect(goalOfRules(k, g)!.step, ph).toEqual(stepOf(g, 'poured:rotary', k));
+      expect(keyIn(goalOfRules(k, g)!.step)).toBe(true);
     }
   });
 });
@@ -732,8 +755,9 @@ describe('C-CARDS-b: the levels\' notice (cards contract C8; RULING2.md 30.3)', 
 
   it('the mark survives a save and a load (save.ts keeps seen.cards as it finds it)', () => {
     const g = noteSeen(W, r4Game(), { card: LEVELS_NOTICE_MARK as unknown as CardKind }, r4Game().salvage.t);
-    const raw = JSON.parse(JSON.stringify(g.salvage));
-    const back = reconcileSalvage(W, base(), raw, FIXTURE_NOW);
+    const raw = JSON.parse(JSON.stringify({ salvage: g.salvage }));
+    const back = reconcileSalvage(W, { ...g, salvage: undefined } as never, raw, g.salvage.clock.highMs);
+    expect(back.salvage.t).toBe(g.salvage.t);
     expect(back.salvage.seen.cards).toContain(LEVELS_NOTICE_MARK);
   });
 });
