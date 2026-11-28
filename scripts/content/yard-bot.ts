@@ -2189,6 +2189,7 @@ function bookFit(all: Summary[]): { pooledD: number; fits: Record<string, BookFi
  * standard errors), `to` reaches two levels past the highest level the new runs measured. Nothing else of the book moves.
  */
 let bookNewRuns: Summary[] = [];
+const keptLadders = new Set<string>();
 function correctedFit(all: Summary[]): { pooledD: number; fits: Record<string, BookFit> } {
   if (!bookNewRuns.length) return bookFit(all);
   const isNew = new Set(bookNewRuns);
@@ -2212,6 +2213,9 @@ function correctedFit(all: Summary[]): { pooledD: number; fits: Record<string, B
       f.s1[rung - 3] = sold ? +m.toFixed(4) : 0;
       f.to = Math.max(f.to, Math.max(...at.map((o) => o.L)) + 2);
     }
+    // a ladder the book sold that the measurement against it corrects to nothing keeps its entry (s1 0: "not the limit" at
+    // every rung, as with no entry; build-yard.py's check reads an entry of zeros as written, not as a refused ladder)
+    if (f.sold && !f.s1.some((v) => (v ?? 0) > 0)) keptLadders.add(ladder);
     f.sold = f.s1.some((v) => (v ?? 0) > 0);
   }
   return base;
@@ -2229,7 +2233,7 @@ function writeBook(all: Summary[], write: boolean): string[] {
   const src = fs.readFileSync(file, 'utf8');
   const re = /\n    book: \{[^\n]*\},\n/;
   if (!re.test(src)) return [...lines, 'levels.book: the `book:` line of salvage.content.ts was not found; nothing written'];
-  const want = Object.entries(fits).filter(([, f]) => f.sold);
+  const want = Object.entries(fits).filter(([k, f]) => f.sold || keptLadders.has(k));
   const body = want.map(([k, f]) => `${JSON.stringify(k)}: { s1: [${f.s1.map((v) => (v === null ? 'null' : String(v))).join(', ')}], d: ${f.d}, from: ${f.from}, to: ${f.to} }`).join(', ');
   fs.writeFileSync(file, src.replace(re, `\n    book: {${body ? ` ${body} ` : ''}},\n`));
   // the table beside the plates (scripts/content/bots/plates.json `bookShares`): build-yard.py checks the content's book against it

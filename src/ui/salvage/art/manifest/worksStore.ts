@@ -3,138 +3,136 @@
  * x -35 to -2, eleven 3 m lock-block bunkers) and their heaps for the grades a sold flow makes (bzs, ss, ssu, shred), the
  * lean-to roof, the works stillages' layers (bzi, cui, bzd) and big bags (dust), and the roofs over the stillages.
  *
- * C-ART (PLAN2 2.7, batch 0b) put every entry in with its FINAL id, group, sheet, footprint (metres), frames (by name, in
- * order), headings, mirrorWest, tint, drawScale (baked at k of true size: drawScale 1/k) and slots, and a LABELLED
- * PLACEHOLDER (`wk` below: the footprint on the ground, the baked box, the entry's name in stencil, a dot per frame, a
- * red mark towards the heading). The art package that owns this file replaces each draw with the drawing, measures the
- * bounds from its ink (as plant.ts does), and keeps ids, frames, headings and anchors: the world (worksTable.ts) is built
- * on them. Anchor: the footprint's centre on the ground (the first yard's code: a vehicle's too). No words in a sprite:
- * the slots say where the caller's go. Nothing of a dark item (a machine or grade that is not sold) is drawn.
- * Checked by src/ui/salvage/art/sheets.hash.test.ts (every frame at every baked heading inside its box; C and D fit
- * 2048 x 2048 at density 2) and budgeted by `npx tsx scripts/art/yard-sheets.ts <out> budget-C budget-D`.
+ * C-ART (PLAN2 2.7, batch 0b) put every entry in with its final id, group, sheet, frames and anchor; ART-STORE (batch 0e)
+ * replaced the placeholders with the drawings and measured the bounds from their ink. Ids, frames, headings and anchors
+ * are C-ART's; the heaps' footprint became 2.2 x 3.1 (the bunker's inner width; a depth that sorts a heap just after its
+ * bunker at the same anchor: see WORKS_STORE). Anchor: the footprint's centre on the ground. No words in a sprite: the
+ * bunker's plate is blank, its `code` slot is where the caller paints a SOLD grade's code. Nothing of a dark item (a
+ * machine or grade that is not sold) is drawn: there is no heap, layer or look for one.
+ * Checked by src/ui/salvage/art/sheets.hash.test.ts (every frame inside its box; C and D fit 2048 x 2048 at density 2),
+ * scripts/art/works/works-store.ts (the sheet, the bounds, the blank plate, no dark grade) and budget-C.
  */
 import type { SkCanvas } from '@shopify/react-native-skia';
-import { stencil, stencilWidth } from '../letters';
-import { YARD } from '../palette';
-import { facePath, fill, proj, rect, stroke, type View3q } from '../pen';
+import type { View3q } from '../pen';
+import {
+  BUNKER_HEAPS,
+  FIRST_STILLAGES_ROOF,
+  LEANTO,
+  STILLAGES_ROOF,
+  WORKS_LAYERS,
+  bunkerPlate,
+  drawBigBags,
+  drawBunker,
+  drawBunkerHeap,
+  drawCanopy,
+  drawWorksLayer,
+} from '../worksStore.draw';
 import type { Bounds, WorksEntry, WorksSheet } from './index';
 
-// -----------------------------------------------------------------------------------------------------
-// The placeholder kit (C-ART; the same few lines in every works part, so each art package owns its whole file and
-// drops them when its last entry is drawn). Pure Skia; nothing here is read by the first yard.
-// -----------------------------------------------------------------------------------------------------
 type Draw = (c: SkCanvas, v: View3q, frame: number, heading: number) => void;
-const PPM = 40;
-const TILT = 0.7;
-const LIFT = Math.sqrt(1 - TILT * TILT);
 const B = (x: number, y: number, w: number, h: number): Bounds => ({ x, y, w, h });
-/** The cell of a heading the entry is never drawn at (a 4-heading entry used only east and west): a dot. */
-const TINY = B(-3, -3, 6, 6);
+const V: View3q = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
 
-interface Spec {
-  /** height in metres (the box's top; with the low sun's shadow to the east) */
-  h: number;
-  /** baked at k of true size (drawScale 1/k), as the first yard's statics (plant.ts `entry`) */
-  k?: number;
-  headings?: 1 | 4 | 8;
-  mirrorWest?: boolean;
-  tint?: string;
-  /** slots as fractions of the baked box [fx, fy, fw, fh] (the art package places them exactly) */
-  slots?: Record<string, [number, number, number, number]>;
-  /** the baked headings drawn in full; any other baked heading is a TINY cell (never drawn by the world) */
-  only?: number[];
-  /** false for an actor (a vehicle, a person): its ground shadow is the world's (sheet S), not the sprite's */
-  sun?: boolean;
-}
+// MEASURED BOUNDS (ink at the baked size plus a 2 pt margin: `npx tsx scripts/art/yard-sheets.ts <dir> works-store` prints
+// this table and says FAIL when a drawing leaves it; paste its lines here after changing a drawing)
+// prettier-ignore
+const MEASURED: Record<string, [number, number, number, number]> = {
+  'works.bunker': [-60, -60, 138, 93],
+  'plant.heap.bzs': [-24, -20, 50, 42],
+  'plant.heap.ss': [-24, -20, 50, 42],
+  'plant.heap.ssu': [-24, -21, 50, 43],
+  'plant.heap.shred': [-24, -22, 50, 44],
+  'works.leanto.roof': [-100, -75, 213, 98],
+  'works.stillages.roof': [-71, -75, 155, 98],
+  'stillages.roof': [-76, -60, 165, 78],
+  'works.stillage.layer.bzi': [-22, -23, 44, 33],
+  'works.stillage.layer.cui': [-21, -25, 44, 36],
+  'works.stillage.layer.bzd': [-27, -21, 52, 26],
+  'works.bigbags': [-22, -32, 58, 46],
+};
+// END MEASURED BOUNDS
 
-/** The box (points round the anchor, baked at k) of a footprint w x d m standing h m high, for every heading it turns to. */
-function boxOf(w: number, d: number, h: number, k: number, turns: boolean, sunOn: boolean): Bounds {
-  const hw = turns ? Math.hypot(w, d) / 2 : w / 2;
-  const hd = turns ? hw : d / 2;
-  const sun = sunOn ? Math.min(h * 0.42, 0.8) : 0;
-  const x0 = -hw * PPM - 2;
-  const x1 = (hw + sun) * PPM + 2;
-  const y0 = -(hd * TILT + h * LIFT) * PPM - 2;
-  const y1 = (hd * TILT + 0.1) * PPM + 2;
-  const fx = Math.floor(x0 * k);
-  const fy = Math.floor(y0 * k);
-  return B(fx, fy, Math.ceil(x1 * k) - fx, Math.ceil(y1 * k) - fy);
-}
+/** Bake scales (drawScale 1/k): the bunkers as the first yard's bays (0.75), heaps 0.5, roofs 0.4 (C-ART's budget, errata 5). */
+const BUNKER_K = 0.75;
+const HEAP_K = 0.5;
+const ROOF_K = 0.4;
+const BAGS_K = 0.75;
 
-const bakedOf = (headings: 1 | 4 | 8, mirrorWest: boolean): number[] =>
-  mirrorWest && headings === 4 ? [0, 1, 2] : mirrorWest && headings === 8 ? [0, 1, 2, 3, 4] : Array.from({ length: headings }, (_, i) => i);
-
-/** A labelled placeholder: the footprint on the ground, the baked box, the entry's name, a dot per frame, the heading. */
-function placeholder(b: Bounds, w: number, d: number, k: number, label: string, headings: number): Draw {
-  return (c, v, frame, heading) => {
-    c.save();
-    c.clipRect({ x: b.x + 0.5, y: b.y + 0.5, width: b.w - 1, height: b.h - 1 }, 1, true);
-    const fp = facePath(v, [[-w / 2 * k, -d / 2 * k, 0], [w / 2 * k, -d / 2 * k, 0], [w / 2 * k, d / 2 * k, 0], [-w / 2 * k, d / 2 * k, 0]]);
-    c.drawPath(fp, fill(YARD.hivisLight, 0.55));
-    c.drawPath(fp, stroke(YARD.ink, 0.8));
-    c.drawPath(rect(b.x + 1.5, b.y + 1.5, b.w - 3, b.h - 3), stroke(YARD.hivisDark, 1));
-    const size = Math.min(9, (b.h - 8) / 2.5, (b.w - 8) / Math.max(1, stencilWidth(label, 1)));
-    if (size >= 2.5) stencil(c, label, b.x + b.w / 2, b.y + b.h / 2 - size / 2, size, YARD.ink, { align: 'center' });
-    for (let i = 0; i <= frame && i < 12; i++) c.drawPath(rect(b.x + 3 + i * 3, b.y + 3, 2, 2), fill(YARD.ink));
-    if (headings > 1) {
-      const a = (heading * 2 * Math.PI) / headings;
-      const r = Math.min(b.w, b.h) * 0.3;
-      const [x0, y0] = proj(v, 0, 0, 0);
-      c.drawPath(rect(x0 + Math.sin(a) * r - 1.5, y0 + Math.cos(a) * r * TILT - 1.5, 3, 3), fill(YARD.skip));
-    }
-    c.restore();
-  };
-}
-
-/** One works entry with its final id, frames, headings and anchor, and a placeholder of its footprint's box. */
-function wk(sheet: WorksSheet, id: string, group: string, fp: [number, number], frames: readonly string[], s: Spec): WorksEntry {
-  const k = s.k ?? 1;
-  const headings = s.headings ?? 1;
-  const mirrorWest = s.mirrorWest ?? false;
-  const bounds = boxOf(fp[0], fp[1], s.h, k, headings > 1 && !s.only, s.sun ?? true);
-  const label = id.replace(/^(works|vehicle|person|thing|lane|ui|piece|plant)\./, '').replace(/\./g, ' ').toUpperCase();
-  const full = placeholder(bounds, fp[0], fp[1], k, label, headings);
-  const only = s.only;
-  const tiny: Draw = (c) => c.drawPath(rect(-2, -2, 4, 4), fill(YARD.hivisDark));
-  const slots = s.slots && Object.fromEntries(Object.entries(s.slots).map(([n, [fx, fy, fw, fh]]) => [n, B(bounds.x + fx * bounds.w, bounds.y + fy * bounds.h, fw * bounds.w, fh * bounds.h)]));
+/**
+ * One works store entry: the drawing at true size scaled by k (drawScale 1/k), its bounds measured from its ink at that
+ * size (MEASURED; `fallback`, in true-size points, until measured), its slots in true-size points scaled by k.
+ */
+function st(
+  id: string,
+  group: string,
+  fp: [number, number],
+  frames: readonly string[],
+  k: number,
+  fallback: Bounds,
+  draw: Draw,
+  slots?: Record<string, Bounds>,
+): WorksEntry {
+  const m = MEASURED[id];
+  const scaled: Draw =
+    k === 1
+      ? draw
+      : (c, v, f, h) => {
+          c.save();
+          c.scale(k, k);
+          draw(c, v, f, h);
+          c.restore();
+        };
+  const sk = slots && Object.fromEntries(Object.entries(slots).map(([n, b]) => [n, B(b.x * k, b.y * k, b.w * k, b.h * k)]));
   return {
     id,
     group,
-    sheet,
+    sheet: S,
     footprint: { w: fp[0], d: fp[1] },
-    bounds,
-    ...(only ? { boundsByHeading: bakedOf(headings, mirrorWest).map((h) => (only.includes(h) ? bounds : TINY)) } : {}),
+    bounds: m ? B(m[0], m[1], m[2], m[3]) : B(Math.floor(fallback.x * k), Math.floor(fallback.y * k), Math.ceil(fallback.w * k) + 1, Math.ceil(fallback.h * k) + 1),
     frames,
-    headings,
-    ...(mirrorWest ? { mirrorWest } : {}),
-    ...(s.tint ? { tint: s.tint } : {}),
+    headings: 1,
     ...(k !== 1 ? { drawScale: 1 / k } : {}),
-    ...(slots ? { slots } : {}),
-    draw: only ? (c, v, f, h) => (only.includes(h) ? full(c, v, f, h) : tiny(c, v, f, h)) : full,
+    ...(sk ? { slots: sk } : {}),
+    draw: scaled,
   };
 }
 
 const S: WorksSheet = 'C';
+const one = ['idle'] as const;
 
-/** The works' bunkers and stillages, their heaps and layers, and the roofs over what feeds a hall (world 1.2). */
+/** The code plate's slot on the bunker's back wall (true size: the first yard's plate, 40 x 16 points, plant.bay's `code`). */
+const PLATE_SLOT = (() => {
+  const [x, y] = bunkerPlate(V);
+  return B(x - 20, y - 8, 40, 16);
+})();
+
+/**
+ * The works' bunkers and stillages, their heaps and layers, and the roofs over what feeds a hall (world 1.2).
+ *
+ * HOW THE WORLD DRAWS THEM (WLD-PLANT): a bunker at each of worksBays' eleven 3 m slots (x0 + 1.5 + 3 i, its centre y);
+ * a sold grade's heap (part or full by share; NOTHING for an empty bunker or a grade that is not sold) at THE BUNKER'S
+ * OWN ANCHOR: its footprint (2.2 x 3.1) sorts it just after its bunker (south edge 1.55 m against 1.5), so it lies in front
+ * of the back wall and between the dividers, whose faces it never covers; the code plate's words in the bunker's `code`
+ * slot only for a sold grade (the plate is drawn blank). A works stillage is the first yard's plant.stillage cage, one or
+ * two works.stillage.layer.<grade> (the second STILLAGE_LAYER_DY up) and plant.stillage.front, at one anchor; big bags
+ * stand alone at their slot. Each roof at its content rect's centre (worksTable.ts worksRoofSpots).
+ */
 export const WORKS_STORE: WorksEntry[] = [
-  // one 3 m lock-block bunker of worksBays (eleven side by side, 1.4 m high); its code plate is a slot (blank for a dark grade)
-  wk(S, 'works.bunker', 'plant', [3, 3], ['idle'], { h: 1.4, k: 0.75, slots: { code: [0.38, 0.62, 0.24, 0.16] } }),
+  // one 3 m lock-block bunker of worksBays (eleven side by side, 1.2 m of blocks); its blank code plate's slot is `code`
+  st('works.bunker', 'plant', [3, 3], one, BUNKER_K, B(-95, -100, 210, 165), (c, v) => drawBunker(c, v), { code: PLATE_SLOT }),
   // the heaps of the four grades a SOLD flow brings to a bunker (an empty bunker draws no heap): part, full by share
-  wk(S, 'plant.heap.bzs', 'heap', [2.6, 2.4], ['part', 'full'], { h: 1.2, k: 0.5 }),
-  wk(S, 'plant.heap.ss', 'heap', [2.6, 2.4], ['part', 'full'], { h: 1.2, k: 0.5 }),
-  wk(S, 'plant.heap.ssu', 'heap', [2.6, 2.4], ['part', 'full'], { h: 1.2, k: 0.5 }),
-  wk(S, 'plant.heap.shred', 'heap', [2.6, 2.4], ['part', 'full'], { h: 1.2, k: 0.5 }),
+  ...BUNKER_HEAPS.map((g) => st(`plant.heap.${g}`, 'heap', [2.2, 3.1], ['part', 'full'], HEAP_K, B(-55, -90, 120, 125), (c, v, f) => drawBunkerHeap(c, v, g, f === 1))),
   // the lean-to roof over the bunkers x -35 to -23 (map.works.roofs worksBays.roof 12 x 3.4); see-through under it
-  wk(S, 'works.leanto.roof', 'roof', [12, 3.4], ['idle'], { h: 3.6, k: 0.4 }),
+  st('works.leanto.roof', 'roof', [12, 3.4], one, ROOF_K, B(-250, -200, 520, 260), (c, v) => drawCanopy(c, v, LEANTO)),
   // the works stillages' roof (map.works.roofs worksStillages.roof 8.4 x 3.4)
-  wk(S, 'works.stillages.roof', 'roof', [8.4, 3.4], ['idle'], { h: 3.6, k: 0.4 }),
+  st('works.stillages.roof', 'roof', [8.4, 3.4], one, ROOF_K, B(-180, -200, 380, 260), (c, v) => drawCanopy(c, v, STILLAGES_ROOF)),
   // the first yard's stillage block, roofed from the works' opening (stillages.roof 9 x 2.5; T5: what feeds a hall is covered)
-  wk(S, 'stillages.roof', 'roof', [9, 2.5], ['idle'], { h: 3.6, k: 0.4 }),
+  st('stillages.roof', 'roof', [9, 2.5], one, ROOF_K, B(-195, -170, 410, 220), (c, v) => drawCanopy(c, v, FIRST_STILLAGES_ROOF)),
   // a stillage's layer of pieces (as plant.stillage.layer.bri): bronze ingot (notched, stamped), refined copper ingot, bronze dross
-  wk(S, 'works.stillage.layer.bzi', 'plant', [1.2, 1], ['idle'], { h: 0.4 }),
-  wk(S, 'works.stillage.layer.cui', 'plant', [1.2, 1], ['idle'], { h: 0.4 }),
-  wk(S, 'works.stillage.layer.bzd', 'plant', [1.2, 1], ['idle'], { h: 0.4 }),
+  ...WORKS_LAYERS.map((g) => st(`works.stillage.layer.${g}`, 'plant', [1.2, 1], one, 1, B(-30, -40, 64, 55), (c, v) => drawWorksLayer(c, v, g))),
   // zinc filter dust in big bags on a pallet (never an open heap, T3): one bag, two bags
-  wk(S, 'works.bigbags', 'plant', [1.4, 1.2], ['one', 'two'], { h: 1.2, k: 0.75 }),
+  st('works.bigbags', 'plant', [1.4, 1.2], ['one', 'two'], BAGS_K, B(-40, -75, 95, 100), (c, v, f) => drawBigBags(c, v, f === 1)),
 ];
+
+/** For the part's sheet and tests: where the bunker's plate is, at the baked size (the `code` slot). */
+export const BUNKER_PLATE_SLOT = (): Bounds => B(PLATE_SLOT.x * BUNKER_K, PLATE_SLOT.y * BUNKER_K, PLATE_SLOT.w * BUNKER_K, PLATE_SLOT.h * BUNKER_K);

@@ -108,24 +108,31 @@ export function bakeShadows(density = SHADOW_DENSITY, works: typeof WORKS_SHADOW
       const b = SHADOW_BOX[s.kind];
       extra.push({ key: `shadow.${s.kind}#0#${h}`, kind: s.as, h, b, w: Math.ceil(b[2] * density) + 4, hh: Math.ceil(b[3] * density) + 4, k: s.k });
     }
-  // Shelf packing, 1024 wide.
+  // Shelf packing, 1024 wide. C-WORLD-1: the works' cells (only under stageOn()) are shelf-packed in their own 1024-wide
+  // column to the right (x 1024 on), so the first yard's cells keep their places and the sheet stays within 2048 x 2048
+  // (packed below them it measured 1024 x 3402: over a phone's texture limit).
   const side = 1024;
-  let x = 0;
-  let y = 0;
-  let shelf = 0;
   const placed: { c: (typeof cells)[number]; x: number; y: number }[] = [];
-  for (const c of [...cells.sort((a, b) => b.hh - a.hh), ...extra.sort((a, b) => b.hh - a.hh)]) {
-    if (x + c.w > side) {
-      x = 0;
-      y += shelf;
-      shelf = 0;
+  const shelfPack = (list: ShadowCell[], x0: number): number => {
+    let x = 0;
+    let y = 0;
+    let shelf = 0;
+    for (const c of list) {
+      if (x + c.w > side) {
+        x = 0;
+        y += shelf;
+        shelf = 0;
+      }
+      placed.push({ c, x: x0 + x, y });
+      x += c.w;
+      shelf = Math.max(shelf, c.hh);
     }
-    placed.push({ c, x, y });
-    x += c.w;
-    shelf = Math.max(shelf, c.hh);
-  }
-  const width = side;
-  const height = Math.max(1, y + shelf);
+    return y + shelf;
+  };
+  const h0 = shelfPack(cells.sort((a, b) => b.hh - a.hh), 0);
+  const h1 = extra.length ? shelfPack(extra.sort((a, b) => b.hh - a.hh), side) : 0;
+  const width = extra.length ? side * 2 : side;
+  const height = Math.max(1, h0, h1);
   const v = { ppm: 40, tilt: 0.7, lift: Math.sqrt(1 - 0.49) };
   const index: Record<string, number> = {};
   const rects: number[] = [];

@@ -1536,7 +1536,7 @@ export const SALVAGE_CONTENT: SalvageContentInput = {
     // its nearest), d, from, to }. WRITTEN BY yard-bot.ts --book write (the table beside it: scripts/content/bots/plates.json
     // bookShares; build-yard.py checks the two agree and every ladder held at the works has an entry or a reason it has none).
     minShareI: 0.01,
-    book: { "bench": { s1: [0.0095, 0, null], d: 0.801, from: 1, to: 3 }, "crucible": { s1: [0, 0.0035, null], d: 0.801, from: 1, to: 4 }, "cutter": { s1: [0.0345, 0, null], d: 0.835, from: 1, to: 8 }, "driver": { s1: [0.0309, 0.0921, null], d: 0.884, from: 2, to: 15 }, "hand": { s1: [0.0501, 0, null], d: 0.691, from: 3, to: 14 }, "partner.garage": { s1: [0, 0.0532, null], d: 0.801, from: 1, to: 8 }, "partner.plumbing": { s1: [0.1013, 0.0626, null], d: 0.876, from: 1, to: 18 } },
+    book: { "bench": { s1: [0.0095, 0, null], d: 0.801, from: 1, to: 3 }, "crucible": { s1: [0, 0.0035, null], d: 0.801, from: 1, to: 4 }, "cutter": { s1: [0, 0, null], d: 0.835, from: 1, to: 9 }, "driver": { s1: [0.0487, 0.0316, null], d: 0.884, from: 2, to: 15 }, "hand": { s1: [0.0501, 0.0594, null], d: 0.691, from: 3, to: 14 }, "partner.garage": { s1: [0, 0.0532, null], d: 0.801, from: 1, to: 8 }, "partner.plumbing": { s1: [0.1013, 0.0859, null], d: 0.876, from: 1, to: 18 } },
   },
   ladder: {
     rung2: { t: 3.0, range: 3 },
