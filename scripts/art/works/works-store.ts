@@ -188,7 +188,7 @@ export async function run(x: WorksSheetCtx): Promise<void> {
   // the scene's frame: x from the works stillages' west end to the bunkers' east end, plus the first yard's bay beside
   const x0 = sti.x - sti.w / 2 - 1;
   const x1 = bays.x + bays.w / 2 + 9;
-  const yTop = bays.y - 5.2;
+  const yTop = bays.y - 7.6;
   const yBot = bays.y + 3.2;
   const ox = -x0 * V.ppm;
   const oy = -(yTop * V.ppm * V.tilt) + 20;

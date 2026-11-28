@@ -43,7 +43,7 @@ const MEASURED: Record<string, [number, number, number, number]> = {
   'plant.heap.ssu': [-24, -21, 50, 43],
   'plant.heap.shred': [-24, -22, 50, 44],
   'works.leanto.roof': [-100, -75, 213, 98],
-  'works.stillages.roof': [-71, -75, 155, 98],
+  'works.stillages.roof': [-71, -75, 142, 98],
   'stillages.roof': [-76, -60, 165, 78],
   'works.stillage.layer.bzi': [-22, -23, 44, 33],
   'works.stillage.layer.cui': [-21, -25, 44, 36],

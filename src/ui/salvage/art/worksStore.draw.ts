@@ -89,7 +89,7 @@ function moundOf(g: BunkerHeap): string {
     case 'ssu':
       return mix(SS.dark, YARD.steelDark, 0.55);
     case 'shred':
-      return mix(YARD.steelDark, YARD.rust, 0.32);
+      return mix(YARD.steelDark, YARD.rust, 0.2);
   }
 }
 
@@ -212,7 +212,7 @@ function shredPiece(c: SkCanvas, x: number, y: number, s: number, seed: number):
     const r = s * (0.32 + hash01(seed, i, 3) * 0.24);
     pts.push(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.72);
   }
-  const tones = [YARD.steel, shade(YARD.steel, 0.14), mix(YARD.steel, YARD.rust, 0.45), YARD.steelDark, mix(METAL.light_iron.base, YARD.rust, 0.25)];
+  const tones = [YARD.steel, shade(YARD.steel, 0.14), mix(YARD.steel, YARD.rust, 0.4), YARD.steelDark, METAL.light_iron.base, mix(YARD.steel, YARD.rust, 0.2)];
   const col = tones[Math.floor(hash01(seed, 4) * tones.length)];
   const p = poly(pts);
   c.drawPath(p, fill(col));
@@ -449,8 +449,9 @@ export interface CanopySpec {
 
 /** The lean-to over the covered works bunkers (12 x 3.4): columns at the dividers every 6 m, stubs on the back wall. */
 export const LEANTO: CanopySpec = { w: 12, d: 3.4, zFront: 4.2, zBack: 4.6, front: [-6, 0, 6], back: [-6, 0, 6], backFoot: 1.2 };
-/** The works stillages' roof (8.4 x 3.4): the lean-to's height, so the two read as one canopy along the row. */
-export const STILLAGES_ROOF: CanopySpec = { w: 8.4, d: 3.4, zFront: 4.2, zBack: 4.6, front: [-4.2, 0, 4.2], back: [-4.2, 4.2], backFoot: 0 };
+/** The works stillages' roof (8.4 x 3.4): the lean-to's height, so the two read as one canopy along the row; its east end rests on
+ * the lean-to's west column (x -35: the two roofs touch, map.works.roofs), so it has no column of its own there. */
+export const STILLAGES_ROOF: CanopySpec = { w: 8.4, d: 3.4, zFront: 4.2, zBack: 4.6, front: [-4.2, 0], back: [-4.2], backFoot: 0 };
 /** The first yard's stillage block's roof (9 x 2.5), drawn from the works' opening (T5: what feeds a hall is covered). */
 export const FIRST_STILLAGES_ROOF: CanopySpec = { w: 9, d: 2.5, zFront: 3.4, zBack: 3.8, front: [-4.5, 0, 4.5], back: [-4.5, 4.5], backFoot: 0 };
 
