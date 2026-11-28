@@ -83,6 +83,7 @@
     "version": "proto4, 25 November (content: the fourth numbers pass; proto/REPORT4.txt)",
     "units": "pieces and masses in grams; prices in scrip per kg at the usual price; map in metres",
     "$changes": [
+      "s2i-book (28 Nov, RULING2.md 30.1 and 30.3; scripts/content/bots/plates.json items/plates and bookShares; notes/s2i-book.md): THE BOOK, levels.book {} -> seven ladders as shares of rated income (gain = s1 x d^(L-1) x I; s1 [rung 3, rung 4, rung 5], null = the nearest rung's), written by yard-bot.ts --book write from s2g-measure's fifteen seeds of three steps (P1-P5: the driver, the plumber and the garage at rung 4's entry, a cutter and a yard hand at rung 3's first works sitting), the always hand's returns at sittings 3 and 4 (TB, five seeds: every level the cards show) and the first yard's three machines measured anew on the normal hand (MN, five seeds): driver [3.09 %, 9.21 %, -] d 0.884, plumbing [10.13 %, 6.26 %, -] d 0.876, garage [0, 5.32 %, -] d 0.801 (pooled: its own 0.973 not believed), cutter [3.45 %, 0, -] d 0.835, hand [5.01 %, 0, -] d 0.691, bench [0.95 %, 0, -], crucible [0, 0.35 %, -] (both under the 1 % bar as measured); NOT SOLD at the works: the farm and the demolition (their levels lose money, ruling 17), the stripper (not two s.e. above zero), the hand stripper (its level does nothing); 0 where a rung's step is not two s.e. above zero on three yards or more. THE THREE PRICES of 30.1 from the same fifteen seeds (the lasting gain): the analyser 37,900 -> 52,000 (4,332 an hour, s.e. 340, 10.2 % of E0), the plasma cutter 25,400 -> 20,900 (1,739, s.e. 291, 1.98 %: at the bar, 6.0 s.e. above zero, no seed below zero), the shredder line 378,000 -> 333,000 (9,263, s.e. 646, 6.5 %); the hook-lift's 203,000 stands",
       "s2f-plasma-cars (27 Nov, RULING2.md 28.7 a and b): lots.mu_min_tier { 4: [-, -, 25, 30, 30] } (a piece only the plasma cuts may be worth up to its own mu of I, and the richest kind within its own cap comes); the garage's flatrack load removed (the hook-lift fetches no car) and partners.garage.recovery { needs shredder, obj elv, period_s 600 } (the garage's own recovery truck sets a car on the bay's apron, paid at its label price as it lands); the shredder line 137,000 -> 667,000 (FIRST VALUE: tau_4 x its lasting gain with those cars, 2 seeds, plates.json); the plasma's price stands at 86,500 (its hand measure, 1.8 % of E0 on 2 seeds, is under the entry rule: for the lead)",
       "s2g-measure (27 Nov, after ruling 29: the halls choose their own recipe; RULING2.md 29.2, 29.3; scripts/content/bots/plates.json, docs/design/yard-bots3.md addendum): ONE price round of the three halls, fifteen seeds of the normal hand, the lasting gain, the entry rule as 29.3 reads it (the mean at least 2 % of E0 AND two standard errors above zero): the induction hall 236,000 -> 863,000 (gain 23,982 an hour, s.e. 3,478, 21.2 % of E0, 0 of 15 seeds below zero), the rotary hall 107,000 -> 122,000 (3,395, s.e. 603, 2.33 %, 1 of 15 below zero), the copper hall 202,000 -> 198,000 (5,496, s.e. 906, 3.67 %, 2 of 15 below zero); all three pass, COPPER_GATE stays rung4 and the rotary keeps its gate; the other items' prices stand",
       "s2e-measure (27 Nov, the full measurement on a13a006, RULING2.md 28.4 a and 28.8, the lead's line of 18:30; scripts/content/bots/plates.json, docs/design/yard-bots3.md): ONE price round, fifteen seeds of the normal hand, the LASTING gain (one capped absence once the item works, with and without): the hook-lift 206,000 -> 203,000 (gain 16,883 an hour, 31 % of E0), the analyser 43,800 -> 37,900 (3,162, 6.7 %), the shredder line 667,000 -> 378,000 (10,504, 9.1 %), the induction hall 339,000 -> 236,000 (6,555, 6.2 %), the plasma cutter 86,500 -> 25,400 (what its oversize pieces bring an hour at the reference hand's pace with the hook-lift and the analyser owned: 2,120, 2.5 %; the lead's line); NOT changed: the rotary hall 107,000 (0.3 % of E0: under the entry rule; the lead rules) and the copper hall 202,000 (1.6 %: under the entry rule; the lead rules on its switch); works.rungs n 5 3,600 -> 2,900 t (rung 5 came at sittings 9 to 11, 4 to 5 sittings after the last machine; ruling 28.4 e: 8 to 9); levels.book stays {} (every ladder within 0.7 to 1.4 on 15 seeds); rate.kappa stays 1 (rung 3 measured 1.00; rung 4 0.84, outside the band: a term, for the lead)",
@@ -3175,7 +3176,78 @@
         "partnerDemolition": "partner level L: L skips at the site, each full fill_s after it was hooked (E26)"
       },
       "minShareI": 0.01,
-      "book": {},
+      "book": {
+        "bench": {
+          "s1": [
+            0.0095,
+            0,
+            null
+          ],
+          "d": 0.801,
+          "from": 1,
+          "to": 3
+        },
+        "crucible": {
+          "s1": [
+            0,
+            0.0035,
+            null
+          ],
+          "d": 0.801,
+          "from": 1,
+          "to": 4
+        },
+        "cutter": {
+          "s1": [
+            0.0345,
+            0,
+            null
+          ],
+          "d": 0.835,
+          "from": 1,
+          "to": 8
+        },
+        "driver": {
+          "s1": [
+            0.0309,
+            0.0921,
+            null
+          ],
+          "d": 0.884,
+          "from": 2,
+          "to": 15
+        },
+        "hand": {
+          "s1": [
+            0.0501,
+            0,
+            null
+          ],
+          "d": 0.691,
+          "from": 3,
+          "to": 14
+        },
+        "partner.garage": {
+          "s1": [
+            0,
+            0.0532,
+            null
+          ],
+          "d": 0.801,
+          "from": 1,
+          "to": 8
+        },
+        "partner.plumbing": {
+          "s1": [
+            0.1013,
+            0.0626,
+            null
+          ],
+          "d": 0.876,
+          "from": 1,
+          "to": 18
+        }
+      },
       "floor": 1100,
       "floorGrowth": 1.25
     },
@@ -3619,7 +3691,7 @@
           "plot": "scalehouse",
           "gate": "rung3",
           "needs": null,
-          "price": 37900,
+          "price": 52000,
           "financeable": true,
           "deliver_s": 6,
           "kind": "assay",
@@ -3629,7 +3701,7 @@
           "maxLevel": 1,
           "inbuf": 0,
           "tray": 0,
-          "gain_h": 3162
+          "gain_h": 4332
         },
         "depollution": {
           "row": "shredder",
@@ -3723,7 +3795,7 @@
           "plot": "shredder",
           "gate": "rung4",
           "needs": null,
-          "price": 378000,
+          "price": 333000,
           "financeable": true,
           "deliver_s": 60,
           "kind": "rate",
@@ -3780,7 +3852,7 @@
           "maxLevel": 10,
           "inbuf": 2000,
           "tray": 0,
-          "gain_h": 10504
+          "gain_h": 9263
         },
         "eddy": {
           "row": "shredder",
@@ -5587,11 +5659,11 @@
           "key": "plasma",
           "kind": "tool",
           "place": "rack",
-          "price": 25400,
+          "price": 20900,
           "gate": "rung3",
           "deliver_s": 6,
           "arrive": "van",
-          "gain_h": 2120
+          "gain_h": 1739
         },
         {
           "key": "crane",
@@ -5624,7 +5696,7 @@
           "key": "analyser",
           "kind": "works",
           "place": "scalehouse",
-          "price": 37900,
+          "price": 52000,
           "gate": "rung3",
           "deliver_s": 6,
           "arrive": "machineFlatbed"
@@ -5651,7 +5723,7 @@
           "key": "shredder",
           "kind": "works",
           "place": "shredder",
-          "price": 378000,
+          "price": 333000,
           "gate": "rung4",
           "deliver_s": 60,
           "arrive": "machineFlatbed"
@@ -6077,6 +6149,7 @@
         {
           "term": "Bale",
           "fromRung": 3,
+          "item": "baler",
           "line": "Light iron pressed into a dense block for loading."
         },
         {
@@ -6128,6 +6201,7 @@
         {
           "term": "Eddy current",
           "fromRung": 3,
+          "item": "eddy",
           "line": "A spinning magnet that throws non-ferrous metal out of a stream."
         },
         {
@@ -6212,6 +6286,7 @@
         {
           "term": "Sensor sorter",
           "fromRung": 3,
+          "item": "sorter",
           "line": "A machine that sorts metals by sight with jets of air."
         },
         {
@@ -6238,6 +6313,7 @@
         {
           "term": "Twitch",
           "fromRung": 3,
+          "item": "twitch",
           "line": "Shredded aluminium sorted from zorba."
         },
         {
@@ -6247,6 +6323,7 @@
         {
           "term": "Zorba",
           "fromRung": 3,
+          "item": "zorba",
           "line": "The mixed non-ferrous metal from a shredder."
         }
       ]

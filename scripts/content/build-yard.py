@@ -515,6 +515,8 @@ BOOK_NOT_SOLD = {
     # add tonnes and LOSE money (ruling 17: no purchase makes the yard poorer; RULING2.md 30.3)
     'partnerFarm': 'its level loses money: -3.45 % of rated income a step at rung 3 (s.e. 0.63; 5 of 5 yards below zero), -3.6 % at rung 4 (2 yards); ruling 17',
     'partnerDemolition': 'its level loses money: -2.60 % of rated income a step at rung 3 (s.e. 0.75; 5 of 5 yards below zero), -4.1 % at rung 4 (2 yards); ruling 17',
+    # measured by s2i-book (the normal hand's returns at sittings 3 and 4, yard-bot.ts --borrower machines; scratchpad yard/s2i-book/MN.json)
+    'stripper': 'its step is not two standard errors above zero: +0.23 % of rated income at rung 3 (s.e. 0.21; 3 of 5 yards below zero), -0.06 % at rung 4 (3 yards); RULING2.md 30.3',
 }
 
 
@@ -791,7 +793,8 @@ def entry_rows(s):
         per = row.get('perSeed') or []
         low = min(per) if per else None
         flag = '' if low is None or low >= ENTRY_SEED * row['E0'] else '  (a seed at %.2f %%: under the design\'s -1 %% seed clause, for the lead)' % (100 * low / row['E0'])
-        rows.append('entry %s %s: dE §%s = %.2f %% of E0 §%s (at least 2 %%); price §%s%s' % (kind, key, f'{row["dE"]:,}', 100 * row['dE'] / row['E0'], f'{row["E0"]:,}', f'{item["price"]:,}', flag))
+        how = 'at least 2 %' if row['dE'] >= ENTRY_SHARE * row['E0'] else ('AT THE BAR: within one s.e. of 2 %, four s.e. above zero, no seed below zero (ruling 30.1)' if entry_ok(row, row['dE'], row['E0']) else 'UNDER the entry rule')
+        rows.append('entry %s %s: dE §%s (s.e. %s) = %.2f %% of E0 §%s (%s); price §%s%s' % (kind, key, f'{row["dE"]:,}', row.get('se'), 100 * row['dE'] / row['E0'], f'{row["E0"]:,}', how, f'{item["price"]:,}', flag))
     top = s['ladder'].get('topRung') or 3
     dark = [k for k, p in ((s.get('works') or {}).get('plates') or {}).items() if gate_n(p.get('gate')) > top]
     dark += [i['key'] for i in ((s.get('worksLayer') or {}).get('shop') or []) if i.get('kind') != 'works' and gate_n(i.get('gate')) > top]

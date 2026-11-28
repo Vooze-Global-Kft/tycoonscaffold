@@ -2064,5 +2064,442 @@
     ]
    ]
   }
+ },
+ "bookShares": {
+  "$comment": "s2i-book (RULING2.md 30.3): the book as shares, written by yard-bot.ts --book write from the runs read (book rows: three steps from the level held at the planned moment; borrow rows: one step of every level the cards show at sittings 3 and 4). Per ladder and rung: yards measured, s1 (the mean over yards of share / d^(L-1), share = the measured lasting gain over rated income at the moment), its standard error, yards below zero, sold (at least three yards, s1 above zero and at least two s.e. above it). d fitted on the three-step rows' mean profile, or the crew ladders' pooled decay where none or above 0.95. from / to: the lowest level measured and the highest + 2. The content's levels.book holds the sold ladders' { s1, d, from, to } exactly.",
+  "pooledD": 0.801,
+  "runs": 20,
+  "ladders": {
+   "bench": {
+    "s1": [
+     0.0095,
+     0,
+     null
+    ],
+    "d": 0.801,
+    "from": 1,
+    "to": 3,
+    "sold": true,
+    "pooled": true,
+    "dFitted": null,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.00948,
+      "se": 0.00369,
+      "below0": 0,
+      "sold": true,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.00948
+       }
+      }
+     },
+     "4": {
+      "yards": 3,
+      "s1": 0.00315,
+      "se": 0.00212,
+      "below0": 0,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 3,
+        "s1": 0.00315
+       }
+      }
+     }
+    }
+   },
+   "crucible": {
+    "s1": [
+     0,
+     0.0035,
+     null
+    ],
+    "d": 0.801,
+    "from": 1,
+    "to": 4,
+    "sold": true,
+    "pooled": true,
+    "dFitted": null,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.01004,
+      "se": 0.00526,
+      "below0": 1,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.01004
+       }
+      }
+     },
+     "4": {
+      "yards": 3,
+      "s1": 0.0035,
+      "se": 0.00051,
+      "below0": 0,
+      "sold": true,
+      "bySrc": {
+       "borrow": {
+        "yards": 3,
+        "s1": 0.0035
+       }
+      }
+     }
+    }
+   },
+   "cutter": {
+    "s1": [
+     0.0345,
+     0,
+     null
+    ],
+    "d": 0.835,
+    "from": 1,
+    "to": 8,
+    "sold": true,
+    "pooled": false,
+    "dFitted": 0.835,
+    "rungs": {
+     "3": {
+      "yards": 20,
+      "s1": 0.03449,
+      "se": 0.01471,
+      "below0": 5,
+      "sold": true,
+      "bySrc": {
+       "book": {
+        "yards": 15,
+        "s1": 0.04499
+       },
+       "borrow": {
+        "yards": 5,
+        "s1": 0.00298
+       }
+      }
+     },
+     "4": {
+      "yards": 2,
+      "s1": 0.00034,
+      "se": 0.00063,
+      "below0": 1,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 2,
+        "s1": 0.00034
+       }
+      }
+     }
+    }
+   },
+   "driver": {
+    "s1": [
+     0.0309,
+     0.0921,
+     null
+    ],
+    "d": 0.884,
+    "from": 2,
+    "to": 15,
+    "sold": true,
+    "pooled": false,
+    "dFitted": 0.884,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.03087,
+      "se": 0.01522,
+      "below0": 1,
+      "sold": true,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.03087
+       }
+      }
+     },
+     "4": {
+      "yards": 17,
+      "s1": 0.09207,
+      "se": 0.00831,
+      "below0": 0,
+      "sold": true,
+      "bySrc": {
+       "book": {
+        "yards": 15,
+        "s1": 0.09733
+       },
+       "borrow": {
+        "yards": 2,
+        "s1": 0.05263
+       }
+      }
+     }
+    }
+   },
+   "hand": {
+    "s1": [
+     0.0501,
+     0,
+     null
+    ],
+    "d": 0.691,
+    "from": 3,
+    "to": 14,
+    "sold": true,
+    "pooled": false,
+    "dFitted": 0.691,
+    "rungs": {
+     "3": {
+      "yards": 20,
+      "s1": 0.05013,
+      "se": 0.00835,
+      "below0": 1,
+      "sold": true,
+      "bySrc": {
+       "book": {
+        "yards": 15,
+        "s1": 0.05574
+       },
+       "borrow": {
+        "yards": 5,
+        "s1": 0.03327
+       }
+      }
+     },
+     "4": {
+      "yards": 2,
+      "s1": 0.08608,
+      "se": 0.06945,
+      "below0": 0,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 2,
+        "s1": 0.08608
+       }
+      }
+     }
+    }
+   },
+   "partner.garage": {
+    "s1": [
+     0,
+     0.0532,
+     null
+    ],
+    "d": 0.801,
+    "from": 1,
+    "to": 8,
+    "sold": true,
+    "pooled": true,
+    "dFitted": 0.973,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.02307,
+      "se": 0.01754,
+      "below0": 2,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.02307
+       }
+      }
+     },
+     "4": {
+      "yards": 17,
+      "s1": 0.05316,
+      "se": 0.00765,
+      "below0": 1,
+      "sold": true,
+      "bySrc": {
+       "book": {
+        "yards": 15,
+        "s1": 0.06126
+       },
+       "borrow": {
+        "yards": 2,
+        "s1": -0.00766
+       }
+      }
+     }
+    }
+   },
+   "partner.plumbing": {
+    "s1": [
+     0.1013,
+     0.0626,
+     null
+    ],
+    "d": 0.876,
+    "from": 1,
+    "to": 18,
+    "sold": true,
+    "pooled": false,
+    "dFitted": 0.876,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.10132,
+      "se": 0.01456,
+      "below0": 0,
+      "sold": true,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.10132
+       }
+      }
+     },
+     "4": {
+      "yards": 17,
+      "s1": 0.06262,
+      "se": 0.00357,
+      "below0": 0,
+      "sold": true,
+      "bySrc": {
+       "book": {
+        "yards": 15,
+        "s1": 0.06244
+       },
+       "borrow": {
+        "yards": 2,
+        "s1": 0.06396
+       }
+      }
+     }
+    }
+   },
+   "partnerDemolition": {
+    "s1": [
+     0,
+     0,
+     null
+    ],
+    "d": 0.801,
+    "from": 1,
+    "to": 3,
+    "sold": false,
+    "pooled": true,
+    "dFitted": null,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": -0.02595,
+      "se": 0.00748,
+      "below0": 5,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": -0.02595
+       }
+      }
+     },
+     "4": {
+      "yards": 2,
+      "s1": -0.04128,
+      "se": 0.01175,
+      "below0": 2,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 2,
+        "s1": -0.04128
+       }
+      }
+     }
+    }
+   },
+   "partnerFarm": {
+    "s1": [
+     0,
+     0,
+     null
+    ],
+    "d": 0.801,
+    "from": 2,
+    "to": 5,
+    "sold": false,
+    "pooled": true,
+    "dFitted": null,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": -0.03998,
+      "se": 0.00745,
+      "below0": 5,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": -0.03998
+       }
+      }
+     },
+     "4": {
+      "yards": 2,
+      "s1": -0.04093,
+      "se": 0.00837,
+      "below0": 2,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 2,
+        "s1": -0.04093
+       }
+      }
+     }
+    }
+   },
+   "stripper": {
+    "s1": [
+     0,
+     0,
+     null
+    ],
+    "d": 0.801,
+    "from": 1,
+    "to": 3,
+    "sold": false,
+    "pooled": true,
+    "dFitted": null,
+    "rungs": {
+     "3": {
+      "yards": 5,
+      "s1": 0.00226,
+      "se": 0.00208,
+      "below0": 3,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 5,
+        "s1": 0.00226
+       }
+      }
+     },
+     "4": {
+      "yards": 3,
+      "s1": -0.00056,
+      "se": 0.0004,
+      "below0": 2,
+      "sold": false,
+      "bySrc": {
+       "borrow": {
+        "yards": 3,
+        "s1": -0.00056
+       }
+      }
+     }
+    }
+   }
+  }
  }
 }

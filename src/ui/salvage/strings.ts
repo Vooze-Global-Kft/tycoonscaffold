@@ -613,7 +613,7 @@ export const TEXT = {
   'card.works.recipeHall': 'The hall chooses: {recipe}', // s2g-halls (RULING2 29.1): recipe: { text: recipe.<id> }; at each heat the recipe that adds the most worth
   'card.works.recipeKept': 'Kept on {recipe} by you', // a tapped recipe holds until "Let the hall choose"
   'card.works.letChoose': 'Let the hall choose',
-  'refusal.notLimit': 'Not the limit now · +{x} an hour', // x: { money } = levelGain; no Buy
+  'refusal.notLimit': 'Not the limit now · about +{x} an hour', // x: { money } = levelGain, the book's figure (RULING2 30.3; s2i-levels' seam, WORDS-SETUP 28 Nov); no Buy
 
   // --- the bank (2.14, 4.5; RULING2 9.7, 11.4). {share}: { text: 'share.fifth' } while content bank.share is 0.2
   // (bank.shareWords "A fifth"), else { pct: share } ("20 %"); mid-line `share.fifthIn`. ---
@@ -915,7 +915,11 @@ void _noExtra;
  * into TEXT above and leaves here. `check.ts --all` checks it like TEXT (fit, voice, names).
  * Holes are the arguments the caller passes; the comment says which formatter fills each.
  */
-export const TEXT_PENDING: Record<string, string> = {};
+export const TEXT_PENDING: Record<string, string> = {
+  // s2i-levels' [seam] (28 Nov; RULING2 30.3): a level the book does not sell at the works. Whoever adds 'notSold' to
+  // refusals.ts REFUSAL_KEYS moves this line into TEXT in the same save (the typecheck then wants it there).
+  'refusal.notSold': 'Not offered at the works',
+};
 
 // ================================================================================================ names
 

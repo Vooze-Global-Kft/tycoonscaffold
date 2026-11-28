@@ -165,9 +165,21 @@ describe("from the works' opening: the line's promises on the frozen works conte
     const g0 = goalsDone(wcfg, r4Game());
     const driver = g0.salvage.crew.find((m) => m.role === 'driver')!;
     const t: LevelTarget = { kind: 'crew', id: driver.id };
-    const book = { driver: { s1: 0.05, d: 0.9, from: 1, to: 40 } };
-    // tau_r a tenth: a level pays back in tau_r, the purchases (their prices stand) in ten times that: outside the window
-    const cfg = { ...wcfg, salvage: { ...wcfg.salvage, tau_h: wcfg.salvage.tau_h?.map((x) => (x === null ? null : x / 10)), levels: { ...wcfg.salvage.levels, minShareI: 0.01, book } } } as SalvageConfig;
+    const book = { driver: { s1: 0.5, d: 0.9, from: 1, to: 40 } }; // large: tau_r x gain above the floor at a tenth of tau_r
+    // every shop item dark (its gate past the ladder) and tau_r a tenth (a hire's payback on its replay gain outside the window):
+    // what pays back within the window is the book's level, at tau_r
+    const dark = <T extends { gate?: unknown }>(xs: T[] | undefined) => xs?.map((i) => ({ ...i, gate: 'rung99' }));
+    const wl = wcfg.salvage.worksLayer as { shop?: { gate?: unknown }[] } | undefined;
+    const cfg = {
+      ...wcfg,
+      salvage: {
+        ...wcfg.salvage,
+        shop: dark(wcfg.salvage.shop),
+        ...(wl ? { worksLayer: { ...wl, shop: dark(wl.shop) } } : {}),
+        tau_h: wcfg.salvage.tau_h?.map((x) => (x === null ? null : x / 10)),
+        levels: { ...wcfg.salvage.levels, minShareI: 0.01, book },
+      },
+    } as SalvageConfig;
     for (const cash of [0, 30_000, 1e6, 1e9]) promises(cfg, { ...g0, cash });
     const g = { ...g0, cash: 1e9 };
     const a = advice(cfg, g, 0)!;
