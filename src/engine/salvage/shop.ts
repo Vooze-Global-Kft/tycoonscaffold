@@ -237,7 +237,9 @@ const sells = (st: string, price: number | null): price is number => price !== n
  * - a step's gain: a sold machine's, vehicle's or tool's MEASURED gain, the one its price is made of (content gain_h, ladder.ts
  *   buyGain; s2e-fix1, RULING2 28.5 b: its payback is then tau_r, inside the window while it is sold and unbought), else a shop
  *   item's or a plate's rated gain bought (ladder.ts ratedGain on the bought state: the replay), a
- *   hire's on the hired state, a level's `levelGain` (levelQuote: the one measure its price is made of);
+ *   hire's on the hired state, a level's `levelGain` (levelQuote: the one measure its price is made of; s2i-levels, RULING2.md
+ *   30.3: the book's s1 x d^(L-1) x I with the SAME I, read once below, for every step of the walk: a level bought does not
+ *   move its own ladder's next price inside one walk);
  * - a step counts only while price ≤ window × gain (no item counts above what it earns; a zero gain counts nothing);
  * - EACH LADDER IS COUNTED UP while each step pays: the next hire of a role on the state with the last one hired, the next
  *   level of a target on the state one level up, until a step fails (a level not sold, under levels.minShareI × I, ends its

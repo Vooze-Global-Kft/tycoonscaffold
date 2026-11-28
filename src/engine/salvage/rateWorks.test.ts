@@ -9,7 +9,7 @@
  * - the replay plays the shipped driver (no rank by worth: a partner's load price moves no load);
  * - I is a pure function of the assets (never of cash, sales, stock, the clock or a switch);
  * - kappa_r scales I from the works' opening only;
- * - levelGain reads the gain book where it has an entry for the ladder, the calculated gain elsewhere;
+ * - levelGain (s2i-levels, RULING2.md 30.3) reads THE BOOK for every ladder (s1 x d^(L-1) x I), 0 where it has no entry;
  * - no purchase, hire or level (plates set down and started up) lowers I;
  * - below the works' opening I is the first yard's, bit for bit.
  */
@@ -202,29 +202,69 @@ describe('kappa_r (content rate.kappa) from the works\' opening only', () => {
   });
 });
 
-describe('levelGain (RULING2.md 27.4): the gain book where it has the ladder, the calculated gain elsewhere', () => {
-  it('calculated: the replay with the level one step up less now (never below 0); the book: g1 x d^(L-1) for its ladder only', () => {
+describe('levelGain (RULING2.md 30.3, s2i-levels): THE BOOK for every ladder, s1 x d^(L-1) x I; no entry: 0 (not sold)', () => {
+  it('the book: s1 x d^(L-1) x I for its ladder at several L; a ladder the book does not name, s1 0, or at `to`: 0; I given or read', () => {
     const cfg = worksCfg();
     const g = r4Game();
     const c = C(cfg, g);
     const s = g.salvage;
     const crew = s.crew.map((m) => ({ kind: 'crew', id: m.id }) as LevelTarget);
     const parts = Object.keys(s.partners).map((p) => ({ kind: 'partner', partner: p }) as LevelTarget);
-    for (const tg of [...crew, ...parts]) {
-      const want = Math.max(0, replayIncome(c, levelled(g, tg).salvage) - replayIncome(c, s));
-      expect(levelGain(c, s, tg), JSON.stringify(tg)).toBeCloseTo(want, 6);
-    }
+    // the frozen content has no book: no ladder is sold at the works (the replay prices nothing)
+    for (const tg of [...crew, ...parts]) expect(levelGain(c, s, tg), JSON.stringify(tg)).toBe(0);
     const driver = s.crew.find((m) => m.role === 'driver')!;
     const tg: LevelTarget = { kind: 'crew', id: driver.id };
     expect(levelLadderOf(s, tg)).toBe('driver');
-    const book = { driver: { g1: 5000, d: 0.9 } };
+    const book = { driver: { s1: 0.04, d: 0.9, from: 1, to: driver.level + 3 } };
     const cb = { ...c, levels: { ...c.levels, book } } as typeof c;
-    expect(levelGain(cb, s, tg)).toBeCloseTo(5000 * 0.9 ** (driver.level - 1), 6);
-    // one step up reads the next term of the ladder
-    expect(levelGain(cb, levelled(g, tg).salvage, tg)).toBeCloseTo(5000 * 0.9 ** driver.level, 6);
-    // a ladder the book does not name keeps the calculated gain
+    const I = ratedIncome(cb, s);
+    expect(levelGain(cb, s, tg)).toBeCloseTo(0.04 * 0.9 ** (driver.level - 1) * I, 6);
+    expect(levelGain(cb, s, tg, 1000)).toBeCloseTo(0.04 * 0.9 ** (driver.level - 1) * 1000, 9);
+    // several L: one, two and three steps up read the next terms of the ladder (with the same I)
+    let h = g;
+    for (let k = 1; k <= 2; k++) {
+      h = levelled(h, tg);
+      expect(levelGain(cb, h.salvage, tg, 1000)).toBeCloseTo(0.04 * 0.9 ** (driver.level - 1 + k) * 1000, 9);
+    }
+    // at `to`: 0
+    h = levelled(h, tg);
+    expect(levelGain(cb, h.salvage, tg, 1000)).toBe(0);
+    // a ladder the book does not name: 0
     const other = crew.find((t) => levelLadderOf(s, t) !== 'driver')!;
-    expect(levelGain(cb, s, other)).toBeCloseTo(levelGain(c, s, other), 6);
+    expect(levelGain(cb, s, other)).toBe(0);
+    // s1 0: not sold
+    const c0 = { ...c, levels: { ...c.levels, book: { driver: { ...book.driver, s1: 0 } } } } as typeof c;
+    expect(levelGain(c0, s, tg, 1000)).toBe(0);
+  });
+
+  it('s1 by rung [r3, r4, r5]: the rung's own number; a rung without one reads its nearest other rung's (the lower on a tie)', () => {
+    const cfg = worksCfg();
+    const g = r4Game();
+    const c = C(cfg, g);
+    const driver = g.salvage.crew.find((m) => m.role === 'driver')!;
+    const tg: LevelTarget = { kind: 'crew', id: driver.id };
+    const at = (s1: (number | null)[], rung: number) => {
+      const cb = { ...c, levels: { ...c.levels, book: { driver: { s1, d: 1, from: 1, to: 99 } } } } as typeof c;
+      const s = { ...g.salvage, ladder: { ...g.salvage.ladder, rung } };
+      return levelGain(cb, s, tg, 1000);
+    };
+    expect(at([0.01, 0.02, 0.03], 3)).toBeCloseTo(10, 9);
+    expect(at([0.01, 0.02, 0.03], 4)).toBeCloseTo(20, 9);
+    expect(at([0.01, 0.02, 0.03], 5)).toBeCloseTo(30, 9);
+    expect(at([0.01, null, null], 5)).toBeCloseTo(10, 9);
+    expect(at([null, 0.02, null], 3)).toBeCloseTo(20, 9);
+    expect(at([0.01, null, 0.03], 4)).toBeCloseTo(10, 9);
+    expect(at([0.01, 0, 0.03], 4)).toBe(0);
+    expect(at([null, null, null], 4)).toBe(0);
+  });
+
+  it('below the works\' opening: 0 whatever the book (the first yard prices its levels by its own rule)', () => {
+    for (const n of FIXTURE_NAMES) {
+      const s = fixtureGame(n, { cash: 0, lifetimeEarnings: 0, lastSavedAt: FIXTURE_NOW, stats: { playSeconds: 0, clockHigh: FIXTURE_NOW } } as never, FIXTURE_NOW).salvage;
+      expect(worksOpened(s)).toBe(false);
+      const cb = { ...SALVAGE_TEST, levels: { ...SALVAGE_TEST.levels, book: { cutter: { s1: 0.5, d: 1, from: 1, to: 99 }, hand: { s1: 0.5, d: 1, from: 1, to: 99 }, driver: { s1: 0.5, d: 1, from: 1, to: 99 } } } } as typeof SALVAGE_TEST;
+      for (const m of s.crew) expect(levelGain(cb, s, { kind: 'crew', id: m.id }, 1000)).toBe(0);
+    }
   });
 });
 

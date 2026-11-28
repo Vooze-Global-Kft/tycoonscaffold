@@ -331,3 +331,235 @@ reached on his card). Neither the bank's offer nor a pack is taken by the normal
 - `npx tsx scripts/validate.ts scrap-yard`: exit 0. game.json: release.stage 1, shared product list empty.
 - `bash scratchpad yard/s2e/first-yard.sh` (after the content change, alone): FIRST YARD: PASS (30 cases, 295 ops, 0 differences).
 - `bash scratchpad yard/s2e/first-yard.sh --full` (alone, at the end): content 4 PASS; engine 30 cases, 295 ops, 0 differences; same.ts 4 of 4 (same state, same record); the 75-run comparison 75 of 75 identical below rung 3; FIRST YARD: PASS (G13 met).
+
+## Addendum: after ruling 29 (s2g-measure, 27 to 28 November)
+
+What was measured again, on the main line after ruling 29's pass (a hall chooses its own recipe at each heat's start; the
+analyser before the plasma and the stage's goals past an unmet first-yard goal; rated income's halls term read from what the
+bays receive): ONE price round of the three halls (normal hand, seeds 1 to 15, 12 sittings, the lasting gain of 28.4 a, the
+entry rule as 29.3 reads it: the mean at least 2 % of the yard's income AND two standard errors above zero); the ladders'
+three steps from the same runs; ONE small table on the content as priced (normal 15, route B 5, unseen 5, flat 5,
+always-finance 5, the card manager 3); the borrower's numbers (29.7); the lead's pair of 21:15 (the driver takes the richest
+load first). Working notes: scratchpad `yard/s2g-measure/` and `notes/s2g-measure.md`. The tool: scripts/content/yard-bot.ts
+(`--items`, `--borrower`, `--forceLevels`, `--probe`; the entry rule's form; each hall's recipe and heats per seed). One fault
+of the tool found and fixed on the way: its children were not passed `--items`, so the price round measured every sold item
+(the extra rows are printed below as information and were not written).
+
+```text
+ADDENDUM: THE HALLS AGAIN, THE BANDS, THE BORROWER (s2g-measure; 27 Nov 21:10 to 28 Nov 00:30; 15 + 38 + 23 + 2 runs)
+  price round  P1..P5   --bots normal --seeds 3 --first 3i-2 --jobs 3 --sittings 12 --plates --book --items induction,rotary,copper   (1,026-1,132 s each)
+  table        TN normal 15 | TB always 5 --borrower --probe | TR routeB,flat 5 | TU normal --unseen | TM manager 3          (123-1,242 s)
+  pairs        K1 normal 5, K2 always 3 --probe: --game (truck.pickFromRung 3) | M1 always,normal 5: --game (levels.minShareI 0.005)
+               FL always 5 --forceLevels (sitting 3's three levels adding the most tonnes) | KAPPA normal,always 1 (the refused factors)
+  every run: 0 hard promises broken; tick = jump 0 differences
+```
+
+### The three halls' fifteen seeds (the lasting gain; § an hour)
+
+```text
+hall       moment    mean (s.e.)      of E0              s.e.>0  <0     t an hour (yard's)   price               verdict
+induction  h17.8 r4  23,982 (3,478)   21.2 % of 113,017  6.9     0/15   +0.16 (71.7)         236,000 -> 863,000  entry met, written
+  per seed 9689 36481 40574 22878 9291 20848 22110 9484 13266 17055 35854 26373 53124 33428 9276
+rotary     h24.0 r4  3,395 (603)      2.33 % of 145,491  5.6     1/15   -0.09 (73.6)         107,000 -> 122,000  entry met, written
+  per seed 3396 -1756 6053 2605 2006 3604 977 4181 2782 2883 5530 4008 5454 7833 1363
+copper     h24.0 r4  5,496 (906)      3.67 % of 149,830  6.1     2/15   -0.13 (74.6)         202,000 -> 198,000  entry met, written
+  per seed 6120 5898 9381 8499 1409 7359 1381 4801 4799 -515 9049 7934 -333 9878 6785
+REPORT10's two absences: rotary seed 4 -22,473 -> +2,605; copper seed 12 -22,762 -> +7,934. On every seed of every hall both
+branches end the absence with the induction hall on bronze by its own choice, with as many heats (seed 4: 36 / 36; seed 12:
+35 / 36). The worst seed of any hall is -1.2 % of E0.
+NOT WRITTEN (the budget), from the same runs: hook-lift 15,231 (854; 27.5 %; 183,000 by the rule), analyser 4,332 (340; 10.2 %;
+52,000), shredder line 9,263 (646; 6.5 %; 333,000), THE PLASMA at its third moment 1,739 (291; 1.98 % of 87,951: UNDER 2 %).
+```
+
+COPPER_GATE stays rung4 and the rotary keeps its gate: all three halls pass. The induction hall's price nearly quadruples:
+the hall that chose brass for whole absences earned 6,555; choosing for itself it earns 23,982 (its bronze, and the crucible
+keeps its brass). The rung-4 machines now cost 1,561,000 against a purse at rung 4's entry of 356k to 518k (normal): the hand
+buys the rotary first ("for now") and the induction hall at the next sitting; rung 5 still comes at sittings 8 to 9.
+
+### The bands (I/G medians [range]; r3 entry, r3 last, r4 entry, day 3, r4 last, r5 entry)
+
+```text
+normal 15   1.00 [0.94-1.05]  1.00 [0.91-1.13]  1.00 [0.93-1.03]  1.07 [0.91-1.18]  1.10 [1.00-1.21]  1.15 [1.04-1.23]
+always 5    1.00  0.99  0.99  1.08  1.09  1.10        routeB 5  0.96  0.97  0.98  1.02  1.01  1.13
+flat 5      0.99  0.94  1.03  1.07  1.10  1.12        unseen 5  1.04  1.02  0.98  1.08  1.10  1.12
+manager 3   0.90  1.05  1.05  1.05  1.14  1.15        (REPORT10 normal: 1.00 1.00 0.99 1.22 1.27 1.09)
+G/I by rung over every return (normal): rung 3 1.008 (50), rung 4 0.972 (60), rung 5 0.869 (15)
+ladders, calculated / measured first step (15 seeds): driver 1.02, cutter 1.06, plumbing 0.87, hand 1.29, GARAGE 0.64 (fails)
+```
+
+The over-reading from day 3 is halved (1.22 -> 1.07 at day 3, 1.27 -> 1.10 at rung 4's last purchase) and rung 5's entry is
+worse (1.09 -> 1.15). KAPPA IS NOT WRITTEN although both factors are inside 0.85 to 1.15: written as [1, 0.97, 0.87] and run on
+seed 1, the factors moved the run (the hand bought more levels; the always bot had two more dry sittings), the normal hand's
+I/G at rung 5's entry became 0.88, and on the always bot I stepped down 11 % at rung 5's entry (137,426 -> 121,810), after
+which it bought twenty levels in one sitting. A rung-5 factor below rung 4's hides the term and makes the plateau's first
+return a spree; the remaining term from day 3 is the farm's levels (s2g-rate's (a)), which the next section meets again. No
+purchase lowered I on any run. The garage ladder fails its check (0.64): levels.book was not this step's to write.
+
+### The small table (on the content as priced)
+
+```text
+normal 15   rung 4 s4 x10, s5 x5; rung 5 s8 x10, s9 x5 (band 8-9: rung 5's tonnes STAND); without a purchase 0-1 a seed (s8, 4 seeds);
+            bank offers 1-4 a run, no loan; packs fit own cash at a rung-4 return 15/15; pieces cut 1-3 every sitting from s2
+always 5    rung 4 s4-5, rung 5 s9 9 9 9 10; loan 1 the hook-lift (P 203,000 F 162,400 T 175,392) at s1, repaid by s2-3 (5/5);
+            loan 2 the induction hall at rung 4 (P 863,000, F 680-690k) on 4/5, repaid within two sittings; dry: seed 1 s3 s4, others 1-2
+manager 3   rung 4 s6 7 6, rung 5 s12 x3; cuts no piece (cards only); 1-3 dry
+routeB 5    rung 4 s4 x5, rung 5 s8 x5    flat 5  4 4 5 5 4 / 9 8 9 9 8    unseen 5  5 4 5 4 4 / 9 8 9 8 9
+hard promises 0 broken on 38 runs; tick = jump 0 of every check; E19 0.38 (rung 3), 0.53 (rung 4); Yard sale + van 6.6 3.8 4.0 3.8 %
+```
+
+### The borrower's numbers (29.7; always-finance seeds 1 to 5, the returns of sittings 3 and 4)
+
+Each level the cards show: its calculated gain (§ an hour, share of rated income I, sold or not the limit at the 1 % bar); the
+same level measured as the price round measures a step (an hour played, one capped absence, with it and without it): money
+and TONNES an hour, the latter as a share of the yard's own; ratedCapacity's calculated tonnes beside. Sorted by tonnes.
+
+```text
+s1 sitting 3 (h 13.51, rung 3; I 83,305; the yard 57.55 t an hour; cash 290,935)
+   driver     L3  calc      0 ( 0.0 %) not the limit | measured    -155 ( -0.2 %) |  +4.44 t ( +7.7 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -3,383 ( -4.1 %) |  +2.18 t ( +3.8 %) | calc t +0.0
+   farm       L3  calc      0 ( 0.0 %) not the limit | measured  -2,756 ( -3.3 %) |  +0.60 t ( +1.0 %) | calc t +0.0
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured     -56 ( -0.1 %) |  +0.10 t ( +0.2 %) | calc t +0.0
+   hand.1     L5  calc      0 ( 0.0 %) not the limit | measured     -70 ( -0.1 %) |  +0.08 t ( +0.1 %) | calc t +4.1
+   hand.0     L6  calc      0 ( 0.0 %) not the limit | measured      55 ( +0.1 %) |  +0.08 t ( +0.1 %) | calc t +3.7
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured      20 ( +0.0 %) |  -0.01 t ( -0.0 %) | calc t +0.0
+   plumbing   L2  calc    825 ( 1.0 %) not the limit | measured   5,250 ( +6.3 %) |  -0.84 t ( -1.5 %) | calc t +0.0
+   garage     L2  calc      0 ( 0.0 %) not the limit | measured    -523 ( -0.6 %) |  -2.26 t ( -3.9 %) | calc t +0.0
+s1 sitting 4 (h 17.76, rung 3; I 83,305; the yard 56.98 t an hour; cash 651,187)
+   driver     L3  calc      0 ( 0.0 %) not the limit | measured      61 ( +0.1 %) |  +5.14 t ( +9.0 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -3,359 ( -4.0 %) |  +2.81 t ( +4.9 %) | calc t +0.0
+   farm       L3  calc      0 ( 0.0 %) not the limit | measured  -2,685 ( -3.2 %) |  +1.20 t ( +2.1 %) | calc t +0.0
+   hand.1     L5  calc      0 ( 0.0 %) not the limit | measured     441 ( +0.5 %) |  +0.55 t ( +1.0 %) | calc t +4.1
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured     395 ( +0.5 %) |  +0.53 t ( +0.9 %) | calc t +0.0
+   hand.0     L6  calc      0 ( 0.0 %) not the limit | measured     217 ( +0.3 %) |  +0.48 t ( +0.8 %) | calc t +3.7
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured     367 ( +0.4 %) |  +0.48 t ( +0.8 %) | calc t +0.0
+   plumbing   L2  calc    825 ( 1.0 %) not the limit | measured   5,249 ( +6.3 %) |  +0.38 t ( +0.7 %) | calc t +0.0
+   garage     L2  calc      0 ( 0.0 %) not the limit | measured    -455 ( -0.5 %) |  -1.30 t ( -2.3 %) | calc t +0.0
+s2 sitting 3 (h 13.5, rung 3; I 75,196; the yard 65.45 t an hour; cash 294,361)
+   driver     L6  calc    412 ( 0.5 %) not the limit | measured     711 ( +0.9 %) |  +0.65 t ( +1.0 %) | calc t +0.0
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured      -7 ( -0.0 %) |  +0.64 t ( +1.0 %) | calc t +0.0
+   farm       L2  calc    412 ( 0.5 %) not the limit | measured  -1,213 ( -1.6 %) |  +0.63 t ( +1.0 %) | calc t +18.3
+   hand.1     L5  calc    704 ( 0.9 %) not the limit | measured     650 ( +0.9 %) |  +0.53 t ( +0.8 %) | calc t +0.0
+   hand.0     L7  calc    450 ( 0.6 %) not the limit | measured     514 ( +0.7 %) |  +0.49 t ( +0.7 %) | calc t +0.0
+   garage     L2  calc  2,642 ( 3.5 %) sold          | measured   3,731 ( +5.0 %) |  +0.29 t ( +0.4 %) | calc t +5.8
+   plumbing   L1  calc  8,285 (11.0 %) sold          | measured  10,103 (+13.4 %) |  +0.05 t ( +0.1 %) | calc t +6.6
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -1,269 ( -1.7 %) |  -0.46 t ( -0.7 %) | calc t +18.3
+s2 sitting 4 (h 17.76, rung 4; I 113,323; the yard 65.85 t an hour; cash 448,489)
+   driver     L6  calc  1,718 ( 1.5 %) sold          | measured   1,793 ( +1.6 %) |  +3.20 t ( +4.9 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -6,010 ( -5.3 %) |  +3.03 t ( +4.6 %) | calc t +1.6
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -4,475 ( -3.9 %) |  +1.70 t ( +2.6 %) | calc t +1.6
+   hand.0     L8  calc  1,225 ( 1.1 %) sold          | measured     310 ( +0.3 %) |  +0.09 t ( +0.1 %) | calc t +0.0
+   hand.1     L8  calc  1,225 ( 1.1 %) sold          | measured     -27 ( -0.0 %) |  +0.05 t ( +0.1 %) | calc t +0.0
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured     -70 ( -0.1 %) |  +0.04 t ( +0.1 %) | calc t +0.0
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured      17 ( +0.0 %) |  -0.05 t ( -0.1 %) | calc t +0.0
+   plumbing   L4  calc  4,703 ( 4.2 %) sold          | measured   4,964 ( +4.4 %) |  -0.33 t ( -0.5 %) | calc t +1.6
+   garage     L4  calc      0 ( 0.0 %) not the limit | measured    -918 ( -0.8 %) |  -1.73 t ( -2.6 %) | calc t +1.6
+s3 sitting 3 (h 11.51, rung 3; I 69,320; the yard 59.99 t an hour; cash 274,810)
+   driver     L3  calc      0 ( 0.0 %) not the limit | measured  -1,469 ( -2.1 %) |  +4.35 t ( +7.2 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -3,043 ( -4.4 %) |  +0.96 t ( +1.6 %) | calc t +24.1
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -2,644 ( -3.8 %) |  +0.37 t ( +0.6 %) | calc t +24.1
+   hand.1     L5  calc  1,731 ( 2.5 %) sold          | measured   1,224 ( +1.8 %) |  +0.29 t ( +0.5 %) | calc t +0.0
+   cutter.0   L3  calc      0 ( 0.0 %) not the limit | measured     690 ( +1.0 %) |  +0.21 t ( +0.3 %) | calc t +0.0
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured   1,518 ( +2.2 %) |  +0.17 t ( +0.3 %) | calc t +0.0
+   hand.0     L7  calc  1,119 ( 1.6 %) sold          | measured     666 ( +1.0 %) |  +0.15 t ( +0.3 %) | calc t +0.0
+   plumbing   L1  calc  8,829 (12.7 %) sold          | measured   8,957 (+12.9 %) |  -1.00 t ( -1.7 %) | calc t +6.6
+   garage     L1  calc      0 ( 0.0 %) not the limit | measured   1,455 ( +2.1 %) |  -2.61 t ( -4.4 %) | calc t +5.8
+s3 sitting 4 (h 15.76, rung 3; I 106,289; the yard 63.5 t an hour; cash 386,787)
+   driver     L5  calc  6,779 ( 6.4 %) sold          | measured   5,990 ( +5.6 %) |  +4.50 t ( +7.1 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -2,519 ( -2.4 %) |  +4.00 t ( +6.3 %) | calc t +13.6
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -3,980 ( -3.7 %) |  +1.73 t ( +2.7 %) | calc t +13.6
+   cutter.0   L3  calc      0 ( 0.0 %) not the limit | measured     -71 ( -0.1 %) |  +0.10 t ( +0.2 %) | calc t +0.0
+   hand.0     L9  calc  1,067 ( 1.0 %) sold          | measured     230 ( +0.2 %) |  +0.08 t ( +0.1 %) | calc t +0.0
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured     -58 ( -0.1 %) |  +0.06 t ( +0.1 %) | calc t +0.0
+   hand.1     L9  calc  1,067 ( 1.0 %) sold          | measured      39 ( +0.0 %) |  +0.06 t ( +0.1 %) | calc t +0.0
+   plumbing   L4  calc  5,214 ( 4.9 %) sold          | measured   4,484 ( +4.2 %) |  -0.45 t ( -0.7 %) | calc t +6.6
+   garage     L3  calc    525 ( 0.5 %) not the limit | measured  -1,041 ( -1.0 %) |  -1.61 t ( -2.5 %) | calc t +5.8
+s4 sitting 3 (h 13.5, rung 3; I 78,669; the yard 53.4 t an hour; cash 299,716)
+   driver     L2  calc  6,414 ( 8.2 %) sold          | measured   6,584 ( +8.4 %) |  +5.56 t (+10.4 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -3,165 ( -4.0 %) |  +2.45 t ( +4.6 %) | calc t +21.6
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -3,906 ( -5.0 %) |  +0.25 t ( +0.5 %) | calc t +21.6
+   hand.1     L6  calc    714 ( 0.9 %) not the limit | measured      67 ( +0.1 %) |  +0.15 t ( +0.3 %) | calc t +0.0
+   hand.0     L7  calc    714 ( 0.9 %) not the limit | measured     109 ( +0.1 %) |  +0.12 t ( +0.2 %) | calc t +0.0
+   cutter.0   L3  calc      0 ( 0.0 %) not the limit | measured     137 ( +0.2 %) |  +0.11 t ( +0.2 %) | calc t +0.0
+   plumbing   L2  calc  5,942 ( 7.6 %) sold          | measured   5,792 ( +7.4 %) |  -0.58 t ( -1.1 %) | calc t +6.6
+   garage     L1  calc      0 ( 0.0 %) not the limit | measured    -277 ( -0.4 %) |  -2.01 t ( -3.8 %) | calc t +5.8
+s4 sitting 4 (h 17.75, rung 3; I 115,285; the yard 59.99 t an hour; cash 402,609)
+   driver     L4  calc  5,750 ( 5.0 %) sold          | measured   6,476 ( +5.6 %) |  +4.52 t ( +7.5 %) | calc t +0.0
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -4,054 ( -3.5 %) |  +2.74 t ( +4.6 %) | calc t +3.2
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -4,868 ( -4.2 %) |  +0.92 t ( +1.5 %) | calc t +3.2
+   hand.0     L9  calc     22 ( 0.0 %) not the limit | measured      64 ( +0.1 %) |  +0.10 t ( +0.2 %) | calc t +0.0
+   hand.1     L8  calc     22 ( 0.0 %) not the limit | measured     -75 ( -0.1 %) |  +0.04 t ( +0.1 %) | calc t +0.0
+   cutter.0   L3  calc      0 ( 0.0 %) not the limit | measured    -122 ( -0.1 %) |  -0.02 t ( -0.0 %) | calc t +0.0
+   plumbing   L6  calc  3,930 ( 3.4 %) sold          | measured   3,160 ( +2.7 %) |  -0.59 t ( -1.0 %) | calc t +3.2
+   garage     L2  calc      0 ( 0.0 %) not the limit | measured  -1,764 ( -1.5 %) |  -1.62 t ( -2.7 %) | calc t +3.2
+s5 sitting 3 (h 13.5, rung 3; I 75,165; the yard 64.45 t an hour; cash 285,871)
+   garage     L2  calc  1,564 ( 2.1 %) sold          | measured   4,164 ( +5.5 %) |  +1.11 t ( +1.7 %) | calc t +5.8
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured     215 ( +0.3 %) |  +1.09 t ( +1.7 %) | calc t +0.0
+   driver     L6  calc     68 ( 0.1 %) not the limit | measured     689 ( +0.9 %) |  +0.99 t ( +1.5 %) | calc t +0.0
+   hand.1     L4  calc    481 ( 0.6 %) not the limit | measured     661 ( +0.9 %) |  +0.92 t ( +1.4 %) | calc t +0.0
+   farm       L2  calc      0 ( 0.0 %) not the limit | measured  -1,465 ( -1.9 %) |  +0.84 t ( +1.3 %) | calc t +17.2
+   hand.0     L8  calc     31 ( 0.0 %) not the limit | measured     384 ( +0.5 %) |  +0.65 t ( +1.0 %) | calc t +0.0
+   plumbing   L1  calc  7,681 (10.2 %) sold          | measured  10,202 (+13.6 %) |  +0.32 t ( +0.5 %) | calc t +6.6
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured     -70 ( -0.1 %) |  -0.03 t ( -0.0 %) | calc t +17.2
+s5 sitting 4 (h 17.75, rung 4; I 114,240; the yard 69.63 t an hour; cash 411,650)
+   hand.1     L4  calc  2,883 ( 2.5 %) sold          | measured   2,102 ( +1.8 %) |  +2.24 t ( +3.2 %) | calc t +0.0
+   hand.0     L12 calc      0 ( 0.0 %) not the limit | measured     500 ( +0.4 %) |  +0.97 t ( +1.4 %) | calc t +0.0
+   farm       L2  calc    363 ( 0.3 %) not the limit | measured  -2,980 ( -2.6 %) |  +0.26 t ( +0.4 %) | calc t +2.9
+   demolition L1  calc      0 ( 0.0 %) not the limit | measured  -3,374 ( -3.0 %) |  +0.19 t ( +0.3 %) | calc t +2.9
+   garage     L3  calc  1,250 ( 1.1 %) sold          | measured      33 ( +0.0 %) |  +0.10 t ( +0.2 %) | calc t +2.9
+   cutter.1   L1  calc      0 ( 0.0 %) not the limit | measured     376 ( +0.3 %) |  -0.02 t ( -0.0 %) | calc t +0.0
+   driver     L9  calc    624 ( 0.5 %) not the limit | measured   3,236 ( +2.8 %) |  -0.05 t ( -0.1 %) | calc t +0.0
+   cutter.0   L2  calc      0 ( 0.0 %) not the limit | measured    -128 ( -0.1 %) |  -0.21 t ( -0.3 %) | calc t +0.0
+   plumbing   L4  calc  9,059 ( 7.9 %) sold          | measured   4,819 ( +4.2 %) |  -0.29 t ( -0.4 %) | calc t +2.9
+```
+
+```text
+                              rung 4 at sitting       rung 5 at sitting       lifetime at sitting 8 (M)          levels bought
+always, as built              5 4 5 5 4               10 9 9 9 9              10.07 15.55 14.47 13.84 15.63      20-33
+(c) always, bar 0.5 %         5 4 5 5 4               9 8 9 9 8               16.49 15.98 15.59 14.47 15.02      32-47
+    normal, as built          4 4 5 5 4               8 9 9 9 8               11.61 14.28 15.20 13.04 11.69      23-32
+    normal, bar 0.5 %         4 4 4 4 4               9 8 8 8 8               11.29 14.66 14.73 12.83 11.97      43-51
+(d) always, three tonnage     5 4 5 5 4               9 9 9 9 9               12.20 14.77 13.25 12.32 15.62      19-25
+    levels forced at s3       (seed 1-4: driver, demolition or cutter, farm; seed 5: garage, cutter, driver; floor prices but seed 4's driver 77,000)
+```
+
+What the numbers say: the levels that add tonnes are the driver's (+4.3 to +5.6 t an hour, 7 to 10 % of the yard's, on seeds 1,
+3 and 4) and the two small partners' (demolition +1 to +4 t, the farm +0.25 to +1.7 t), and the small partners' LOSE money
+(-1.2 to -6.0 % of I measured: the same breach of ruling 17 that rated income's engineer found on the farm); the bridge
+partners' levels add money (the plumber +4 to +13 %) and cost tonnes (-0.3 to -1.0 t; the garage -1.3 to -2.6 t).
+ratedCapacity does not follow the measured tonnes (the driver's level 0 calculated against +4 to +5.6 measured). The bored
+borrower of REPORT10 is now seed 1 alone (sittings 3 and 4; seeds 2 to 5 buy 8 to 14 levels at sitting 3), and it is a
+calculated gain under the bar: the plumber's level reads 825 an hour, 0.99 % of I, and MEASURES 5,250, 6.3 %.
+WHAT I WOULD RULE: no price by tonnes (forcing the tonnage levels brings rung 5 one sitting sooner on one seed of five and
+leaves the yard 5 to 11 % poorer by sitting 8 on three, because they are the money-losing small partners' levels); keep the
+bar at 1 % and make the partner levels' calculated gain read what they measure (rated income's term: on seed 1 the plumber's
+reads a sixth of it), and stop a level from being sold where it lowers what the yard keeps (the farm, the demolition). If the
+lead prefers a bar, 0.5 % helps the borrower (rung 5 a sitting sooner on 3 of 5, never later) and leaves the never-borrowing
+hand where it was (rung 5 sooner on 3, later on 1; lifetime within 3 %), at about twice the level presses per run.
+
+### The lead's pair of 21:15: the driver takes the richest load first (truck.pickFromRung 3)
+
+```text
+normal 5 (as built -> ranked)  lifetime s4 / s6 / s8 means 3.08M / 7.36M / 13.16M -> 3.18M / 7.98M / 14.52M (+3, +8, +10 %)
+                               kept an hour: r4 entry 116.8k -> 117.6k; day 3 136.6k -> 152.3k; r5 entry 180.0k -> 209.8k
+                               TONNES at sitting 7: 2,360 -> 2,088 (-11.5 %; seed 1 -26 %); rung 4 4 4 5 5 4 -> 5 4 5 5 4; rung 5 8 9 9 9 8 -> 10 9 9 10 9
+                               loads an hour away: farm 27-55 -> 15-21, plumbing 30-70 -> 59-85, garage 15-42 -> 19-47, demolition 8-14 -> 9-16
+                               every open partner served; materials 8 of 8 by sitting 4 on all; floor fill away at rung 4 0.55-0.72 -> 0.44-0.59;
+                               cutters idle away at rung 4 28-44 % -> 34-55 %, the driver and the hands as before; dry sittings 0-1 both; 0 promises broken
+always 3                       lifetime at s8 10.07 / 15.55 / 14.47 -> 14.11 / 16.82 / 13.60; tonnes at s7 2,156 -> 2,000 (-7 %); rung 5 10 9 9 -> 10 9 10
+```
+
+It pays in money (+10 % by sitting 8) and costs tonnes (-7 to -12 %) and two thirds of a sitting to rung 5 on the median. I
+would not switch it on as the answer to the farm's case: the stage's purpose is tonnes, and the fault is that the farm's levels
+are sold where they lower what the yard keeps (the borrower's table above shows the same on the demolition yard).
+
+### The gates G1 and G2 as they now stand
+
+| gate | REPORT10 | now | verdict |
+|---|---|---|---|
+| G1 entry | items 5 of 7 met (rotary 0.3 %, copper 1.6 % missed); walk 2 of 30 failing | the three halls met on 29.3's form (21.2 %, 2.33 %, 3.67 %; 6.9, 5.6, 6.1 s.e.); the plasma at 1.98 % (third moment; its price stands, 28.8 c is the lead's); the walk and the hidden best buys not run again | MISSED (the plasma), walk not re-measured |
+| G2 rated income | 1.00 1.00 0.99 1.22 1.27 1.09; kappa 1 | 1.00 1.00 1.00 1.07 1.10 1.15 (normal 15); every value within 0.8 to 1.25 but the medians from day 3 outside 0.95 to 1.05; kappa 1 (0.97 / 0.87 refused, above); ladders 0.87 to 1.29 but the garage 0.64 | MISSED |
+
+Gates at the end of this step: tsc clean; the salvage suite once, alone: 101 files, 1,159 tests passed, 4 todo; check:bundle
+clean; build-yard.py --check passes; check.ts --all 1,014 texts, 0 findings; validate scrap-yard exit 0 (release.stage 1, the
+shared product list empty); first-yard.sh after the price change PASS (30 cases, 295 ops, 0 differences).
+first-yard.sh --full at the end (alone): content PASS; engine 30 cases, 295 ops, 0 differences; same.ts 4 of 4; the 75-run comparison 75 of 75 identical below rung 3; FIRST YARD: PASS (G13 met).

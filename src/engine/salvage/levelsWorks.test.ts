@@ -6,11 +6,14 @@
  *
  * - below the works' opening every level costs the first yard's price (the shipped content at release.stage 1: the rule
  *   restated, and levelQuote is null there);
- * - from the works' opening: price = roundPrice(max(levels.floor x floorGrowth^(L-1), tau_r x levelGain)); sold only while
- *   levelGain >= levels.minShareI x I, else `notLimit` with no price and no Buy (never sold at the floor);
- * - shown equals applied: the card's price is the price charged, the card's gain is levelGain, which is the change in the
- *   replay's I the step applies (the book's ladder where it names it); no level lowers I; a tick equals a jump across a
- *   level bought;
+ * - from the works' opening (s2i-levels, RULING2.md 30.3): levelGain is THE BOOK's s1 x d^(L-1) x I for every ladder (a test
+ *   book: no tuned number of the shipped content); price = roundPrice(max(levels.floor x floorGrowth^(L-1), tau_r x
+ *   levelGain)); sold only while levelGain >= levels.minShareI x I and tau_r x levelGain is above the floor, else `notLimit`
+ *   with no price and no Buy (never sold at the floor); a ladder the book does not name is not sold; at `to`: top;
+ * - shown equals applied: the card's price is the price charged, the card's gain is the book's gain the price is made of; no
+ *   level lowers I; a tick equals a jump across a level bought;
+ * - NO JUMP: a level of ANOTHER ladder moves this ladder's quote by no more than I's own change (two stored yards of the
+ *   shipped content, its book and a test book);
  * - the headroom U from the works' opening: every step buyable now whose payback is within 1.5 tau_r, counted up each
  *   ladder while each step pays, a level not sold counting nothing, never a function of the cash.
  */
@@ -28,7 +31,7 @@ import { away, newBot, newSitting, playTo, playUntil, seededCfg, startGame } fro
 import { cardOf, levelWhyLines } from './cards';
 import { buyCheck, ceilingRefusal, firstYardLevelPrice, hireCheck, hiredState, levelAddsKgMin, levelCheck, levelled, levelPrice, levelQuote, levelTau, ratedGain, shopItems, worksTauH } from './ladder';
 import { contentAt, worksOpened } from './layer';
-import { levelGain, ratedIncome, replayIncome } from './rate';
+import { bookShare, levelGain, levelLadderOf, ratedIncome, type BookEntry } from './rate';
 import { headroomU, HEADROOM_TAU } from './shop';
 import type { CardRow, LevelTarget, SalvageConfig, SalvageGame } from './types';
 
@@ -40,6 +43,33 @@ const I = (cfg: SalvageConfig, g: SalvageGame) => ratedIncome(C(cfg, g), g.salva
 /** The config with levels.minShareI set (the frozen contents predate the key). */
 function withShare(cfg: SalvageConfig, share: number, over: Partial<SalvageConfig['salvage']> = {}): SalvageConfig {
   return { ...cfg, salvage: { ...cfg.salvage, ...over, levels: { ...cfg.salvage.levels, minShareI: share } } } as SalvageConfig;
+}
+
+/**
+ * A TEST BOOK for a state's ladders (s2i-levels; no number of the shipped content): the cutters sold by rung ([r3, r4, r5]),
+ * the driver sold, the yard hands under 1 % of I (sold only at minShareI 0), the first open partner floor-bound (never sold),
+ * the second s1 0 (not sold), the third sold, the rest absent (not sold); the stripper at its `to` (top), the crucible sold,
+ * the bench absent.
+ */
+function testBook(g: SalvageGame): Record<string, BookEntry> {
+  const s = g.salvage;
+  const book: Record<string, BookEntry> = {
+    cutter: { s1: [0.04, 0.03, null], d: 0.85, from: 1, to: 40 },
+    driver: { s1: 0.05, d: 0.9, from: 1, to: 40 },
+    hand: { s1: 0.004, d: 0.95, from: 1, to: 40 },
+    stripper: { s1: 0.02, d: 0.9, from: 1, to: Math.max(1, s.machines.stripper?.level ?? 1) },
+    crucible: { s1: 0.015, d: 0.9, from: 1, to: 40 },
+  };
+  const open = Object.entries(s.partners).filter(([, p]) => p.open).map(([id]) => id).sort();
+  if (open[0]) book[open[0]] = { s1: 1e-7, d: 1, from: 1, to: 40 };
+  if (open[1]) book[open[1]] = { s1: 0, d: 1, from: 1, to: 40 };
+  if (open[2]) book[open[2]] = { s1: 0.02, d: 0.88, from: 1, to: 40 };
+  return book;
+}
+
+/** The config with a book in levels (and minShareI). */
+function withBook(cfg: SalvageConfig, share: number, book: Record<string, BookEntry>, over: Partial<SalvageConfig['salvage']> = {}): SalvageConfig {
+  return { ...cfg, salvage: { ...cfg.salvage, ...over, levels: { ...cfg.salvage.levels, minShareI: share, book } } } as SalvageConfig;
 }
 
 /** Every level target of the state (crew, owned first-yard machines, open partners). */
@@ -54,15 +84,21 @@ function targets(g: SalvageGame): LevelTarget[] {
   ];
 }
 
-/** The rule restated (2.11): what levelQuote must say, from the content's own values. */
+const levelOfT = (g: SalvageGame, t: LevelTarget): number => (t.kind === 'crew' ? g.salvage.crew.find((m) => m.id === t.id)!.level : t.kind === 'machine' ? g.salvage.machines[t.machine].level : t.kind === 'partner' ? g.salvage.partners[t.partner].level : 1);
+
+/** The rule restated (RULING2.md 30.3, 27.2 c): what levelQuote must say, from the content's own values and its book. */
 function expected(cfg: SalvageConfig, g: SalvageGame, t: LevelTarget): { gain: number; price: number; sold: boolean } {
   const c = C(cfg, g);
-  const lv = c.levels as { floor?: number; floorGrowth?: number; minShareI?: number; tau: { cap: number } };
-  const L = t.kind === 'crew' ? g.salvage.crew.find((m) => m.id === t.id)!.level : t.kind === 'machine' ? g.salvage.machines[t.machine].level : t.kind === 'partner' ? g.salvage.partners[t.partner].level : 1;
-  const gain = levelGain(c, g.salvage, t);
+  const lv = c.levels as { floor?: number; floorGrowth?: number; minShareI?: number; tau: { cap: number }; book?: Record<string, BookEntry> };
+  const L = levelOfT(g, t);
+  const Inow = Math.max(0, I(cfg, g));
+  const e = lv.book?.[levelLadderOf(g.salvage, t)];
+  const s1 = e ? bookShare(e, g.salvage.ladder.rung).s1 : 0;
+  const gain = e && s1 > 0 && L < e.to ? s1 * e.d ** (Math.max(1, L) - 1) * Inow : 0;
   const tau = c.tau_h?.[g.salvage.ladder.rung - 1] ?? lv.tau.cap / 60;
-  const price = round(Math.max((lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (L - 1), tau * gain));
-  return { gain, price, sold: gain > 1e-6 && gain >= (lv.minShareI ?? 0) * Math.max(0, I(cfg, g)) - 1e-9 };
+  const floor = (lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (L - 1);
+  const price = round(Math.max(floor, tau * gain));
+  return { gain, price, sold: gain > 1e-6 && gain >= (lv.minShareI ?? 0) * Inow - 1e-9 && tau * gain > floor };
 }
 
 /** The row of a level on its card (the rota for crew, the partners' tab for a partner's skip). */
@@ -105,25 +141,48 @@ describe("below the works' opening every level costs the first yard's price (the
 
 // ============================================================================ the works' rule
 
-describe("from the works' opening: price = roundPrice(max(floor x growth^(L-1), tau_r x levelGain)), sold only while worth having", () => {
+describe("from the works' opening: the book's gain; price = roundPrice(max(floor x growth^(L-1), tau_r x gain)), sold only while worth having", () => {
   for (const [name, mk] of [['r4 (works content)', () => ({ cfg: worksCfg(), g: r4Game() })], ['r3open (money content)', () => ({ cfg: moneyCfg(), g: r3open() })]] as const) {
-    it(`${name}: every level's quote, check, price and card row (minShareI 0, 0.01 and 1)`, () => {
+    it(`${name}: every level's quote, check, price and card row (a test book; minShareI 0, 0.01 and 1)`, () => {
       const { cfg: cfg0, g } = mk();
       expect(worksOpened(g.salvage)).toBe(true);
+      const book = testBook(g);
       let sold = 0;
       let refused = 0;
+      let floorBound = 0;
+      let unnamed = 0;
+      let top = 0;
       for (const share of [0, 0.01, 1]) {
-        const cfg = withShare(cfg0, share);
+        const cfg = withBook(cfg0, share, book);
         for (const t of targets(g)) {
           const q = levelQuote(cfg, g, t);
-          if (!q) continue;
-          const e = expected(cfg, g, t);
-          expect({ t, gain: q.gain, price: q.price, sold: q.sold }).toEqual({ t, ...e });
-          expect(q.tauH).toBe(worksTauH(C(cfg, g), g.salvage.ladder.rung));
           const ch = levelCheck(cfg, { ...g, cash: 1e12 }, t);
+          const e = book[levelLadderOf(g.salvage, t)];
+          if (!q) {
+            // at the book's `to`: the top ("Top level"), no price, no Buy
+            if (e && levelOfT(g, t) >= e.to) {
+              top++;
+              expect({ t, state: ch.state, key: ch.refusal?.key, price: ch.price }).toEqual({ t, state: 'top', key: 'topLevel', price: null });
+              expect(levelPrice(cfg, g, t)).toBeNull();
+            }
+            continue;
+          }
+          const x = expected(cfg, g, t);
+          expect({ t, gain: q.gain, price: q.price, sold: q.sold }).toEqual({ t, ...x });
+          expect(q.tauH).toBe(worksTauH(C(cfg, g), g.salvage.ladder.rung));
+          if (!e) {
+            unnamed++;
+            expect(q.gain).toBe(0);
+            expect(q.sold).toBe(false);
+          }
+          if (q.floorBound) {
+            floorBound++;
+            expect(q.sold).toBe(false);
+          }
           const row = rowOf(cfg, { ...g, cash: 1e12 }, t);
           if (q.sold) {
             sold++;
+            expect(q.price).toBeGreaterThan(q.floor - 1e-9);
             expect(levelPrice(cfg, g, t)).toBe(q.price);
             if (ch.refusal?.key === 'ceiling') continue;
             expect({ t, state: ch.state, price: ch.price }).toEqual({ t, state: 'buy', price: q.price });
@@ -136,7 +195,7 @@ describe("from the works' opening: price = roundPrice(max(floor x growth^(L-1), 
             }
           } else {
             refused++;
-            // never sold at the floor: no price, no Buy, the gain printed with the refusal.
+            // never sold at the floor or under the bar, and nothing the book does not name: no price, no Buy, the gain printed with the refusal.
             expect({ t, state: ch.state, price: ch.price, key: ch.refusal?.key }).toEqual({ t, state: 'locked', price: null, key: 'notLimit' });
             expect(ch.refusal?.args).toEqual({ x: { money: q.gain } });
             expect(levelPrice(cfg, g, t)).toBeNull();
@@ -149,27 +208,55 @@ describe("from the works' opening: price = roundPrice(max(floor x growth^(L-1), 
       }
       expect(sold).toBeGreaterThan(0);
       expect(refused).toBeGreaterThan(0);
+      expect(floorBound).toBeGreaterThan(0);
+      expect(unnamed + refused).toBeGreaterThan(0);
+      void top;
     }, 120_000);
   }
 
-  it('the gain book: a ladder it names is priced at tau_r x g1 x d^(L-1), sold by the same 1 % test; the next step reads the next term', () => {
+  it('the book at several L: gain s1 x d^(L-1) x I, priced tau_r x gain; under the bar not sold; above it sold; the floor never; to: top', () => {
     const cfg0 = worksCfg();
     const g = r4Game();
     const driver = g.salvage.crew.find((m) => m.role === 'driver')!;
     const t: LevelTarget = { kind: 'crew', id: driver.id };
     const I0 = I(cfg0, g);
-    const book = { driver: { g1: 0.05 * I0, d: 0.9 } };
-    const cfg = withShare({ ...cfg0, salvage: { ...cfg0.salvage, levels: { ...cfg0.salvage.levels, book } } } as SalvageConfig, 0.01);
-    const q = levelQuote(cfg, g, t)!;
+    const L0 = driver.level;
+    const cfg = withBook(cfg0, 0.01, { driver: { s1: 0.05, d: 0.9, from: 1, to: L0 + 3 } });
     const tau = worksTauH(C(cfg, g), g.salvage.ladder.rung)!;
-    expect(q.gain).toBeCloseTo(0.05 * I0 * 0.9 ** (driver.level - 1), 6);
-    expect(q.sold).toBe(true);
-    expect(q.price).toBe(round(Math.max(q.floor, tau * q.gain)));
-    const up = levelled(g, t);
-    expect(levelQuote(cfg, up, t)!.gain).toBeCloseTo(q.gain * 0.9, 6);
-    // a book entry under 1 % of I: not sold
-    const low = withShare({ ...cfg0, salvage: { ...cfg0.salvage, levels: { ...cfg0.salvage.levels, book: { driver: { g1: 0.001 * I0, d: 1 } } } } } as SalvageConfig, 0.01);
-    expect(levelCheck(low, g, t).refusal?.key).toBe('notLimit');
+    let h = g;
+    for (let k = 0; k < 3; k++) {
+      const Ih = I(cfg, h);
+      const q = levelQuote(cfg, h, t)!;
+      expect(q.L).toBe(L0 + k);
+      expect(q.I).toBe(Math.max(0, Ih));
+      expect(q.gain).toBeCloseTo(0.05 * 0.9 ** (L0 + k - 1) * Ih, 6);
+      expect(q.sold).toBe(true);
+      expect(q.price).toBe(round(tau * q.gain));
+      // the walk's I (given): the same I for every step
+      expect(levelQuote(cfg, h, t, I0)!.gain).toBeCloseTo(0.05 * 0.9 ** (L0 + k - 1) * I0, 6);
+      h = levelled(h, t);
+    }
+    // at `to`: top
+    expect(levelQuote(cfg, h, t)).toBeNull();
+    expect(levelCheck(cfg, h, t)).toMatchObject({ state: 'top', price: null, refusal: { key: 'topLevel' } });
+    // under the bar (0.9 % of I at minShareI 1 %): not sold; just above it: sold
+    const under = withBook(cfg0, 0.01, { driver: { s1: 0.009 / 0.9 ** (L0 - 1), d: 0.9, from: 1, to: 40 } });
+    expect(levelCheck(under, g, t).refusal?.key).toBe('notLimit');
+    const over = withBook(cfg0, 0.01, { driver: { s1: 0.0101 / 0.9 ** (L0 - 1), d: 0.9, from: 1, to: 40 } });
+    expect(levelQuote(over, g, t)!.sold).toBe(true);
+    // the floor: a gain whose tau_r x gain is at or under the floor's price is never sold, whatever the bar
+    const lv = C(cfg0, g).levels as { floor?: number; floorGrowth?: number };
+    const floor = (lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (L0 - 1);
+    expect(floor).toBeGreaterThan(0);
+    const atFloor = withBook(cfg0, 0, { driver: { s1: (0.999 * floor) / tau / I0 / 0.9 ** (L0 - 1), d: 0.9, from: 1, to: 40 } });
+    const qf = levelQuote(atFloor, g, t)!;
+    expect(qf.floorBound).toBe(true);
+    expect(qf.sold).toBe(false);
+    expect(levelCheck(atFloor, g, t).refusal?.key).toBe('notLimit');
+    // no entry: not sold, its refusal (notLimit with a gain of 0)
+    const noEntry = withBook(cfg0, 0, {});
+    expect(levelQuote(noEntry, g, t)).toMatchObject({ gain: 0, sold: false });
+    expect(levelCheck(noEntry, g, t)).toEqual({ price: null, refusal: { key: 'notLimit', args: { x: { money: 0 } } }, state: 'locked' });
   });
 });
 
@@ -178,8 +265,8 @@ describe("from the works' opening: price = roundPrice(max(floor x growth^(L-1), 
 /** The stale boss (tickjump.test.ts): his last sample 100 s old and his act ended. */
 const stale = (g: SalvageGame): SalvageGame => ({ ...g, salvage: { ...g.salvage, presenceAt: g.salvage.t - 100, act: { kind: 'none', target: null, since: g.salvage.t, endsAt: null } } }) as SalvageGame;
 
-describe('a level bought: the price charged is the card\'s, the gain is the change in I, no level lowers I, a tick equals a jump', () => {
-  for (const [name, mk] of [['r4 (works content)', () => ({ cfg: withShare(worksCfg(), 0), g: r4Game() })], ['r3open (money content)', () => ({ cfg: withShare(moneyCfg(), 0), g: r3open() })]] as const) {
+describe('a level bought: the price charged is the card\'s, the gain the book\'s, no level lowers I, a tick equals a jump', () => {
+  for (const [name, mk] of [['r4 (works content)', () => ({ cfg: withBook(worksCfg(), 0, testBook(r4Game())), g: r4Game() })], ['r3open (money content)', () => ({ cfg: withBook(moneyCfg(), 0, testBook(r3open())), g: r3open() })]] as const) {
     it(name, () => {
       const { cfg, g: g0 } = mk();
       const g = { ...g0, cash: 1e9 };
@@ -190,11 +277,13 @@ describe('a level bought: the price charged is the card\'s, the gain is the chan
         const q = levelQuote(cfg, g, t)!;
         const after = level(cfg, g, t, ch.price!, g.salvage.t);
         expect(g.cash - after.cash).toBeCloseTo(q.price, 6);
-        const c = C(cfg, g);
-        // the card's gain is the change in the replay's I (levelGain's measure where no book names the ladder)
-        expect(replayIncome(c, after.salvage) - replayIncome(c, g.salvage)).toBeCloseTo(q.gain, 6);
+        // the card's gain is the book's on the state it was shown on (s1 x d^(L-1) x I)
+        expect(q.gain).toBeCloseTo(expected(cfg, g, t).gain, 9);
         // no level lowers I (ruling 17)
         expect(I(cfg, after)).toBeGreaterThanOrEqual(I(cfg, g) - 0.005);
+        // after the purchase the card shows the next step at the book's next term on the new state's I
+        const q2 = levelQuote(cfg, after, t);
+        if (q2) expect(q2.gain).toBeCloseTo(expected(cfg, after, t).gain, 9);
         n++;
       }
       expect(n).toBeGreaterThan(0);
@@ -202,7 +291,7 @@ describe('a level bought: the price charged is the card\'s, the gain is the chan
   }
 
   it('r4: 20 s of 0.1 s ticks after a level bought equal one jump', () => {
-    const cfg = withShare(worksCfg(), 0);
+    const cfg = withBook(worksCfg(), 0, testBook(r4Game()));
     const g0 = { ...r4Game(), cash: 1e9 };
     const t = targets(g0).find((x) => levelCheck(cfg, g0, x).state === 'buy')!;
     expect(t).toBeDefined();
@@ -264,9 +353,11 @@ function handU(cfg: SalvageConfig, g: SalvageGame): number {
     for (;;) {
       const q = levelQuote(cfg, h, t, Inow);
       if (!q) break;
-      const gain = levelGain(C(cfg, h), h.salvage, t);
-      if (!(gain > 1e-6 && gain >= share * Inow - 1e-9)) break;
-      const price = round(Math.max((lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (q.L - 1), q.tauH * gain));
+      // the book's gain with the walk's one I (s2i-levels)
+      const gain = levelGain(C(cfg, h), h.salvage, t, Inow);
+      const floor = (lv.floor ?? 0) * (lv.floorGrowth ?? 1) ** (q.L - 1);
+      if (!(gain > 1e-6 && gain >= share * Inow - 1e-9 && q.tauH * gain > floor)) break;
+      const price = round(Math.max(floor, q.tauH * gain));
       if (ceilingRefusal(cfg, h, levelled(h, t))) break;
       if (!(price <= win * gain + 1e-9)) break;
       u += price;
@@ -278,7 +369,8 @@ function handU(cfg: SalvageConfig, g: SalvageGame): number {
 
 describe("the headroom U from the works' opening (2.15; D11: what pays back within 1.5 tau_r, up each ladder)", () => {
   it('r4 and r3open: U is the rule restated by hand; never a function of the cash; a level not sold counts nothing; the ladders are counted up', () => {
-    for (const { cfg: cfg0, g } of [{ cfg: worksCfg(), g: r4Game() }, { cfg: moneyCfg(), g: r3open() }]) {
+    for (const { cfg: cfgB, g } of [{ cfg: worksCfg(), g: r4Game() }, { cfg: moneyCfg(), g: r3open() }]) {
+      const cfg0 = withBook(cfgB, 0, testBook(g));
       for (const share of [0, 0.01]) {
         const cfg = withShare(cfg0, share);
         const u = headroomU(cfg, g);
