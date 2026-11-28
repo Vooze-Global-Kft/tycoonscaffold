@@ -306,9 +306,9 @@ export function frameOf(c: SalvageContent, g: SalvageGame): FrameTable {
     const why = idleWhyOf(c, s, m);
     const idleText = why ? ({ key: (why.why === 'tool' ? ((why.tier ?? 2) >= 3 ? 'card.crewWhy.tool3' : 'card.crewWhy.tool2') : `card.crewWhy.${why.why}`) as TextKey }) : null;
     // C-FRAME (PLAN2 2.2, s2c-plan-world 2.4): the hired driver waiting while the bridge partners' skips fill says so
-    // (stand-in idleWhy 'nothing' until types.ts FrameCrew.idleWhy gains its own value: requests.md [seam] 28 Nov, C-FRAME).
+    // (idleWhy 'bridge': C-WORLD-2 widened FrameCrew.idleWhy; it was the stand-in 'nothing' until then, C-FRAME's [seam]).
     const bridge = !why && m.role === 'driver' ? driverBridgeWhy(c, s, m) : null;
-    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut, ...(why && idleText ? { idleWhy: why.why, idleText } : bridge ? { idleWhy: 'nothing' as const, idleText: bridge } : {}) };
+    return { id: m.id, role: m.role, pose, tool, sprite: `person.${m.role}`, job: m.job, phase: m.phase, from, to, t0: m.t0, t1: m.t1, carries: m.carries ? (c.grades[m.carries]?.sprite ?? null) : null, load: loadOut, ...(why && idleText ? { idleWhy: why.why, idleText } : bridge ? { idleWhy: 'bridge' as const, idleText: bridge } : {}) };
   });
 
   const tk = s.truck;

@@ -1774,7 +1774,7 @@ export interface FrameCrew {
    * boss's feet or is left for him), 'tool' (a cutter: the next thing needs a tool the yard has not). `idleText` is
    * its line (card.crewWhy.*), drawn as a small bubble over him. Absent: not idle (or a content without the review's rules).
    */
-  idleWhy?: 'nothing' | 'uncut' | 'yours' | 'tool';
+  idleWhy?: 'nothing' | 'uncut' | 'yours' | 'tool' | 'bridge';
   idleText?: Txt;
 }
 

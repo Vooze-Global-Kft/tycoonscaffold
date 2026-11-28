@@ -21,6 +21,7 @@ import type { SalvageContent } from '../../../config/schema.salvage';
 import * as R from '../../../engine/salvage';
 import { say as sayStrict } from '../strings';
 import { laneGeo, laneSigns } from './lane';
+import { worksLabels } from './worksLabels';
 
 /** say(), but a key the words file does not have yet (the contract and the words move apart for a while) gives '' and the plate is left out. */
 function say(t: R.Txt, c: SalvageContent): string {
@@ -220,6 +221,9 @@ export function labelItems(cfg: R.SalvageConfig, g: R.SalvageGame, f: R.FrameTab
     if (!g.salvage.partners[sg.id]) continue;
     out.push({ id: `sign.${sg.id}`, kind: 'sign', x: sg.x, y: sg.y, z: SIGN_Z, lines: [line(say({ key: 'title.place', args: { place: { name: sg.id } } }, c), LIMITS.sign, 'strong')], padlock: false, near: false, place: null });
   }
+  // C-WORLD-2 (PLAN2 2.8): the works' plates and chips (./worksLabels.ts, WLD-LABELS): nothing below the works' opening
+  // (the frame carries no `works` there), so a first-yard list is today's, plate for plate.
+  for (const it of worksLabels(cfg, g, f)) out.push(it);
   // A line whose key has no words yet is dropped; a plate with no line is left out.
   const kept = out.map((it) => ({ ...it, lines: it.lines.filter((l) => l.text !== '') })).filter((it) => it.lines.length > 0);
   return mergePlates(kept, c, lockedZones);

@@ -20,8 +20,9 @@ import { makeMutable, useSharedValue, type SharedValue } from 'react-native-rean
 import * as R from '../../../engine/salvage';
 import { useGame } from '../../../state/store';
 import { ACT_WRECK, type YardLayout } from './yard';
-import { NO_SCENE, makeResolver, rulesScene, type Resolver, type RulesScene } from './actors';
+import { ARRIVAL_PHASE, NO_SCENE, makeResolver, rulesScene, type Resolver, type RulesScene } from './actors';
 import { onYardArt, yardArtNow } from './useYard';
+import { packVisitors } from './worksPeopleMotion';
 
 /** The ground work's name for the scene (the shell imports it as the type of `rules`). */
 export type RulesTable = RulesScene;
@@ -52,8 +53,66 @@ export { currentResolver };
 /** The scene's atlas items (RulesScene.items), on the UI thread; replaced only when the list changed. */
 export const rulesItems = makeMutable<number[]>([]);
 /** Scenes and item lists pushed to the UI thread so far (owner1 phone 3: the development panel's 'push' rates). */
-export const pushCounts = { scenes: 0, items: 0 };
+export const pushCounts = { scenes: 0, items: 0, works: 0 };
 const NO_ITEMS: number[] = [];
+
+// -----------------------------------------------------------------------------------------------------------------------
+// C-WORLD-2 (PLAN2 2.8): THE WORKS' MOVING THINGS FOR THE UI THREAD, in their own shared value (`rulesWorks`), pushed
+// only when their numbers changed, and never below the works' opening (the frame carries no `works` there: the value stays
+// NO_WORKS, the first yard pushes nothing more than today).
+// - `vehicles`: the works' own vehicles that are not the rules' arrivals, ARRIVAL numbers each in the arrivals' layout
+//   (actors.ts RulesScene.arrivals: kind code, phase code, from x, y, to x, y, t0, t1, path points, first point), so
+//   ./worksVehicleMotion.ts draws them with the same worklet as the arrivals the frame loop hands it. Today: the
+//   reclamation dealer's van at the Yard sale (FrameTable.van: its phase and span; it stands at `stop`, from = to).
+// - `visitors`: the Yard sale's public, packed by ./worksPeopleMotion.ts packVisitors (its layout, VISITOR numbers each).
+// The frame loop calls the works' worklets only while one of the two lists holds something (frameLoop.ts).
+// -----------------------------------------------------------------------------------------------------------------------
+
+/** The works' moving things as numbers (see above). `n` counts the pushes (a new object each). */
+export interface WorksPack {
+  n: number;
+  vehicles: number[];
+  visitors: number[];
+}
+export const NO_WORKS: WorksPack = { n: 0, vehicles: [], visitors: [] };
+/**
+ * Kind codes of the works' own vehicles in `vehicles`, after actors.ts ARRIVAL_CODE's (recovery 5, lowLoader 6): the
+ * dealer's van 7. A STAND-IN of C-WORLD-2 until actors.ts ARRIVAL_CODE carries it ([seam] 28 Nov, C-WORLD-2).
+ */
+export const WORKS_VEHICLE_CODE: Readonly<Record<string, number>> = { dealerVan: 7 };
+/** The dealer's van's phases as the arrivals' phase codes (in 0, loading at its stop as a set-down 1, out 2). */
+const VAN_PHASE: Readonly<Record<string, number>> = { in: ARRIVAL_PHASE.in, load: ARRIVAL_PHASE.setDown, out: ARRIVAL_PHASE.out };
+
+/** The works' vehicles of a frame in the arrivals' layout (none below the opening). Pure. */
+export function packWorksVehicles(f: R.FrameTable): number[] {
+  if (f.works === undefined) return NO_ITEMS;
+  const out: number[] = [];
+  const v = f.van;
+  if (v && v.stop) out.push(WORKS_VEHICLE_CODE.dealerVan, VAN_PHASE[v.phase] ?? ARRIVAL_PHASE.in, v.stop.x, v.stop.y, v.stop.x, v.stop.y, v.span.t0, v.span.t1, 0, 0);
+  return out.length === 0 ? NO_ITEMS : out;
+}
+
+const sameNums = (a: readonly number[], b: readonly number[]): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (!(a[i] === b[i] || (a[i] !== a[i] && b[i] !== b[i]))) return false;
+  return true;
+};
+
+/**
+ * The works' pack of a frame: NO_WORKS below the opening and while both lists are empty; `prev` itself while its numbers
+ * are the same (nothing to push); else a new pack numbered prev.n + 1. Pure.
+ */
+export function worksPack(f: R.FrameTable, prev: WorksPack = NO_WORKS): WorksPack {
+  if (f.works === undefined) return NO_WORKS;
+  const vehicles = packWorksVehicles(f);
+  const visitors = packVisitors(f.visitors);
+  if (vehicles.length === 0 && visitors.length === 0) return prev.vehicles.length === 0 && prev.visitors.length === 0 ? prev : NO_WORKS;
+  if (sameNums(vehicles, prev.vehicles) && sameNums(visitors, prev.visitors)) return prev;
+  return { n: prev.n + 1, vehicles, visitors };
+}
+
+/** The works' moving things on the UI thread (C-WORLD-2); NO_WORKS below the works' opening. */
+export const rulesWorks = makeMutable<WorksPack>(NO_WORKS);
 
 /**
  * The pusher behind useRulesTable, testable without React: `read()` is called at each store change and pushes
@@ -62,15 +121,16 @@ const NO_ITEMS: number[] = [];
 export function makeRulesPusher(
   yard: YardLayout,
   get: () => { cfg: unknown; game: unknown },
-  out: { scene: (s: RulesScene) => void; items: (a: number[]) => void },
+  out: { scene: (s: RulesScene) => void; items: (a: number[]) => void; works?: (w: WorksPack) => void },
   resolver: () => Resolver = currentResolver,
-): { read: (force?: boolean) => void; stats: { reads: number; frames: number; scenes: number; items: number } } {
+): { read: (force?: boolean) => void; stats: { reads: number; frames: number; scenes: number; items: number; works: number } } {
   let last: R.SalvageState | null = null;
   let lastFrame: R.FrameTable | null = null;
   let lastStamp: number | undefined;
   let lastItems: number[] | null = null;
+  let lastWorks: WorksPack = NO_WORKS;
   let n = 0;
-  const stats = { reads: 0, frames: 0, scenes: 0, items: 0 };
+  const stats = { reads: 0, frames: 0, scenes: 0, items: 0, works: 0 };
   const read = (force = false) => {
     const { cfg, game } = get();
     const g = game as R.SalvageGame;
@@ -92,6 +152,13 @@ export function makeRulesPusher(
       }
       out.scene({ ...sc, items: NO_ITEMS });
       stats.scenes++;
+      // C-WORLD-2: the works' vehicles and visitors, only when their numbers changed (never below the opening).
+      const wp = worksPack(f, lastWorks);
+      if (wp !== lastWorks) {
+        lastWorks = wp;
+        out.works?.(wp);
+        stats.works++;
+      }
     } catch (e) {
       console.warn('salvage: the rules frame could not be read', e);
     }
@@ -110,6 +177,10 @@ export function useRulesTable(yard: YardLayout): SharedValue<RulesScene> {
         items: (a) => {
           pushCounts.items++;
           rulesItems.value = a;
+        },
+        works: (w) => {
+          pushCounts.works++;
+          rulesWorks.value = w;
         },
       });
     push();

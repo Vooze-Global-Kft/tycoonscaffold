@@ -375,7 +375,7 @@ describe("C-FRAME: the driver's standing reason while the bridge partners' skips
     expect(g0.salvage.crew.some((m) => m.role === 'driver')).toBe(true);
     const d = state(30, 500);
     expect(d.idleText).toEqual({ key: 'tag.driver.bridge', args: { t: { secs: 30 } } });
-    expect(d.idleWhy).toBe('nothing');
+    expect(d.idleWhy).toBe('bridge');
     expect(state(600, 500).idleText).toBeUndefined();
     expect(state(30, -1, 'full').idleText).toBeUndefined();
   });

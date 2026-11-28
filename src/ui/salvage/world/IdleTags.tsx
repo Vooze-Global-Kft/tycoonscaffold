@@ -32,7 +32,7 @@ interface Shown {
 
 /** The preview's `idleDemo=1`: every yard hand and cutter of the frame marked, the four reasons in turn (a picture only). */
 const DEMO: IdleWhy[] = ['nothing', 'uncut', 'yours', 'tool'];
-const DEMO_KEY: Record<IdleWhy, string> = { nothing: 'card.crewWhy.nothing', uncut: 'card.crewWhy.uncut', yours: 'card.crewWhy.yours', tool: 'card.crewWhy.tool3' };
+const DEMO_KEY: Record<IdleWhy, string> = { nothing: 'card.crewWhy.nothing', uncut: 'card.crewWhy.uncut', yours: 'card.crewWhy.yours', tool: 'card.crewWhy.tool3', bridge: 'tag.driver.bridge' };
 function demoCrew(crew: readonly R.FrameCrew[]): R.FrameCrew[] {
   let k = 0;
   return crew.map((m) => (m.role === 'hand' || m.role === 'cutter' ? { ...m, idleWhy: DEMO[k % 4], idleText: { key: DEMO_KEY[DEMO[k++ % 4]] } as R.Txt } : m));
