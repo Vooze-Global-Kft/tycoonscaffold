@@ -33,6 +33,8 @@ import { buy, createSalvage, shopPrice } from '../salvage';
 import { playStates, type Played } from '../salvage/director';
 import { away as botAway, newBot, playTo, seededCfg, startGame, type Bot } from '../salvage/bot';
 import stage2Json from './salvage-stage2.json';
+import worksJson from './salvage-works.json';
+import { shipped2Raw } from './shipped2';
 import type { SalvageConfig, SalvageEvent, SalvageGame, SalvageState } from '../salvage/types';
 import type { GameState } from '../types';
 
@@ -545,4 +547,125 @@ export function stage2Game(n: Stage2Name, base?: GameState, now?: number): Salva
   const f = STAGE2_STATES[n];
   const b = (base ?? ({ cash: 0, lifetimeEarnings: 0, runEarnings: 0, lastSavedAt: f.salvage.clock.highMs, stats: { playSeconds: 0, clockHigh: f.salvage.clock.highMs } } as unknown as GameState)) as GameState;
   return { ...gameOf(f, b, now), lastSavedAt: f.salvage.clock.highMs };
+}
+
+// ================================================================================================ the works' recorded states (C-FIXTURE)
+//
+// PLAN2 2.6 and s2c-plan-wiring a.6: the twenty moments of the works, PLAYED by the normal hand (bot.ts) on the SHIPPED
+// content at stage 2 (shipped2.ts: game.json with release.stage 2) and recorded by scripts/content/yard/record-works.ts
+// into salvage-works.json (DEVELOPMENT ONLY: scripts/lib/modes.js DEV_ONLY; the file carries the marker). Unlike r3,
+// r3plain and held14 (the rules' tests', frozen WITH their content), these are played on the game's own content of the
+// day and name its hash: when the content moves and the file does not, a state is STALE (the preview warns loudly, the
+// presets' test skips naming why) until C-FIXTURE-2 records again. The preview loads them through `worksPresetState`.
+
+/** The works' moments by name (PLAN2 2.6; src/modes/salvage/presets.web.ts WORKS_PRESETS is the same list, tested). */
+export const WORKS_NAMES = ['w3open', 'w3', 'w3save', 'w3letter', 'w3sale', 'w3van', 'w3lot', 'w4entry', 'w4arrive', 'w4pour', 'w4hall', 'w4line', 'w4loan', 'w4packs', 'w4all', 'w4back', 'w5', 'w5wait', 'w3plain', 'w4plain'] as const;
+export type WorksName = (typeof WORKS_NAMES)[number];
+
+/** The marker every DEV_ONLY file carries (scripts/lib/modes.js DEV_ONLY_MARKER): the recording's top-level `marker`. */
+export const WORKS_FILE_MARKER = 'yard-dev-only:works';
+
+/** One recorded moment: what it holds in words, the hand that played it, its device time and yard second, the events it re-emits once, the game. */
+export interface WorksRecord {
+  what: string;
+  bot: string;
+  seed: number;
+  /** Device epoch ms at the state (the market clock). */
+  now: number;
+  /** Yard second and rung at the state (information; the game holds them). */
+  t: number;
+  rung: number;
+  /** null when the moment was met as PLAN2 2.6 names it; else what the nearest state recorded lacks. */
+  missed: string | null;
+  events: SalvageEvent[];
+  g: SalvageGame;
+}
+
+export interface WorksRecording {
+  marker: string;
+  note: string;
+  /** worksContentHash() of the content the states were played on. */
+  contentHash: string;
+  recordedNow: number;
+  states: Partial<Record<WorksName, WorksRecord>>;
+}
+
+const WORKS_FILE = worksJson as unknown as WorksRecording;
+
+/** The recording as it is on disk (read only). */
+export function worksRecording(): WorksRecording {
+  return WORKS_FILE;
+}
+
+/** FNV-1a over a string in two 32-bit lanes (pure JavaScript: the preview and node give the same 16 hex digits). */
+function fnv2(text: string): string {
+  let a = 0x811c9dc5;
+  let b = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    a = Math.imul(a ^ ch, 0x01000193) >>> 0;
+    b = Math.imul(b ^ ch, 0x5bd1e995) >>> 0;
+    b = (b ^ (b >>> 15)) >>> 0;
+  }
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
+}
+
+let WORKS_HASH: { raw: unknown; hash: string } | null = null;
+/**
+ * The content fingerprint of a.6: a hash of the PARSED stage-2 salvage block of the game (`raw`, default game.json, read
+ * as a stage-2 build writes it: shipped2Raw). Memoised for the default.
+ */
+export function worksContentHash(raw?: unknown): string {
+  if (raw === undefined && WORKS_HASH) return WORKS_HASH.hash;
+  const r = shipped2Raw<{ salvage: unknown }>(raw ?? undefined);
+  const hash = fnv2(JSON.stringify(SalvageSchema.parse(r.salvage)));
+  if (raw === undefined) WORKS_HASH = { raw: null, hash };
+  return hash;
+}
+
+/** Why the recording no longer matches the game's content (or is not recorded), else null. */
+export function worksStale(): string | null {
+  if (!WORKS_FILE.contentHash) return 'the works\' states are not recorded yet (scripts/content/yard/record-works.ts)';
+  const now = worksContentHash();
+  return now === WORKS_FILE.contentHash ? null : `recorded on content ${WORKS_FILE.contentHash}, the game's content is now ${now} (C-FIXTURE-2 records again)`;
+}
+
+/**
+ * A recorded state moved to device time `now` (when later than the recording's): every DEVICE date in it moves by the same
+ * amount (the market clock's high mark, the iap's creation, its quotes' and ledger's dates, the open agreement's
+ * signature), so what the moment holds between device dates (a quote waiting under its 24 h, not yet 72 h old) holds in a
+ * preview opened later. Yard seconds (every rule's dates) are untouched. The epoch is bumped (the world snaps).
+ */
+function movedTo(f: WorksRecord, base: GameState, now: number): SalvageGame {
+  const g = structuredClone(f.g) as SalvageGame;
+  const s = g.salvage;
+  const d = Math.max(0, now - s.clock.highMs);
+  if (d > 0) {
+    s.clock = { ...s.clock, highMs: s.clock.highMs + d };
+    const iap = s.iap;
+    if (iap) {
+      iap.createdMs += d;
+      for (const q of iap.pending) {
+        q.atMs += d;
+        if (q.askedMs !== null) q.askedMs += d;
+      }
+      for (const l of iap.ledger) l.atMs += d;
+      for (const x of iap.expired ?? []) x.atMs += d;
+    }
+    if (s.bank?.agreement) s.bank.agreement.signedAt += d;
+  }
+  s.epoch += 1;
+  return { ...base, cash: g.cash, lifetimeEarnings: g.lifetimeEarnings ?? 0, runEarnings: g.lifetimeEarnings ?? 0, stats: { ...base.stats, playSeconds: g.stats.playSeconds }, salvage: s, lastSavedAt: s.clock.highMs } as SalvageGame;
+}
+
+/**
+ * THE SEAM of C-MODE (src/modes/salvage/presets.web.ts worksPresetOf): the recorded moment `name` laid over the shared state
+ * `base` at device time `now` (see movedTo), the events to emit once after the curtain, and `stale` (null, or why the
+ * recording's content hash no longer matches the game's content: the preview warns loudly and still shows it). null for a
+ * name not recorded. Run it on the game's own config at stage 2 (the preview's `&stage=2`).
+ */
+export function worksPresetState(name: WorksName, base: GameState, now: number): { game: SalvageGame; events: readonly SalvageEvent[]; stale: string | null } | null {
+  const f = WORKS_FILE.states[name];
+  if (!f) return null;
+  return { game: movedTo(f, base, now), events: structuredClone(f.events), stale: worksStale() };
 }

@@ -530,3 +530,210 @@ describe('C-CARDS-a: an oversize piece\'s tier and the pad\'s card (cards contra
     expect(frameCfg(W, g).pad!.why?.key === 'plate.pad.noKind').toBe(pad.waitsForTier !== null);
   });
 });
+
+// ============================================================================ C-CARDS-b: the works' goal steps (C7), their completing events (W8), the levels' notice (C8)
+
+import { goalDoneBy, goalOf as goalOfRules, goalSpecs, isGoalDoneEvent, lineStep, worksGoalStep } from './goals';
+import { LEVELS_NOTICE_MARK, levelsNoticeDue } from './cards';
+import { noteSeen } from './actions';
+import { worksCardOf } from './cardsWorks';
+import { lots4 as lots4b } from '../fixtures/salvage2works';
+import { reconcileSalvage } from './save';
+import type { CardKind, SalvageEvent, Txt } from './types';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const keyIn = (t: Txt | null | undefined) => !t || KEYS.has(t.key);
+const stepOf = (g: SalvageGame, done: string, k: SalvageConfig = W) => worksGoalStep(k, g, { done });
+/** A key C-CARDS-b asks of the words ([seam]): the step uses it once the words hold it, else its stand-in. */
+const want = (proposed: string, standIn: string | null) => (KEYS.has(proposed) ? proposed : standIn);
+
+describe('C-CARDS-b: below the works\' opening no goal has a works step and no card a notice (r3, held14, the first yard)', () => {
+  const states: [string, SalvageConfig, SalvageGame][] = [
+    ['r3', stage2Cfg('r3'), stage2Game('r3')],
+    ['held14', stage2Cfg('held14'), stage2Game('held14')],
+    ...FIXTURE_NAMES.map((n) => [n, cfg, fixtureGame(n, base(), FIXTURE_NOW) as SalvageGame] as [string, SalvageConfig, SalvageGame]),
+  ];
+  for (const [name, k, g] of states)
+    it(`${name}: worksGoalStep null for every goal of every list; no 'notice' on any card; the notice not due`, () => {
+      expect(worksOpened(g.salvage)).toBe(false);
+      const sp = goalSpecs(k.salvage);
+      for (const d of [...sp.goals, ...sp.dayOne, ...sp.stage2]) expect(worksGoalStep(k, g, d), `${name} ${d.id}`).toBeNull();
+      expect(levelsNoticeDue(g)).toBe(false);
+      for (const ref of [...REFS, { kind: 'place', place: 'park' } as CardRef]) expect('notice' in cardOfCfg(k, g, ref, NOW2), `${name} ${JSON.stringify(ref)}`).toBe(false);
+    });
+});
+
+describe('C-CARDS-b: a stage-2 goal\'s step (cards contract C7) from the rules\' own state', () => {
+  const t0 = r3Works().salvage.t;
+  it('start-up (commissioned:<plate>): on its way, set down ("Stand at it to start · n s"), running: none', () => {
+    const arriving = edit2(r3Works(), (s) => {
+      s.works.analyser = { ...structuredClone(r4Game().salvage.works.analyser), phase: 'arriving', commissionAt: s.t + 40 } as SalvageGame['salvage']['works'][string];
+    });
+    expect(stepOf(arriving, 'commissioned:analyser')).toEqual({ key: 'card.works.arrivesIn', args: { t: { secs: 40 } } });
+    const installed = edit2(arriving, (s) => {
+      s.works.analyser.phase = 'installed';
+    });
+    expect(stepOf(installed, 'commissioned:analyser')).toEqual({ key: want('goal.step.startUp', 'plate.works.commission'), args: { n: { n: C2(W, installed).works!.commission_s } } });
+    expect(stepOf(r4Game(), 'commissioned:analyser')).toBeNull();
+    // not bought: the goal's own line (the purchase goal before it is current anyway)
+    expect(stepOf(r3Works(), 'commissioned:analyser')).toBeNull();
+    void t0;
+  });
+
+  it('pour (poured:<plate>): the heat\'s phase as the rules hold it; READY sends the boss to the apron', () => {
+    const c = C2(W, r4Game());
+    const empty = stepOf(hallAt2('empty'), 'poured:rotary')!;
+    expect(empty.key).toBe('card.heat.empty');
+    const grade = (empty.args!.grade as { grade: string }).grade;
+    expect(c.works!.plates.rotary.recipes![r4Game().salvage.works.rotary.heat!.recipe].in).toContain(grade);
+    const filling = stepOf(hallAt2('filling'), 'poured:rotary')!;
+    expect(filling.key).toBe('card.heat.filling');
+    expect(filling.args!.a).toEqual({ mass_g: 30_000 });
+    // the cap is the card's own heat view's (the furnace window and the goal card say the same)
+    expect((filling.args!.b as { mass_g: number }).mass_g).toBe(heatView(c, hallAt2('filling').salvage, 'rotary')!.cap_g);
+    expect(stepOf(hallAt2('heating'), 'poured:rotary')).toEqual({ key: 'card.heat.heating', args: { t: { secs: 50 } } });
+    expect(stepOf(hallAt2('ready'), 'poured:rotary')).toEqual({ key: want('goal.step.toApron', 'plate.works.ready') });
+    expect(stepOf(hallAt2('cooling'), 'poured:rotary')).toBeNull();
+    // a hall not yet started up: the start-up's step first
+    const installed = edit2(hallAt2('ready'), (s) => {
+      s.works.rotary.phase = 'installed';
+    });
+    expect(stepOf(installed, 'poured:rotary')!.key).toBe(want('goal.step.startUp', 'plate.works.commission'));
+    // the first yard's `poured:<n>` is never a works step
+    expect(stepOf(hallAt2('ready'), 'poured:1')).toBeNull();
+  });
+
+  it('the oversize piece (lot:1), the picking table (crate:1) and the Yard sale\'s first thing (racked:1)', () => {
+    const g = lots4b();
+    expect(stepOf(g, 'lot:1')).toEqual(KEYS.has('goal.step.cutLot') ? { key: 'goal.step.cutLot' } : null);
+    const none = edit2(g, (s) => {
+      s.things = s.things.filter((t) => t.at.at !== 'lot');
+      s.lots = { nextAt: s.t + 300, n: 4 };
+    });
+    expect(stepOf(none, 'lot:1')).toEqual({ key: 'card.pad.next', args: { t: { secs: 300 } } });
+    expect(stepOf(g, 'crate:1')).toEqual({ key: want('goal.step.sort', 'card.crate.stand'), args: { n: { n: C2(W, g).crate!.sort_s } } });
+    expect(stepOf(r3Works(), 'crate:1')).toBeNull();
+    const first = r3Works().salvage.things.some((t) => t.uid === 'reuse.first');
+    expect(stepOf(r3Works(), 'racked:1')).toEqual(first && KEYS.has('goal.step.lift') ? { key: 'goal.step.lift' } : null);
+    const carried = edit2(r3Works(), (s) => {
+      s.load.push({ uid: 'reuse.first', grade: 'waste', g: 1000, from: null, spec: -1, whole: 'bath' } as SalvageGame['salvage']['load'][number]);
+    });
+    expect(stepOf(carried, 'racked:1')).toEqual(KEYS.has('goal.step.toRack') ? { key: 'goal.step.toRack' } : null);
+  });
+
+  it('purchases, rungs, the walk and the repeating goal have no step (their own line, Goal.waits, the chevron)', () => {
+    for (const done of ['plate:analyser', 'owned:truckBridge', 'rung:4', 'at:backfield', 'repeat', 'fetched:partner.garage:1']) expect(stepOf(r4Game(), done), done).toBeNull();
+  });
+
+  it('every step any of these states gives is a key the words hold (no line the screen cannot print)', () => {
+    const gs = [r3Works(), r4Game(), lots4b(), rackFull(), ...(['empty', 'filling', 'heating', 'ready', 'cooling', 'pinned'] as const).map(hallAt2)];
+    for (const g of gs) for (const d of goalSpecs(C2(W, g)).stage2) expect(keyIn(stepOf(g, d.done)), d.id).toBe(true);
+  });
+
+  it('the goal card carries the step of its current goal (loadStep first, as owner1 T2)', () => {
+    for (const g of [r3Works(), r4Game(), lots4b(), rackFull(), hallAt2('ready')]) {
+      const goal = goalOfRules(W, g);
+      if (!goal) continue;
+      const sp = goalSpecs(W.salvage);
+      const d = [...sp.goals, ...sp.dayOne, ...sp.stage2].find((q) => q.id === goal.id)!;
+      const ws = worksGoalStep(W, g, d);
+      if (ws) expect(goal.step).toEqual(ws);
+      expect(keyIn(goal.step)).toBe(true);
+    }
+  });
+});
+
+describe('C-CARDS-b: the shredder line\'s step while its first car is awaited (lineStep)', () => {
+  const L = lineCfg2();
+  it('reads the station\'s own RecoveryView: next car, cash short, apron taken; none once a car has landed', () => {
+    for (const [g, name] of [[lineState2('none', null), 'none'], [lineState2('none', null, 0), 'cash 0'], [lineState2('whole', null), 'apron']] as [SalvageGame, string][]) {
+      const rv = worksCardOf(L, g, 'depollution')!.recovery!;
+      const st = lineStep(L, g, 'shredder');
+      if (rv.waitsFor === 'apron') expect(st, name).toEqual({ key: 'card.line.apronTaken' });
+      else if (rv.waitsFor === 'cash') expect(st, name).toEqual({ key: 'card.line.cashShort', args: { x: { money: rv.short } } });
+      else if (rv.nextAt !== null) expect(st, name).toEqual({ key: want('goal.step.firstCar', 'card.line.nextCar'), args: { t: { secs: Math.max(0, rv.nextAt - g.salvage.t) } } });
+      else expect(st, name).toBeNull();
+      expect(keyIn(st)).toBe(true);
+    }
+    expect(lineStep(L, lineState2('none', 100), 'shredder')).toBeNull();
+    expect(lineStep(L, lineState2('none', null), 'depollution')).toEqual(lineStep(L, lineState2('none', null), 'shredder'));
+    expect(lineStep(stage2Cfg('r3'), stage2Game('r3'), 'shredder')).toBeNull();
+  });
+});
+
+describe('C-CARDS-b: each goal\'s completing event (wiring W8)', () => {
+  // the stage's goal list as goals.json holds it (the lead's note: scripts/content/yard/goals.json; the analyser before the plasma, ruling 29.5)
+  const shipped = (JSON.parse(readFileSync(join(__dirname, '../../../scripts/content/yard/goals.json'), 'utf8')) as { stage2: { id: string; done: string; buy: string | null }[] }).stage2;
+  it('every stage-2 goal of the shipped list names its event, but the walk and the repeating goal (the rules\' `goal` event)', () => {
+    expect(shipped.length).toBeGreaterThan(10);
+    for (const d of shipped) {
+      const by = goalDoneBy(d);
+      if (d.done.startsWith('at:') || d.done === 'repeat') expect(by, d.id).toBeNull();
+      else expect(by, d.id).not.toBeNull();
+    }
+    expect(goalDoneBy({ done: 'commissioned:analyser', buy: null })).toEqual({ type: 'commissioned', match: { plate: 'analyser' } });
+    expect(goalDoneBy({ done: 'poured:induction', buy: null })).toEqual({ type: 'pour', match: { plate: 'induction' } });
+    expect(goalDoneBy({ done: 'plate:shredder', buy: 'shredder' })).toEqual({ type: 'plateState', match: { plate: 'shredder', status: 'arriving' } });
+    expect(goalDoneBy({ done: 'lot:1', buy: null })!.type).toBe('lotOpened');
+    expect(goalDoneBy({ done: 'fetched:partner.garage:1', buy: null })).toEqual({ type: 'bridgeWeighIn', match: { partner: 'partner.garage' } });
+  });
+
+  it('the rules emit that event at the instant the goal is met: the first pour, the start-up, the order of a plate', () => {
+    // the first heat left to itself pours by itself (halls.ts: its self-pour): the pour event names the hall
+    const g0 = hallAt2('ready');
+    const ev: SalvageEvent[] = [];
+    const g1 = jump(W, g0, g0.salvage.works.rotary.heat!.phaseSince + C2(W, g0).works!.selfCommission_s + 60, ev);
+    const by = goalDoneBy({ done: 'poured:rotary', buy: null });
+    const hit = ev.filter((e) => isGoalDoneEvent(by, e));
+    expect(hit.length).toBeGreaterThan(0);
+    expect((g1.salvage.counts?.['poured:rotary'] ?? 0)).toBeGreaterThan(0);
+    expect(isGoalDoneEvent(by, { type: 'pour', ingots: 1, grade: 'x', short_g: 0, dross_g: 0, first: true, by: 'boss', plate: 'induction' })).toBe(false);
+    // a plate set down starts up by itself at its date: `commissioned` names it
+    const inst = edit2(r4Game(), (s) => {
+      s.works.analyser.phase = 'installed';
+      s.works.analyser.commissionAt = s.t + 5;
+    });
+    const ev2: SalvageEvent[] = [];
+    jump(W, inst, inst.salvage.t + 10, ev2);
+    expect(ev2.some((e) => isGoalDoneEvent(goalDoneBy({ done: 'commissioned:analyser', buy: null }), e))).toBe(true);
+  });
+
+  it('the bridge weigh-in matches by its ticket\'s partner', () => {
+    const by = goalDoneBy({ done: 'fetched:partner.garage:1', buy: null });
+    const tk = (partner: string) => ({ type: 'bridgeWeighIn', ticket: { kind: 'skipWeighIn', partner } }) as unknown as SalvageEvent;
+    expect(isGoalDoneEvent(by, tk('partner.garage'))).toBe(true);
+    expect(isGoalDoneEvent(by, tk('partner.plumbing'))).toBe(false);
+    expect(isGoalDoneEvent(null, tk('partner.garage'))).toBe(false);
+  });
+});
+
+describe('C-CARDS-b: the levels\' notice (cards contract C8; RULING2.md 30.3)', () => {
+  const NOTICE_REFS: CardRef[] = [{ kind: 'office', tab: 'rota' }, { kind: 'office', tab: 'partners' }, { kind: 'place', place: 'park' } as CardRef, { kind: 'place', place: 'office' } as CardRef];
+  const OTHER_REFS: CardRef[] = [{ kind: 'office', tab: 'processBoard' }, { kind: 'board' }, { kind: 'table' }, { kind: 'clipboard' }, { kind: 'help' }, worksRef('analyser')];
+  for (const [name, g] of [['r3Works', r3Works()], ['r4', r4Game()], ['rackFull', rackFull()]] as [string, SalvageGame][])
+    it(`${name}: the rota, the partners' tab and the truck park carry it until seen; no other card; seen through noteSeen, no new save field`, () => {
+      expect(levelsNoticeDue(g)).toBe(true);
+      for (const ref of NOTICE_REFS) {
+        const d = cardOfCfg(W, g, ref, NOW2);
+        if (['rota', 'partners', 'park'].includes(d.kind)) expect(d.notice, JSON.stringify(ref)).toEqual({ key: 'card.notice.levelsWorks' });
+      }
+      expect(KEYS.has('card.notice.levelsWorks')).toBe(true);
+      for (const ref of OTHER_REFS) expect('notice' in cardOfCfg(W, g, ref, NOW2), JSON.stringify(ref)).toBe(false);
+      const seen = noteSeen(W, g, { card: LEVELS_NOTICE_MARK as unknown as CardKind }, g.salvage.t);
+      expect(levelsNoticeDue(seen)).toBe(false);
+      for (const ref of NOTICE_REFS) expect('notice' in cardOfCfg(W, seen, ref, NOW2), JSON.stringify(ref)).toBe(false);
+      // no new save field: the state's keys are the same, only seen.cards grew by the mark
+      expect(Object.keys(seen.salvage).sort()).toEqual(Object.keys(g.salvage).sort());
+      expect(seen.salvage.seen.cards).toEqual([...g.salvage.seen.cards, LEVELS_NOTICE_MARK]);
+      // a second note is the same object (seen once)
+      expect(noteSeen(W, seen, { card: LEVELS_NOTICE_MARK as unknown as CardKind }, seen.salvage.t).salvage.seen).toBe(seen.salvage.seen);
+    });
+
+  it('the mark survives a save and a load (save.ts keeps seen.cards as it finds it)', () => {
+    const g = noteSeen(W, r4Game(), { card: LEVELS_NOTICE_MARK as unknown as CardKind }, r4Game().salvage.t);
+    const raw = JSON.parse(JSON.stringify(g.salvage));
+    const back = reconcileSalvage(W, base(), raw, FIXTURE_NOW);
+    expect(back.salvage.seen.cards).toContain(LEVELS_NOTICE_MARK);
+  });
+});

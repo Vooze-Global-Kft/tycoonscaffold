@@ -16,13 +16,17 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import * as R from '../../../engine/salvage';
 import type { CardData, CardRef, SalvageConfig, SalvageGame } from '../../../engine/salvage';
+import { salvageActions } from '../../../modes/salvage/actions';
+import { stageOn } from '../../../modes/salvage/stage';
+import { storefrontCountry } from '../../../services/region';
+import { modeEvents } from '../../../state/modeEvents';
 import { useGame } from '../../../state/store';
 import { useOverlay } from '../../kit/overlay';
 import { say } from '../strings';
 import { useSalvageUi } from '../uiState';
 import * as Stick from '../world/stick';
 import { steeringNow } from './backGuard';
-import { useCards, type OfficeTab } from './cardStack';
+import { readCard, setCardHooks, useCards, viewKinds, type OfficeTab, type OfficeTabV3, type Stage2ViewKind } from './cardStack';
 import { CentredCard } from './CentredCard';
 import { useFontScale } from '../hud/fontScale';
 import { devCard, devCardDelay } from './devOpen';
@@ -46,6 +50,23 @@ import { RungSign } from './RungSign';
 import { Settings } from './Settings';
 import { Skip } from './Skip';
 import { SupplyDeal } from './SupplyDeal';
+import { officeTabs } from './Office';
+import type { Tab } from './parts';
+// C-CARDSUI (PLAN2 2.5): the works' views, each its package's from wave 1 (stubs: GenericCard pass-throughs).
+import { AgeQuestion } from './AgeQuestion';
+import { Agreements } from './Agreements';
+import { AwayBonus } from './AwayBonus';
+import { Crate } from './Crate';
+import { Finance } from './Finance';
+import { FloorCard } from './FloorCard';
+import { Letter } from './Letter';
+import { Lot } from './Lot';
+import { PackCode } from './PackCode';
+import { PackSheet } from './PackSheet';
+import { ParkCard } from './ParkCard';
+import { Shop } from './Shop';
+import { WorksCard } from './WorksCard';
+import { YardSale } from './YardSale';
 
 export type { Insets } from './layout';
 export { closeCard, openCard } from './cardStack';
@@ -76,6 +97,46 @@ export const CARD_VIEWS: Partial<Record<CardData['kind'], ComponentType<CardView
   settings: Settings,
   help: Help,
 };
+
+/**
+ * C-CARDSUI (PLAN2 2.5): the views of the stage-2 kinds (the 12 v3 kinds, 'park' and 'floor'), used ONLY under stageOn();
+ * with the switch off CARD_VIEWS above is the whole list, as today (a 'park' or 'floor' card is drawn by GenericCard).
+ * A `Record` over ./cardStack.ts STAGE2_VIEW_KINDS: a kind without a view does not compile. Built at its first use (the
+ * views import GenericCard from this file: no module-order question).
+ */
+let stage2: Record<Stage2ViewKind, ComponentType<CardViewProps>> | null = null;
+export function stage2Views(): Record<Stage2ViewKind, ComponentType<CardViewProps>> {
+  stage2 ??= {
+    works: WorksCard,
+    finance: Finance,
+    letter: Letter,
+    yardSale: YardSale,
+    lot: Lot,
+    crate: Crate,
+    shop: Shop,
+    packSheet: PackSheet,
+    ageQuestion: AgeQuestion,
+    packCode: PackCode,
+    awayBonus: AwayBonus,
+    agreements: Agreements,
+    park: ParkCard,
+    floor: FloorCard,
+  };
+  return stage2;
+}
+
+/** The view that draws a kind: today's list, and with the switch on the works' views first. */
+export function cardViewOf(kind: CardData['kind'], on: boolean = stageOn()): ComponentType<CardViewProps> {
+  if (on && viewKinds(true).includes(kind)) {
+    const v = (stage2Views() as Partial<Record<CardData['kind'], ComponentType<CardViewProps>>>)[kind];
+    if (v) return v;
+  }
+  return CARD_VIEWS[kind] ?? GenericCard;
+}
+
+// The stack's hooks (./cardStack.ts; read only on its stage-2 paths): the store country, read once per card opening (critic
+// I4 a), and a card noted as seen at its close (the shop's, I4 b).
+setCardHooks({ country: storefrontCountry, seen: (card) => void salvageActions.noteSeen({ card }) });
 
 /** Any card from its data alone, in the frame its shape names. */
 export function GenericCard({ data, onClose }: CardViewProps) {
@@ -119,18 +180,18 @@ function useLiveGame(on: boolean): SalvageGame | null {
 function officeCards(cfg: SalvageConfig, g: SalvageGame, now: number): { rota: CardData; partners: CardData; board: CardData } {
   const of = (tab: OfficeTab, kind: CardData['kind'], title: CardData['title']): CardData => {
     const ref: CardRef = { kind: 'office', tab };
-    const d = R.cardOf(cfg, g, ref, now);
+    const d = readCard(cfg, g, ref, now);
     // The hour-0 cardOf may not know the office ref yet: give the tab its kind and title.
     return withSample(cfg, g, ref, d.kind === kind ? d : { ...d, kind, shape: tab === 'processBoard' ? 'wide' : 'panel', title });
   };
-  const board = withSample(cfg, g, { kind: 'processBoard' }, R.cardOf(cfg, g, { kind: 'processBoard' }, now));
+  const board = withSample(cfg, g, { kind: 'processBoard' }, readCard(cfg, g, { kind: 'processBoard' }, now));
   return { rota: of('rota', 'rota', { key: 'title.rota' }), partners: of('partners', 'partners', { key: 'title.partners' }), board };
 }
 
 /** Which office tab a ref opens, or null when the ref is not the office's. */
-function officeTab(ref: CardRef, data: CardData): OfficeTab | null {
-  // v3's Agreements tab (s2a-fix widened CardRef) is drawn by Phase C's office; the first yard's office has three tabs.
-  if (ref.kind === 'office') return ref.tab === 'agreements' ? null : ref.tab;
+function officeTab(ref: CardRef, data: CardData, on: boolean): OfficeTabV3 | null {
+  // v3's Agreements tab (s2a-fix widened CardRef): with the switch on (C-CARDSUI), ./Agreements.tsx; off, as the first yard's office: three tabs.
+  if (ref.kind === 'office') return ref.tab === 'agreements' ? (on ? 'agreements' : null) : ref.tab;
   if (data.kind === 'rota') return 'rota';
   if (data.kind === 'partners') return 'partners';
   return null;
@@ -150,8 +211,20 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
   // starts at the left edge and drags right IS Android's back gesture (H9): while a steering touch is held,
   // or for STICK_BACK_MS after one ended or was taken by the system, back is swallowed.
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => steeringNow(Date.now(), Stick) || useCards.getState().close() || useSalvageUi.getState().closeTop());
+    // C-CARDSUI (PLAN2 2.5, critic I6): with the switch on, back is swallowed while the counting card shows (a must card;
+    // a must ref is kept by the stack's own close()).
+    const sub = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => steeringNow(Date.now(), Stick) || (stageOn() && useSalvageUi.getState().counting) || useCards.getState().close() || useSalvageUi.getState().closeTop(),
+    );
     return () => sub.remove();
+  }, []);
+  // C-CARDSUI (PLAN2 2.5, critic I4 c): the rules' `letter` event opens the lender's letter, after the card that made it due.
+  useEffect(() => {
+    if (!stageOn()) return;
+    return modeEvents.subscribe((events) => {
+      if ((events as readonly R.SalvageEvent[]).some((e) => e.type === 'letter')) useCards.getState().after({ kind: 'letter' });
+    });
   }, []);
   // The shell's menu button marks uiState: with no card open, that is the clipboard; when the shell
   // pops its mark (its own back or scrim), the card closes with it.
@@ -193,13 +266,19 @@ export function OverlayHost({ width, height, insets }: { width: number; height: 
 
 function CardView({ cfg, g, cardRef, onClose }: { cfg: SalvageConfig; g: SalvageGame; cardRef: CardRef; onClose: () => void }) {
   const now = Date.now();
-  const data = withSample(cfg, g, cardRef, R.cardOf(cfg, g, cardRef, now));
-  const tab = officeTab(cardRef, data);
+  const on = stageOn();
+  const data = withSample(cfg, g, cardRef, readCard(cfg, g, cardRef, now, on));
+  const tab = officeTab(cardRef, data, on);
+  if (tab === 'agreements') {
+    // The office's fourth page (stage on only): the three tabs and Agreements, open.
+    const tabs: Tab[] = [...officeTabs('rota').map((t) => ({ ...t, open: false })), { id: 'agreements', title: { key: 'title.agreements' }, open: true }];
+    return <Agreements cfg={cfg} g={g} data={data} onClose={onClose} tabs={tabs} onTab={(t) => useCards.getState().open({ kind: 'office', tab: t as OfficeTab | 'agreements' })} />;
+  }
   if (tab) {
     const o = officeCards(cfg, g, now);
     return <Office tab={tab} rota={o.rota} partners={o.partners} board={o.board} onTab={(t) => useCards.getState().open({ kind: 'office', tab: t })} onClose={onClose} />;
   }
-  const View1 = CARD_VIEWS[data.kind] ?? GenericCard;
+  const View1 = cardViewOf(data.kind, on);
   return <View1 cfg={cfg} g={g} data={data} onClose={onClose} />;
 }
 

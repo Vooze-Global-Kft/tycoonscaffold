@@ -10,7 +10,9 @@ import { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { fx } from '../../../services/fx';
 import { useFxSettings } from '../../../services/fx/useFxSettings';
+import { stageOn } from '../../../modes/salvage/stage';
 import { useGame } from '../../../state/store';
+import { DevRows } from '../dev/DevRows';
 import { openCard } from './cardStack';
 import { realPolicyUrl } from './marketLines';
 import { CentredCard } from './CentredCard';
@@ -86,6 +88,8 @@ export function Settings({ cfg, data, onClose }: CardViewProps) {
       <View style={styles.buttons}>
         <WordButton label={{ key: 'clip.restart' }} tone="warn" onPress={() => setConfirm(true)} />
       </View>
+      {/* C-CARDSUI (PLAN2 2.5, D102): the works' Development section, only in a development run with the switch on. */}
+      {__DEV__ && stageOn() ? <DevRows /> : null}
     </Panel>
   );
 }

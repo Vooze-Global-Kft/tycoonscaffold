@@ -9,6 +9,7 @@
  * The order is a plain object over injected steps (./countingOrder.ts `createCounting`), checked by ./counting.test.ts.
  */
 import { useEffect, useMemo } from 'react';
+import type { AwayProgress } from '../../../engine/salvage';
 import { devBeginAbsence, onPending, pendingAbsence, recordPassErrorsWith, runPending } from '../../../modes/salvage/returning';
 import { crash } from '../../../services/firebase';
 import { loadingClock } from '../loading/clock';
@@ -19,6 +20,23 @@ import { devCounting } from './devOpen';
 
 // L1: the mode's returning.ts imports no service; the screen hands it the crash recorder.
 recordPassErrorsWith((e, where) => crash.record(e, where));
+
+/**
+ * C-CARDSUI (PLAN2 2.5): what the counted return has counted, for the counting card's strip ("hour 3 of 8") and the
+ * dev timer row; null while no absence waits for its pass. Until the stepped pass exists (C-AWAY's awayJob, MOD-RETURN
+ * plugs it in with `setCountingProgress`) the pass is one block: nothing is counted before it runs, so this answers
+ * {doneS: 0, ofS: the absence in device seconds, sold: 0}.
+ */
+let progressSource: (() => AwayProgress | null) | null = null;
+export function setCountingProgress(source: (() => AwayProgress | null) | null): void {
+  progressSource = source;
+}
+export function countingProgress(now: number = Date.now()): AwayProgress | null {
+  const p = pendingAbsence();
+  if (!p) return null;
+  if (progressSource) return progressSource();
+  return { doneS: 0, ofS: Math.max(0, (now - p.from) / 1000), sold: 0 };
+}
 
 /** The overlay host's hook: drives the counting card; true while it shows. */
 export function useCounting(): boolean {

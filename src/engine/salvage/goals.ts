@@ -19,7 +19,11 @@ import { pointOf, siteRect, skipZone, stopOf } from './positions';
 import { owner1Rules } from './content';
 import { contentAt, worksOpened } from './layer';
 import { rivalDay, rivalGrams } from './rivals';
-import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageGame, TextKey, Txt, TxtArgs } from './types';
+import { TEXT_KEYS } from './textKeys';
+import { lotsWaiting } from './lots';
+import { FIRST_UID } from './reuse';
+import { worksCardOf } from './cardsWorks';
+import type { Goal, GoalDef, GoalLine, GoalState, SalvageConfig, SalvageEvent, SalvageEventType, SalvageGame, TextKey, Txt, TxtArgs } from './types';
 
 /** A goal of content (goals.json): the schema's GoalDef plus the hints' fields the schema may still strip. */
 export type GoalSpec = GoalDef & { via?: string | null; stall?: string | null; after?: string | null };
@@ -468,6 +472,194 @@ export function loadStep(cfg: SalvageConfig, g: SalvageGame, goalDone?: string |
   return { text: { key: 'goal.step.drive' as TextKey }, target: beyond && z ? { x: z.x, y: z.y, id: `skip.${partner}` } : at('gate') };
 }
 
+// ============================================================================ the works' goal steps (C-CARDS-b)
+
+/**
+ * C-CARDS-b (PLAN2 2.2; cards contract C7, wiring W8; the owner's point 5: "I got in the truck ... nothing really happened"):
+ * THE STEP OF A STAGE-2 GOAL, from the rules' own state, so the goal card says what to do NOW and why nothing moves. As
+ * loadStep does for a load (which still comes first: the garage's and the plumber's loads keep owner1 T2's steps). Every
+ * goal of goals.json `stage2` by its condition:
+ * - `commissioned:<plate>` (startAnalyser): on its way "On its way · here in {t}"; installed "Stand at it to start · {n} s"
+ *   (n: works.commission_s, the chevron on the plate); running: done.
+ * - `poured:<plate>` (pourInduction, pourRotary, pourCopper): not yet started up, as above; then the hall's heat phase as the
+ *   rules hold it (WorksState.heat): empty "Empty · waiting for {grade}", filling "Filling · {a} / {b}", heating "Heating ·
+ *   ready in {t}", READY "Walk to the furnace's apron" (the chevron is on `<hall>.apron`, goals.json).
+ * - `lot:<n>` (cutLot): a piece on the pad "Cut it with the plasma cutter"; none "Next piece in about {t}".
+ * - `crate:<n>` (sortCrate): things on the picking table "Stand at the table · {n} s each"; none: no step.
+ * - `racked:<n>` (rackBath): the bath carried "Carry it to the Yard sale"; else "Stand at it to lift it".
+ * - `fetched:<partner>` (fetchGarage, fetchPlumbing): loadStep's (owner1 T2), never this function.
+ * - `owned:` / `plate:` (the seven purchases), `rung:` (the supply goals: Goal.waits says what the rung waits for), `at:`
+ *   (walkBackfield: the chevron) and the repeating goal: their own line is the step (none here).
+ * THE SHREDDER LINE'S "Wait for the first car · next in {t}" (lineStep below) has NO goal to stand on in goals.json today:
+ * buyShredder is done the instant the line is ordered (`plate:shredder`), so no goal is current while the first car is
+ * awaited (PLAN2-errata, C-CARDS-b). It is exported for the goal that will name it (a content line) and tested on its own.
+ * Null below the works' opening (the first yard's card is as it was) and for every other goal.
+ *
+ * THE WORDS (keys in data; ruling 30 may change them): a key this needs that the words do not hold yet is used only once
+ * textKeys.ts holds it (`keyOr`), else its stand-in, an existing key of the same meaning, or no step ([seam] C-CARDS-b).
+ */
+export function worksGoalStep(cfg: SalvageConfig, g: SalvageGame, d: Pick<GoalSpec, 'done'>): Txt | null {
+  const s = g.salvage;
+  if (!worksOpened(s)) return null;
+  const c = contentAt(cfg.salvage, s);
+  const [kind, a] = (d.done ?? '').split(':');
+  switch (kind) {
+    case 'commissioned':
+      return startUpStep(c, g, a);
+    case 'poured': {
+      if (!a || /^\d+$/.test(a)) return null;
+      const up = startUpStep(c, g, a);
+      if (up || !s.works[a]) return up;
+      return pourStep(c, g, a);
+    }
+    case 'lot': {
+      if (!c.lots || !s.lots) return null;
+      if (lotsWaiting({ s }) > 0) return txt(keyOr('goal.step.cutLot', null));
+      return s.lots.nextAt !== null ? txt('card.pad.next', { t: { secs: Math.max(0, s.lots.nextAt - s.t) } }) : null;
+    }
+    case 'crate': {
+      if (!c.crate || !s.things.some((t) => t.at.at === 'crate')) return null;
+      return txt(keyOr('goal.step.sort', 'card.crate.stand' as TextKey), { n: { n: c.crate.sort_s } });
+    }
+    case 'racked':
+      if (s.load.some((q) => q.uid === FIRST_UID)) return txt(keyOr('goal.step.toRack', null));
+      return s.things.some((t) => t.uid === FIRST_UID) ? txt(keyOr('goal.step.lift', null)) : null;
+    default:
+      return null;
+  }
+}
+
+/** A plate on its way or set down and not started up: its step; null once it runs (or when it is not bought). */
+function startUpStep(c: SalvageContent, g: SalvageGame, plate: string | undefined): Txt | null {
+  const w = plate ? g.salvage.works[plate] : undefined;
+  if (!w) return null;
+  if (w.phase === 'arriving') return w.commissionAt !== null ? txt('card.works.arrivesIn' as TextKey, { t: { secs: Math.max(0, w.commissionAt - g.salvage.t) } }) : null;
+  if (w.phase === 'installed') return txt(keyOr('goal.step.startUp', 'plate.works.commission'), { n: { n: c.works?.commission_s ?? 0 } });
+  return null;
+}
+
+/** A running hall's first pour: its heat's phase as the rules hold it (halls.ts); READY sends the boss to the apron. */
+function pourStep(c: SalvageContent, g: SalvageGame, plate: string): Txt | null {
+  const h = g.salvage.works[plate]?.heat;
+  if (!h) return null;
+  const t = g.salvage.t;
+  switch (h.phase) {
+    case 'empty': {
+      const rec = c.works?.plates[plate]?.recipes?.[h.recipe];
+      const grade = rec?.in.find((k) => !!c.grades[k]);
+      return grade ? txt('card.heat.empty' as TextKey, { grade: { grade } }) : null;
+    }
+    case 'filling': {
+      const d = c.works?.plates[plate];
+      const w = g.salvage.works[plate]!;
+      const cap = d?.batch ? d.batch.kg * 1000 * (1 + d.lev * Math.max(0, w.level - 1)) : 0;
+      return cap > 0 ? txt('card.heat.filling' as TextKey, { a: { mass_g: h.charge_g }, b: { mass_g: cap } }) : null;
+    }
+    case 'heating':
+      return h.endsAt !== null ? txt('card.heat.heating' as TextKey, { t: { secs: Math.max(0, h.endsAt - t) } }) : null;
+    case 'ready':
+      return txt(keyOr('goal.step.toApron', 'plate.works.ready'));
+    default:
+      return null;
+  }
+}
+
+/**
+ * The shredder line's step while its first car is awaited (C7: "Wait for the first car · next in {t}"): the line's
+ * truck-fed station's RecoveryView (cardsWorks.ts WorksCard.recovery, the frame's own reader): the next car's time, the
+ * cash it waits for, or the apron taken. Null when no station of `plate`'s line is fed by a truck, or once a car has landed.
+ */
+export function lineStep(cfg: SalvageConfig, g: SalvageGame, plate: string): Txt | null {
+  const s = g.salvage;
+  if (!worksOpened(s)) return null;
+  const c = contentAt(cfg.salvage, s);
+  const ids = [plate, ...(c.works?.plates[plate]?.with ?? [])];
+  for (const id of ids) {
+    const w = s.works[id];
+    if (!w || w.carLandedAt !== undefined) continue;
+    const rv = worksCardOf(cfg, g, id)?.recovery;
+    if (!rv) continue;
+    if (rv.waitsFor === 'apron') return txt('card.line.apronTaken' as TextKey);
+    if (rv.waitsFor === 'cash' && rv.short !== null) return txt('card.line.cashShort' as TextKey, { x: { money: rv.short } });
+    if (rv.nextAt !== null) return txt(keyOr('goal.step.firstCar', 'card.line.nextCar' as TextKey), { t: { secs: Math.max(0, rv.nextAt - s.t) } });
+  }
+  return null;
+}
+
+/**
+ * W8: THE EVENT THAT COMPLETES A GOAL (the moment the player sees it done, where he looks: the hint's and the goal card's
+ * "done"), by its condition. `match` names the fields the event must carry. Null where no single event marks it (the
+ * boss standing at a place, the repeating goal, an unknown form): the rules' own `goal` event (checkGoals) is then the
+ * moment. Every goal is ALSO followed by a `goal` event {id} when the check ticks it.
+ */
+export interface GoalDoneBy {
+  type: SalvageEventType;
+  match: Readonly<Record<string, string | number>>;
+}
+export function goalDoneBy(d: Pick<GoalSpec, 'done' | 'buy'>): GoalDoneBy | null {
+  const [kind, a] = (d.done ?? '').split(':');
+  switch (kind) {
+    case 'plate':
+      // works.ts orderPlate: the plate is ordered (it is owned in any phase from then: the goal is done at the order).
+      return { type: 'plateState', match: { plate: a, status: 'arriving' } };
+    case 'owned':
+      return { type: 'owned', match: { item: a } };
+    case 'commissioned':
+      return { type: 'commissioned', match: { plate: a } };
+    case 'poured':
+      return a && !/^\d+$/.test(a) ? { type: 'pour', match: { plate: a } } : { type: 'pour', match: {} };
+    case 'racked':
+      return { type: 'racked', match: {} };
+    case 'lot':
+      return { type: 'lotOpened', match: {} };
+    case 'crate':
+      return { type: 'crateSorted', match: {} };
+    case 'rung':
+      return { type: 'rung', match: { n: Number(a) || 2 } };
+    case 'fetched':
+    case 'bridged':
+      // P14: fetched = over the weighbridge (truck.ts: the skip's ticket).
+      return { type: 'bridgeWeighIn', match: { partner: a } };
+    case 'tipped':
+      return { type: 'tip', match: { partner: a } };
+    case 'hired':
+      return { type: 'hired', match: { role: a } };
+    case 'cut':
+    case 'worked':
+    case 'weighIns':
+    case 'crewWeighIns':
+      // The first yard's counted goals: many events count towards them; the `goal` event is their moment.
+      return null;
+    default:
+      return d.buy ? { type: 'owned', match: { item: d.buy } } : null;
+  }
+}
+
+/** Does event `e` match a goal's completing event (goalDoneBy)? The bridge weigh-in matches by its ticket's partner. */
+export function isGoalDoneEvent(by: GoalDoneBy | null, e: SalvageEvent): boolean {
+  if (!by || e.type !== by.type) return false;
+  const rec = e as unknown as Record<string, unknown>;
+  for (const [k, v] of Object.entries(by.match)) {
+    if (e.type === 'bridgeWeighIn' && k === 'partner') {
+      const tk = e.ticket as { kind: string; partner?: string };
+      if (tk.kind !== 'skipWeighIn' || tk.partner !== v) return false;
+      continue;
+    }
+    if (rec[k] !== v) return false;
+  }
+  return true;
+}
+
+/** Every text key the words hold (textKeys.ts: the typecheck holds strings.ts to exactly these). */
+const ALL_KEYS: ReadonlySet<string> = new Set((Object.values(TEXT_KEYS) as readonly (readonly string[])[]).flat());
+/** A key this file asks of the words ([seam] C-CARDS-b) once textKeys.ts holds it, else its stand-in (an existing key of the same meaning, or null: no step). */
+function keyOr(want: string, standIn: TextKey | null): TextKey | null {
+  return ALL_KEYS.has(want) ? (want as TextKey) : standIn;
+}
+function txt(key: TextKey | null, args?: TxtArgs): Txt | null {
+  return key ? (args ? { key, args } : { key }) : null;
+}
+
 /** The chevron's point in metres, or null (frame.ts: FrameTable.chevron). */
 export function chevronOf(cfg: SalvageConfig, g: SalvageGame): { x: number; y: number; id: string } | null {
   const goal = nextGoal(cfg, g);
@@ -506,9 +698,11 @@ export function goalOf(cfg: SalvageConfig, g: SalvageGame): Goal | null {
   const nxt = list[1];
   const m = meterOf(cfg, g, cur.d);
   const step = loadStep(cfg, g, cur.d.done);
+  // C-CARDS-b (C7): a stage-2 goal's step from the works' opening (null below it: the first yard's card as it was).
+  const works = step ? null : worksGoalStep(cfg, g, cur.d);
   const waits = rungWaits(cfg, g, cur.d);
   return {
-    ...(step ? { step: step.text } : {}),
+    ...(step ? { step: step.text } : works ? { step: works } : {}),
     ...(waits ? { waits } : {}),
     n: cur.n,
     id: cur.d.id,

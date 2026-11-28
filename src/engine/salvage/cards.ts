@@ -640,7 +640,30 @@ const MACHINE_TITLE: Record<MachineId, TextKey> = { hand_stripper: 'item.handStr
  */
 export function cardOf(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext = { country: null }): CardData {
   // rules-money wave 2 (dispatcher edit, requests.md 26 Nov): the money's part of EVERY card (cardsMoney.ts moneyOver: showsDebt on all, the Shop row, Settings' packs switch, Help's pack pages, the spot buyer).
-  return moneyOver(cfg, g, cardOfBase(cfg, g, ref, now, ctx), now, ctx);
+  return withLevelsNotice(g, moneyOver(cfg, g, cardOfBase(cfg, g, ref, now, ctx), now, ctx));
+}
+
+/**
+ * C-CARDS-b (cards contract C8; s2c-plan-cards P10; RULING2.md 27.3 D5 and 30.3): THE LEVELS' NOTICE. From the works' opening
+ * every level is priced by a new rule (a level costs what its book says it earns in so many hours, and a ladder the book does
+ * not sell is no longer offered), so the rota, the partners' tab and the truck park carry ONE line, `CardData.notice`, until
+ * the player has seen it: a docket strip with its own close, which reports the mark `LEVELS_NOTICE_MARK` through the rules'
+ * noteSeen ({ card: LEVELS_NOTICE_MARK }). NO NEW SAVE FIELD (critic F18): the mark is one more entry of `seen.cards`, which
+ * save.ts keeps as it finds it and nothing else lists. Below the works' opening no card carries the field (the first yard's
+ * cards are as they were). The words are a key in data (`card.notice.levelsWorks`), never in this file.
+ */
+export const LEVELS_NOTICE_MARK = 'levelsWorks';
+const NOTICE_CARDS: ReadonlySet<string> = new Set(['rota', 'partners', 'park']);
+
+/** Is the levels' notice due: the works open and its mark not yet in `seen.cards`? */
+export function levelsNoticeDue(g: SalvageGame): boolean {
+  const s = g.salvage;
+  return worksOpened(s) && !(s.seen.cards as readonly string[]).includes(LEVELS_NOTICE_MARK);
+}
+
+function withLevelsNotice(g: SalvageGame, d: CardData): CardData {
+  if (!NOTICE_CARDS.has(d.kind) || !levelsNoticeDue(g)) return d;
+  return { ...d, notice: { key: 'card.notice.levelsWorks' } };
 }
 
 function cardOfBase(cfg: SalvageConfig, g: SalvageGame, ref: CardRef, now: number, ctx: CardContext): CardData {

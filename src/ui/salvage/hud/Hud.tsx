@@ -5,6 +5,7 @@
  */
 import { StyleSheet, View } from 'react-native';
 import type { SalvageConfig } from '../../../engine/salvage';
+import { stageOn } from '../../../modes/salvage/stage';
 import { PAL } from '../palette';
 import { say } from './words';
 import type { YardLayout } from '../world/yard';
@@ -15,6 +16,10 @@ import { BarText } from './Paper';
 import { Tickets, type Body, type Camera } from './Tickets';
 import { Toasts } from './Toasts';
 import { CashDebit, TopBar } from './TopBar';
+// C-CARDSUI (PLAN2 2.5): the works' hud lines, mounted only under stageOn() (stubs until CRD-BANK, CRD-AGE, WLD-OPENING).
+import { BonusButton } from './BonusButton';
+import { LoanPlate } from './LoanPlate';
+import { OpeningStrip } from './OpeningStrip';
 
 /** The bars, tickets and toasts (under the overlays). */
 export function HudLayer({ cfg, L, camera, yard, body }: { cfg: SalvageConfig; L: HudLayout; camera: Camera; yard: YardLayout; body?: Body }) {
@@ -25,6 +30,13 @@ export function HudLayer({ cfg, L, camera, yard, body }: { cfg: SalvageConfig; L
       <GoalCard cfg={cfg} L={L} />
       <CashDebit cfg={cfg} L={L} />
       <Toasts cfg={cfg} L={L} />
+      {stageOn() ? (
+        <>
+          <LoanPlate cfg={cfg} L={L} />
+          <BonusButton cfg={cfg} L={L} />
+          <OpeningStrip cfg={cfg} L={L} />
+        </>
+      ) : null}
     </View>
   );
 }
