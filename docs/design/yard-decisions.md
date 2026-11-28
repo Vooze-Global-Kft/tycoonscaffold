@@ -3016,3 +3016,100 @@ measure with the analyser owned); rung 5 at 2,900 t.
     yard's zones: noted for the screens' phase (what a player sees); no rule now.
 29.9 ORDER: one pass (29.1 with 29.5; 29.4), then the halls measured again with the bands and
     the borrower's numbers (29.2, 29.7), then the three attacks, then the specification.
+
+30. AFTER THE HALLS WERE MEASURED AGAIN (28 November, 00:30; `notes/s2g-measure.md`; REPORT10's addendum
+in `docs/design/yard-bots3.md`; the lead's own probes in the scratchpad's `yard/round/`)
+
+30.1 THE THREE HALLS STAY (fifteen seeds, each hall choosing its own recipe, the entry rule of
+    29.3): induction 23,982 an hour (21.2 % of the yard's income, 6.9 standard errors above zero,
+    no seed below zero): its price 236,000 -> 863,000; copper 5,496 (3.67 %, 6.1 s.e.): 198,000;
+    rotary 3,395 (2.33 %, 5.6 s.e.): 122,000. The losses of REPORT10 are gone (rotary seed 4
+    +2,605 where it read -22,473): no hall is left on a poor recipe.
+    THE PLASMA STAYS: 1,739 an hour, 1.98 % with a standard error of 0.33, six standard errors
+    above zero, no seed below zero. 28.8 c said "under 2 %: it leaves"; a bar is not read to a
+    hundredth on fifteen seeds. THE ENTRY RULE'S LAST FORM: a mean within one standard error of
+    2 % is at the bar, and is sold if it is also at least four standard errors above zero with no
+    seed below zero. The plasma is the boss's own tool and the hand's one new verb at the works.
+    PRICES THAT MOVED BY MORE THAN THEIR ERROR AND A TENTH are written from the same fifteen
+    seeds (27.6): analyser 37,900 -> 52,000; plasma 25,400 -> 20,900; shredder line 378,000 ->
+    333,000. The hook-lift's 203,000 stands (183,000 measured: within a tenth).
+30.2 THE DRIVER'S CHOICE STAYS AS BUILT (the skip full longest). Measured as a pair on five seeds
+    and three: the richest load first makes the yard richer (lifetime +10 % by sitting 8; G at
+    rung 5's entry 209,800 against 180,000) and supplies 7 to 12 % fewer tonnes: rung 5 comes
+    later on three of five seeds. Tonnes are what a rung asks and what the yard is for. It is not
+    a switch for the player now; a dispatcher's choice belongs to stage 3 (road and rail).
+30.3 29.7 RULED: THE FAULT IS THE MEASURE OF A LEVEL, NOT THE BAR. The borrower's empty evenings
+    (seed 1: 371,000 and 718,000 in hand at sittings 3 and 4 and nothing offered) were a
+    calculated gain under the bar: the plumber's next level read 825 an hour (0.99 % of rated
+    income) and MEASURED 5,250 (6.3 %). Three levels forced at the floor price opened nine more
+    in the same sitting and raised what the yard keeps by 30 %. WHY (the lead's probe on two
+    stored yards, `yard/round/probe*.ts`): one level's step moves rated income's replay by about
+    5 % of income for reasons that are not the level: with any flow ladder one step up the replay
+    sends the motors to the bench, spends the yard hands' seconds on trays and leaves the public
+    drop-off 5 things an hour where it had 57; the fair queue's whole trips do the rest (one
+    driver's level: the farm's loads 36 -> 45.5 an hour). On both yards EVERY flow ladder's first
+    step read 4,000 to 5,800 an hour under its own trend (the second and third steps, and each
+    ladder's part inside "all of them one step up", agree with the measured ladders: driver about
+    +4,400 to +5,500, plumber +4,600 to +4,900, a yard hand +1,100 to +1,500). A price, a "not
+    the limit" and an empty evening must not be made of that.
+    THE RULE: FROM THE WORKS' OPENING A LEVEL'S GAIN IS THE BOOK'S, FOR EVERY LADDER: the measured
+    ladder of its kind as a SHARE of rated income, gain = s1 x d^(L-1) x I (s1 the measured first
+    step over the yard's income at the moment measured, d the measured decay, L the level now, I
+    the state's rated income). `levels.book` holds {s1, d, from, to} for every ladder a player can
+    hold at the works (cutters, yard hands, the driver, each open partner, the first yard's
+    machines), written by the bots from fifteen seeds (the five ladders measured tonight; the
+    others from the borrower's ten returns or measured anew). A ladder whose measured step is not
+    at least two standard errors above zero is NOT SOLD at the works (the farm's and the
+    demolition's skips: their levels add tonnes and LOSE money, -1.2 to -6.0 % measured: ruling
+    17). A ladder is sold no further than two steps past the levels the bots measured it at
+    (`to`), until it is measured further. The price is tau_r x that gain, never below the floor's
+    price; sold while the gain is at least 1 % of rated income (27.2 c stands, and now reads a
+    measure that does not jump). The card prints "about +{x} an hour" (about: it is the measured
+    mean of yards like his). The replay with a level one step up prices nothing any more; it
+    stays as a test's diagnostic and in rated income itself.
+    WHAT THE BOTS THEN MEASURE: at sittings 3, 4, 6 and 7 of the always hand and the normal hand
+    (five seeds each), every sold level's step MEASURED against the book's gain on that state:
+    per ladder and rung the mean within 0.7 to 1.4 (gate G2 R, now on the book); no hand with two
+    empty sittings running before rung 5 while it holds more than a sitting's income; the always
+    hand's rung 5 no more than one sitting after the normal hand's on four of five seeds; the
+    pace bands (if the ladders now bring rung 4 or 5 a sitting early on most seeds, the rungs'
+    tonnes move within their bands: 27.3 D4).
+    THE BAR STAYS AT 1 %. The 0.5 % bar measured tonight (sooner for the borrower on three of five
+    seeds, neutral for the hand, twice the presses) was curing the same misreading; it is measured
+    again only if empty sittings remain with the book.
+    NOT A TONNAGE PRICE: it would sell the money-losing levels and slow the yard's money.
+    The phone gains by it: thirteen replays a purchase leave the cards.
+30.4 RATED INCOME runs above what the yard keeps from day 3 (normal hand, medians: 1.07 at day 3,
+    1.10 at rung 4's last purchase, 1.15 at rung 5's entry; exact at rung 3 and at rung 4's
+    entry): its envelope reads the yard with the best choice of loads, which the shipped driver
+    does not make (30.2). A factor by rung was tried and taken out again (it stepped rated income
+    DOWN at rung 5's entry and set off a buying spree): kappa stays 1, 1, 1. G2 RESTATED: per
+    moment the median within 0.93 to 1.17 and none outside 0.85 to 1.30. Rated income sizes the
+    loan, the headroom and the bar; IT IS NEVER PRINTED AS WHAT THE YARD EARNS (the screens show
+    what the yard took in, counted).
+30.5 THE BORROWER after tonight: the bank has a second moment (the induction hall at rung 4: 680
+    to 690 thousand lent on four of five seeds, repaid within two sittings); the first loan is
+    repaid before rung 4 on five of five. Empty sittings 7 of 46 against the normal hand's 3 of
+    125; re-measured with 30.3.
+30.6 THE SCREENS' PLAN (`yard/phasec/PLAN2.md`), the lead's decisions on it, which touch rules:
+    (a) DELIVERIES LAND WHEN THEIR VEHICLE SETS THEM DOWN: the garage's car and the heavy piece
+        are decided at their instant, carried as dated arrivals (the recovery truck, the
+        low-loader) and set down when the vehicle arrives, the apron or the pad reserved
+        meanwhile. A player must see them come.
+    (b) THE WORKS' MAP, content only, each change checked by yard_map.py with standing outlines on
+        every swept path: the merchant's stand moves at the works' opening to a lay-by off the
+        through road (below the opening it stays: the first yard does not move; a flatbed
+        standing at the old stand at that instant finishes its visit there); the oversize pad
+        gets its own stop and set-down; a piece set down by a lorry's own crane is at most 12 t
+        (the press frame 4 to 12 t); the drained car body's place moves beside the shredder's
+        infeed.
+    Both are built in the fix pass after the attacks and measured once.
+    (c) Stage 2 reaches the owner's phone by a development switch (`GAME=scrap-yard STAGE=2 npm
+        run go`); the content keeps release.stage 1; a works save opened by a first-yard build is
+        kept frozen and thawed (it is never lost).
+    (d) The open loan is shown under the cash; no ad button on screen while a loan is open.
+    (e) The owner is asked to measure nothing before the works are playable; the counted return is
+        built whatever the phone's number is.
+30.7 ORDER: the book (30.3) with its measurement and the three prices of 30.1; then the three
+    attacks; then one fix pass (with 30.6 a and b) and the last measurement; then the
+    specification. The screens' contract starts beside the book.
