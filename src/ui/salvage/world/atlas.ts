@@ -16,7 +16,7 @@
  */
 import { ClipOp, Skia, type SkCanvas, type SkImage } from '@shopify/react-native-skia';
 import type { SalvageProp } from '../../../config/schema.salvage';
-import { MANIFEST, bakedHeadings, cellBounds, mirrorOf, type ManifestEntry, type Sheet } from '../art/manifest';
+import { MANIFEST, WORKS_MANIFEST, bakedHeadings, cellBounds, mirrorOf, type AnySheet, type ManifestEntry, type WorksSheet } from '../art/manifest';
 import { RING_R as MARK_RING_R } from '../art/marks.draw';
 import type { View3q } from '../art/pen';
 
@@ -49,11 +49,11 @@ export interface Cell {
   h: number;
   ax: number;
   ay: number;
-  entry: ManifestEntry;
+  entry: ManifestEntry<AnySheet>;
 }
 
 export interface SheetPlan {
-  sheet: Sheet;
+  sheet: AnySheet;
   density: number;
   width: number;
   height: number;
@@ -62,7 +62,7 @@ export interface SheetPlan {
 
 /** A baked manifest sheet: its image and, per cell, six numbers in `rects` (x, y, w, h, ax, ay). */
 export interface ManifestAtlas {
-  sheet: Sheet;
+  sheet: AnySheet;
   image: SkImage;
   density: number;
   width: number;
@@ -72,16 +72,22 @@ export interface ManifestAtlas {
   rects: number[];
 }
 
-export const sideOf = (sheet: Sheet): number => (sheet === 'G' ? G_SIDE : MAX_SIDE);
+export const sideOf = (sheet: AnySheet): number => (sheet === 'G' ? G_SIDE : MAX_SIDE);
 
-const entriesOf = (sheet: Sheet, list: readonly ManifestEntry[] = MANIFEST) => list.filter((e) => e.sheet === sheet);
+/** C-WORLD-1: the works' sheets (C the plant, D moving things), baked only under stageOn() from rung 2 (./useYard.ts). */
+export const WORKS_SHEETS: readonly WorksSheet[] = ['C', 'D'];
+export const isWorksSheet = (sheet: AnySheet): sheet is WorksSheet => sheet === 'C' || sheet === 'D';
+/** The list a sheet is planned from when none is given: the first yard's MANIFEST for A, B, G; WORKS_MANIFEST for C, D. */
+const listOf = (sheet: AnySheet): readonly ManifestEntry<AnySheet>[] => (isWorksSheet(sheet) ? WORKS_MANIFEST : MANIFEST);
+
+const entriesOf = (sheet: AnySheet, list: readonly ManifestEntry<AnySheet>[] = listOf(sheet)) => list.filter((e) => e.sheet === sheet);
 
 /**
  * Skyline packing (bottom-left: each cell goes where its top lands lowest), trying three orders (by
  * height, by width, by area) and keeping the shortest sheet.
  */
-function packCells(entries: ManifestEntry[], density: number, side: number) {
-  const items: { e: ManifestEntry; frame: number; heading: number; b: { x: number; y: number }; w: number; h: number }[] = [];
+function packCells(entries: ManifestEntry<AnySheet>[], density: number, side: number) {
+  const items: { e: ManifestEntry<AnySheet>; frame: number; heading: number; b: { x: number; y: number }; w: number; h: number }[] = [];
   for (const e of entries)
     for (let f = 0; f < e.frames.length; f++)
       for (const hd of bakedHeadings(e)) {
@@ -150,8 +156,11 @@ function packCells(entries: ManifestEntry[], density: number, side: number) {
   return best ?? { cells: [], width: 0, height: 0 };
 }
 
-/** The plan of a sheet at a wanted density: lowered by 0.25 until it fits (never below 1). */
-export function planSheet(sheet: Sheet, want: number, list: readonly ManifestEntry[] = MANIFEST): SheetPlan {
+/**
+ * The plan of a sheet at a wanted density: lowered by 0.25 until it fits (never below 1). `list` defaults to the sheet's own
+ * manifest (MANIFEST for A, B, G; WORKS_MANIFEST for C, D); the works' bake passes only the sold entries (worksTable.ts).
+ */
+export function planSheet(sheet: AnySheet, want: number, list: readonly ManifestEntry<AnySheet>[] = listOf(sheet)): SheetPlan {
   const side = sideOf(sheet);
   const entries = entriesOf(sheet, list);
   let density = Math.max(1, Math.min(3, want));
@@ -164,7 +173,7 @@ export function planSheet(sheet: Sheet, want: number, list: readonly ManifestEnt
 }
 
 /** The size a sheet bakes to (tests, the budget script). */
-export const sheetSize = (sheet: Sheet, want: number, list?: readonly ManifestEntry[]) => {
+export const sheetSize = (sheet: AnySheet, want: number, list?: readonly ManifestEntry<AnySheet>[]) => {
   const p = planSheet(sheet, want, list);
   return { density: p.density, width: p.width, height: p.height };
 };
@@ -201,7 +210,7 @@ function finish(plan: SheetPlan, image: SkImage): ManifestAtlas {
  * must mirror it (a west heading of a mirrorWest entry). -1 when the atlas lacks it.
  */
 export function cellOf(atlas: ManifestAtlas, id: string, frame = 0, heading = 0): { cell: number; mirror: boolean } {
-  const e = MANIFEST.find((m) => m.id === id);
+  const e = isWorksSheet(atlas.sheet) ? WORKS_MANIFEST.find((m) => m.id === id) : MANIFEST.find((m) => m.id === id);
   const src = e ? mirrorOf(e, heading) : null;
   const cell = atlas.index[`${id}#${frame}#${src ?? heading}`] ?? -1;
   return { cell, mirror: src !== null };
@@ -235,19 +244,12 @@ const later = (f: () => void) => setTimeout(f, 0);
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 /**
- * Bakes sheets A, B and G at a density, `sliceMs` of drawing at a time so the loading animation keeps
- * its frames; idempotent (a second call returns the same promise's result). Each sheet draws into a CPU
- * raster surface (./atlas bakeImage's way), snapshotted and disposed when its last cell is drawn.
+ * Draws plans into images, `sliceMs` of drawing at a time (a timer between slices), each sheet into a CPU raster surface
+ * (./atlas bakeImage's way), snapshotted and disposed when its last cell is drawn. `onCell` after every cell, `onSheet`
+ * with each finished atlas, `onDone` once all are drawn. The first yard's bakeManifest and the works' bakeWorksSheets
+ * share it.
  */
-export function bakeManifest(density: number, sliceMs = 8): Promise<ManifestAtlases> {
-  if (bakeState.result) return Promise.resolve(bakeState.result);
-  const p = new Promise<ManifestAtlases>((res) => bakeState.waiters.push(res));
-  if (bakeState.started) return p;
-  bakeState.started = true;
-  const t0 = now();
-  const plans = (['A', 'B', 'G'] as const).map((s) => planSheet(s, density));
-  bakeState.total = plans.reduce((a, pl) => a + pl.cells.length, 0);
-  const out: ManifestAtlases = { A: null, B: null, G: null, ms: 0 };
+function bakeSliced(plans: readonly SheetPlan[], sliceMs: number, onCell: () => void, onSheet: (a: ManifestAtlas) => void, onDone: () => void): void {
   let si = 0;
   let ci = 0;
   let surface: ReturnType<typeof Skia.Surface.Make> = null;
@@ -270,7 +272,7 @@ export function bakeManifest(density: number, sliceMs = 8): Promise<ManifestAtla
           console.warn('salvage: a sprite could not be drawn', plan.cells[ci].id, e);
         }
         ci++;
-        bakeState.done++;
+        onCell();
       }
       if (ci < plan.cells.length) return later(step);
       surface.flush();
@@ -279,16 +281,105 @@ export function bakeManifest(density: number, sliceMs = 8): Promise<ManifestAtla
       if (image !== snap) snap.dispose();
       surface.dispose();
       surface = null;
-      out[plan.sheet] = finish(plan, image);
+      onSheet(finish(plan, image));
       si++;
       ci = 0;
       if (now() >= until) return later(step);
     }
-    out.ms = now() - t0;
-    bakeState.result = out;
-    bakeState.waiters.splice(0).forEach((f) => f(out));
+    onDone();
   };
   later(step);
+}
+
+/**
+ * Bakes sheets A, B and G at a density, `sliceMs` of drawing at a time so the loading animation keeps
+ * its frames; idempotent (a second call returns the same promise's result). Each sheet draws into a CPU
+ * raster surface (./atlas bakeImage's way), snapshotted and disposed when its last cell is drawn.
+ */
+export function bakeManifest(density: number, sliceMs = 8): Promise<ManifestAtlases> {
+  if (bakeState.result) return Promise.resolve(bakeState.result);
+  const p = new Promise<ManifestAtlases>((res) => bakeState.waiters.push(res));
+  if (bakeState.started) return p;
+  bakeState.started = true;
+  const t0 = now();
+  const plans = (['A', 'B', 'G'] as const).map((s) => planSheet(s, density));
+  bakeState.total = plans.reduce((a, pl) => a + pl.cells.length, 0);
+  const out: ManifestAtlases = { A: null, B: null, G: null, ms: 0 };
+  bakeSliced(
+    plans,
+    sliceMs,
+    () => {
+      bakeState.done++;
+    },
+    (a) => {
+      if (a.sheet === 'A' || a.sheet === 'B' || a.sheet === 'G') out[a.sheet] = a;
+    },
+    () => {
+      out.ms = now() - t0;
+      bakeState.result = out;
+      bakeState.waiters.splice(0).forEach((f) => f(out));
+    },
+  );
+  return p;
+}
+
+// --- the works' sheets C and D (C-WORLD-1; stage 2 only) ----------------------------------------------
+
+/** The works' baked sheets (null where a sheet has no sold entry or could not be made) and the milliseconds the bake took. */
+export interface WorksAtlases {
+  C: ManifestAtlas | null;
+  D: ManifestAtlas | null;
+  ms: number;
+  /** Cells baked (the bake line). */
+  cells: number;
+}
+
+/** The works' slices: at most this many milliseconds of drawing a slice (PLAN2 6.1: never a frame over 50 ms). */
+export const WORKS_SLICE_MS = 4;
+
+/** The plans of the works' sheets for a list of entries (only those listed: the sold ones); a sheet with no entry is left out. */
+export function planWorks(density: number, list: readonly ManifestEntry<AnySheet>[]): SheetPlan[] {
+  return WORKS_SHEETS.map((s) => planSheet(s, density, list)).filter((pl) => pl.cells.length > 0);
+}
+
+const worksBake = { started: false, result: null as WorksAtlases | null, waiters: [] as ((a: WorksAtlases) => void)[], done: 0, total: 0 };
+
+/** How far the works' bake is, 0 to 1 (0 before it starts). */
+export function worksAtlasProgress(): number {
+  if (!worksBake.started) return 0;
+  if (worksBake.result) return 1;
+  return worksBake.total ? Math.min(0.999, worksBake.done / worksBake.total) : 0;
+}
+
+/**
+ * Bakes the works' sheets C and D from `list` (worksTable.ts worksBakeList: the content's sold entries only) at a density,
+ * in slices of `sliceMs` (WORKS_SLICE_MS); idempotent like bakeManifest. Only ./useYard.ts calls it, and only under
+ * stageOn() from rung 2: a first-yard player never bakes C or D.
+ */
+export function bakeWorksSheets(density: number, list: readonly ManifestEntry<AnySheet>[], sliceMs = WORKS_SLICE_MS): Promise<WorksAtlases> {
+  if (worksBake.result) return Promise.resolve(worksBake.result);
+  const p = new Promise<WorksAtlases>((res) => worksBake.waiters.push(res));
+  if (worksBake.started) return p;
+  worksBake.started = true;
+  const t0 = now();
+  const plans = planWorks(density, list);
+  worksBake.total = plans.reduce((a, pl) => a + pl.cells.length, 0);
+  const out: WorksAtlases = { C: null, D: null, ms: 0, cells: worksBake.total };
+  bakeSliced(
+    plans,
+    sliceMs,
+    () => {
+      worksBake.done++;
+    },
+    (a) => {
+      if (a.sheet === 'C' || a.sheet === 'D') out[a.sheet] = a;
+    },
+    () => {
+      out.ms = now() - t0;
+      worksBake.result = out;
+      worksBake.waiters.splice(0).forEach((f) => f(out));
+    },
+  );
   return p;
 }
 

@@ -27,7 +27,7 @@
  */
 import type { SalvageContent } from '../../../config/schema.salvage';
 import type * as R from '../../../engine/salvage';
-import { MANIFEST, cellBounds, mirrorOf, type ManifestEntry } from '../art/manifest';
+import { MANIFEST, WORKS_MANIFEST, cellBounds, mirrorOf, type AnySheet, type ManifestEntry } from '../art/manifest';
 import { CARRIER_FRAMES, HAND_FAMILIES, carrierFrameOf, handFamilyOf } from '../art/manifest/people';
 import { CONTAINER_TINTS, STILLAGE_LAYER_DY } from '../art/manifest/plant';
 import { GRADE_SPRITE, INGOT_FRAMES, OBJECT_SPRITE, stageOf, thingLookTint } from '../art/manifest/things';
@@ -35,6 +35,8 @@ import { loadFamily, type LoadFamily } from '../art/people.draw';
 import { laneDrawEnd, laneGeo, laneSigns, mapDriveLine, mapNorth, type LaneGeo } from './yard';
 import { bedShares, bedsDress, type Dress } from './dressing';
 import { CARRIER_AHEAD, flatbedBedCentre, headingRad, skipTopOnTruck } from '../art/vehicles.draw';
+import { floorItems, worksItems } from './worksScene';
+import { worksRoofSpots, type RoofSpot } from './worksTable';
 
 export { laneDrawEnd, laneGeo, mapDriveLine, type LaneGeo };
 
@@ -42,8 +44,11 @@ export const ITEM = 12;
 export const L_DECAL = 0;
 export const L_SORT = 2;
 
-/** Sheets by index: the manifest's A, B, G and the world's actor shadows S (./useYard.ts). */
-export const SHEETS = ['A', 'B', 'G', 'S'] as const;
+/**
+ * Sheets by index: the manifest's A, B, G, the world's actor shadows S (./useYard.ts), then the works' C and D (C-WORLD-1:
+ * appended AFTER S so that no first-yard cell index moves; baked only under stageOn() from rung 2, null otherwise).
+ */
+export const SHEETS = ['A', 'B', 'G', 'S', 'C', 'D'] as const;
 export type SheetName = (typeof SHEETS)[number];
 
 const CELL_BASE = 2_000_000;
@@ -65,9 +70,11 @@ export interface SheetLike {
   index: Record<string, number>;
 }
 
-const BY_ID = new Map<string, ManifestEntry>(MANIFEST.map((e) => [e.id, e]));
-export const entryOf = (id: string): ManifestEntry | undefined => BY_ID.get(id);
-const SHEET_OF: Record<string, number> = { A: 0, B: 1, G: 2, S: 3 };
+// The first yard's entries and the works' (C-WORLD-1; ids are unique across both: art/sheets.hash.test.ts). A works entry
+// resolves only once its sheet is baked (stageOn(), rung 2): until then its cell is -1 and nothing of it is drawn.
+const BY_ID = new Map<string, ManifestEntry<AnySheet>>([...MANIFEST, ...WORKS_MANIFEST].map((e) => [e.id, e]));
+export const entryOf = (id: string): ManifestEntry<AnySheet> | undefined => BY_ID.get(id);
+const SHEET_OF: Record<string, number> = { A: 0, B: 1, G: 2, S: 3, C: 4, D: 5 };
 
 /** Resolves (id, frame, heading) to a packed cell, -1 when the sheets lack it. Memoised. */
 export type Resolver = (id: string, frame?: number, heading?: number) => number;
@@ -318,7 +325,8 @@ function laneItems(out: number[], res: Resolver, l: LaneGeo, W: number): void {
 // 2. The rules' picture
 // =====================================================================================================
 
-export const POSES = ['stand', 'walk', 'push', 'feed', 'pour', 'spanner', 'sledge', 'grinder', 'torch'] as const;
+/** C-WORLD-1: the works' poses (plasma, analyse) are appended at the END, so the first yard's codes keep their numbers. */
+export const POSES = ['stand', 'walk', 'push', 'feed', 'pour', 'spanner', 'sledge', 'grinder', 'torch', 'plasma', 'analyse'] as const;
 export type PoseName = (typeof POSES)[number];
 export const P_STAND = 0;
 export const P_WALK = 1;
@@ -331,22 +339,40 @@ export const P_SPANNER = 5;
 export const P_SLEDGE = 6;
 export const P_GRINDER = 7;
 export const P_TORCH = 8;
+/** The boss's own plasma cutter (works; person.boss.plasma, sheet D) and the analyser's reading (person.boss.analyse). */
+export const P_PLASMA = 9;
+export const P_ANALYSE = 10;
 /** Frames per pose (the manifest's person entries). */
-export const POSE_FRAMES = [1, 4, 4, 2, 1, 2, 2, 2, 2];
+export const POSE_FRAMES = [1, 4, 4, 2, 1, 2, 2, 2, 2, 2, 1];
+/** Poses in the actor table (= POSES.length; a worklet reads this number, not the array). */
+export const N_POSES = 11;
+/** The first pose whose entries live on the works' sheet (8 headings: the actor table asks heading h x 2). */
+export const P_WORKS_FIRST = P_PLASMA;
 
 export const ROLE_CODE: Record<string, number> = { hand: 0, cutter: 1, driver: 2 };
 /** The rules' trip phases as numbers (TripPhase): the truck moves along its path in out, back and park. */
 export const LEG_CODE: Record<string, number> = { out: 0, hook: 1, back: 2, weigh: 3, tip: 4, walk: 5, park: 6 };
 export const FLATBED_CODE: Record<string, number> = { waiting: 0, loading: 1, away: 2 };
-export const ARRIVAL_CODE: Record<string, number> = { van: 0, machineFlatbed: 1, truck: 2, crew: 3, dropoff: 4 };
+export const ARRIVAL_CODE: Record<string, number> = { van: 0, machineFlatbed: 1, truck: 2, crew: 3, dropoff: 4, recovery: 5, lowLoader: 6 };
+/**
+ * C-WORLD-1: the first arrival code the works own (recovery 5, lowLoader 6); a kind the table does not know packs as
+ * ARRIVAL_UNKNOWN. The frame loop draws codes below ARRIVAL_WORKS_FIRST itself and hands every other one to
+ * ./worksVehicleMotion.ts worksVehiclesInto (C-WORLD-2). The first yard's kinds keep their codes.
+ */
+export const ARRIVAL_WORKS_FIRST = 5;
+export const ARRIVAL_UNKNOWN = -1;
 export const ARRIVAL_PHASE: Record<string, number> = { in: 0, setDown: 1, out: 2 };
 
 /** Numbers per crew member in RulesScene.crew. */
 export const CREW = 14;
 /** Numbers per arrival in RulesScene.arrivals. */
 export const ARRIVAL = 10;
-/** At most this many points of a vehicle's path (./motion.ts PATH_MAX_PTS; the frame loop's scratch path holds as many). */
-export const PATH_MAX = 12;
+/**
+ * At most this many points of a vehicle's path (./motion.ts PATH_MAX_PTS, equal: worksHooks.test.ts; the frame loop's
+ * scratch path holds as many). C-WORLD-1: 16 (was 12): the recovery truck's way to the works (gate, drive line, works road,
+ * the turning loop's five points, its stop) is 12 to 14 points and must never be shortened (s2c-plan-world 3.2, 3.3 rule 7).
+ */
+export const PATH_MAX = 16;
 
 /**
  * What the rules decided, for the UI thread (one shared value, ./useRulesTable.ts). Nothing in it is
@@ -384,6 +410,8 @@ export interface RulesScene {
   boss: number[];
   cut: number[];
   carried: number;
+  /** C-WORLD-1: the truck's model, TRUCK_MODELS' row (absent: 0, today's truck). Present only from the works' opening. */
+  truckModel?: number;
 }
 
 export const NO_SCENE: RulesScene = {
@@ -438,6 +466,10 @@ export function poseCode(pose: string | undefined, tool?: string | null, family?
       return P_GRINDER;
     case 'torch':
       return P_TORCH;
+    case 'plasma':
+      return P_PLASMA;
+    case 'analyse':
+      return P_ANALYSE;
     case 'drive':
       return -1;
     default:
@@ -593,20 +625,22 @@ export function heapJitter(uid: string, y: number): { dx: number; dy: number } {
  * nothing else in it changed): a tick that moved nobody's things costs no item work and hands the UI thread
  * the same array (./useRulesTable.ts pushes it only when it changed).
  */
-const THING_ITEMS = new WeakMap<object, { c: SalvageContent; res: Resolver; items: number[]; solids: number[] }>();
+const THING_ITEMS = new WeakMap<object, { c: SalvageContent; res: Resolver; all: readonly R.FrameThing[]; items: number[]; solids: number[] }>();
 const PIECE_ITEMS = new WeakMap<object, { c: SalvageContent; res: Resolver; items: number[] }>();
 const LAST_ITEMS = new WeakMap<SalvageContent, { res: Resolver; a: number[]; b: number[]; rest: number[]; items: number[]; ra: number[]; rsol: number[]; solids: number[] }>();
 const sameNums = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((v, i) => v === b[i] || (v !== v && b[i] !== b[i]));
 
-function thingItems(c: SalvageContent, f: R.FrameTable, res: Resolver): { items: number[]; solids: number[] } {
-  const hit = THING_ITEMS.get(f.things);
-  if (hit && hit.c === c && hit.res === res) return hit;
+function thingItems(c: SalvageContent, f: R.FrameTable, res: Resolver, things: readonly R.FrameThing[] = f.things): { items: number[]; solids: number[] } {
+  // C-WORLD-1: `things` is the frame's list, or from the works' opening the floor's override (./worksScene.ts floorItems):
+  // cached by that list, the beds still read the frame's whole list.
+  const hit = THING_ITEMS.get(things);
+  if (hit && hit.c === c && hit.res === res && hit.all === f.things) return hit;
   const items: number[] = [];
   const solids: number[] = [];
   // The old stock's beds (the look's ./dressing.ts bedsDress), shrinking as each zone's stock is worked.
   if (entryOf('ground.bed')) for (const d of bedsDress(c, bedShares(c, f.things))) sprite(items, res, d.id, d.x, d.y, { frame: d.frame, flat: d.flat, key: d.key, alpha: d.alpha });
   // Things, whole and in their stages (the art's stageOf over pieces off and in all).
-  for (const th of f.things) {
+  for (const th of things) {
     const o = c.objects[th.obj];
     const id = entryOf(th.sprite) ? th.sprite : (OBJECT_SPRITE[th.obj] ?? th.sprite.replace(/\.(whole|cut\d+)$/, ''));
     const e = entryOf(id);
@@ -618,28 +652,31 @@ function thingItems(c: SalvageContent, f: R.FrameTable, res: Resolver): { items:
     sprite(items, res, id, th.x, th.y, { frame, tint: off === 0 ? thingLookTint(th.uid) : -1, dx: j?.dx, dy: j?.dy });
     if (off === 0) solids.push(1, th.x, th.y, Math.max(0.3, Math.min(o?.size.w ?? e.footprint.w, e.footprint.w) / 2), Math.max(0.2, Math.min(o?.size.d ?? e.footprint.d, e.footprint.d) / 2));
   }
-  const out = { c, res, items, solids };
-  THING_ITEMS.set(f.things, out);
+  const out = { c, res, all: f.things, items, solids };
+  THING_ITEMS.set(things, out);
   return out;
 }
 
-function pieceItems(c: SalvageContent, f: R.FrameTable, res: Resolver): number[] {
-  const hit = PIECE_ITEMS.get(f.pieces);
+function pieceItems(c: SalvageContent, f: R.FrameTable, res: Resolver, pieces: readonly R.FramePiece[] = f.pieces): number[] {
+  const hit = PIECE_ITEMS.get(pieces);
   if (hit && hit.c === c && hit.res === res) return hit.items;
   const items: number[] = [];
   // Pieces on the ground.
-  for (const p of f.pieces) {
+  for (const p of pieces) {
     const list = GRADE_SPRITE[p.grade];
     const id = entryOf(p.sprite) ? p.sprite : list ? list[hashStr(p.uid) % list.length] : null;
     if (id) sprite(items, res, id, p.x, p.y, { frame: id.startsWith('piece.ingot') ? 3 : 0 });
   }
-  PIECE_ITEMS.set(f.pieces, { c, res, items });
+  PIECE_ITEMS.set(pieces, { c, res, items });
   return items;
 }
 
 export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n = 0): RulesScene {
-  const A = thingItems(c, f, res);
-  const B = pieceItems(c, f, res);
+  // C-WORLD-1: from the works' opening the floor may draw its things and pieces aggregated (./worksScene.ts floorItems,
+  // WLD-FLOOR); below it (every first-yard frame) the override is null and the frame's lists are drawn as before.
+  const floor = floorItems(c, f, res);
+  const A = floor ? thingItems(c, f, res, floor.things) : thingItems(c, f, res);
+  const B = floor ? pieceItems(c, f, res, floor.pieces) : pieceItems(c, f, res);
   const items: number[] = [];
   const solids: number[] = [];
   // Machines in their looks; bays; partners' skips; circles; equipment the rules add.
@@ -663,6 +700,9 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
   // owner1 play 13: an EMPTY chalk circle (no thing, no piece inside it) is drawn faint, a quarter of its ink.
   for (const ci of f.circles) sprite(items, res, 'ground.chalk', ci.x, ci.y, { alpha: circleFilled(f, ci) ? 1 : CHALK_EMPTY_ALPHA });
   for (const fx of f.fixtures ?? []) sprite(items, res, fx.sprite, fx.x, fx.y);
+  // C-WORLD-1: the works' plant (./worksScene.ts worksItems; nothing below the works' opening) and the floor's heaps.
+  if (floor) for (const v of floor.items) items.push(v);
+  for (const v of worksItems(c, f, res)) items.push(v);
   // One list, presorted (./frameLoop.ts merges it, sortRuns), reused whole while its parts are the same.
   const last = LAST_ITEMS.get(c);
   let allItems: number[];
@@ -751,10 +791,15 @@ export function rulesScene(c: SalvageContent, f: R.FrameTable, res: Resolver, n 
       arrivalPath.push(...d.path);
       arrivalAt.push(...d.at);
     }
-    arrivals.push(ARRIVAL_CODE[a.kind] ?? 0, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1, np, p0);
+    arrivals.push(ARRIVAL_CODE[a.kind] ?? ARRIVAL_UNKNOWN, ARRIVAL_PHASE[a.phase] ?? 0, a.from.x, a.from.y, a.to.x, a.to.y, a.span.t0, a.span.t1, np, p0);
   }
 
-  return { t: f.t, n, epoch: f.epoch ?? 0, items: allItems, solids: allSolids, crew, truck, truckPath, truckAt, flatbed, flatbedPath, flatbedAt, car, arrivals, arrivalPath, arrivalAt, boss, cut: [], carried: f.load.pieces.length };
+  const scene: RulesScene = { t: f.t, n, epoch: f.epoch ?? 0, items: allItems, solids: allSolids, crew, truck, truckPath, truckAt, flatbed, flatbedPath, flatbedAt, car, arrivals, arrivalPath, arrivalAt, boss, cut: [], carried: f.load.pieces.length };
+  // C-WORLD-1: the truck's body (FrameTruck.model, written only from the works' opening) as TRUCK_MODELS' row; the field is
+  // there only when it is not today's truck, so a first-yard scene is the object it always was.
+  const model = TRUCK_MODEL_CODE[tk.model ?? 'truck'] ?? 0;
+  if (model !== 0) scene.truckModel = model;
+  return scene;
 }
 
 /**
@@ -850,7 +895,11 @@ export function circleFilled(f: Pick<R.FrameTable, 'things' | 'pieces'>, ci: { x
 export const ROOFED_IDS: readonly string[] = ['plant.portacabin', 'plant.toolrack', 'plant.scalehouse', 'plant.sign.posts', 'plant.board.notice'];
 /** Numbers per roof: x0, x1, y0, y1 of its drawn box (metres across, metres x tilt down the screen), its sort key, its static item's index. */
 export const ROOF = 6;
-/** At most this many roofs (the frame loop's per-roof scratch). */
+/**
+ * At most this many roofs (the frame loop's per-roof scratch). C-WORLD-1: the works add up to seven (the three halls' sheds,
+ * the bays' lean-to, the two stillage roofs, the Yard sale's canopy: ./worksTable.ts worksRoofSpots); worksHooks.test.ts
+ * checks the first yard's roofs plus every works roof the content can hold stay within it.
+ */
 export const ROOF_MAX = 16;
 /** A roof's ink while somebody stands under it (about a third) and the seconds its ink takes to change. */
 export const ROOF_SEE = 1 / 3;
@@ -869,7 +918,7 @@ export function personBox(): number[] {
 }
 
 /** The roofs of the map, matched to their items in `statics` (the presorted staticItems). */
-export function roofTable(c: SalvageContent, statics: readonly number[], res: Resolver, tilt: number): number[] {
+export function roofTable(c: SalvageContent, statics: readonly number[], res: Resolver, tilt: number, works: readonly RoofSpot[] = worksRoofSpots(c)): number[] {
   const out: number[] = [];
   for (const [id, pl] of Object.entries(c.map.places)) {
     if (!ROOFED_IDS.includes(pl.sprite)) continue;
@@ -889,6 +938,26 @@ export function roofTable(c: SalvageContent, statics: readonly number[], res: Re
     const b = cellBounds(e, 0);
     const s = (e.drawScale ?? 1) / 40;
     out.push(pt[0] + b.x * s, pt[0] + (b.x + b.w) * s, pt[1] * tilt + b.y * s, pt[1] * tilt + (b.y + b.h) * s, statics[idx * ITEM + 1], idx);
+  }
+  // C-WORLD-1: the works' roofed sprites (./worksTable.ts worksRoofSpots), each matched to the static item drawn at its
+  // anchor; one that is not drawn (a first-yard map, a dark hall, works not baked: its cell is -1) adds nothing.
+  for (const w of works) {
+    if (out.length / ROOF >= ROOF_MAX) break;
+    const e = entryOf(w.id);
+    const cell = res(w.id, 0, 0);
+    if (!e || cell < 0) continue;
+    let idx = -1;
+    for (let i = 0; i * ITEM < statics.length; i++) {
+      const o = i * ITEM;
+      if (statics[o + 2] === cell && statics[o + 3] === w.x && statics[o + 4] === w.y) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) continue;
+    const b = cellBounds(e, 0);
+    const s = (e.drawScale ?? 1) / 40;
+    out.push(w.x + b.x * s, w.x + (b.x + b.w) * s, w.y * tilt + b.y * s, w.y * tilt + (b.y + b.h) * s, statics[idx * ITEM + 1], idx);
   }
   // owner2-fix P7 (A PLAYER ALWAYS SEES HIMSELF, as for roofs): the container wall's containers (props of kind
   // 'wall', 2.6 m high) cover whoever walks behind one (the passage between two of them, a container's north
@@ -949,7 +1018,47 @@ export const VBOX_FLATBED = 3;
 export const VBOX_FLATBED_WORKING = 4;
 export const VBOX_VAN = 5;
 export const VBOX_TRAILER = 6;
-const VBOX_IDS = ['vehicle.truck', 'vehicle.truck.bare', 'vehicle.truck.hook', 'vehicle.flatbed', 'vehicle.flatbed.working', 'vehicle.van', 'vehicle.trailer'];
+/** C-WORLD-1: the hook-lift's (three-axle, the works) pictures, appended after the first yard's so their indices keep. */
+export const VBOX_BRIDGE = 7;
+export const VBOX_BRIDGE_BARE = 8;
+export const VBOX_BRIDGE_HOOK = 9;
+const VBOX_IDS = ['vehicle.truck', 'vehicle.truck.bare', 'vehicle.truck.hook', 'vehicle.flatbed', 'vehicle.flatbed.working', 'vehicle.van', 'vehicle.trailer', 'vehicle.truckBridge', 'vehicle.truckBridge.bare', 'vehicle.truckBridge.hook'];
+
+/**
+ * C-WORLD-1 (critic-build F2): THE TRUCK'S BODY AS DATA, chosen by FrameTruck.model (the rules' answer, frame.ts: the owned
+ * shop key). Row 0 is today's truck, exactly the first yard's ids, boxes and fall-back sizes; row 1 the works' hook-lift
+ * (art ART-TRUCK3, sheet D). The frame loop (C-WORLD-2) reads its half-sizes, boxes and cells from here (actorTable
+ * `models`) instead of the truck's constants; no row adds a branch to the first yard's drawing.
+ */
+export interface TruckModel {
+  model: 'truck' | 'truckBridge';
+  body: string;
+  bare: string;
+  hook: string;
+  /** The tip frames' entry (east only), or null: today's truck tips in its hook entry's frames. */
+  tip: string | null;
+  /** Its skip's load overlay entry. */
+  load: string;
+  /** VBOX_* indices of the body, the bare body and the hook picture. */
+  vbox: number;
+  vboxBare: number;
+  vboxHook: number;
+  /** Fall-back length and width (metres) while the body's entry is unknown (frameLoop.ts's 4.6 x 2 for today's). */
+  len: number;
+  wid: number;
+}
+export const TRUCK_MODELS: readonly TruckModel[] = [
+  { model: 'truck', body: 'vehicle.truck', bare: 'vehicle.truck.bare', hook: 'vehicle.truck.hook', tip: null, load: 'vehicle.skip.load', vbox: VBOX_TRUCK, vboxBare: VBOX_TRUCK_BARE, vboxHook: VBOX_TRUCK_HOOK, len: 4.6, wid: 2 },
+  { model: 'truckBridge', body: 'vehicle.truckBridge', bare: 'vehicle.truckBridge.bare', hook: 'vehicle.truckBridge.hook', tip: 'vehicle.truckBridge.tip', load: 'vehicle.skip.load.bridge', vbox: VBOX_BRIDGE, vboxBare: VBOX_BRIDGE_BARE, vboxHook: VBOX_BRIDGE_HOOK, len: 6.2, wid: 2.4 },
+];
+/** FrameTruck.model -> its row in TRUCK_MODELS (RulesScene.truckModel). */
+export const TRUCK_MODEL_CODE: Readonly<Record<string, number>> = { truck: 0, truckBridge: 1 };
+
+/** A model's half length and half width in metres (its body's footprint; the row's fall-back while the entry is unknown). */
+export function truckHalf(m: TruckModel): [number, number] {
+  const f = entryOf(m.body)?.footprint;
+  return [(f?.w ?? m.len) / 2, (f?.d ?? m.wid) / 2];
+}
 
 /**
  * owner2-fix P2: the ground a vehicle's picture covers, per picture and heading (the 8-scheme for the truck's,

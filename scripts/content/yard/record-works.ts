@@ -409,7 +409,7 @@ function normalRun(): void {
     log(`sitting ${k}: yard ${(b.g.salvage.t / 3600).toFixed(2)} h, rung ${b.g.salvage.ladder.rung}, recorded ${Object.keys(out).length}`);
   }
   // Fallbacks for the moments the play did not meet exactly (said in `missed`).
-  if (!out.w5wait && w5end) put('w5wait', w5end.g, w5end.now, w5end.what, w5end.ev, 'normal', 'no state at rung 3 or 4 had the waiting advice (read every 20 s: the advice always named a purchase), and at rung 5, the stage\'s top, adviceWait has no next rung: the line is empty. Recorded: rung 5 at the end of its first sitting');
+  if (!out.w5wait && w5end) put('w5wait', w5end.g, w5end.now, w5end.what, w5end.ev, 'normal', 'no state at rung 3 or 4 had the waiting advice (read every 20 s: the advice always named a purchase), and at rung 5, the stage\'s top, adviceWait has no next rung, so the waiting line cannot show (the advice line names a purchase or nothing). Recorded: rung 5 at the end of its first sitting');
   if (!out.w4line && (lineNear || lineCash)) {
     const n = (lineCash ?? lineNear)!;
     put('w4line', n.g, n.now, n.what, n.ev, 'normal', lineCash ? 'no car drains while the recovery waits for cash (frameWorks recoveryView reads a taken apron first, so a draining car and "cash short" never hold together): recorded with the apron free and "Waiting for cash"' : 'cash short never held: the next car is due exactly when the draining one ends, and its label price (about 1.2 thousand) is below what the hand keeps in cash at every due date, also after the advice\'s purchase (tried at each car within 45 s of its end). Recorded: a car draining, the next due within 30 s');
